@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Movimientos | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header class="topbar">
+    <div class="topbar-start">
+        <button id="menu-button" class="menu-button" type="button" aria-label="Abrir menu"
+                aria-controls="app-menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+        <a class="brand" th:href="@{/}" aria-label="Volver al inicio">
+            <img class="brand-logo" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}" alt="">
+            <span class="brand-mark" th:unless="${hasStoreLogo}">TCG</span>
+            <div>
+                <strong th:text="${storeName}">Inventory Manager</strong>
+                <p>Historial de stock</p>
+            </div>
+        </a>
+    </div>
+</header>
+
+<div id="menu-backdrop" class="menu-backdrop" hidden></div>
+<aside id="app-menu" class="app-menu" aria-hidden="true">
+    <div class="menu-head">
+        <span class="brand-mark">TCG</span>
+        <strong>Inventory Manager</strong>
+    </div>
+    <nav class="menu-nav" aria-label="Menu principal">
+        <a th:href="@{/}">Inicio</a>
+        <a class="active" th:href="@{/movimientos}">Movimientos</a>
+        <a th:href="@{/configuracion}">Configuracion</a>
+        <a th:href="@{/importar-lista}">Importar lista</a>
+        <form th:action="@{/tutorial/reset}" method="post">
+            <button type="submit" class="menu-link-button">Tutorial</button>
+        </form>
+    </nav>
+</aside>
+
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Historial</p>
+            <h1>Movimientos de stock</h1>
+            <p class="supporting">Revisa entradas, ventas y caja diaria desde un mismo lugar.</p>
+        </div>
+    </section>
+
+    <section class="panel movement-tabs-panel">
+        <p class="alert error" th:if="${error}" th:text="${error}"></p>
+        <p class="alert success" th:if="${success}" th:text="${success}"></p>
+        <p class="alert error" th:if="${cashError}" th:text="${cashError}"></p>
+
+        <div class="movement-tab-list" role="tablist" aria-label="Secciones de movimientos">
+            <button th:classappend="${activeTab == 'movements'} ? ' active' : ''"
+                    class="movement-tab-button" type="button" role="tab"
+                    th:attr="aria-selected=${activeTab == 'movements'}"
+                    data-tab-target="movements-tab">Movimientos</button>
+            <button th:classappend="${activeTab == 'cash'} ? ' active' : ''"
+                    class="movement-tab-button" type="button" role="tab"
+                    th:attr="aria-selected=${activeTab == 'cash'}"
+                    data-tab-target="cash-tab">Caja</button>
+            <button th:classappend="${activeTab == 'report'} ? ' active' : ''"
+                    class="movement-tab-button" type="button" role="tab"
+                    th:attr="aria-selected=${activeTab == 'report'}"
+                    data-tab-target="report-tab">Reporte</button>
+        </div>
+
+        <div id="movements-tab" class="movement-tab-panel" role="tabpanel"
+             th:classappend="${activeTab == 'movements'} ? ' active' : ''"
+             th:hidden="${activeTab != 'movements'}">
+            <div class="section-head movement-tabs-head">
+                <div>
+                    <p class="eyebrow">Registro</p>
+                    <h2 th:text="${movementCount + ' ' + movementCountLabel}">0 movimientos hoy</h2>
+                </div>
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar movimientos.">
+                    <input type="hidden" name="tab" value="movements">
+                    <input type="hidden" name="movementFilter" value="true">
+                    <div class="movement-date-field">
+                        <div class="movement-date-control">
+                            <label for="movement-date">Fecha</label>
+                            <input id="movement-date" name="movementDate" type="date" th:value="${selectedMovementDate}"
+                                   aria-describedby="movement-date-error">
+                        </div>
+                        <p id="movement-date-error" class="field-error"
+                           th:hidden="${movementDateError == null}"
+                           th:text="${movementDateError ?: 'Elegi una fecha para filtrar movimientos.'}">
+                            Elegi una fecha para filtrar movimientos.
+                        </p>
+                    </div>
+                    <button class="secondary-button" type="submit">Filtrar</button>
+                    <a class="clear-search-button" th:if="${selectedMovementDate != null && selectedMovementDate != ''}"
+                       th:href="@{/movimientos(tab='movements', cashDate=${selectedCashDate})}" aria-label="Borrar filtro" title="Borrar filtro">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M14.5 3.5 21 10l-2 2-6.5-6.5 2-2Z"/>
+                            <path d="M11.8 6.2 17.8 12.2 10.8 19.2H4.5L3 17.7l8.8-11.5Z"/>
+                            <path d="M6 19.2v-4.4"/>
+                            <path d="M9 19.2v-6.4"/>
+                        </svg>
+                    </a>
+                </form>
+            </div>
+
+            <div class="placeholder" th:if="${#lists.isEmpty(movements)}">
+                <strong>No hay movimientos registrados</strong>
+                <p>Cuando agregues, importes o vendas cartas desde la app, van a aparecer aca.</p>
+            </div>
+
+            <div class="movement-month-list" th:unless="${#lists.isEmpty(movementGroups)}">
+                <details class="movement-month" th:each="group : ${movementGroups}" th:open="${group.open}">
+                    <summary>
+                        <span th:text="${group.label}">Junio 2026</span>
+                        <strong th:text="${group.count + ' movimientos'}">12 movimientos</strong>
+                    </summary>
+                    <div class="table-wrap movement-table-wrap">
+                        <table class="movement-table">
+                            <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Movimiento</th>
+                                <th>Carta</th>
+                                <th>Set</th>
+                                <th>Codigo</th>
+                                <th>Nro.</th>
+                                <th>Printing</th>
+                                <th>Stock actual</th>
+                                <th>Accion</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="movement : ${group.movements}">
+                                <td th:text="${movement.formattedDate != null && movement.formattedDate != '' ? movement.formattedDate : '-'}">01/06/2026</td>
+                                <td th:text="${movement.time != null && movement.time != '' ? movement.time : '-'}">13:00:00</td>
+                                <td th:text="${movement.quantity != null && movement.quantity != '' ? movement.quantity : '-'}">1</td>
+                                <td th:text="${movement.name != null && movement.name != '' ? movement.name : '-'}">Sol Ring</td>
+                                <td th:text="${movement.setName != null && movement.setName != '' ? movement.setName : '-'}">Commander Masters</td>
+                                <td th:text="${movement.setCode != null && movement.setCode != '' ? movement.setCode : '-'}">CMM</td>
+                                <td th:text="${movement.collectorNumber != null && movement.collectorNumber != '' ? movement.collectorNumber : '-'}">410</td>
+                                <td th:text="${movement.printing != null && movement.printing != '' ? movement.printing : '-'}">nonfoil</td>
+                                <td th:text="${movement.newStock != null && movement.newStock != '' ? movement.newStock : '-'}">1</td>
+                                <td th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Busqueda</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <div id="cash-tab" class="movement-tab-panel" role="tabpanel"
+             th:classappend="${activeTab == 'cash'} ? ' active' : ''"
+             th:hidden="${activeTab != 'cash'}">
+            <div class="section-head movement-tabs-head">
+                <div>
+                    <p class="eyebrow">Caja</p>
+                    <h2>Ventas registradas</h2>
+                </div>
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar caja.">
+                    <input type="hidden" name="tab" value="cash">
+                    <input type="hidden" name="cashFilter" value="true">
+                    <div class="movement-date-field">
+                        <div class="movement-date-control">
+                            <label for="cash-date">Fecha</label>
+                            <input id="cash-date" name="cashDate" type="date" th:value="${selectedCashDate}"
+                                   aria-describedby="cash-date-error">
+                        </div>
+                        <p id="cash-date-error" class="field-error"
+                           th:hidden="${cashDateError == null}"
+                           th:text="${cashDateError ?: 'Elegi una fecha para filtrar caja.'}">
+                            Elegi una fecha para filtrar caja.
+                        </p>
+                    </div>
+                    <button class="secondary-button" type="submit">Filtrar</button>
+                    <a class="clear-search-button" th:if="${selectedCashDate != null && selectedCashDate != ''}"
+                       th:href="@{/movimientos(tab='cash', movementDate=${selectedMovementDate})}" aria-label="Borrar filtro" title="Borrar filtro">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M14.5 3.5 21 10l-2 2-6.5-6.5 2-2Z"/>
+                            <path d="M11.8 6.2 17.8 12.2 10.8 19.2H4.5L3 17.7l8.8-11.5Z"/>
+                            <path d="M6 19.2v-4.4"/>
+                            <path d="M9 19.2v-6.4"/>
+                        </svg>
+                    </a>
+                </form>
+            </div>
+
+            <div class="cash-summary-grid">
+                <div class="cash-summary-card">
+                    <span>Ventas de hoy</span>
+                    <strong th:text="${'$ ' + cashTodayTotal}">$ 0</strong>
+                </div>
+                <div class="cash-summary-card" th:if="${selectedCashDate != null && selectedCashDate != ''}">
+                    <span>Total filtrado</span>
+                    <strong th:text="${'$ ' + cashSelectedTotal}">$ 0</strong>
+                </div>
+            </div>
+
+            <div class="placeholder" th:if="${#lists.isEmpty(cashGroups)}">
+                <strong>No hay ventas registradas</strong>
+                <p>Cuando vendas cartas desde la app, se van a registrar automaticamente en esta caja y en la hoja Caja.</p>
+            </div>
+
+            <div class="movement-month-list cash-month-list" th:unless="${#lists.isEmpty(cashGroups)}">
+                <details class="movement-month cash-month" th:each="group : ${cashGroups}" th:open="${group.open}">
+                    <summary>
+                        <span th:text="${group.label}">Junio 2026</span>
+                        <strong th:text="${group.count + ' dias'}">1 dias</strong>
+                    </summary>
+
+                    <div class="cash-day-list">
+                        <details class="cash-day" th:each="day : ${group.days}" th:open="${day.open}">
+                            <summary>
+                                <span th:text="${day.formattedDate}">01/06/2026</span>
+                                <strong th:text="${'$ ' + day.formattedTotal}">$ 0</strong>
+                            </summary>
+
+                            <div class="table-wrap cash-table-wrap">
+                                <table class="cash-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Carta</th>
+                                        <th>Set</th>
+                                        <th>Codigo/Nro.</th>
+                                        <th>Printing</th>
+                                        <th>Precio</th>
+                                        <th>Cant.</th>
+                                        <th>Total</th>
+                                        <th>Total dia</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="entry : ${day.entries}">
+                                        <td th:text="${entry.time != null && entry.time != '' ? entry.time : '-'}">12:00:00</td>
+                                        <td th:text="${entry.name != null && entry.name != '' ? entry.name : '-'}">Sol Ring</td>
+                                        <td th:text="${entry.setName != null && entry.setName != '' ? entry.setName : '-'}">Commander Masters</td>
+                                        <td th:text="${(entry.setCode != null && entry.setCode != '' ? entry.setCode : '-') + ' / ' + (entry.collectorNumber != null && entry.collectorNumber != '' ? entry.collectorNumber : '-')}">CMM / 410</td>
+                                        <td th:text="${entry.printing != null && entry.printing != '' ? entry.printing : '-'}">nonfoil</td>
+                                        <td th:text="${entry.localPrice != null && entry.localPrice != '' ? '$ ' + entry.formattedLocalPrice : '-'}">$ 1.000</td>
+                                        <td th:text="${entry.quantity != null && entry.quantity != '' ? entry.quantity : '-'}">1</td>
+                                        <td th:text="${entry.total != null && entry.total != '' ? '$ ' + entry.formattedTotal : '-'}">$ 1.000</td>
+                                        <td th:text="${entry.dayTotal != null && entry.dayTotal != '' ? '$ ' + entry.formattedDayTotal : '-'}">$ 1.000</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <div id="report-tab" class="movement-tab-panel" role="tabpanel"
+             th:classappend="${activeTab == 'report'} ? ' active' : ''"
+             th:hidden="${activeTab != 'report'}">
+            <div class="placeholder" th:if="${#lists.isEmpty(cashReportMonths)}">
+                <strong>No hay reporte disponible</strong>
+                <p>Cuando haya ventas registradas, el resumen mensual se va a generar solo.</p>
+            </div>
+
+            <div class="report-month-list" th:unless="${#lists.isEmpty(cashReportMonths)}">
+                <article class="report-month-card" th:each="report : ${cashReportMonths}">
+                    <div class="report-month-head">
+                        <div>
+                            <p class="eyebrow">Reporte mensual</p>
+                            <h3 th:text="${report.label}">Junio 2026</h3>
+                        </div>
+                        <strong th:text="${'$ ' + report.totalSales}">$ 0</strong>
+                    </div>
+
+                    <div class="report-kpi-grid">
+                        <div class="report-kpi">
+                            <span>Cartas vendidas</span>
+                            <strong th:text="${report.soldQuantity}">0</strong>
+                        </div>
+                        <div class="report-kpi">
+                            <span>Cartas ingresadas</span>
+                            <strong th:text="${report.enteredQuantity}">0</strong>
+                        </div>
+                        <div class="report-kpi">
+                            <span>Diferencia stock</span>
+                            <strong th:text="${report.balanceQuantity}">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="report-bars">
+                        <div class="report-bar-row">
+                            <span>Ventas</span>
+                            <div class="report-bar"><i th:style="${'width:' + report.salesWidth}"></i></div>
+                        </div>
+                        <div class="report-bar-row">
+                            <span>Vendidas</span>
+                            <div class="report-bar"><i class="sold" th:style="${'width:' + report.soldWidth}"></i></div>
+                        </div>
+                        <div class="report-bar-row">
+                            <span>Ingresadas</span>
+                            <div class="report-bar"><i class="entered" th:style="${'width:' + report.enteredWidth}"></i></div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+        <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
+             alt="Gatito atigrado revisando cartas">
+        <h2>Sincronizando inventario</h2>
+        <p>Leyendo el Sheet, conectando la app y recalculando precios...</p>
+        <div class="loading-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+

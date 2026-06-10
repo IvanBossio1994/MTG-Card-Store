@@ -1,0 +1,12 @@
+package com.tcg.bot;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class TcgBotApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(TcgBotApplication.class, args);
+    }
+}
