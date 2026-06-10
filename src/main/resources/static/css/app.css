@@ -979,6 +979,15 @@ h2 {
     border-radius: 10px;
 }
 
+.table-wrap table {
+    table-layout: fixed;
+}
+
+.table-wrap th,
+.table-wrap td {
+    overflow-wrap: anywhere;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;

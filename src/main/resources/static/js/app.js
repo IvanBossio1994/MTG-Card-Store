@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const updateForm = document.getElementById("update-form");
     const importAnalyzeForm = document.getElementById("import-analyze-form");
     const importConfirmForm = document.getElementById("import-confirm-form");
+    const storeForm = document.querySelector(".store-form");
     const loadingOverlay = document.getElementById("loading-overlay");
 
     const showLoadingOverlay = (form, buttonText, title, message) => {
@@ -72,6 +73,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 "Sincronizando...",
                 "Sincronizando inventario",
                 "Leyendo el Sheet, conectando la app y recalculando precios..."
+            );
+        });
+    }
+
+    if (storeForm && loadingOverlay) {
+        storeForm.addEventListener("submit", () => {
+            showLoadingOverlay(
+                storeForm,
+                "Guardando...",
+                "Guardando configuracion",
+                "Subiendo credenciales si elegiste un JSON, preparando cache y conectando el Sheet..."
             );
         });
     }

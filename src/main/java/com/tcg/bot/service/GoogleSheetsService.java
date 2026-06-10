@@ -8,6 +8,7 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.model.CashRegisterEntry;
@@ -196,6 +197,11 @@ public class GoogleSheetsService {
         }
 
         return cards;
+    }
+
+    public void prepareInventorySheet(List<CardKingdomProduct> products) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureInventorySheet(sheetsService, products);
     }
 
     public InventoryCard findInventoryCard(
@@ -799,6 +805,10 @@ public class GoogleSheetsService {
     }
 
     private void ensureInventorySheet(Sheets sheetsService) throws Exception {
+        ensureInventorySheet(sheetsService, List.of());
+    }
+
+    private void ensureInventorySheet(Sheets sheetsService, List<CardKingdomProduct> products) throws Exception {
         var spreadsheet = sheetsService.spreadsheets()
                 .get(storeSettingsService.getSpreadsheetId())
                 .setFields("sheets.properties.title")
@@ -844,6 +854,10 @@ public class GoogleSheetsService {
                 ? List.of()
                 : values.get(0);
 
+        if (migrateExistingInventorySheetIfNeeded(sheetsService, header, products)) {
+            return;
+        }
+
         migrateLegacyComputedPriceColumn(sheetsService, header);
 
         List<String> updatedHeader = completedInventoryHeader(header);
@@ -871,6 +885,300 @@ public class GoogleSheetsService {
                     )
                     .execute();
         }
+    }
+
+    private boolean migrateExistingInventorySheetIfNeeded(
+            Sheets sheetsService,
+            List<Object> header,
+            List<CardKingdomProduct> products
+    ) throws Exception {
+        if (isAppManagedHeader(header) || products == null || products.isEmpty()) {
+            return false;
+        }
+
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), range("A1:Z"))
+                .execute();
+
+        var values = response.getValues();
+        if (values == null || values.size() <= 1) {
+            return false;
+        }
+
+        Map<String, CardKingdomProduct> productsByName = uniqueProductsByName(products);
+        ExistingInventoryMapping mapping = detectExistingInventoryMapping(values, productsByName);
+
+        if (mapping == null || mapping.matches() < 2) {
+            return false;
+        }
+
+        String migratedSheetName = uniqueSheetName(sheetsService, "Inventario App");
+        var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
+                .setAddSheet(new com.google.api.services.sheets.v4.model.AddSheetRequest()
+                        .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties()
+                                .setTitle(migratedSheetName)));
+
+        var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                .setRequests(List.of(addSheetRequest));
+
+        sheetsService.spreadsheets()
+                .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
+                .execute();
+
+        List<List<Object>> migratedRows = new ArrayList<>();
+        migratedRows.add(new ArrayList<>(inventoryHeader()));
+
+        for (int index = 1; index < values.size(); index++) {
+            List<Object> row = values.get(index);
+            String rawName = cellValue(row, mapping.nameColumn());
+            CardKingdomProduct product = productsByName.get(normalizeCardName(rawName));
+
+            if (product == null) {
+                continue;
+            }
+
+            migratedRows.add(migratedRow(row, mapping, product));
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(migratedRows);
+
+        String lastColumn = SheetColumns.columnLetter(inventoryHeader().size() - 1);
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), "'" + migratedSheetName.replace("'", "''") + "'!A1:" + lastColumn, body)
+                .setValueInputOption("RAW")
+                .execute();
+
+        storeSettingsService.useInventorySheetName(migratedSheetName);
+        return true;
+    }
+
+    private boolean isAppManagedHeader(List<Object> header) {
+        if (header == null || header.isEmpty()) {
+            return false;
+        }
+
+        SheetColumns columns = SheetColumns.fromHeader(header);
+        return columns.has(ColumnKey.NAME)
+                && columns.has(ColumnKey.QUANTITY)
+                && columns.has(ColumnKey.LOCAL_PRICE)
+                && columns.has(ColumnKey.CK_PRICE_USD)
+                && columns.has(ColumnKey.ACTION);
+    }
+
+    private ExistingInventoryMapping detectExistingInventoryMapping(
+            List<List<Object>> values,
+            Map<String, CardKingdomProduct> productsByName
+    ) {
+        int width = values.stream().mapToInt(List::size).max().orElse(0);
+        if (width == 0) {
+            return null;
+        }
+
+        List<Object> header = values.get(0);
+        int nameColumn = -1;
+        int matches = 0;
+
+        for (int column = 0; column < width; column++) {
+            int columnMatches = 0;
+            for (int rowIndex = 1; rowIndex < values.size(); rowIndex++) {
+                String value = cellValue(values.get(rowIndex), column);
+                if (productsByName.containsKey(normalizeCardName(value))) {
+                    columnMatches++;
+                }
+            }
+
+            if (columnMatches > matches) {
+                matches = columnMatches;
+                nameColumn = column;
+            }
+        }
+
+        if (nameColumn < 0) {
+            return null;
+        }
+
+        return new ExistingInventoryMapping(
+                nameColumn,
+                headerColumn(header, ColumnKey.QUANTITY, width, nameColumn, values),
+                headerColumn(header, ColumnKey.SET_CODE, width, nameColumn, values),
+                headerColumn(header, ColumnKey.SET_NAME, width, nameColumn, values),
+                headerColumn(header, ColumnKey.COLLECTOR_NUMBER, width, nameColumn, values),
+                headerColumn(header, ColumnKey.CONDITION, width, nameColumn, values),
+                headerColumn(header, ColumnKey.PRINTING, width, nameColumn, values),
+                headerColumn(header, ColumnKey.LANGUAGE, width, nameColumn, values),
+                matches
+        );
+    }
+
+    private int headerColumn(
+            List<Object> header,
+            ColumnKey key,
+            int width,
+            int nameColumn,
+            List<List<Object>> values
+    ) {
+        Map<String, Integer> normalizedHeader = new HashMap<>();
+        for (int column = 0; column < header.size(); column++) {
+            normalizedHeader.put(SheetColumns.normalizeHeader(header.get(column).toString()), column);
+        }
+
+        for (String alias : SheetColumns.aliases(key)) {
+            Integer column = normalizedHeader.get(SheetColumns.normalizeHeader(alias));
+            if (column != null) {
+                return column;
+            }
+        }
+
+        if (key != ColumnKey.QUANTITY) {
+            return -1;
+        }
+
+        int bestColumn = -1;
+        int bestNumericCount = 0;
+        for (int column = 0; column < width; column++) {
+            if (column == nameColumn) {
+                continue;
+            }
+
+            int numericCount = 0;
+            for (int rowIndex = 1; rowIndex < values.size(); rowIndex++) {
+                if (parseInteger(cellValue(values.get(rowIndex), column)) >= 0) {
+                    numericCount++;
+                }
+            }
+
+            if (numericCount > bestNumericCount) {
+                bestNumericCount = numericCount;
+                bestColumn = column;
+            }
+        }
+
+        return bestColumn;
+    }
+
+    private List<Object> migratedRow(
+            List<Object> sourceRow,
+            ExistingInventoryMapping mapping,
+            CardKingdomProduct product
+    ) {
+        String sku = product.getSku() == null ? "" : product.getSku();
+        String setCode = columnOrDefault(sourceRow, mapping.setCodeColumn(), sku.contains("-") ? sku.substring(0, sku.indexOf("-")) : "");
+        String setName = columnOrDefault(sourceRow, mapping.setNameColumn(), product.getEdition());
+        String collectorNumber = columnOrDefault(sourceRow, mapping.collectorNumberColumn(), collectorFromSku(sku));
+        String printing = columnOrDefault(sourceRow, mapping.printingColumn(), "true".equalsIgnoreCase(product.getFoil()) ? "foil" : "nonfoil");
+        String quantity = columnOrDefault(sourceRow, mapping.quantityColumn(), "1");
+
+        return List.of(
+                String.valueOf(Math.max(parseInteger(quantity), 0)),
+                product.getName() == null ? cellValue(sourceRow, mapping.nameColumn()) : product.getName(),
+                setCode,
+                setName == null ? "" : setName,
+                collectorNumber,
+                columnOrDefault(sourceRow, mapping.conditionColumn(), "NM"),
+                printing,
+                columnOrDefault(sourceRow, mapping.languageColumn(), ""),
+                "",
+                "",
+                ""
+        );
+    }
+
+    private Map<String, CardKingdomProduct> uniqueProductsByName(List<CardKingdomProduct> products) {
+        Map<String, CardKingdomProduct> unique = new HashMap<>();
+
+        for (CardKingdomProduct product : products) {
+            String key = normalizeCardName(product.getName());
+            if (key.isBlank()) {
+                continue;
+            }
+
+            unique.putIfAbsent(key, product);
+        }
+
+        return unique;
+    }
+
+    private String uniqueSheetName(Sheets sheetsService, String baseName) throws Exception {
+        var spreadsheet = sheetsService.spreadsheets()
+                .get(storeSettingsService.getSpreadsheetId())
+                .setFields("sheets.properties.title")
+                .execute();
+
+        Set<String> titles = new LinkedHashSet<>();
+        if (spreadsheet.getSheets() != null) {
+            spreadsheet.getSheets().forEach(sheet -> titles.add(sheet.getProperties().getTitle()));
+        }
+
+        if (!titles.contains(baseName)) {
+            return baseName;
+        }
+
+        int suffix = 2;
+        while (titles.contains(baseName + " " + suffix)) {
+            suffix++;
+        }
+
+        return baseName + " " + suffix;
+    }
+
+    private String columnOrDefault(List<Object> row, int column, String fallback) {
+        String value = cellValue(row, column);
+        return value.isBlank() ? (fallback == null ? "" : fallback) : value;
+    }
+
+    private String cellValue(List<Object> row, int column) {
+        if (column < 0 || column >= row.size() || row.get(column) == null) {
+            return "";
+        }
+
+        return row.get(column).toString().trim();
+    }
+
+    private String normalizeCardName(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private String collectorFromSku(String sku) {
+        if (sku == null || !sku.contains("-")) {
+            return "";
+        }
+
+        return sku.substring(sku.indexOf("-") + 1);
+    }
+
+    private int parseInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return -1;
+        }
+
+        try {
+            return Integer.parseInt(value.replaceAll("[^0-9-]", ""));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private record ExistingInventoryMapping(
+            int nameColumn,
+            int quantityColumn,
+            int setCodeColumn,
+            int setNameColumn,
+            int collectorNumberColumn,
+            int conditionColumn,
+            int printingColumn,
+            int languageColumn,
+            int matches
+    ) {
     }
 
     private List<String> completedInventoryHeader(List<Object> existingHeader) {
@@ -1324,6 +1632,10 @@ public class GoogleSheetsService {
 
         private int index(ColumnKey key) {
             return indexes.getOrDefault(key, -1);
+        }
+
+        private boolean has(ColumnKey key) {
+            return index(key) >= 0;
         }
 
         private String cell(ColumnKey key, int rowIndex) {

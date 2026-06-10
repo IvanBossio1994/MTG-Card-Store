@@ -1600,13 +1600,15 @@ public class DashboardController {
 
     private boolean synchronizeInventory(boolean refreshPriceList) throws Exception {
         ensureInventorySetup();
-        inventoryService.sortInventoryByName();
-        var cards = inventoryService.getInventoryCards();
         var priceList = cardKingdomApiService.getPriceList(refreshPriceList);
 
         if (priceList == null || priceList.getData() == null) {
             return false;
         }
+
+        inventoryService.prepareInventorySheet(priceList.getData());
+        inventoryService.sortInventoryByName();
+        var cards = inventoryService.getInventoryCards();
 
         List<UpdateResult> updates = new ArrayList<>();
         Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();

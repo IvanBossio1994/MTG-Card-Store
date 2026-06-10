@@ -1,6 +1,7 @@
 package com.tcg.bot.service;
 
 import com.tcg.bot.model.CashRegisterEntry;
+import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,10 @@ public class InventoryService {
 
     public List<InventoryCard> getInventoryCards() throws Exception {
         return googleSheetsService.getInventoryCards();
+    }
+
+    public void prepareInventorySheet(List<CardKingdomProduct> products) throws Exception {
+        googleSheetsService.prepareInventorySheet(products);
     }
 
     public String getServiceAccountEmail() {

@@ -186,7 +186,7 @@
                 <p class="sync-inventory-description">Lee tu Google Sheet, lo sincroniza con la app, ordena el inventario y recalcula precios con Card Kingdom segun tu regla de negocio. Si el Sheet esta vacio, la app lo inicializa sola.</p>
                 <div class="setup-notice" th:if="${sheetConfigured == false || credentialsConfigured == false}">
                     <strong>Configuracion pendiente</strong>
-                    <p th:if="${sheetConfigured == false}">Carga el enlace o ID de tu Google Sheet en Configuracion antes de sincronizar.</p>
+                <p>Antes de sincronizar, adjunta google-credentials.json y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
                     <p th:if="${credentialsConfigured == false}">Falta el archivo de credenciales local: <code th:text="${credentialsPath}">./data/google-credentials.json</code></p>
                     <p>Compartir el Sheet como <strong>Editor</strong> con: <code class="inline-code" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code></p>
                     <a class="secondary-button link-button" th:href="@{/configuracion}">Ir a Configuracion</a>
@@ -299,9 +299,9 @@
             <h2>Conecta tu tienda</h2>
 
             <div class="tutorial-copy">
-                <p>En "Configuración" cargás el nombre, logo, regla de precio y el Google Sheet que va a usar la app.</p>
-                <p>El Sheet puede estar vacío o ya tener cartas. Si está vacío, la app lo inicializa automáticamente cuando sincronizás.</p>
-                <p>Antes de sincronizar, compartí tu Google Sheet como <strong>Editor</strong> con este mail:</p>
+                <p>En "Configuracion" cargas nombre, logo, credenciales privadas, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
+                <p>El Sheet puede estar vacio o ya tener cartas. Si tiene una hoja existente, la app intenta absorber cartas reconocidas y crea una pestana nueva para trabajar sin pisar la original.</p>
+                <p>Antes de sincronizar, adjunta google-credentials.json y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
                 <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
             </div>
 
@@ -323,12 +323,12 @@
             <h2>Sincroniza una vez al abrir</h2>
 
             <div class="tutorial-copy">
-                <p>Sincronizar inventario lee el Sheet, lo conecta con la app, ordena el inventario y recalcula precios con Card Kingdom.</p>
+                <p>Sincronizar inventario lee el Sheet, prepara la pestaña de la app, ordena el inventario y recalcula precios con Card Kingdom.</p>
                 <p>Después de sincronizar, el botón desaparece durante esa sesión y queda la tabla lista para trabajar.</p>
             </div>
 
             <div class="tutorial-note">
-                <p>Los precios locales se calculan con tu regla de negocio. No hace falta cargarlos a mano.</p>
+                <p>La primera sincronizacion puede tardar porque descarga Card Kingdom. Despues usa el cache local que elegiste en Configuracion.</p>
             </div>
 
             <div class="tutorial-progress" aria-label="Paso 2 de 5">

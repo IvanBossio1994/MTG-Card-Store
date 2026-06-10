@@ -32,8 +32,8 @@
         <strong>Inventory Manager</strong>
     </div>
     <nav class="menu-nav" aria-label="Menu principal">
-        <a class="active" th:href="@{/}">Inicio</a>
-        <a th:href="@{/configuracion}">Configuración</a>
+        <a th:href="@{/}">Inicio</a>
+        <a class="active" th:href="@{/configuracion}">Configuracion</a>
         <a th:href="@{/movimientos}">Movimientos</a>
         <a th:href="@{/importar-lista}">Importar lista</a>
         <form th:action="@{/tutorial/reset}" method="post">
@@ -91,7 +91,7 @@
                 <label for="spreadsheetId">Google Sheet del inventario</label>
                 <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
                        placeholder="Pega el enlace de Google Sheets o su ID">
-                <p class="field-help">La hoja elegida debe conservar las columnas actuales.</p>
+                <p class="field-help">Si ya tenes una hoja con cartas, la app intenta detectarlas y crea una pestaña nueva para trabajar sin pisar la original.</p>
                 <div class="setup-notice compact">
                     <strong>Permiso necesario</strong>
                     <p>Compartir este Sheet como <strong>Editor</strong> con:</p>
@@ -109,7 +109,7 @@
                 </label>
                 <input class="file-input" id="googleCredentials" name="googleCredentials" type="file"
                        accept="application/json,.json">
-                <p class="field-help">La app lo guarda como data/google-credentials.json. No se sube a GitHub.</p>
+                <p class="field-help">La app lo guarda como data/google-credentials.json en esta PC. No se sube a GitHub.</p>
             </div>
         </section>
         <section class="settings-card">
@@ -130,8 +130,8 @@
             <div class="store-field">
                 <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
                 <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
-                       placeholder="Ej: D:/TCG-inventory/data/cache">
-                <p class="field-help">Usa una carpeta con espacio disponible. Ahi se guarda ck-pricelist.json para no descargar todo cada vez.</p>
+                       placeholder="Ej: D:/TCG-inventory/data/cache o E:/MTG/cache">
+                <p class="field-help">Elegi una carpeta local con espacio disponible, por ejemplo en disco D o E. La app guarda ahi ck-pricelist.json, la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
             </div>
         </section>
 
@@ -141,6 +141,20 @@
         </div>
     </form>
 </main>
+
+<div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-card" role="status" aria-live="polite">
+        <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
+             alt="Gatito atigrado revisando cartas">
+        <h2>Guardando configuracion</h2>
+        <p>Subiendo credenciales, preparando cache y conectando el Sheet...</p>
+        <div class="loading-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+</div>
 </body>
 </html>
 
