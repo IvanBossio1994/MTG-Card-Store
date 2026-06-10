@@ -2126,6 +2126,34 @@ tr.in-stock {
     text-align: left;
 }
 
+.setup-notice {
+    display: grid;
+    gap: 0.55rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid rgba(196, 137, 45, 0.35);
+    border-radius: 18px;
+    background: rgba(255, 245, 224, 0.86);
+    color: #3a2713;
+}
+
+.setup-notice.compact {
+    margin-top: 0.75rem;
+}
+
+.setup-notice p {
+    margin: 0;
+}
+
+.inline-code {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.2rem 0.45rem;
+    border-radius: 8px;
+    background: rgba(44, 33, 24, 0.08);
+    word-break: break-all;
+}
+
 .tutorial-note {
     margin: 0 0 18px;
     padding: 13px 15px;

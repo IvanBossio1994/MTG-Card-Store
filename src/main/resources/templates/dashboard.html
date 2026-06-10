@@ -183,9 +183,16 @@
 
             <div class="placeholder" th:unless="${updatePerformed == true}">
                 <strong class="sync-inventory-title">Sincroniza el Sheet con la app</strong>
-                <p class="sync-inventory-description">Lee tu Google Sheet, lo sincroniza con la app, ordena el inventario y recalcula precios con Card Kingdom según tu regla de negocio. Si el Sheet está vacío, la app lo inicializa sola.</p>
+                <p class="sync-inventory-description">Lee tu Google Sheet, lo sincroniza con la app, ordena el inventario y recalcula precios con Card Kingdom segun tu regla de negocio. Si el Sheet esta vacio, la app lo inicializa sola.</p>
+                <div class="setup-notice" th:if="${sheetConfigured == false || credentialsConfigured == false}">
+                    <strong>Configuracion pendiente</strong>
+                    <p th:if="${sheetConfigured == false}">Carga el enlace o ID de tu Google Sheet en Configuracion antes de sincronizar.</p>
+                    <p th:if="${credentialsConfigured == false}">Falta el archivo de credenciales local: <code th:text="${credentialsPath}">./data/google-credentials.json</code></p>
+                    <p>Compartir el Sheet como <strong>Editor</strong> con: <code class="inline-code" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code></p>
+                    <a class="secondary-button link-button" th:href="@{/configuracion}">Ir a Configuracion</a>
+                </div>
                 <form id="update-form" class="sync-inventory-form" method="post" th:action="@{/actualizar}">
-                    <button class="primary-button" type="submit">Sincronizar inventario</button>
+                    <button class="primary-button" type="submit" th:disabled="${sheetConfigured == false || credentialsConfigured == false}">Sincronizar inventario</button>
                 </form>
             </div>
 

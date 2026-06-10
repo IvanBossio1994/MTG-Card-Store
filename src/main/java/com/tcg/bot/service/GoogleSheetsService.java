@@ -35,14 +35,17 @@ public class GoogleSheetsService {
 
     private final StoreSettingsService storeSettingsService;
     private final String configuredCredentialsPath;
+    private final String configuredServiceAccountEmail;
     private volatile String serviceAccountEmail;
 
     public GoogleSheetsService(
             StoreSettingsService storeSettingsService,
-            @Value("${google.credentials.path:D:/TCG-inventory/data/google-credentials.json}") String configuredCredentialsPath
+            @Value("${google.credentials.path:./data/google-credentials.json}") String configuredCredentialsPath,
+            @Value("${google.service-account-email:tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com}") String configuredServiceAccountEmail
     ) {
         this.storeSettingsService = storeSettingsService;
         this.configuredCredentialsPath = configuredCredentialsPath;
+        this.configuredServiceAccountEmail = configuredServiceAccountEmail;
     }
 
     public Sheets getSheetsService() throws Exception {
@@ -75,12 +78,32 @@ public class GoogleSheetsService {
 
             serviceAccountEmail = credentials.has("client_email")
                     ? credentials.get("client_email").getAsString()
-                    : "";
+                    : configuredServiceAccountEmail;
             return serviceAccountEmail;
         } catch (Exception e) {
-            serviceAccountEmail = "";
-            return "";
+            serviceAccountEmail = configuredServiceAccountEmail;
+            return serviceAccountEmail;
         }
+    }
+
+    public boolean hasCredentialsConfigured() {
+        String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+
+        if (externalCredentialsExists(environmentCredentialsPath)) {
+            return true;
+        }
+
+        if (externalCredentialsExists(configuredCredentialsPath)) {
+            return true;
+        }
+
+        return getClass()
+                .getClassLoader()
+                .getResource("credentials/google-credentials.json") != null;
+    }
+
+    public String getConfiguredCredentialsPath() {
+        return configuredCredentialsPath;
     }
 
     private InputStream openCredentialsStream() throws Exception {
@@ -105,8 +128,16 @@ public class GoogleSheetsService {
         }
 
         throw new RuntimeException(
-                "No se encontro google-credentials.json. Colocalo en D:/TCG-inventory/data/google-credentials.json o configura GOOGLE_APPLICATION_CREDENTIALS."
+                "No se encontro google-credentials.json. Colocalo en " + configuredCredentialsPath + " o configura GOOGLE_APPLICATION_CREDENTIALS."
         );
+    }
+
+    private boolean externalCredentialsExists(String credentialsPath) {
+        if (credentialsPath == null || credentialsPath.isBlank()) {
+            return false;
+        }
+
+        return Files.exists(Path.of(credentialsPath.trim()));
     }
 
     private InputStream openExternalCredentials(String credentialsPath) throws Exception {

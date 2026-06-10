@@ -58,6 +58,10 @@ public class StoreSettingsService {
         return spreadsheetId;
     }
 
+    public boolean hasSpreadsheetConfigured() {
+        return spreadsheetId != null && !spreadsheetId.isBlank();
+    }
+
     public String getInventorySource() {
         return SOURCE_GOOGLE_SHEET;
     }

@@ -84,7 +84,12 @@
                 <label for="spreadsheetId">Google Sheet del inventario</label>
                 <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
                        placeholder="Pega el enlace de Google Sheets o su ID">
-                <p class="field-help">La hoja elegida debe conservar las columnas actuales. Compartila con la cuenta Google configurada en la app.</p>
+                <p class="field-help">La hoja elegida debe conservar las columnas actuales.</p>
+                <div class="setup-notice compact">
+                    <strong>Permiso necesario</strong>
+                    <p>Compartir este Sheet como <strong>Editor</strong> con:</p>
+                    <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
+                </div>
             </div>
         </section>
         <section class="settings-card">

@@ -1578,11 +1578,14 @@ public class DashboardController {
         addLatestUpdates(model);
 
         try {
+            ensureInventorySetup();
             if (!synchronizeInventory(true)) {
                 model.addAttribute("error", "No se pudo obtener la lista actualizada de Card Kingdom.");
                 return "dashboard";
             }
             addLatestUpdates(model);
+        } catch (IllegalStateException e) {
+            model.addAttribute("error", e.getMessage());
         } catch (Exception e) {
             model.addAttribute("error", "No se pudo actualizar el inventario.");
         }
@@ -1591,6 +1594,7 @@ public class DashboardController {
     }
 
     private boolean synchronizeInventory(boolean refreshPriceList) throws Exception {
+        ensureInventorySetup();
         inventoryService.sortInventoryByName();
         var cards = inventoryService.getInventoryCards();
         var priceList = cardKingdomApiService.getPriceList(refreshPriceList);
@@ -1619,6 +1623,21 @@ public class DashboardController {
                 .count();
 
         return true;
+    }
+
+    private void ensureInventorySetup() {
+        if (!storeSettingsService.hasSpreadsheetConfigured()) {
+            throw new IllegalStateException(
+                    "Configura primero el Google Sheet desde Configuracion. Copia su enlace o ID y guarda los cambios."
+            );
+        }
+
+        if (!inventoryService.hasCredentialsConfigured()) {
+            throw new IllegalStateException(
+                    "Falta google-credentials.json. Copialo en " + inventoryService.getConfiguredCredentialsPath()
+                            + " o configura GOOGLE_APPLICATION_CREDENTIALS."
+            );
+        }
     }
 
     private UpdateResult updateCard(
@@ -1870,6 +1889,9 @@ public class DashboardController {
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("sheetEditorEmail", inventoryService.getServiceAccountEmail());
+        model.addAttribute("sheetConfigured", storeSettingsService.hasSpreadsheetConfigured());
+        model.addAttribute("credentialsConfigured", inventoryService.hasCredentialsConfigured());
+        model.addAttribute("credentialsPath", inventoryService.getConfiguredCredentialsPath());
     }
 
     private void addStoreModel(Model model) {

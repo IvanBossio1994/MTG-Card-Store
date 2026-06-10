@@ -25,6 +25,14 @@ public class InventoryService {
         return googleSheetsService.getServiceAccountEmail();
     }
 
+    public boolean hasCredentialsConfigured() {
+        return googleSheetsService.hasCredentialsConfigured();
+    }
+
+    public String getConfiguredCredentialsPath() {
+        return googleSheetsService.getConfiguredCredentialsPath();
+    }
+
     public void updateInventoryRow(int rowIndex, InventoryCard card) throws Exception {
         googleSheetsService.updateInventoryRow(rowIndex, card);
     }
