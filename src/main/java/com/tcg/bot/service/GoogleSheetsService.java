@@ -108,6 +108,10 @@ public class GoogleSheetsService {
         return configuredCredentialsPath;
     }
 
+    public void clearServiceAccountEmailCache() {
+        serviceAccountEmail = null;
+    }
+
     private InputStream openCredentialsStream() throws Exception {
         String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 

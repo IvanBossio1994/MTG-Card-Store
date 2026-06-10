@@ -5,7 +5,9 @@ Aplicacion local para administrar stock de cartas MTG con Google Sheets y precio
 ## Setup en una PC nueva
 
 1. Clonar el repositorio.
-2. Copiar el archivo de credenciales de Google en:
+2. Conseguir el archivo privado `google-credentials.json`.
+   Se puede adjuntar desde la pantalla `Configuracion`, en `Credenciales privadas del bot`.
+   La app lo guarda automaticamente en:
 
 ```text
 ./data/google-credentials.json

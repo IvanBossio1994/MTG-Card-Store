@@ -1504,12 +1504,14 @@ public class DashboardController {
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
+            @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
             RedirectAttributes redirectAttributes
     ) {
         try {
             storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
+            storeSettingsService.validateGoogleCredentials(googleCredentials);
             pricingSettingsService.update(ckDollarRate, roundMultiple);
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
 
@@ -1517,6 +1519,8 @@ public class DashboardController {
                 storeSettingsService.removeLogo();
             }
             storeSettingsService.saveLogo(storeLogo);
+            storeSettingsService.saveGoogleCredentials(googleCredentials);
+            inventoryService.clearServiceAccountEmailCache();
 
             try {
                 if (synchronizeInventory(false)) {
@@ -1893,6 +1897,7 @@ public class DashboardController {
         model.addAttribute("sheetConfigured", storeSettingsService.hasSpreadsheetConfigured());
         model.addAttribute("credentialsConfigured", inventoryService.hasCredentialsConfigured());
         model.addAttribute("credentialsPath", inventoryService.getConfiguredCredentialsPath());
+        model.addAttribute("localCredentialsConfigured", storeSettingsService.hasGoogleCredentials());
     }
 
     private void addStoreModel(Model model) {

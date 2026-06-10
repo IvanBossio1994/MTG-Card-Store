@@ -98,6 +98,19 @@
                     <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
                 </div>
             </div>
+            <div class="store-field">
+                <label>Credenciales privadas del bot</label>
+                <label class="upload-zone compact" for="googleCredentials">
+                    <span class="upload-button">Adjuntar google-credentials.json</span>
+                    <span id="credentials-file-name" class="upload-help"
+                          th:text="${localCredentialsConfigured ? 'Credenciales cargadas en esta PC' : 'Archivo .json privado que te pasan por fuera de GitHub'}">
+                        Archivo .json privado
+                    </span>
+                </label>
+                <input class="file-input" id="googleCredentials" name="googleCredentials" type="file"
+                       accept="application/json,.json">
+                <p class="field-help">La app lo guarda como data/google-credentials.json. No se sube a GitHub.</p>
+            </div>
         </section>
         <section class="settings-card">
             <h2>Regla de precio</h2>

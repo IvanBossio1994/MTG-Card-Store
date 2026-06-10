@@ -33,6 +33,10 @@ public class InventoryService {
         return googleSheetsService.getConfiguredCredentialsPath();
     }
 
+    public void clearServiceAccountEmailCache() {
+        googleSheetsService.clearServiceAccountEmailCache();
+    }
+
     public void updateInventoryRow(int rowIndex, InventoryCard card) throws Exception {
         googleSheetsService.updateInventoryRow(rowIndex, card);
     }

@@ -457,6 +457,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const defaultLogo = "/images/tcg-default-logo.png";
 
+    const credentialsInput = document.getElementById("googleCredentials");
+    const credentialsFileName = document.getElementById("credentials-file-name");
+
+    if (credentialsInput && credentialsFileName) {
+        credentialsInput.addEventListener("change", () => {
+            const file = credentialsInput.files[0];
+            credentialsFileName.textContent = file
+                ? file.name
+                : "Archivo .json privado que te pasan por fuera de GitHub";
+        });
+    }
+
     if (logoInput && logoFileName && logoPreview) {
         logoInput.addEventListener("change", () => {
             const removeLogoInput = document.getElementById("removeLogo");
@@ -959,5 +971,4 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {toast.remove();}, 2400);
     }
 });
-
 
