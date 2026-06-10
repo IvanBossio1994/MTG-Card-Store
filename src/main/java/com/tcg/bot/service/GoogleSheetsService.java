@@ -23,8 +23,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class GoogleSheetsService {
@@ -799,9 +801,21 @@ public class GoogleSheetsService {
                 .execute();
 
         String inventorySheetName = storeSettingsService.getInventorySheetName();
+        List<String> sheetTitles = spreadsheet.getSheets() == null
+                ? List.of()
+                : spreadsheet.getSheets().stream()
+                .map(sheet -> sheet.getProperties().getTitle())
+                .toList();
+        String requestedInventorySheetName = inventorySheetName;
         boolean exists = spreadsheet.getSheets() != null
                 && spreadsheet.getSheets().stream()
-                .anyMatch(sheet -> inventorySheetName.equals(sheet.getProperties().getTitle()));
+                .anyMatch(sheet -> requestedInventorySheetName.equals(sheet.getProperties().getTitle()));
+
+        if (!exists && sheetTitles.size() == 1) {
+            inventorySheetName = sheetTitles.get(0);
+            storeSettingsService.useInventorySheetName(inventorySheetName);
+            exists = true;
+        }
 
         if (!exists) {
             var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
@@ -996,15 +1010,15 @@ public class GoogleSheetsService {
         return switch (key) {
             case QUANTITY -> "Cantidad";
             case NAME -> "Nombre";
-            case SET_CODE -> "Código de set";
+            case SET_CODE -> "Codigo de set";
             case SET_NAME -> "Nombre del set";
-            case COLLECTOR_NUMBER -> "Número de carta";
-            case CONDITION -> "Condición";
+            case COLLECTOR_NUMBER -> "Numero de carta";
+            case CONDITION -> "Condicion";
             case PRINTING -> "Printing (foil/no foil)";
             case LANGUAGE -> "Idioma";
             case LOCAL_PRICE -> "Precio Local";
             case CK_PRICE_USD -> "Precio CK USD";
-            case ACTION -> "Acción";
+            case ACTION -> "Accion";
         };
     }
 
@@ -1313,19 +1327,30 @@ public class GoogleSheetsService {
         }
 
         private static List<String> aliases(ColumnKey key) {
-            return switch (key) {
-                case QUANTITY -> List.of("Cantidad");
-                case NAME -> List.of("Nombre");
-                case SET_CODE -> List.of("Código de set", "Código set", "Codigo de set", "Codigo set");
-                case SET_NAME -> List.of("Nombre del set", "Nombre set", "Set");
-                case COLLECTOR_NUMBER -> List.of("Número de carta", "Número carta", "Numero de carta", "Numero carta", "Número", "Numero", "N");
-                case CONDITION -> List.of("Condición", "Condicion");
-                case PRINTING -> List.of("Printing", "Printing foil/no foil", "Printing (foil/no foil)");
-                case LANGUAGE -> List.of("Idioma");
-                case LOCAL_PRICE -> List.of("Precio Local", "Precio Local ARS", "Precio local", "Precio local ARS");
-                case CK_PRICE_USD -> List.of("Precio CK USD", "CK USD");
-                case ACTION -> List.of("Acción", "Accion");
+            List<String> aliases = switch (key) {
+                case QUANTITY -> List.of("Cantidad", "Stock", "Qty", "Quantity");
+                case NAME -> List.of("Nombre", "Carta", "Card", "Name");
+                case SET_CODE -> List.of("Codigo de set", "Codigo set", "Set code", "SetCode", "Code");
+                case SET_NAME -> List.of("Nombre del set", "Nombre set", "Set", "Edition", "Edicion");
+                case COLLECTOR_NUMBER -> List.of("Numero de carta", "Numero carta", "Numero", "N", "No", "Number", "Collector number", "Collector");
+                case CONDITION -> List.of("Condicion", "Condition", "Estado carta");
+                case PRINTING -> List.of("Printing", "Foil", "Nonfoil", "Printing foil/no foil", "Printing (foil/no foil)");
+                case LANGUAGE -> List.of("Idioma", "Language", "Lang");
+                case LOCAL_PRICE -> List.of("Precio Local", "Precio Local ARS", "Precio local", "Precio local ARS", "Precio", "ARS", "Price");
+                case CK_PRICE_USD -> List.of("Precio CK USD", "CK USD", "Card Kingdom USD", "CK Price", "USD");
+                case ACTION -> List.of("Accion", "Action", "Estado", "Stock status");
             };
+
+            Set<String> expanded = new LinkedHashSet<>(aliases);
+            for (String alias : aliases) {
+                expanded.add(alias.replace("Codigo", "Código"));
+                expanded.add(alias.replace("Numero", "Número"));
+                expanded.add(alias.replace("Condicion", "Condición"));
+                expanded.add(alias.replace("Accion", "Acción"));
+                expanded.add(alias.replace("Edicion", "Edición"));
+            }
+
+            return List.copyOf(expanded);
         }
 
         private static String columnLetter(int index) {

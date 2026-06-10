@@ -1500,6 +1500,7 @@ public class DashboardController {
             @RequestParam("storeName") String storeName,
             @RequestParam(name = "spreadsheetId", required = false) String spreadsheetId,
             @RequestParam("inventorySheetName") String inventorySheetName,
+            @RequestParam(name = "cacheDirectory", required = false) String cacheDirectory,
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
@@ -1507,10 +1508,10 @@ public class DashboardController {
             RedirectAttributes redirectAttributes
     ) {
         try {
-            storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName);
+            storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
             pricingSettingsService.update(ckDollarRate, roundMultiple);
-            storeSettingsService.update(storeName, spreadsheetId, inventorySheetName);
+            storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
 
             if (removeLogo) {
                 storeSettingsService.removeLogo();
@@ -1521,10 +1522,10 @@ public class DashboardController {
                 if (synchronizeInventory(false)) {
                     redirectAttributes.addFlashAttribute("success", "Configuracion guardada e inventario sincronizado.");
                 } else {
-                    redirectAttributes.addFlashAttribute("success", "Configuracion guardada. No se pudo sincronizar Card Kingdom en este momento.");
+                    redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar Card Kingdom en este momento.");
                 }
             } catch (Exception syncException) {
-                redirectAttributes.addFlashAttribute("success", "Configuracion guardada. No se pudo sincronizar Card Kingdom en este momento.");
+                redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar. Revisa permisos del Sheet, credenciales y conexion a Card Kingdom.");
             }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("submittedInventorySheetName", inventorySheetName);
@@ -1896,6 +1897,7 @@ public class DashboardController {
 
     private void addStoreModel(Model model) {
         model.addAttribute("spreadsheetId", storeSettingsService.getSpreadsheetId());
+        model.addAttribute("cacheDirectory", storeSettingsService.getCacheDirectory());
         if (!model.containsAttribute("inventorySource")) {
             model.addAttribute("inventorySource", storeSettingsService.getInventorySource());
         }

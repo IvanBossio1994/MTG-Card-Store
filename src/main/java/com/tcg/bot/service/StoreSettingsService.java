@@ -36,6 +36,7 @@ public class StoreSettingsService {
     private volatile String storeName = "Inventory Manager";
     private volatile String spreadsheetId;
     private volatile String inventorySheetName = "Inventario";
+    private volatile String cacheDirectory;
     private volatile String logoFilename = "";
     private volatile boolean tutorialCompleted = false;
 
@@ -47,6 +48,7 @@ public class StoreSettingsService {
         this.configDirectory = Paths.get(storageDirectory);
         this.configFile = configDirectory.resolve("store.properties");
         this.spreadsheetId = defaultSpreadsheetId;
+        this.cacheDirectory = configDirectory.resolve("cache").toString();
         load();
     }
 
@@ -68,6 +70,14 @@ public class StoreSettingsService {
 
     public String getInventorySheetName() {
         return inventorySheetName;
+    }
+
+    public String getCacheDirectory() {
+        return cacheDirectory;
+    }
+
+    public Path getCardKingdomCachePath() {
+        return Paths.get(cacheDirectory).resolve("ck-pricelist.json");
     }
 
     public boolean isTutorialCompleted() {
@@ -100,13 +110,15 @@ public class StoreSettingsService {
     public void validateSettings(
             String name,
             String sheetReference,
-            String sheetName
+            String sheetName,
+            String cacheDirectory
     ) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Ingresa el nombre de la tienda.");
         }
 
         validateSheetName(sheetName);
+        validateCacheDirectory(cacheDirectory);
         extractSpreadsheetId(sheetReference);
     }
 
@@ -125,10 +137,18 @@ public class StoreSettingsService {
     public synchronized void update(
             String name,
             String sheetReference,
-            String sheetName
+            String sheetName,
+            String cacheDirectory
     ) throws IOException {
         storeName = name.trim();
         spreadsheetId = extractSpreadsheetId(sheetReference);
+        inventorySheetName = sheetName.trim();
+        this.cacheDirectory = normalizeCacheDirectory(cacheDirectory);
+        save();
+    }
+
+    public synchronized void useInventorySheetName(String sheetName) throws IOException {
+        validateSheetName(sheetName);
         inventorySheetName = sheetName.trim();
         save();
     }
@@ -179,6 +199,22 @@ public class StoreSettingsService {
         }
     }
 
+    private void validateCacheDirectory(String cacheDirectory) {
+        normalizeCacheDirectory(cacheDirectory);
+    }
+
+    private String normalizeCacheDirectory(String value) {
+        if (value == null || value.isBlank()) {
+            return configDirectory.resolve("cache").toString();
+        }
+
+        try {
+            return Paths.get(value.trim()).normalize().toString();
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("La carpeta de cache no es valida.");
+        }
+    }
+
     private String extractSpreadsheetId(String reference) {
         if (reference == null || reference.isBlank()) {
             throw new IllegalArgumentException("Ingresa el enlace o ID del Google Sheet.");
@@ -221,12 +257,14 @@ public class StoreSettingsService {
             storeName = properties.getProperty("store.name", storeName);
             spreadsheetId = properties.getProperty("store.spreadsheet-id", defaultSpreadsheetId);
             inventorySheetName = properties.getProperty("store.inventory-sheet-name", "Inventario");
+            cacheDirectory = properties.getProperty("store.cache-directory", configDirectory.resolve("cache").toString());
             logoFilename = properties.getProperty("store.logo-filename", "");
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
         } catch (IOException e) {
             storeName = "Inventory Manager";
             spreadsheetId = defaultSpreadsheetId;
             inventorySheetName = "Inventario";
+            cacheDirectory = configDirectory.resolve("cache").toString();
             logoFilename = "";
             tutorialCompleted = false;
         }
@@ -240,6 +278,7 @@ public class StoreSettingsService {
         properties.setProperty("store.inventory-source", SOURCE_GOOGLE_SHEET);
         properties.setProperty("store.spreadsheet-id", spreadsheetId);
         properties.setProperty("store.inventory-sheet-name", inventorySheetName);
+        properties.setProperty("store.cache-directory", cacheDirectory);
         properties.setProperty("store.logo-filename", logoFilename);
         properties.setProperty("tutorial.completed", String.valueOf(tutorialCompleted));
 

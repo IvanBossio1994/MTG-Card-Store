@@ -28,6 +28,8 @@ tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com
 
 6. Guardar configuracion y sincronizar inventario.
 
+En `Configuracion` tambien se puede elegir la carpeta donde se guarda el cache descargado de Card Kingdom. Conviene usar un disco con espacio disponible.
+
 ## Configuracion avanzada
 
 Se puede cambiar la carpeta de datos con la variable de entorno `TCG_INVENTORY_DATA_DIR`.

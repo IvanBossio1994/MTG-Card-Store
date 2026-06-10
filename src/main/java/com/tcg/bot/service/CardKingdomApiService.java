@@ -7,7 +7,6 @@ import com.tcg.bot.dto.SearchQuery;
 import com.tcg.bot.model.InventoryCard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -33,16 +32,13 @@ public class CardKingdomApiService {
     private final ObjectMapper objectMapper =
             new ObjectMapper();
 
-    // ---- Cache pricelist ----
-    private final String cacheFile;
+    private final StoreSettingsService storeSettingsService;
 
     // ---- Duración cache ----
     private static final long CACHE_HOURS = 1;
 
-    public CardKingdomApiService(
-            @Value("${ck.cache-file:config/cache/ck-pricelist.json}") String cacheFile
-    ) {
-        this.cacheFile = cacheFile;
+    public CardKingdomApiService(StoreSettingsService storeSettingsService) {
+        this.storeSettingsService = storeSettingsService;
     }
 
     /**
@@ -59,8 +55,7 @@ public class CardKingdomApiService {
 
         try {
 
-            Path cachePath =
-                    Paths.get(cacheFile);
+            Path cachePath = storeSettingsService.getCardKingdomCachePath();
 
             // ---- Existe cache ----
             if (!forceRefresh && Files.exists(cachePath)) {
@@ -144,7 +139,24 @@ public class CardKingdomApiService {
         } catch (Exception e) {
 
             log.warn("No se pudo obtener la pricelist de Card Kingdom.", e);
+            return readAnyCachedPriceList();
+        }
+    }
 
+    private CardKingdomPriceListResponse readAnyCachedPriceList() {
+        try {
+            Path cachePath = storeSettingsService.getCardKingdomCachePath();
+            if (!Files.exists(cachePath)) {
+                return null;
+            }
+
+            log.info("Usando cache CK existente porque no se pudo descargar la pricelist.");
+            return objectMapper.readValue(
+                    Files.readString(cachePath),
+                    CardKingdomPriceListResponse.class
+            );
+        } catch (Exception cacheException) {
+            log.warn("No se pudo leer el cache local de Card Kingdom.", cacheException);
             return null;
         }
     }

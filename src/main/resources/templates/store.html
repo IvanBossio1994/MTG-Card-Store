@@ -32,8 +32,15 @@
         <strong>Inventory Manager</strong>
     </div>
     <nav class="menu-nav" aria-label="Menu principal">
-        <a th:href="@{/}">Inicio</a>
-        <a class="active" th:href="@{/configuracion}">Configuracion</a>
+        <a class="active" th:href="@{/}">Inicio</a>
+        <a th:href="@{/configuracion}">Configuración</a>
+        <a th:href="@{/movimientos}">Movimientos</a>
+        <a th:href="@{/importar-lista}">Importar lista</a>
+        <form th:action="@{/tutorial/reset}" method="post">
+            <button type="submit" class="menu-link-button">
+                Tutorial
+            </button>
+        </form>
     </nav>
 </aside>
 
@@ -106,6 +113,12 @@
                     <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
                            th:value="${roundMultiple}" required>
                 </div>
+            </div>
+            <div class="store-field">
+                <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
+                <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
+                       placeholder="Ej: D:/TCG-inventory/data/cache">
+                <p class="field-help">Usa una carpeta con espacio disponible. Ahi se guarda ck-pricelist.json para no descargar todo cada vez.</p>
             </div>
         </section>
 
