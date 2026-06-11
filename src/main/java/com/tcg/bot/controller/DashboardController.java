@@ -1529,7 +1529,8 @@ public class DashboardController {
                     redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar Card Kingdom en este momento.");
                 }
             } catch (Exception syncException) {
-                redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar. Revisa permisos del Sheet, credenciales y conexion a Card Kingdom.");
+                log.warn("Configuracion guardada, pero no se pudo sincronizar.", syncException);
+                redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar: " + syncErrorMessage(syncException));
             }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("submittedInventorySheetName", inventorySheetName);
@@ -1592,10 +1593,60 @@ public class DashboardController {
         } catch (IllegalStateException e) {
             model.addAttribute("error", e.getMessage());
         } catch (Exception e) {
-            model.addAttribute("error", "No se pudo actualizar el inventario.");
+            log.warn("No se pudo actualizar el inventario.", e);
+            model.addAttribute("error", "No se pudo actualizar el inventario: " + syncErrorMessage(e));
         }
 
         return "dashboard";
+    }
+
+    private String syncErrorMessage(Exception exception) {
+        Throwable root = rootCause(exception);
+
+        if (root instanceof com.google.api.client.googleapis.json.GoogleJsonResponseException googleException) {
+            int statusCode = googleException.getStatusCode();
+            String details = googleException.getDetails() == null
+                    ? ""
+                    : googleException.getDetails().getMessage();
+
+            if (statusCode == 403) {
+                return "Google rechazo el acceso. Revisa que el Sheet este compartido como Editor con el mail de Configuracion y que Google Sheets API este habilitada para esas credenciales.";
+            }
+
+            if (statusCode == 404) {
+                return "Google no encontro el Sheet. Revisa que el ID o enlace sea correcto y que el mail editor tenga acceso.";
+            }
+
+            if (statusCode == 400 && details != null && details.toLowerCase().contains("unable to parse range")) {
+                return "Google no pudo leer la pestaña configurada. Revisa el nombre de la pestaña en Configuracion.";
+            }
+
+            if (details != null && !details.isBlank()) {
+                return "Google Sheets respondio " + statusCode + ": " + details;
+            }
+
+            return "Google Sheets respondio " + statusCode + ".";
+        }
+
+        if (root instanceof java.net.UnknownHostException) {
+            return "no hay conexion a internet o no se pudo resolver el servidor externo.";
+        }
+
+        String message = root.getMessage();
+        if (message == null || message.isBlank()) {
+            return "revisa permisos del Sheet, credenciales y conexion a Card Kingdom.";
+        }
+
+        return message;
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+
+        return current;
     }
 
     private boolean synchronizeInventory(boolean refreshPriceList) throws Exception {
