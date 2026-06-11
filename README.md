@@ -5,9 +5,9 @@ Aplicacion local para administrar stock de cartas MTG con Google Sheets y precio
 ## Setup en una PC nueva
 
 1. Clonar el repositorio.
+
 2. Conseguir el archivo privado `google-credentials.json`.
-   Se puede adjuntar desde la pantalla `Configuracion`, en `Credenciales privadas del bot`.
-   La app lo guarda automaticamente en:
+La app lo guarda automaticamente en:
 
 ```text
 ./data/google-credentials.json
@@ -21,16 +21,10 @@ La carpeta `data` no se sube a GitHub porque contiene datos locales, cache y cre
 http://localhost:8080/
 ```
 
-4. En `Configuracion`, pegar el enlace o ID del Google Sheet de esa tienda.
-5. Compartir ese Sheet como `Editor` con:
+4. LEER el tutorial y completar Configuracion.
+En Configuracion tambien se puede elegir la carpeta donde se guarda el cache descargado de Card Kingdom. Conviene usar un disco con espacio disponible.
 
-```text
-tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com
-```
-
-6. Guardar configuracion y sincronizar inventario.
-
-En `Configuracion` tambien se puede elegir la carpeta donde se guarda el cache descargado de Card Kingdom. Conviene usar un disco con espacio disponible.
+5. Guardar configuracion y sincronizar inventario.
 
 ## Configuracion avanzada
 

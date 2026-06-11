@@ -187,12 +187,13 @@
                 <div class="setup-notice" th:if="${sheetConfigured == false || credentialsConfigured == false}">
                     <strong>Configuracion pendiente</strong>
                 <p>Antes de sincronizar, adjunta google-credentials.json y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
+                    <p th:if="${sheetConfigured == false}">Falta agregar el Google Sheet en Configuracion.</p>
                     <p th:if="${credentialsConfigured == false}">Falta el archivo de credenciales local: <code th:text="${credentialsPath}">./data/google-credentials.json</code></p>
                     <p>Compartir el Sheet como <strong>Editor</strong> con: <code class="inline-code" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code></p>
                     <a class="secondary-button link-button" th:href="@{/configuracion}">Ir a Configuracion</a>
                 </div>
                 <form id="update-form" class="sync-inventory-form" method="post" th:action="@{/actualizar}">
-                    <button class="primary-button" type="submit" th:disabled="${sheetConfigured == false || credentialsConfigured == false}">Sincronizar inventario</button>
+                    <button class="primary-button" type="submit">Sincronizar inventario</button>
                 </form>
             </div>
 
@@ -299,9 +300,9 @@
             <h2>Conecta tu tienda</h2>
 
             <div class="tutorial-copy">
-                <p>En "Configuracion" cargas nombre, logo, credenciales privadas, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
-                <p>El Sheet puede estar vacio o ya tener cartas. Si tiene una hoja existente, la app intenta absorber cartas reconocidas y crea una pestana nueva para trabajar sin pisar la original.</p>
-                <p>Antes de sincronizar, adjunta google-credentials.json y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
+                <p>En "Configuracion" cargas nombre, logo, credenciales privadas de Google, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
+                <p>El Sheet puede estar vacio o ya tener cartas. Si tiene una pestaña existente, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas del inventario sin pisar la original.</p>
+                <p>Antes de sincronizar, adjunta el google-credentials.json de esta instalacion y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
                 <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
             </div>
 

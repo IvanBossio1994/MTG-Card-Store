@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 storeForm,
                 "Guardando...",
                 "Guardando configuracion",
-                "Subiendo credenciales si elegiste un JSON, preparando cache y conectando el Sheet..."
+                "Preparando cache, revisando credenciales y conectando el Sheet..."
             );
         });
     }

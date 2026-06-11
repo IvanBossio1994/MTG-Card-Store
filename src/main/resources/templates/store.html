@@ -78,20 +78,20 @@
         <section class="settings-card">
             <h2>Inventario</h2>
             <div class="store-field">
-                <label for="inventorySheetName">Nombre de la hoja que contiene el inventario</label>
+                <label for="inventorySheetName">Pestaña original o pestaña final del inventario</label>
                 <input id="inventorySheetName" name="inventorySheetName" type="text"
                        th:value="${submittedInventorySheetName}"
                        th:classappend="${inventorySheetError} ? ' invalid-input' : ''"
                        placeholder="Ej: Stock MTG, Cartas o Inventario" required>
                 <p id="inventory-sheet-error" class="field-error" th:if="${inventorySheetError}"
                    th:text="${inventorySheetError}"></p>
-                <p class="field-help">Si tu archivo tiene varias hojas, elegi solamente la que contiene las cartas.</p>
+                <p class="field-help">Podes indicar una pestaña existente con cartas, como Cartas. Si la app reconoce al menos dos nombres, crea una pestaña nueva de inventario y deja la original sin tocar.</p>
             </div>
             <div id="google-sheet-source" class="store-field source-fields">
                 <label for="spreadsheetId">Google Sheet del inventario</label>
                 <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
                        placeholder="Pega el enlace de Google Sheets o su ID">
-                <p class="field-help">Si ya tenes una hoja con cartas, la app intenta detectarlas y crea una pestaña nueva para trabajar sin pisar la original.</p>
+                <p class="field-help">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas de la app.</p>
                 <div class="setup-notice compact">
                     <strong>Permiso necesario</strong>
                     <p>Compartir este Sheet como <strong>Editor</strong> con:</p>
@@ -99,17 +99,17 @@
                 </div>
             </div>
             <div class="store-field">
-                <label>Credenciales privadas del bot</label>
+                <label>Credenciales privadas de Google Sheets</label>
                 <label class="upload-zone compact" for="googleCredentials">
                     <span class="upload-button">Adjuntar google-credentials.json</span>
                     <span id="credentials-file-name" class="upload-help"
-                          th:text="${localCredentialsConfigured ? 'Credenciales cargadas en esta PC' : 'Archivo .json privado que te pasan por fuera de GitHub'}">
+                          th:text="${localCredentialsConfigured ? 'Credenciales cargadas en esta PC' : 'JSON de la service account de esta instalacion'}">
                         Archivo .json privado
                     </span>
                 </label>
                 <input class="file-input" id="googleCredentials" name="googleCredentials" type="file"
                        accept="application/json,.json">
-                <p class="field-help">La app lo guarda como data/google-credentials.json en esta PC. No se sube a GitHub.</p>
+                <p class="field-help">La app lo guarda como data/google-credentials.json en esta PC. Despues comparti el Sheet con el mail que aparece arriba; solo cargar el mail no alcanza para autenticar la API.</p>
             </div>
         </section>
         <section class="settings-card">

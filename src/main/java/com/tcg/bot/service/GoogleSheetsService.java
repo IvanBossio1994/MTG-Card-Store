@@ -33,6 +33,7 @@ import java.util.Set;
 public class GoogleSheetsService {
 
     private static final String APPLICATION_NAME = "TCG Inventory Bot";
+    private static final String DEFAULT_INVENTORY_SHEET_NAME = "Inventario";
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
 
@@ -791,9 +792,12 @@ public class GoogleSheetsService {
     }
 
     private String range(String cells) {
-        String sheetName = storeSettingsService.getInventorySheetName()
-                .replace("'", "''");
-        return "'" + sheetName + "'!" + cells;
+        return sheetRange(storeSettingsService.getInventorySheetName(), cells);
+    }
+
+    private String sheetRange(String sheetName, String cells) {
+        String escapedSheetName = sheetName.replace("'", "''");
+        return "'" + escapedSheetName + "'!" + cells;
     }
 
     private String movementRange(String cells) {
@@ -824,6 +828,11 @@ public class GoogleSheetsService {
         boolean exists = spreadsheet.getSheets() != null
                 && spreadsheet.getSheets().stream()
                 .anyMatch(sheet -> requestedInventorySheetName.equals(sheet.getProperties().getTitle()));
+
+        if (!exists && products != null && !products.isEmpty()
+                && migrateExistingInventoryFromAnySheetIfNeeded(sheetsService, sheetTitles, products, inventorySheetName)) {
+            return;
+        }
 
         if (!exists && sheetTitles.size() == 1) {
             inventorySheetName = sheetTitles.get(0);
@@ -912,18 +921,79 @@ public class GoogleSheetsService {
             return false;
         }
 
-        String migratedSheetName = uniqueSheetName(sheetsService, "Inventario App");
-        var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
-                .setAddSheet(new com.google.api.services.sheets.v4.model.AddSheetRequest()
-                        .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties()
-                                .setTitle(migratedSheetName)));
+        String migratedSheetName = uniqueSheetName(sheetsService, DEFAULT_INVENTORY_SHEET_NAME);
+        writeMigratedInventorySheet(sheetsService, migratedSheetName, values, mapping, productsByName);
+        storeSettingsService.useInventorySheetName(migratedSheetName);
+        return true;
+    }
 
-        var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
-                .setRequests(List.of(addSheetRequest));
+    private boolean migrateExistingInventoryFromAnySheetIfNeeded(
+            Sheets sheetsService,
+            List<String> sheetTitles,
+            List<CardKingdomProduct> products,
+            String targetSheetName
+    ) throws Exception {
+        if (sheetTitles == null || sheetTitles.isEmpty() || products == null || products.isEmpty()) {
+            return false;
+        }
 
-        sheetsService.spreadsheets()
-                .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
-                .execute();
+        Map<String, CardKingdomProduct> productsByName = uniqueProductsByName(products);
+        ExistingInventoryCandidate bestCandidate = null;
+
+        for (String sheetTitle : sheetTitles) {
+            if (isSystemSheet(sheetTitle)) {
+                continue;
+            }
+
+            var response = sheetsService.spreadsheets().values()
+                    .get(storeSettingsService.getSpreadsheetId(), sheetRange(sheetTitle, "A1:Z"))
+                    .execute();
+
+            var values = response.getValues();
+            if (values == null || values.size() <= 1) {
+                continue;
+            }
+
+            List<Object> header = values.get(0);
+            if (isAppManagedHeader(header)) {
+                storeSettingsService.useInventorySheetName(sheetTitle);
+                return true;
+            }
+
+            ExistingInventoryMapping mapping = detectExistingInventoryMapping(values, productsByName);
+            if (mapping == null || mapping.matches() < 2) {
+                continue;
+            }
+
+            if (bestCandidate == null || mapping.matches() > bestCandidate.mapping().matches()) {
+                bestCandidate = new ExistingInventoryCandidate(sheetTitle, values, mapping);
+            }
+        }
+
+        if (bestCandidate == null) {
+            return false;
+        }
+
+        String migratedSheetName = uniqueSheetName(sheetsService, targetSheetName);
+        writeMigratedInventorySheet(
+                sheetsService,
+                migratedSheetName,
+                bestCandidate.values(),
+                bestCandidate.mapping(),
+                productsByName
+        );
+        storeSettingsService.useInventorySheetName(migratedSheetName);
+        return true;
+    }
+
+    private void writeMigratedInventorySheet(
+            Sheets sheetsService,
+            String migratedSheetName,
+            List<List<Object>> values,
+            ExistingInventoryMapping mapping,
+            Map<String, CardKingdomProduct> productsByName
+    ) throws Exception {
+        createSheet(sheetsService, migratedSheetName);
 
         List<List<Object>> migratedRows = new ArrayList<>();
         migratedRows.add(new ArrayList<>(inventoryHeader()));
@@ -945,12 +1015,28 @@ public class GoogleSheetsService {
 
         String lastColumn = SheetColumns.columnLetter(inventoryHeader().size() - 1);
         sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), "'" + migratedSheetName.replace("'", "''") + "'!A1:" + lastColumn, body)
+                .update(storeSettingsService.getSpreadsheetId(), sheetRange(migratedSheetName, "A1:" + lastColumn), body)
                 .setValueInputOption("RAW")
                 .execute();
+    }
 
-        storeSettingsService.useInventorySheetName(migratedSheetName);
-        return true;
+    private void createSheet(Sheets sheetsService, String sheetName) throws Exception {
+        var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
+                .setAddSheet(new com.google.api.services.sheets.v4.model.AddSheetRequest()
+                        .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties()
+                                .setTitle(sheetName)));
+
+        var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                .setRequests(List.of(addSheetRequest));
+
+        sheetsService.spreadsheets()
+                .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
+                .execute();
+    }
+
+    private boolean isSystemSheet(String sheetTitle) {
+        return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
+                || CASH_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {
@@ -1178,6 +1264,13 @@ public class GoogleSheetsService {
             int printingColumn,
             int languageColumn,
             int matches
+    ) {
+    }
+
+    private record ExistingInventoryCandidate(
+            String sheetTitle,
+            List<List<Object>> values,
+            ExistingInventoryMapping mapping
     ) {
     }
 
