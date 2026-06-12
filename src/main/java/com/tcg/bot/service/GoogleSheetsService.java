@@ -1644,7 +1644,11 @@ public class GoogleSheetsService {
             return "";
         }
 
-        return Double.parseDouble(value.replace(",", "."));
+        try {
+            return Double.parseDouble(value.replace(",", ".").trim());
+        } catch (NumberFormatException e) {
+            return "";
+        }
     }
 
     private String getColumnValue(List<Object> row, int index) {

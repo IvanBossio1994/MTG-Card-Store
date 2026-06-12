@@ -66,6 +66,36 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    const hideLoadingOverlay = (form, buttonText) => {
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove("visible");
+            loadingOverlay.setAttribute("aria-hidden", "true");
+        }
+
+        const button = form ? form.querySelector("button[type='submit']") : null;
+        if (button) {
+            button.disabled = false;
+            button.textContent = buttonText;
+        }
+    };
+
+    const showStoreMessage = (success, message) => {
+        if (!storeForm) {
+            return;
+        }
+
+        let alert = storeForm.querySelector(".alert.success, .alert.error");
+        if (!alert) {
+            alert = document.createElement("p");
+            storeForm.prepend(alert);
+        }
+
+        alert.id = success ? "" : "store-error";
+        alert.className = success ? "alert success" : "alert error";
+        alert.hidden = false;
+        alert.textContent = message;
+    };
+
     if (updateForm && loadingOverlay) {
         updateForm.addEventListener("submit", () => {
             showLoadingOverlay(
@@ -78,13 +108,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (storeForm && loadingOverlay) {
-        storeForm.addEventListener("submit", () => {
+        storeForm.addEventListener("submit", async event => {
+            event.preventDefault();
             showLoadingOverlay(
                 storeForm,
                 "Guardando...",
                 "Guardando configuracion",
                 "Preparando cache, revisando credenciales y conectando el Sheet..."
             );
+
+            try {
+                const response = await fetch(storeForm.action, {
+                    method: "POST",
+                    body: new FormData(storeForm),
+                    headers: {
+                        "X-Requested-With": "fetch",
+                        "Accept": "application/json"
+                    }
+                });
+
+                const result = await response.json();
+                hideLoadingOverlay(storeForm, "Guardar configuracion");
+                showStoreMessage(Boolean(result.success), result.message || "No se pudo guardar la configuracion.");
+            } catch (error) {
+                hideLoadingOverlay(storeForm, "Guardar configuracion");
+                showStoreMessage(false, "No se pudo guardar la configuracion. Revisa la conexion y volve a intentar.");
+            }
         });
     }
 

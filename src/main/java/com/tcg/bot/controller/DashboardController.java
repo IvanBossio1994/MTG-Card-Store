@@ -13,12 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
@@ -1496,7 +1498,7 @@ public class DashboardController {
     }
 
     @PostMapping(value = "/configuracion", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String updateStoreSettings(
+    public Object updateStoreSettings(
             @RequestParam("storeName") String storeName,
             @RequestParam(name = "spreadsheetId", required = false) String spreadsheetId,
             @RequestParam("inventorySheetName") String inventorySheetName,
@@ -1506,8 +1508,11 @@ public class DashboardController {
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
+            @RequestHeader(name = "X-Requested-With", required = false) String requestedWith,
             RedirectAttributes redirectAttributes
     ) {
+        boolean asyncRequest = "fetch".equalsIgnoreCase(requestedWith);
+
         try {
             storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
@@ -1524,24 +1529,80 @@ public class DashboardController {
 
             try {
                 if (synchronizeInventory(false)) {
-                    redirectAttributes.addFlashAttribute("success", "Configuracion guardada e inventario sincronizado.");
+                    return configurationResponse(
+                            asyncRequest,
+                            redirectAttributes,
+                            true,
+                            "Configuracion guardada e inventario sincronizado.",
+                            HttpStatus.OK
+                    );
                 } else {
-                    redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar Card Kingdom en este momento.");
+                    return configurationResponse(
+                            asyncRequest,
+                            redirectAttributes,
+                            false,
+                            "Configuracion guardada, pero no se pudo sincronizar Card Kingdom en este momento.",
+                            HttpStatus.SERVICE_UNAVAILABLE
+                    );
                 }
             } catch (Exception syncException) {
                 log.warn("Configuracion guardada, pero no se pudo sincronizar.", syncException);
-                redirectAttributes.addFlashAttribute("error", "Configuracion guardada, pero no se pudo sincronizar: " + syncErrorMessage(syncException));
+                return configurationResponse(
+                        asyncRequest,
+                        redirectAttributes,
+                        false,
+                        "Configuracion guardada, pero no se pudo sincronizar: " + syncErrorMessage(syncException),
+                        HttpStatus.INTERNAL_SERVER_ERROR
+                );
             }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("submittedInventorySheetName", inventorySheetName);
             if (e.getMessage().toLowerCase().contains("hoja")) {
                 redirectAttributes.addFlashAttribute("inventorySheetError", e.getMessage());
-                return "redirect:/configuracion";
+                return configurationResponse(
+                        asyncRequest,
+                        redirectAttributes,
+                        false,
+                        e.getMessage(),
+                        HttpStatus.BAD_REQUEST
+                );
             }
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return configurationResponse(
+                    asyncRequest,
+                    redirectAttributes,
+                    false,
+                    e.getMessage(),
+                    HttpStatus.BAD_REQUEST
+            );
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "No se pudo guardar la configuracion de la tienda.");
+            log.warn("No se pudo guardar la configuracion de la tienda.", e);
+            return configurationResponse(
+                    asyncRequest,
+                    redirectAttributes,
+                    false,
+                    "No se pudo guardar la configuracion de la tienda: " + syncErrorMessage(e),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
+    }
+
+    private Object configurationResponse(
+            boolean asyncRequest,
+            RedirectAttributes redirectAttributes,
+            boolean success,
+            String message,
+            HttpStatus status
+    ) {
+        if (asyncRequest) {
+            return ResponseEntity
+                    .status(status)
+                    .body(Map.of(
+                            "success", success,
+                            "message", message
+                    ));
+        }
+
+        redirectAttributes.addFlashAttribute(success ? "success" : "error", message);
         return "redirect:/configuracion";
     }
     @GetMapping("/configuracion/logo")
