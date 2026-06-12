@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Acceso a Movimientos | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar('Historial protegido')}"></header>
+<div th:replace="~{fragments/layout :: menu('movements')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Acceso protegido</p>
+            <h1>Movimientos</h1>
+            <p class="supporting">Ingresa la contrasena para revisar movimientos, caja y reporte.</p>
+        </div>
+    </section>
+
+    <section class="panel movement-access-panel">
+        <div class="movement-access-head">
+            <span class="movement-access-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                    <rect x="5" y="10" width="14" height="10" rx="2"/>
+                    <path d="M12 14v2"/>
+                </svg>
+            </span>
+            <div>
+                <p class="eyebrow">Contrasena requerida</p>
+                <h2>Desbloquear movimientos</h2>
+            </div>
+        </div>
+
+        <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
+
+        <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}">
+            <input type="hidden" name="returnTo" th:value="${returnTo}">
+            <div class="movement-access-field">
+                <label for="movement-password">Contrasena</label>
+                <input id="movement-password" name="password" type="password" autocomplete="current-password" required autofocus>
+            </div>
+            <button class="primary-button" type="submit">Desbloquear</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

@@ -19,12 +19,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,6 +80,8 @@ public class DashboardController {
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter MOVEMENT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final String MOVEMENTS_ACCESS_SESSION_KEY = "movementsAccessUnlocked";
+    private static final String MOVEMENTS_ACCESS_PASSWORD = "counterspell";
 
     public DashboardController(
             InventoryService inventoryService,
@@ -89,6 +95,11 @@ public class DashboardController {
         this.priceComparisonService = priceComparisonService;
         this.pricingSettingsService = pricingSettingsService;
         this.storeSettingsService = storeSettingsService;
+    }
+
+    @ModelAttribute("movementsUnlocked")
+    public boolean movementsUnlocked(HttpServletRequest request) {
+        return isMovementsUnlocked(request.getSession(false));
     }
 
     @GetMapping("/")
@@ -321,9 +332,16 @@ public class DashboardController {
             @RequestParam(name = "movementFilter", required = false) String movementFilter,
             @RequestParam(name = "cashFilter", required = false) String cashFilter,
             @RequestParam(name = "tab", required = false) String tab,
+            HttpServletRequest request,
             Model model
     ) {
         addBaseModel(model, "");
+
+        if (!isMovementsUnlocked(request.getSession(false))) {
+            model.addAttribute("returnTo", movementAccessReturnPath(request));
+            return "movement-access";
+        }
+
         String selectedMovementDate = movementDate == null ? "" : movementDate.trim();
         String selectedCashDate = cashDate == null ? "" : cashDate.trim();
         String activeTab = activeMovementTab(tab, selectedMovementDate, selectedCashDate);
@@ -392,6 +410,56 @@ public class DashboardController {
 
         addCashRegisterModel(model, selectedCashDate, allMovements);
         return "movements";
+    }
+
+    @PostMapping("/movimientos/acceso")
+    public String unlockMovements(
+            @RequestParam(name = "password", required = false) String password,
+            @RequestParam(name = "returnTo", required = false) String returnTo,
+            HttpServletRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (MOVEMENTS_ACCESS_PASSWORD.equals(password == null ? "" : password.trim())) {
+            request.getSession(true).setAttribute(MOVEMENTS_ACCESS_SESSION_KEY, true);
+            return "redirect:" + safeMovementAccessReturnPath(returnTo);
+        }
+
+        redirectAttributes.addFlashAttribute("accessError", "Contrasena incorrecta.");
+        return "redirect:" + safeMovementAccessReturnPath(returnTo);
+    }
+
+    private boolean isMovementsUnlocked(HttpSession session) {
+        return session != null && Boolean.TRUE.equals(session.getAttribute(MOVEMENTS_ACCESS_SESSION_KEY));
+    }
+
+    private String movementAccessReturnPath(HttpServletRequest request) {
+        String requestPath = request.getRequestURI();
+        String contextPath = request.getContextPath();
+
+        if (contextPath != null && !contextPath.isBlank() && requestPath.startsWith(contextPath)) {
+            requestPath = requestPath.substring(contextPath.length());
+        }
+
+        String queryString = request.getQueryString();
+        return safeMovementAccessReturnPath(
+                queryString == null || queryString.isBlank()
+                        ? requestPath
+                        : requestPath + "?" + queryString
+        );
+    }
+
+    private String safeMovementAccessReturnPath(String returnTo) {
+        if (returnTo == null || returnTo.isBlank()
+                || returnTo.contains("\r") || returnTo.contains("\n")
+                || returnTo.startsWith("//")) {
+            return "/movimientos";
+        }
+
+        if ("/movimientos".equals(returnTo) || returnTo.startsWith("/movimientos?")) {
+            return returnTo;
+        }
+
+        return "/movimientos";
     }
 
     private String activeMovementTab(String tab, String selectedMovementDate, String selectedCashDate) {

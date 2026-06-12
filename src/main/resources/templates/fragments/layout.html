@@ -28,7 +28,25 @@
         <nav class="menu-nav" aria-label="Menu principal">
             <a th:classappend="${active == 'home'} ? 'active'" th:href="@{/}">Inicio</a>
             <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">Configuracion</a>
-            <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">Movimientos</a>
+            <a class="movement-menu-link" th:classappend="${active == 'movements'} ? ' active'" th:href="@{/movimientos}">
+                <span>Movimientos</span>
+                <span class="menu-lock-icon"
+                      th:classappend="${movementsUnlocked} ? ' unlocked' : ' locked'"
+                      th:title="${movementsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
+                      th:attr="aria-label=${movementsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
+                      role="img">
+                    <svg th:if="${movementsUnlocked}" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 7V6a4 4 0 0 0-7.7-1.5"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                    <svg th:unless="${movementsUnlocked}" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                </span>
+            </a>
             <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">Importar lista</a>
             <form th:action="@{/tutorial/reset}" method="post">
                 <button type="submit" class="menu-link-button">Tutorial</button>
