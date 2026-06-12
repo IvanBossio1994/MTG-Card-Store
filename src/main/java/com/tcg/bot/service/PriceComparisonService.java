@@ -28,7 +28,7 @@ public class PriceComparisonService {
         }
 
         var values = product.getConditionValues();
-        String price = switch (condition.toUpperCase()) {
+        String price = switch (normalizeCondition(condition)) {
             case "NM" -> values.getNmPrice();
             case "LP", "EX" -> values.getExPrice();
             case "VG" -> values.getVgPrice();
@@ -49,9 +49,27 @@ public class PriceComparisonService {
         }
 
         String condition = card.getCondition() != null && !card.getCondition().isBlank()
-                ? card.getCondition().toUpperCase()
+                ? card.getCondition()
                 : "NM";
 
         return extractConditionPrice(product, condition);
+    }
+
+    private String normalizeCondition(String condition) {
+        if (condition == null || condition.isBlank()) {
+            return "NM";
+        }
+
+        String normalized = condition
+                .toUpperCase()
+                .replaceAll("[^A-Z0-9]+", "");
+
+        return switch (normalized) {
+            case "NM", "NEARMINT", "MINT", "NORMAL" -> "NM";
+            case "LP", "EX", "EXCELLENT", "LIGHTLYPLAYED" -> "EX";
+            case "VG", "VERYGOOD", "MP", "MODERATELYPLAYED" -> "VG";
+            case "G", "GOOD", "HP", "HEAVILYPLAYED", "DAMAGED", "DMG" -> "G";
+            default -> normalized;
+        };
     }
 }

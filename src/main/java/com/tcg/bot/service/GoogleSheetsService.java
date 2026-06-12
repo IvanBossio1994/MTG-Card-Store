@@ -1830,8 +1830,8 @@ public class GoogleSheetsService {
                 case QUANTITY -> List.of("Cantidad", "Stock", "Qty", "Quantity");
                 case NAME -> List.of("Nombre", "Carta", "Card", "Name");
                 case SET_CODE -> List.of("Codigo de set", "Codigo set", "Set code", "SetCode", "Code");
-                case SET_NAME -> List.of("Nombre del set", "Nombre set", "Set", "Edition", "Edicion");
-                case COLLECTOR_NUMBER -> List.of("Numero de carta", "Numero carta", "Numero", "N", "No", "Number", "Collector number", "Collector");
+                case SET_NAME -> List.of("Set Name", "Nombre del set", "Nombre set", "Set", "Edition", "Edicion");
+                case COLLECTOR_NUMBER -> List.of("Card Number", "Numero de carta", "Numero carta", "Numero", "N", "No", "Number", "Collector number", "Collector");
                 case CONDITION -> List.of("Condicion", "Condition", "Estado carta");
                 case PRINTING -> List.of("Printing", "Foil", "Nonfoil", "Printing foil/no foil", "Printing (foil/no foil)");
                 case LANGUAGE -> List.of("Idioma", "Language", "Lang");
