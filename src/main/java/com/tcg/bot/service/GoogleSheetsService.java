@@ -916,25 +916,17 @@ public class GoogleSheetsService {
             return false;
         }
 
-        var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), range("A1:Z"))
-                .execute();
-
-        var values = response.getValues();
-        if (values == null || values.size() <= 1) {
-            return false;
-        }
-
         Map<String, CardKingdomProduct> productsByName = uniqueProductsByName(products);
-        ExistingInventoryMapping mapping = detectExistingInventoryMapping(values, productsByName);
-
-        if (mapping == null || mapping.matches() < 2) {
+        ExistingInventoryCandidate candidate = detectMigrationCandidate(
+                sheetsService,
+                storeSettingsService.getInventorySheetName(),
+                productsByName
+        );
+        if (candidate == null) {
             return false;
         }
 
-        String migratedSheetName = uniqueSheetName(sheetsService, DEFAULT_INVENTORY_SHEET_NAME);
-        writeMigratedInventorySheet(sheetsService, migratedSheetName, values, mapping, productsByName);
-        storeSettingsService.useInventorySheetName(migratedSheetName);
+        migrateCandidateToInventorySheet(sheetsService, candidate, DEFAULT_INVENTORY_SHEET_NAME, false, productsByName);
         return true;
     }
 
@@ -944,24 +936,13 @@ public class GoogleSheetsService {
             List<CardKingdomProduct> products,
             String targetSheetName
     ) throws Exception {
-        var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), sheetRange(sourceSheetName, "A1:Z"))
-                .execute();
-
-        var values = response.getValues();
-        if (values == null || values.size() <= 1) {
-            return false;
-        }
-
         Map<String, CardKingdomProduct> productsByName = uniqueProductsByName(products);
-        ExistingInventoryMapping mapping = detectExistingInventoryMapping(values, productsByName);
-
-        if (mapping == null || mapping.matches() < 2) {
+        ExistingInventoryCandidate candidate = detectMigrationCandidate(sheetsService, sourceSheetName, productsByName);
+        if (candidate == null) {
             return false;
         }
 
-        writeMigratedInventorySheet(sheetsService, targetSheetName, values, mapping, productsByName);
-        storeSettingsService.useInventorySheetName(targetSheetName);
+        migrateCandidateToInventorySheet(sheetsService, candidate, targetSheetName, true, productsByName);
         return true;
     }
 
@@ -983,22 +964,13 @@ public class GoogleSheetsService {
                 continue;
             }
 
-            var response = sheetsService.spreadsheets().values()
-                    .get(storeSettingsService.getSpreadsheetId(), sheetRange(sheetTitle, "A1:Z"))
-                    .execute();
-
-            var values = response.getValues();
-            if (values == null || values.size() <= 1) {
+            ExistingInventoryCandidate candidate = detectMigrationCandidate(sheetsService, sheetTitle, productsByName);
+            if (candidate == null) {
                 continue;
             }
 
-            ExistingInventoryMapping mapping = detectExistingInventoryMapping(values, productsByName);
-            if (mapping == null || mapping.matches() < 2) {
-                continue;
-            }
-
-            if (bestCandidate == null || mapping.matches() > bestCandidate.mapping().matches()) {
-                bestCandidate = new ExistingInventoryCandidate(sheetTitle, values, mapping);
+            if (bestCandidate == null || candidate.mapping().matches() > bestCandidate.mapping().matches()) {
+                bestCandidate = candidate;
             }
         }
 
@@ -1006,16 +978,51 @@ public class GoogleSheetsService {
             return false;
         }
 
-        String migratedSheetName = uniqueSheetName(sheetsService, targetSheetName);
+        migrateCandidateToInventorySheet(sheetsService, bestCandidate, targetSheetName, false, productsByName);
+        return true;
+    }
+
+    private ExistingInventoryCandidate detectMigrationCandidate(
+            Sheets sheetsService,
+            String sheetName,
+            Map<String, CardKingdomProduct> productsByName
+    ) throws Exception {
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), sheetRange(sheetName, "A1:Z"))
+                .execute();
+
+        var values = response.getValues();
+        if (values == null || values.size() <= 1) {
+            return null;
+        }
+
+        ExistingInventoryMapping mapping = detectExistingInventoryMapping(values, productsByName);
+        if (mapping == null || mapping.matches() < 2) {
+            return null;
+        }
+
+        return new ExistingInventoryCandidate(sheetName, values, mapping);
+    }
+
+    private void migrateCandidateToInventorySheet(
+            Sheets sheetsService,
+            ExistingInventoryCandidate candidate,
+            String targetSheetName,
+            boolean useExactTargetName,
+            Map<String, CardKingdomProduct> productsByName
+    ) throws Exception {
+        String migratedSheetName = useExactTargetName
+                ? targetSheetName
+                : uniqueSheetName(sheetsService, targetSheetName);
+
         writeMigratedInventorySheet(
                 sheetsService,
                 migratedSheetName,
-                bestCandidate.values(),
-                bestCandidate.mapping(),
+                candidate.values(),
+                candidate.mapping(),
                 productsByName
         );
         storeSettingsService.useInventorySheetName(migratedSheetName);
-        return true;
     }
 
     private void writeMigratedInventorySheet(

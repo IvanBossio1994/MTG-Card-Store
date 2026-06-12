@@ -63,6 +63,10 @@ public class DashboardController {
             Pattern.compile("[\\[(]([A-Za-z0-9]{2,8})[\\])]");
     private static final Pattern COLLECTOR_PATTERN =
             Pattern.compile("(?:#|\\s)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\\s*$");
+    private static final String ACTION_IN_STOCK = "CON STOCK";
+    private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
+    private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
+    private static final String ACTION_NO_CK_PRICE = "SIN PRECIO CK";
     private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
     private static final DateTimeFormatter MOVEMENT_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -1769,7 +1773,7 @@ public class DashboardController {
         String previousAction = card.getAction();
 
         if (quantity(card) <= 0) {
-            card.setAction("SIN STOCK");
+            card.setAction(ACTION_OUT_OF_STOCK);
 
             return new UpdateResult(
                     card.getName(),
@@ -1788,7 +1792,9 @@ public class DashboardController {
         var product = cardKingdomApiService.findProduct(card, priceList);
 
         if (product == null) {
-            card.setAction("CON STOCK");
+            card.setCkPriceUsd("");
+            card.setLocalPrice("");
+            card.setAction(ACTION_NO_CK_MATCH);
 
             return new UpdateResult(
                     card.getName(),
@@ -1808,7 +1814,8 @@ public class DashboardController {
 
         if (ckPrice == null) {
             card.setCkPriceUsd("");
-            card.setAction("CON STOCK");
+            card.setLocalPrice("");
+            card.setAction(ACTION_NO_CK_PRICE);
 
             return new UpdateResult(
                     card.getName(),
@@ -1827,7 +1834,7 @@ public class DashboardController {
         String localPrice = String.format("%.0f", priceComparisonService.calculateLocalPrice(ckPrice));
         card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         card.setLocalPrice(localPrice);
-        card.setAction("CON STOCK");
+        card.setAction(ACTION_IN_STOCK);
 
         if (!changed(previousCkPrice, previousLocalPrice, previousAction, card)) {
             return new UpdateResult(
@@ -2116,7 +2123,7 @@ public class DashboardController {
     }
 
     private String stockActionForQuantity(int quantity) {
-        return quantity <= 0 ? "SIN STOCK" : "CON STOCK";
+        return quantity <= 0 ? ACTION_OUT_OF_STOCK : ACTION_IN_STOCK;
     }
 
     public record SearchResult(
@@ -2371,7 +2378,8 @@ public class DashboardController {
         try {
             InventoryCard card = findInventoryCardByRow(rowIndex);
             if (card == null) {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiMessage(false, "No se encontro la carta en el inventario."));
             }
 
             int previousQuantity = quantity(card);
@@ -2411,7 +2419,8 @@ public class DashboardController {
             ));
         } catch (Exception e) {
             log.warn("No se pudo actualizar la cantidad de inventario.", e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError()
+                    .body(new ApiMessage(false, "No se pudo actualizar el stock: " + e.getMessage()));
         }
     }
 
@@ -2422,7 +2431,8 @@ public class DashboardController {
             CardKingdomProduct product = findProductBySku(sku);
 
             if (product == null) {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiMessage(false, "No se encontro la carta en Card Kingdom."));
             }
 
             InventoryCard card = createInventoryCard(product);
@@ -2434,7 +2444,8 @@ public class DashboardController {
             return ResponseEntity.ok(new StockCreateResponse(rowIndex));
         } catch (Exception e) {
             log.warn("No se pudo agregar la carta al inventario.", e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError()
+                    .body(new ApiMessage(false, "No se pudo agregar la carta al inventario: " + e.getMessage()));
         }
     }
 
@@ -2477,7 +2488,7 @@ public class DashboardController {
             card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         }
 
-        card.setAction("CON STOCK");
+        card.setAction(ACTION_IN_STOCK);
         return card;
     }
 
@@ -2498,6 +2509,9 @@ public class DashboardController {
     }
 
     public record StockCreateResponse(int rowIndex) {
+    }
+
+    public record ApiMessage(boolean success, String message) {
     }
 
     public record StockUpdateResponse(

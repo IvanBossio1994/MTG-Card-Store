@@ -96,6 +96,15 @@ document.addEventListener("DOMContentLoaded", () => {
         alert.textContent = message;
     };
 
+    const responseMessage = async (response, fallback) => {
+        try {
+            const result = await response.json();
+            return result.message || fallback;
+        } catch (e) {
+            return fallback;
+        }
+    };
+
     if (updateForm && loadingOverlay) {
         updateForm.addEventListener("submit", () => {
             showLoadingOverlay(
@@ -822,7 +831,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         if (!response.ok) {
                             showToast(
-                                "Error agregando carta al Sheet",
+                                await responseMessage(response, "Error agregando carta al Sheet"),
                                 "error"
                             );
                             return;
@@ -882,7 +891,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (!response.ok) {
                         showToast(
-                            "Error actualizando stock",
+                            await responseMessage(response, "Error actualizando stock"),
                             "error"
                         );
 

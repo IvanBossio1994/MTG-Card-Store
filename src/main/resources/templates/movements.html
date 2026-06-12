@@ -8,40 +8,8 @@
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header class="topbar">
-    <div class="topbar-start">
-        <button id="menu-button" class="menu-button" type="button" aria-label="Abrir menu"
-                aria-controls="app-menu" aria-expanded="false">
-            <span></span><span></span><span></span>
-        </button>
-        <a class="brand" th:href="@{/}" aria-label="Volver al inicio">
-            <img class="brand-logo" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}" alt="">
-            <span class="brand-mark" th:unless="${hasStoreLogo}">TCG</span>
-            <div>
-                <strong th:text="${storeName}">Inventory Manager</strong>
-                <p>Historial de stock</p>
-            </div>
-        </a>
-    </div>
-</header>
-
-<div id="menu-backdrop" class="menu-backdrop" hidden></div>
-<aside id="app-menu" class="app-menu" aria-hidden="true">
-    <div class="menu-head">
-        <span class="brand-mark">TCG</span>
-        <strong>Inventory Manager</strong>
-    </div>
-    <nav class="menu-nav" aria-label="Menu principal">
-        <a th:href="@{/}">Inicio</a>
-        <a class="active" th:href="@{/movimientos}">Movimientos</a>
-        <a th:href="@{/configuracion}">Configuracion</a>
-        <a th:href="@{/importar-lista}">Importar lista</a>
-        <form th:action="@{/tutorial/reset}" method="post">
-            <button type="submit" class="menu-link-button">Tutorial</button>
-        </form>
-    </nav>
-</aside>
-
+<header th:replace="~{fragments/layout :: topbar('Historial de stock')}"></header>
+<div th:replace="~{fragments/layout :: menu('movements')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
@@ -309,19 +277,7 @@
     </section>
 </main>
 
-<div id="loading-overlay" class="loading-overlay" aria-hidden="true">
-    <div class="loading-card" role="status" aria-live="polite">
-        <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
-             alt="Gatito atigrado revisando cartas">
-        <h2>Sincronizando inventario</h2>
-        <p>Leyendo el Sheet, conectando la app y recalculando precios...</p>
-        <div class="loading-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </div>
-</div>
+<div th:replace="~{fragments/layout :: loading('Sincronizando inventario', 'Leyendo el Sheet, conectando la app y recalculando precios...')}"></div>
 </body>
 </html>
 
