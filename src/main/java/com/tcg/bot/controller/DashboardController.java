@@ -39,6 +39,7 @@ import java.time.ZoneId;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,6 +68,7 @@ public class DashboardController {
     private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
     private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
     private static final String ACTION_NO_CK_PRICE = "SIN PRECIO CK";
+    private static final Locale ARGENTINA_LOCALE = new Locale("es", "AR");
     private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
     private static final DateTimeFormatter MOVEMENT_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -718,9 +720,56 @@ public class DashboardController {
     }
 
     private String formatCashTotal(double value) {
-        return java.text.NumberFormat
-                .getIntegerInstance(new Locale("es", "AR"))
+        return NumberFormat
+                .getIntegerInstance(ARGENTINA_LOCALE)
                 .format(Math.round(value));
+    }
+
+    private static String formatLocalPrice(String value) {
+        return formatPrice(value, 0);
+    }
+
+    private static String formatUsdPrice(String value) {
+        return formatPrice(value, 2);
+    }
+
+    private static String formatPrice(String value, int fractionDigits) {
+        Double parsedValue = parsePriceValue(value);
+        if (parsedValue == null) {
+            return "";
+        }
+
+        NumberFormat formatter = NumberFormat.getNumberInstance(ARGENTINA_LOCALE);
+        formatter.setMinimumFractionDigits(fractionDigits);
+        formatter.setMaximumFractionDigits(fractionDigits);
+        return formatter.format(parsedValue);
+    }
+
+    private static Double parsePriceValue(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalized = value.trim()
+                .replace("$", "")
+                .replace(" ", "");
+
+        int lastDot = normalized.lastIndexOf('.');
+        int lastComma = normalized.lastIndexOf(',');
+
+        if (lastDot >= 0 && lastComma >= 0) {
+            normalized = lastComma > lastDot
+                    ? normalized.replace(".", "").replace(",", ".")
+                    : normalized.replace(",", "");
+        } else if (lastComma >= 0) {
+            normalized = normalized.replace(".", "").replace(",", ".");
+        }
+
+        try {
+            return Double.parseDouble(normalized);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private List<CashReportMonth> cashReportMonths(
@@ -2136,6 +2185,9 @@ public class DashboardController {
             int stockQuantity,
             int rowIndex
     ) {
+        public String formattedNmPrice() {
+            return formatUsdPrice(nmPrice);
+        }
     }
 
     public record CardSuggestion(
@@ -2156,6 +2208,13 @@ public class DashboardController {
             int stockQuantity,
             boolean writeRequired
     ) {
+        public String formattedLocalPrice() {
+            return formatLocalPrice(localPrice);
+        }
+
+        public String formattedCkPriceUsd() {
+            return formatUsdPrice(ckPriceUsd);
+        }
     }
 
     public record MovementMonthGroup(
@@ -2331,6 +2390,9 @@ public class DashboardController {
             boolean selectable,
             List<ImportOption> alternatives
     ) {
+        public String formattedNmPrice() {
+            return formatUsdPrice(nmPrice);
+        }
     }
 
     public record ImportOption(
@@ -2343,6 +2405,9 @@ public class DashboardController {
             String nmPrice,
             int stockQuantity
     ) {
+        public String formattedNmPrice() {
+            return formatUsdPrice(nmPrice);
+        }
     }
 
     @PostMapping("/tutorial/completar")

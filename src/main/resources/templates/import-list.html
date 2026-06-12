@@ -111,7 +111,7 @@
                             <td th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
                             <td th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
                             <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
-                            <td th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.nmPrice : '-'}">$ 2.49</td>
+                            <td th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
                         </tr>
                         <tr class="version-options-row" hidden
                             th:if="${!result.selectable && !#lists.isEmpty(result.alternatives)}"
@@ -127,8 +127,8 @@
                                                th:value="${option.sku + '|' + option.quantity}">
                                         <span>
                                             <strong th:text="${option.name}">Sol Ring</strong>
-                                            <small th:text="${option.edition + ' | ' + option.sku + ' | ' + option.printing + ' | $ ' + option.nmPrice + ' | Stock ' + option.stockQuantity}">
-                                                Set | Codigo | Printing | $ 0.00 | Stock 0
+                                            <small th:text="${option.edition + ' | ' + option.sku + ' | ' + option.printing + ' | $ ' + option.formattedNmPrice + ' | Stock ' + option.stockQuantity}">
+                                                Set | Codigo | Printing | $ 0,00 | Stock 0
                                             </small>
                                         </span>
                                     </label>
