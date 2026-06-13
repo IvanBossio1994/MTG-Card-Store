@@ -73,9 +73,9 @@ public class DashboardController {
     private static final Pattern COLLECTOR_PATTERN =
             Pattern.compile("(?:#|\\s)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\\s*$");
     private static final Pattern VARIATION_STYLE_PREFIX_PATTERN =
-            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:(?:surge\\s+foil|etched\\s+foil|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+promo|buy-a-box|b?a?b\\s+promo)\\s*-\\s*)+");
+            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified)\\s*-\\s*)+");
     private static final Pattern VARIATION_STYLE_ONLY_PATTERN =
-            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:surge\\s+foil|etched\\s+foil|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+promo|buy-a-box|b?a?b\\s+promo|normal)(?:\\s*-\\s*(?:surge\\s+foil|etched\\s+foil|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+promo|buy-a-box|b?a?b\\s+promo|normal))*$");
+            Pattern.compile("(?i)^(?:[a-z]|\\d+|\\d+\\s*-\\s*)?(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|normal)(?:\\s*-\\s*(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|normal))*$");
     private static final String ACTION_IN_STOCK = "CON STOCK";
     private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
     private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
@@ -465,9 +465,14 @@ public class DashboardController {
     }
 
     private boolean isEditionStyleText(String value) {
-        return value == null
-                || value.isBlank()
-                || VARIATION_STYLE_ONLY_PATTERN.matcher(value.trim()).matches();
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.matches("(?i)^[a-z]$")
+                || trimmed.matches("^\\d+$")
+                || VARIATION_STYLE_ONLY_PATTERN.matcher(trimmed).matches();
     }
 
     @GetMapping("/configuracion")
@@ -1586,13 +1591,17 @@ public class DashboardController {
 
                     String variation = normalizeImportedName(searchableVariationText(product.getVariation()));
                     String productName = normalizeImportedName(product.getName());
-                    return (!variation.isBlank()
-                            && (variation.contains(requestedName) || requestedName.contains(variation)))
-                            || (!productName.isBlank()
-                            && (productName.contains(requestedName) || requestedName.contains(productName)));
+                    return normalizedImportNameMatches(variation, requestedName)
+                            || normalizedImportNameMatches(productName, requestedName);
                 })
                 .distinct()
                 .toList();
+    }
+
+    private boolean normalizedImportNameMatches(String productName, String requestedName) {
+        return !productName.isBlank()
+                && !requestedName.isBlank()
+                && productName.equals(requestedName);
     }
 
     private Map<String, int[]> indexInventoryForImport(List<InventoryCard> inventoryCards) {

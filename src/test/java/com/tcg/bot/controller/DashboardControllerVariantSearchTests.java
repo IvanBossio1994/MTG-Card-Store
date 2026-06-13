@@ -85,6 +85,24 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void doesNotIndexPromoPrintingOrNumberAsImportName() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "importVariationNameCandidates",
+                String.class
+        );
+        method.setAccessible(true);
+
+        List<String> prerelease = (List<String>) method.invoke(controller, "Prerelease Foil");
+        List<String> letter = (List<String>) method.invoke(controller, "A");
+        List<String> number = (List<String>) method.invoke(controller, "0001");
+
+        assertThat(prerelease).isEmpty();
+        assertThat(letter).isEmpty();
+        assertThat(number).isEmpty();
+    }
+
+    @Test
     void keepsBackFaceNameFromStyledVariant() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(
                 "searchableVariationText",
@@ -128,10 +146,44 @@ class DashboardControllerVariantSearchTests {
         assertThat(backFaceResults).containsExactly(backFace);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void possibleVariantFallbackOnlyUsesExactCleanNames() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "findPossibleVariantProducts",
+                List.class,
+                DashboardController.ParsedImportLine.class
+        );
+        method.setAccessible(true);
+
+        CardKingdomProduct centurion = product("Lord of the Undead", "0345 - Centurion of the Marked");
+        centurion.setSku("PIP-0345");
+        CardKingdomProduct land = product("Wastes", "0345");
+        land.setSku("PIP-0345");
+        DashboardController.ParsedImportLine line = new DashboardController.ParsedImportLine(
+                "1 Centurion of the Marked (PIP) 345",
+                1,
+                "Centurion of the Marked",
+                "PIP",
+                "345",
+                false,
+                0
+        );
+
+        List<CardKingdomProduct> results = (List<CardKingdomProduct>) method.invoke(
+                controller,
+                List.of(centurion, land),
+                line
+        );
+
+        assertThat(results).containsExactly(centurion);
+    }
+
     private CardKingdomProduct product(String name, String variation) {
         CardKingdomProduct product = new CardKingdomProduct();
         product.setName(name);
         product.setVariation(variation);
+        product.setFoil("false");
         return product;
     }
 }
