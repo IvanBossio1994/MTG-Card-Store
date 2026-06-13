@@ -73,9 +73,11 @@ public class DashboardController {
     private static final Pattern COLLECTOR_PATTERN =
             Pattern.compile("(?:#|\\s)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\\s*$");
     private static final Pattern VARIATION_STYLE_PREFIX_PATTERN =
-            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified)\\s*-\\s*)+");
+            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|non-foil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|commandfest\\s+foil|commandfest\\s+non-foil|magicfest\\s+foil|magicfest\\s+non-foil|festival\\s+foil|festival\\s+non-foil)\\s*-\\s*)+");
+    private static final Pattern VARIATION_STYLE_SUFFIX_PATTERN =
+            Pattern.compile("(?i)\\s*-\\s*(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|non-foil|traditional\\s+foil|borderless|extended\\s+art|showcase|retro\\s+frame|textured\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|confetti\\s+foil|double\\s+rainbow\\s+foil|pool\\s+party\\s+foil|commandfest\\s+foil|commandfest\\s+non-foil|magicfest\\s+foil|magicfest\\s+non-foil|festival\\s+foil|festival\\s+non-foil|festival\\s+foil\\s+etched|promo\\s+foil|promo\\s+non-foil|commander\\s+deck|not\\s+tournament\\s+legal)$");
     private static final Pattern VARIATION_STYLE_ONLY_PATTERN =
-            Pattern.compile("(?i)^(?:[a-z]|\\d+|\\d+\\s*-\\s*)?(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|normal)(?:\\s*-\\s*(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|normal))*$");
+            Pattern.compile("(?i)^(?:[a-z]|\\d+|\\d+\\s*-\\s*)?(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|non-foil|traditional\\s+foil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|commandfest\\s+foil|commandfest\\s+non-foil|magicfest|magicfest\\s+foil|magicfest\\s+non-foil|festival\\s+foil|festival\\s+non-foil|normal)(?:\\s*-\\s*(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|non-foil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|commandfest\\s+foil|commandfest\\s+non-foil|magicfest|magicfest\\s+foil|magicfest\\s+non-foil|festival\\s+foil|festival\\s+non-foil|normal))*$");
     private static final String ACTION_IN_STOCK = "CON STOCK";
     private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
     private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
@@ -191,8 +193,18 @@ public class DashboardController {
         }
 
         try {
-            var products = cardKingdomApiService.searchProducts(buildSearchQuery(trimmedQuery, trimmedSet, trimmedNumber));
-            products = filterProductsForNameQuery(products, trimmedQuery);
+            SearchFields searchFields = dashboardSearchFields(trimmedQuery, trimmedSet, trimmedNumber);
+            List<CardKingdomProduct> products;
+
+            if (!searchFields.setFilter().isBlank() || !searchFields.numberFilter().isBlank()) {
+                var priceList = cardKingdomApiService.getPriceList();
+                products = priceList == null || priceList.getData() == null
+                        ? List.of()
+                        : searchDashboardProducts(priceList.getData(), searchFields);
+            } else {
+                products = cardKingdomApiService.searchProducts(buildSearchQuery(trimmedQuery, trimmedSet, trimmedNumber));
+                products = filterProductsForNameQuery(products, searchFields.nameQuery());
+            }
 
             if (!trimmedQuery.isBlank() && trimmedSet.isBlank() && trimmedNumber.isBlank() && products.isEmpty()) {
                 model.addAttribute(
@@ -216,6 +228,74 @@ public class DashboardController {
         }
 
         return "dashboard";
+    }
+
+    private SearchFields dashboardSearchFields(String query, String setFilter, String numberFilter) {
+        if (!query.isBlank() && setFilter.isBlank() && numberFilter.isBlank()) {
+            ParsedImportLine parsedLine = parseImportLine(query);
+            if (parsedLine != null
+                    && (!parsedLine.setCode().isBlank() || !parsedLine.collectorNumber().isBlank())) {
+                return new SearchFields(
+                        parsedLine.name(),
+                        parsedLine.setCode(),
+                        parsedLine.collectorNumber()
+                );
+            }
+        }
+
+        return new SearchFields(query, setFilter, numberFilter);
+    }
+
+    private List<CardKingdomProduct> searchDashboardProducts(
+            List<CardKingdomProduct> products,
+            SearchFields searchFields
+    ) {
+        String normalizedName = normalizeSuggestionText(searchFields.nameQuery());
+
+        return products.stream()
+                .filter(product -> normalizedName.isBlank()
+                        || matchesSuggestion(
+                        product.getName(),
+                        searchableVariationText(product.getVariation()),
+                        normalizedName
+                ))
+                .filter(product -> searchFields.setFilter().isBlank()
+                        || matchesDashboardSetField(product, searchFields.setFilter()))
+                .filter(product -> searchFields.numberFilter().isBlank()
+                        || matchesDashboardNumberField(product, searchFields.numberFilter()))
+                .toList();
+    }
+
+    private boolean matchesDashboardSetField(CardKingdomProduct product, String setFilter) {
+        return matchesLooseText(setCode(product.getSku()), setFilter)
+                || matchesLooseText(product.getEdition(), setFilter)
+                || matchesLooseText(product.getVariation(), setFilter);
+    }
+
+    private boolean matchesDashboardNumberField(CardKingdomProduct product, String numberFilter) {
+        String normalizedNumber = normalizeImportCollector(numberFilter);
+        if (normalizedNumber.isBlank()) {
+            return true;
+        }
+
+        return importCollectorFromSku(product.getSku()).equals(normalizedNumber)
+                || normalizeImportCollector(product.getVariation()).contains(normalizedNumber);
+    }
+
+    private boolean matchesLooseText(String value, String query) {
+        String normalizedValue = normalizeSuggestionText(value);
+        String normalizedQuery = normalizeSuggestionText(query);
+
+        if (normalizedQuery.isBlank()) {
+            return true;
+        }
+
+        String compactValue = normalizedValue.replace(" ", "");
+        String compactQuery = normalizedQuery.replace(" ", "");
+        compactValue = compactValue.replace("commanderfest", "commandfest");
+        compactQuery = compactQuery.replace("commanderfest", "commandfest");
+        return normalizedValue.contains(normalizedQuery)
+                || (!compactQuery.isBlank() && compactValue.contains(compactQuery));
     }
 
     private List<CardKingdomProduct> filterProductsForNameQuery(
@@ -460,6 +540,14 @@ public class DashboardController {
         candidate = VARIATION_STYLE_PREFIX_PATTERN.matcher(candidate)
                 .replaceFirst("")
                 .trim();
+
+        String previousCandidate;
+        do {
+            previousCandidate = candidate;
+            candidate = VARIATION_STYLE_SUFFIX_PATTERN.matcher(candidate)
+                    .replaceFirst("")
+                    .trim();
+        } while (!candidate.equals(previousCandidate));
 
         return isEditionStyleText(candidate) ? "" : candidate;
     }
@@ -1422,6 +1510,25 @@ public class DashboardController {
                 continue;
             }
 
+            if (shouldGroupImportAlternatives(parsedLine, products)) {
+                results.add(new ImportResult(
+                        parsedLine.originalLine(),
+                        parsedLine.quantity(),
+                        parsedLine.name(),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        0,
+                        0,
+                        parsedLine.duplicateCount() > 0 ? importStatus(parsedLine) : "OTRA VERSION",
+                        false,
+                        createImportOptions(products, parsedLine, inventoryIndex)
+                ));
+                continue;
+            }
+
             for (CardKingdomProduct product : products) {
                 ImportResult importResult = createImportResult(product, parsedLine, inventoryIndex);
 
@@ -1446,6 +1553,17 @@ public class DashboardController {
         return results.stream()
                 .sorted(Comparator.comparingInt(this::importResultPriority))
                 .toList();
+    }
+
+    private boolean shouldGroupImportAlternatives(
+            ParsedImportLine parsedLine,
+            List<CardKingdomProduct> products
+    ) {
+        return parsedLine != null
+                && parsedLine.setCode().isBlank()
+                && parsedLine.collectorNumber().isBlank()
+                && products != null
+                && products.size() > 1;
     }
 
     private int importResultPriority(ImportResult result) {
@@ -2586,6 +2704,13 @@ public class DashboardController {
             String normalizedName,
             String normalizedVariation,
             int priority
+    ) {
+    }
+
+    private record SearchFields(
+            String nameQuery,
+            String setFilter,
+            String numberFilter
     ) {
     }
 

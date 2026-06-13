@@ -119,6 +119,22 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void removesEventPrintingSuffixFromVariationName() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "searchableVariationText",
+                String.class
+        );
+        method.setAccessible(true);
+
+        String candidate = (String) method.invoke(
+                controller,
+                "Joshua Rosfield - CommandFest Foil"
+        );
+
+        assertThat(candidate).isEqualTo("Joshua Rosfield");
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void filtersSearchResultsByCleanNameOrVariationOnly() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(
@@ -144,6 +160,87 @@ class DashboardControllerVariantSearchTests {
 
         assertThat(borderlessResults).isEmpty();
         assertThat(backFaceResults).containsExactly(backFace);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void setFieldCanMatchEventVariationButNameFieldCannot() throws Exception {
+        Method searchMethod = DashboardController.class.getDeclaredMethod(
+                "searchDashboardProducts",
+                List.class,
+                Class.forName("com.tcg.bot.controller.DashboardController$SearchFields")
+        );
+        Method filterMethod = DashboardController.class.getDeclaredMethod(
+                "filterProductsForNameQuery",
+                List.class,
+                String.class
+        );
+        var fieldsConstructor = Class.forName("com.tcg.bot.controller.DashboardController$SearchFields")
+                .getDeclaredConstructor(String.class, String.class, String.class);
+        searchMethod.setAccessible(true);
+        filterMethod.setAccessible(true);
+        fieldsConstructor.setAccessible(true);
+
+        CardKingdomProduct commandFest = product("Joshua Rosfield", "Joshua Rosfield - CommandFest Foil");
+        commandFest.setSku("PFIN-001");
+        commandFest.setEdition("Promotional");
+
+        List<CardKingdomProduct> nameResults = (List<CardKingdomProduct>) filterMethod.invoke(
+                controller,
+                List.of(commandFest),
+                "commandfest"
+        );
+        List<CardKingdomProduct> setResults = (List<CardKingdomProduct>) searchMethod.invoke(
+                controller,
+                List.of(commandFest),
+                fieldsConstructor.newInstance("", "Commander Fest", "")
+        );
+
+        assertThat(nameResults).isEmpty();
+        assertThat(setResults).containsExactly(commandFest);
+    }
+
+    @Test
+    void groupsMultipleImportPrintingsAsOtherVersions() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "shouldGroupImportAlternatives",
+                DashboardController.ParsedImportLine.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        DashboardController.ParsedImportLine solRing = new DashboardController.ParsedImportLine(
+                "Sol Ring",
+                1,
+                "Sol Ring",
+                "",
+                "",
+                false,
+                0
+        );
+        DashboardController.ParsedImportLine islandWithSet = new DashboardController.ParsedImportLine(
+                "Island (SLD) 123",
+                1,
+                "Island",
+                "SLD",
+                "123",
+                false,
+                0
+        );
+
+        boolean groupedSolRing = (boolean) method.invoke(
+                controller,
+                solRing,
+                List.of(product("Sol Ring", ""), product("Sol Ring", "Judge Foil"))
+        );
+        boolean groupedIslandWithSet = (boolean) method.invoke(
+                controller,
+                islandWithSet,
+                List.of(product("Island", ""), product("Island", "Borderless"))
+        );
+
+        assertThat(groupedSolRing).isTrue();
+        assertThat(groupedIslandWithSet).isFalse();
     }
 
     @Test
@@ -183,6 +280,8 @@ class DashboardControllerVariantSearchTests {
         CardKingdomProduct product = new CardKingdomProduct();
         product.setName(name);
         product.setVariation(variation);
+        product.setEdition("");
+        product.setSku("");
         product.setFoil("false");
         return product;
     }
