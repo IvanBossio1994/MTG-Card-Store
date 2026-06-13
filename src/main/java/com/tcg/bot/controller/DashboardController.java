@@ -16,6 +16,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -80,6 +81,8 @@ public class DashboardController {
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter MOVEMENT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter PRICE_LIST_UPDATED_FORMAT =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final String MOVEMENTS_ACCESS_SESSION_KEY = "movementsAccessUnlocked";
     private static final String MOVEMENTS_ACCESS_PASSWORD = "counterspell";
 
@@ -100,6 +103,24 @@ public class DashboardController {
     @ModelAttribute("movementsUnlocked")
     public boolean movementsUnlocked(HttpServletRequest request) {
         return isMovementsUnlocked(request.getSession(false));
+    }
+
+    @Scheduled(fixedDelayString = "PT1H2M", initialDelayString = "PT1H2M")
+    public void synchronizeInventoryAutomatically() {
+        if (!storeSettingsService.hasSpreadsheetConfigured() || !inventoryService.hasCredentialsConfigured()) {
+            log.info("Sincronizacion automatica omitida: faltan configuracion o credenciales.");
+            return;
+        }
+
+        try {
+            if (synchronizeInventory(true)) {
+                log.info("Sincronizacion automatica completada.");
+            } else {
+                log.warn("Sincronizacion automatica omitida: no se pudo obtener la pricelist de Card Kingdom.");
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo ejecutar la sincronizacion automatica.", e);
+        }
     }
 
     @GetMapping("/")
@@ -1854,7 +1875,7 @@ public class DashboardController {
         return current;
     }
 
-    private boolean synchronizeInventory(boolean refreshPriceList) throws Exception {
+    private synchronized boolean synchronizeInventory(boolean refreshPriceList) throws Exception {
         ensureInventorySetup();
         var priceList = cardKingdomApiService.getPriceList(refreshPriceList);
 
@@ -2159,6 +2180,7 @@ public class DashboardController {
         model.addAttribute("credentialsConfigured", inventoryService.hasCredentialsConfigured());
         model.addAttribute("credentialsPath", inventoryService.getConfiguredCredentialsPath());
         model.addAttribute("localCredentialsConfigured", storeSettingsService.hasGoogleCredentials());
+        model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
     }
 
     private void addStoreModel(Model model) {
@@ -2176,10 +2198,17 @@ public class DashboardController {
         model.addAttribute("updates", latestUpdates);
         model.addAttribute("updatePerformed", !latestUpdates.isEmpty());
         model.addAttribute("updatedCount", latestUpdatedCount);
+        model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
 
         if (latestUpdates.isEmpty()) {
             return;
         }
+    }
+
+    private String formattedPriceListLastUpdated() {
+        return cardKingdomApiService.getPriceListLastUpdated()
+                .map(updated -> PRICE_LIST_UPDATED_FORMAT.format(updated.atZone(APP_ZONE)))
+                .orElse("");
     }
 
     private void refreshLatestUpdatesFromInventory() throws Exception {
