@@ -1705,66 +1705,12 @@ tr.in-stock {
     width: 96px;
 }
 
-.report-dashboard {
+.report-month-list {
     display: grid;
-    gap: 16px;
-}
-
-.report-hero-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
-    align-items: center;
-    gap: 22px;
-    min-height: 220px;
-    padding: 22px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f8fbff 0%, #fff 54%, #f7fbf5 100%);
-    overflow: hidden;
-}
-
-.report-hero-copy h2 {
-    margin: 0 0 16px;
-    font-size: 28px;
-}
-
-.report-hero-kpis {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.report-hero-kpis div {
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.82);
-}
-
-.report-hero-kpis span {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.report-hero-kpis strong {
-    font-size: 22px;
-}
-
-.report-cat-image {
-    width: 100%;
-    max-width: 260px;
-    border-radius: 10px;
-    justify-self: end;
-    box-shadow: 0 18px 45px rgba(16, 24, 40, 0.16);
+    gap: 14px;
 }
 
 .report-month-card {
-    display: grid;
-    gap: 16px;
     padding: 18px;
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -1816,76 +1762,6 @@ tr.in-stock {
     font-size: 20px;
 }
 
-.report-visual-grid {
-    display: grid;
-    grid-template-columns: 190px minmax(0, 1fr);
-    gap: 18px;
-    align-items: center;
-}
-
-.report-donut-card {
-    display: grid;
-    justify-items: center;
-    gap: 12px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fbfcfe;
-}
-
-.report-donut {
-    --sold: 50;
-    --entered: 50;
-    width: 132px;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: conic-gradient(
-            var(--red) 0 calc(var(--sold) * 1%),
-            var(--blue) calc(var(--sold) * 1%) 100%
-    );
-    position: relative;
-    box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.06);
-}
-
-.report-donut::after {
-    content: "";
-    position: absolute;
-    inset: 28px;
-    border-radius: inherit;
-    background: #fff;
-    box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.report-donut-legend {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.report-donut-legend span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.report-donut-legend i {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-}
-
-.report-donut-legend i.sold {
-    background: var(--red);
-}
-
-.report-donut-legend i.entered {
-    background: var(--blue);
-}
-
 .report-bars {
     display: grid;
     gap: 10px;
@@ -1921,43 +1797,6 @@ tr.in-stock {
 
 .report-bar i.entered {
     background: var(--blue);
-}
-
-.report-card-list {
-    display: grid;
-    gap: 8px;
-}
-
-.report-card-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 112px 122px 116px;
-    align-items: center;
-    gap: 12px;
-    padding: 11px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: #fbfcfe;
-}
-
-.report-card-row div {
-    min-width: 0;
-}
-
-.report-card-row div strong {
-    display: block;
-    overflow-wrap: anywhere;
-}
-
-.report-card-row div span,
-.report-card-row > span {
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.report-card-row > strong {
-    color: var(--green);
-    text-align: right;
 }
 
 .placeholder {
@@ -2376,24 +2215,6 @@ tr.in-stock {
         padding-right: 18px;
         padding-left: 18px;
     }
-
-    .report-hero-card,
-    .report-visual-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .report-cat-image {
-        max-width: 220px;
-        justify-self: center;
-    }
-
-    .report-card-row {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .report-card-row > strong {
-        text-align: left;
-    }
 }
 
 .tutorial-overlay {
@@ -2766,19 +2587,6 @@ tr.in-stock {
     }
 
     .pricing-config-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .report-hero-kpis,
-    .report-kpi-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .report-month-head {
-        flex-direction: column;
-    }
-
-    .report-card-row {
         grid-template-columns: 1fr;
     }
 

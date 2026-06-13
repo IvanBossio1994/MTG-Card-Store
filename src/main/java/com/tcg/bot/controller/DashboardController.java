@@ -800,9 +800,7 @@ public class DashboardController {
             model.addAttribute("cashGroups", groupCashEntriesByMonth(entries, selectedDate));
             model.addAttribute("cashTodayTotal", formatCashTotal(totalSalesForDate(allEntries, today)));
             model.addAttribute("cashSelectedTotal", formatCashTotal(totalSalesForDate(entries, selectedDate)));
-            List<CashReportMonth> reports = cashReportMonths(allEntries, allMovements);
-            model.addAttribute("cashReportMonths", reports);
-            syncReportSheet(model, reports);
+            model.addAttribute("cashReportMonths", cashReportMonths(allEntries, allMovements));
         } catch (Exception e) {
             model.addAttribute("cashEntries", List.of());
             model.addAttribute("cashGroups", List.of());
@@ -810,15 +808,6 @@ public class DashboardController {
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
             model.addAttribute("cashError", "No se pudo cargar la caja.");
-        }
-    }
-
-    private void syncReportSheet(Model model, List<CashReportMonth> reports) {
-        try {
-            inventoryService.syncReportSheet(reportSheetRows(reports));
-        } catch (Exception e) {
-            log.warn("No se pudo sincronizar la hoja Reporte.", e);
-            model.addAttribute("reportSyncError", "No se pudo sincronizar la hoja Reporte.");
         }
     }
 
@@ -990,7 +979,7 @@ public class DashboardController {
                 String monthKey = monthKey(movement.getDate());
                 CashReportCardAccumulator cardReport = cardsByMonth
                         .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
-                        .computeIfAbsent(movementReportKey(movement), key -> CashReportCardAccumulator.fromMovement(movement));
+                        .computeIfAbsent(movementReportKey(movement), key -> new CashReportCardAccumulator());
 
                 if (quantity > 0) {
                     cardReport.addEntry(quantity);
@@ -1012,10 +1001,7 @@ public class DashboardController {
                     continue;
                 }
 
-                CashReportCardAccumulator cardReport = monthCards.computeIfAbsent(
-                        cashEntryReportKey(entry),
-                        key -> CashReportCardAccumulator.fromCashEntry(entry)
-                );
+                CashReportCardAccumulator cardReport = monthCards.get(cashEntryReportKey(entry));
                 if (cardReport != null) {
                     cardReport.addSaleTotal(parseCashTotal(entry.getTotal()));
                 }
@@ -1027,7 +1013,7 @@ public class DashboardController {
             CashReportAccumulator report = new CashReportAccumulator();
 
             for (CashReportCardAccumulator cardReport : monthEntry.getValue().values()) {
-                if (!cardReport.hasReportActivity()) {
+                if (!cardReport.hasEntryAndSale()) {
                     continue;
                 }
 
@@ -1057,70 +1043,6 @@ public class DashboardController {
                         maxMovementQuantity
                 ))
                 .toList();
-    }
-
-    private List<List<Object>> reportSheetRows(List<CashReportMonth> reports) {
-        List<List<Object>> rows = new ArrayList<>();
-        rows.add(List.of(
-                "Mes",
-                "Total ventas",
-                "Cartas vendidas",
-                "Cartas ingresadas",
-                "Diferencia stock",
-                "Carta",
-                "Set",
-                "Codigo",
-                "Numero",
-                "Printing",
-                "Vendidas carta",
-                "Ingresadas carta",
-                "Total ventas carta"
-        ));
-
-        if (reports == null || reports.isEmpty()) {
-            return rows;
-        }
-
-        for (CashReportMonth report : reports) {
-            if (report.cards().isEmpty()) {
-                rows.add(List.of(
-                        report.label(),
-                        report.totalSales(),
-                        report.soldQuantity(),
-                        report.enteredQuantity(),
-                        report.balanceQuantity(),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        ""
-                ));
-                continue;
-            }
-
-            for (CashReportCard card : report.cards()) {
-                rows.add(List.of(
-                        report.label(),
-                        report.totalSales(),
-                        report.soldQuantity(),
-                        report.enteredQuantity(),
-                        report.balanceQuantity(),
-                        card.name(),
-                        card.setName(),
-                        card.setCode(),
-                        card.collectorNumber(),
-                        card.printing(),
-                        card.soldQuantity(),
-                        card.enteredQuantity(),
-                        card.totalSales()
-                ));
-            }
-        }
-
-        return rows;
     }
 
     private String cashEntryReportKey(CashRegisterEntry entry) {
@@ -1179,14 +1101,6 @@ public class DashboardController {
         }
 
         return Math.max(8, Math.round(value / max * 100)) + "%";
-    }
-
-    private String percentValue(double value, double total) {
-        if (total <= 0) {
-            return "0";
-        }
-
-        return String.valueOf(Math.round(value / total * 100));
     }
 
     @GetMapping("/importar-lista")
@@ -2721,25 +2635,9 @@ public class DashboardController {
             int soldQuantity,
             int enteredQuantity,
             int balanceQuantity,
-            int movementTotal,
-            String soldShare,
-            String enteredShare,
             String salesWidth,
             String soldWidth,
-            String enteredWidth,
-            List<CashReportCard> cards
-    ) {
-    }
-
-    public record CashReportCard(
-            String name,
-            String setName,
-            String setCode,
-            String collectorNumber,
-            String printing,
-            int soldQuantity,
-            int enteredQuantity,
-            String totalSales
+            String enteredWidth
     ) {
     }
 
@@ -2747,13 +2645,11 @@ public class DashboardController {
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
-        private final List<CashReportCardAccumulator> cards = new ArrayList<>();
 
         void addCard(CashReportCardAccumulator cardReport) {
             salesTotal += cardReport.salesTotal;
             soldQuantity += cardReport.soldQuantity;
             enteredQuantity += cardReport.enteredQuantity;
-            cards.add(cardReport);
         }
 
         CashReportMonth toReport(
@@ -2762,7 +2658,6 @@ public class DashboardController {
                 double maxSales,
                 int maxMovementQuantity
         ) {
-            int movementTotal = soldQuantity + enteredQuantity;
             return new CashReportMonth(
                     key,
                     label,
@@ -2770,52 +2665,17 @@ public class DashboardController {
                     soldQuantity,
                     enteredQuantity,
                     enteredQuantity - soldQuantity,
-                    movementTotal,
-                    percentValue(soldQuantity, movementTotal),
-                    percentValue(enteredQuantity, movementTotal),
                     percent(salesTotal, maxSales),
                     percent(soldQuantity, maxMovementQuantity),
-                    percent(enteredQuantity, maxMovementQuantity),
-                    cards.stream()
-                            .sorted(Comparator
-                                    .comparingDouble((CashReportCardAccumulator card) -> card.salesTotal)
-                                    .reversed()
-                                    .thenComparing(card -> card.name))
-                            .map(CashReportCardAccumulator::toReportCard)
-                            .toList()
+                    percent(enteredQuantity, maxMovementQuantity)
             );
         }
     }
 
     private static class CashReportCardAccumulator {
-        private String name;
-        private String setName;
-        private String setCode;
-        private String collectorNumber;
-        private String printing;
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
-
-        static CashReportCardAccumulator fromMovement(InventoryMovement movement) {
-            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
-            accumulator.name = safeReportValue(movement.getName());
-            accumulator.setName = safeReportValue(movement.getSetName());
-            accumulator.setCode = safeReportValue(movement.getSetCode());
-            accumulator.collectorNumber = safeReportValue(movement.getCollectorNumber());
-            accumulator.printing = safeReportValue(movement.getPrinting());
-            return accumulator;
-        }
-
-        static CashReportCardAccumulator fromCashEntry(CashRegisterEntry entry) {
-            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
-            accumulator.name = safeReportValue(entry.getName());
-            accumulator.setName = safeReportValue(entry.getSetName());
-            accumulator.setCode = safeReportValue(entry.getSetCode());
-            accumulator.collectorNumber = safeReportValue(entry.getCollectorNumber());
-            accumulator.printing = safeReportValue(entry.getPrinting());
-            return accumulator;
-        }
 
         void addSaleTotal(double total) {
             salesTotal += total;
@@ -2829,25 +2689,8 @@ public class DashboardController {
             enteredQuantity += quantity;
         }
 
-        boolean hasReportActivity() {
-            return soldQuantity > 0 || enteredQuantity > 0 || salesTotal > 0;
-        }
-
-        CashReportCard toReportCard() {
-            return new CashReportCard(
-                    name,
-                    setName,
-                    setCode,
-                    collectorNumber,
-                    printing,
-                    soldQuantity,
-                    enteredQuantity,
-                    formatCashTotal(salesTotal)
-            );
-        }
-
-        private static String safeReportValue(String value) {
-            return value == null ? "" : value;
+        boolean hasEntryAndSale() {
+            return soldQuantity > 0 && enteredQuantity > 0;
         }
     }
 

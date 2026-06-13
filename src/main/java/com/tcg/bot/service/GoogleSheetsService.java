@@ -36,7 +36,6 @@ public class GoogleSheetsService {
     private static final String DEFAULT_INVENTORY_SHEET_NAME = "Inventario";
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
-    private static final String REPORT_SHEET_NAME = "Reporte";
 
     private final StoreSettingsService storeSettingsService;
     private final String configuredCredentialsPath;
@@ -610,39 +609,6 @@ public class GoogleSheetsService {
                 formatCashNumber(total),
                 formatCashNumber(dayTotal)
         ));
-    }
-
-    public void syncReportSheet(List<List<Object>> rows) throws Exception {
-        Sheets sheetsService = getSheetsService();
-        ensureWritableSheet(sheetsService, REPORT_SHEET_NAME);
-
-        var body = new com.google.api.services.sheets.v4.model.ValueRange()
-                .setValues(rows == null || rows.isEmpty()
-                        ? List.of(reportHeader())
-                        : rows);
-
-        sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), "'" + REPORT_SHEET_NAME + "'!A1:M", body)
-                .setValueInputOption("RAW")
-                .execute();
-    }
-
-    private List<Object> reportHeader() {
-        return List.of(
-                "Mes",
-                "Total ventas",
-                "Cartas vendidas",
-                "Cartas ingresadas",
-                "Diferencia stock",
-                "Carta",
-                "Set",
-                "Codigo",
-                "Numero",
-                "Printing",
-                "Vendidas carta",
-                "Ingresadas carta",
-                "Total ventas carta"
-        );
     }
 
     private CashRegisterEntry cashEntryFromRow(List<Object> row) {
@@ -1233,8 +1199,7 @@ public class GoogleSheetsService {
 
     private boolean isSystemSheet(String sheetTitle) {
         return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
-                || CASH_SHEET_NAME.equals(sheetTitle)
-                || REPORT_SHEET_NAME.equals(sheetTitle);
+                || CASH_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {

@@ -97,8 +97,4 @@ public class InventoryService {
     public void appendCashSale(String date, String time, InventoryCard card, int quantity) throws Exception {
         googleSheetsService.appendCashSale(date, time, card, quantity);
     }
-
-    public void syncReportSheet(List<List<Object>> rows) throws Exception {
-        googleSheetsService.syncReportSheet(rows);
-    }
 }
