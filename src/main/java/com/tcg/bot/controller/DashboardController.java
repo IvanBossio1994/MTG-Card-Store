@@ -72,6 +72,10 @@ public class DashboardController {
             Pattern.compile("[\\[(]([A-Za-z0-9]{2,8})[\\])]");
     private static final Pattern COLLECTOR_PATTERN =
             Pattern.compile("(?:#|\\s)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\\s*$");
+    private static final Pattern VARIATION_STYLE_PREFIX_PATTERN =
+            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:(?:surge\\s+foil|etched\\s+foil|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+promo|buy-a-box|b?a?b\\s+promo)\\s*-\\s*)+");
+    private static final Pattern VARIATION_STYLE_ONLY_PATTERN =
+            Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:surge\\s+foil|etched\\s+foil|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+promo|buy-a-box|b?a?b\\s+promo|normal)(?:\\s*-\\s*(?:surge\\s+foil|etched\\s+foil|foil|nonfoil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+promo|buy-a-box|b?a?b\\s+promo|normal))*$");
     private static final String ACTION_IN_STOCK = "CON STOCK";
     private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
     private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
@@ -188,6 +192,7 @@ public class DashboardController {
 
         try {
             var products = cardKingdomApiService.searchProducts(buildSearchQuery(trimmedQuery, trimmedSet, trimmedNumber));
+            products = filterProductsForNameQuery(products, trimmedQuery);
 
             if (!trimmedQuery.isBlank() && trimmedSet.isBlank() && trimmedNumber.isBlank() && products.isEmpty()) {
                 model.addAttribute(
@@ -211,6 +216,38 @@ public class DashboardController {
         }
 
         return "dashboard";
+    }
+
+    private List<CardKingdomProduct> filterProductsForNameQuery(
+            List<CardKingdomProduct> products,
+            String query
+    ) {
+        String nameQuery = searchableNameQuery(query);
+        if (nameQuery.isBlank()) {
+            return products;
+        }
+
+        String normalizedQuery = normalizeSuggestionText(nameQuery);
+        return products.stream()
+                .filter(product -> matchesSuggestion(
+                        product.getName(),
+                        searchableVariationText(product.getVariation()),
+                        normalizedQuery
+                ))
+                .toList();
+    }
+
+    private String searchableNameQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return "";
+        }
+
+        ParsedImportLine parsedLine = parseImportLine(query);
+        if (parsedLine != null) {
+            return parsedLine.name();
+        }
+
+        return query;
     }
 
     private boolean isValidSearchQuery(String query, String setFilter, String numberFilter) {
@@ -335,11 +372,12 @@ public class DashboardController {
                 }
 
                 String variation = product.getVariation();
+                String searchableVariation = searchableVariationText(variation);
                 candidates.add(new SuggestionCandidate(
                         name,
-                        variation == null ? "" : variation,
+                        searchableVariation,
                         normalizeSuggestionText(name),
-                        normalizeSuggestionText(variation),
+                        normalizeSuggestionText(searchableVariation),
                         1
                 ));
 
@@ -348,9 +386,9 @@ public class DashboardController {
                         && !normalizeSuggestionText(variationAlias).equals(normalizeSuggestionText(name))) {
                     candidates.add(new SuggestionCandidate(
                             variationAlias,
-                            name + " - " + variation,
+                            name,
                             normalizeSuggestionText(variationAlias),
-                            normalizeSuggestionText(name + " " + variation),
+                            normalizeSuggestionText(name + " " + variationAlias),
                             0
                     ));
                 }
@@ -403,14 +441,33 @@ public class DashboardController {
     }
 
     private String suggestionVariationAlias(String variation) {
+        return searchableVariationText(variation);
+    }
+
+    private String searchableVariationText(String variation) {
         if (variation == null || variation.isBlank()) {
             return "";
         }
 
-        return variation.trim()
+        String candidate = variation.trim()
                 .replaceFirst("^\\d+\\s*-\\s*", "")
-                .replaceFirst("(?i)^(surge\\s+foil|foil|etched\\s+foil|borderless|extended\\s+art|showcase)\\s*-\\s*", "")
                 .trim();
+
+        if (isEditionStyleText(candidate)) {
+            return "";
+        }
+
+        candidate = VARIATION_STYLE_PREFIX_PATTERN.matcher(candidate)
+                .replaceFirst("")
+                .trim();
+
+        return isEditionStyleText(candidate) ? "" : candidate;
+    }
+
+    private boolean isEditionStyleText(String value) {
+        return value == null
+                || value.isBlank()
+                || VARIATION_STYLE_ONLY_PATTERN.matcher(value.trim()).matches();
     }
 
     @GetMapping("/configuracion")
@@ -1527,7 +1584,7 @@ public class DashboardController {
                         return false;
                     }
 
-                    String variation = normalizeImportedName(product.getVariation());
+                    String variation = normalizeImportedName(searchableVariationText(product.getVariation()));
                     String productName = normalizeImportedName(product.getName());
                     return (!variation.isBlank()
                             && (variation.contains(requestedName) || requestedName.contains(variation)))
@@ -1591,7 +1648,7 @@ public class DashboardController {
 
         for (CardKingdomProduct product : products) {
             indexImportedProduct(productsByName, product, product.getName());
-            indexImportedProduct(productsByName, product, product.getVariation());
+            indexImportedProduct(productsByName, product, searchableVariationText(product.getVariation()));
         }
 
         return productsByName;
@@ -1686,15 +1743,13 @@ public class DashboardController {
     }
 
     private List<String> importVariationNameCandidates(String variation) {
-        String normalizedVariation = normalizeImportedName(variation);
+        String normalizedVariation = normalizeImportedName(searchableVariationText(variation));
         if (normalizedVariation.isBlank()) {
             return List.of();
         }
 
         List<String> candidates = new ArrayList<>();
-        addImportCandidate(candidates, normalizedVariation.replaceFirst("^\\d+\\s*-\\s*", ""));
-        addImportCandidate(candidates, normalizedVariation.replaceFirst("^\\d+\\s*-\\s*(?:surge\\s+foil|foil|etched\\s+foil|borderless|extended\\s+art|showcase)\\s*-\\s*", ""));
-        addImportCandidate(candidates, normalizedVariation.replaceFirst("^(?:surge\\s+foil|foil|etched\\s+foil|borderless|extended\\s+art|showcase)\\s*-\\s*", ""));
+        addImportCandidate(candidates, normalizedVariation);
         return candidates;
     }
 

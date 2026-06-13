@@ -234,6 +234,29 @@
 </main>
 
 <div th:replace="~{fragments/layout :: loading('Sincronizando inventario', 'Conectando el Sheet con la app y actualizando precios...')}"></div>
+<div id="stock-delete-dialog"
+     class="app-confirm-overlay"
+     hidden
+     aria-hidden="true"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="stock-delete-title">
+    <div class="app-confirm-modal">
+        <button class="tutorial-close"
+                type="button"
+                data-stock-delete-cancel
+                aria-label="Cerrar">×</button>
+        <p class="eyebrow">Confirmar borrado</p>
+        <h2 id="stock-delete-title" data-stock-delete-title>Eliminar carta del Sheet</h2>
+        <div class="tutorial-copy">
+            <p>Esta carta ya esta en 0. Si continuas, se va a eliminar tambien de la pestaña Inventario del Google Sheet.</p>
+        </div>
+        <div class="tutorial-actions app-confirm-actions">
+            <button class="secondary-button" type="button" data-stock-delete-cancel>Cancelar</button>
+            <button class="primary-button danger-button" type="button" data-stock-delete-confirm>Eliminar del Sheet</button>
+        </div>
+    </div>
+</div>
 <div id="tutorial-overlay"
      class="tutorial-overlay"
      th:if="${showTutorial}">

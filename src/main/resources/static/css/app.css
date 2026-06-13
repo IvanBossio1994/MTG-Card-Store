@@ -1205,6 +1205,15 @@ tr.in-stock {
     color: var(--red);
 }
 
+.danger-button {
+    border-color: #c2410c;
+    background: #dc2626;
+}
+
+.danger-button:hover {
+    background: #b91c1c;
+}
+
 .empty {
     color: var(--muted);
     text-align: center;
@@ -2228,6 +2237,21 @@ tr.in-stock {
     padding: 24px;
 }
 
+.app-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(3px);
+}
+
+.app-confirm-overlay[hidden] {
+    display: none;
+}
+
 .tutorial-modal {
     position: relative;
     width: 100%;
@@ -2238,6 +2262,23 @@ tr.in-stock {
     border-radius: 18px;
     padding: 42px;
     box-shadow: 0 30px 80px rgba(0,0,0,.35);
+}
+
+.app-confirm-modal {
+    position: relative;
+    width: min(480px, 100%);
+    padding: 36px;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 30px 80px rgba(0,0,0,.35);
+}
+
+.app-confirm-modal h2 {
+    margin: 8px 0 14px;
+}
+
+.app-confirm-actions {
+    margin-top: 22px;
 }
 
 .tutorial-close {

@@ -355,27 +355,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    const clearSearchButton = document.querySelector("[data-clear-search]");
-
-    if (clearSearchButton && searchInputs.length > 0) {
-        clearSearchButton.addEventListener("click", event => {
-            event.preventDefault();
-
-            searchInputs.forEach(input => {
-                input.value = "";
-            });
-
-            searchControl?.classList.remove("invalid");
-            searchInput?.removeAttribute("aria-invalid");
-
-            if (searchFormatError) {
-                searchFormatError.hidden = true;
-            }
-
-            searchInput?.focus();
-        });
-    }
-
     const cardSuggestions = document.getElementById("card-suggestions");
 
     if (searchInput && cardSuggestions) {
@@ -537,6 +516,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const stockSummary = document.getElementById("stock-summary");
     const stockFilterButtons = document.querySelectorAll(".stock-filter-button");
+    const stockDeleteDialog = document.getElementById("stock-delete-dialog");
 
     stockFilterButtons.forEach(stockFilterButton => {
         const table = stockFilterButton.closest("table");
@@ -923,8 +903,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const deleteWhenZero = !increase && currentValue <= 0;
 
                     if (deleteWhenZero) {
-                        const confirmed = window.confirm(
-                            "Esta carta ya esta en 0. Si continuas, tambien se va a eliminar del Sheet."
+                        const confirmed = await confirmStockDelete(
+                            button.closest("tr")?.querySelector(".card-name-cell")?.textContent?.trim()
                         );
 
                         if (!confirmed) {
@@ -1122,6 +1102,65 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         updateStockSummary();
+    }
+
+    function confirmStockDelete(cardName) {
+        if (!stockDeleteDialog) {
+            return Promise.resolve(window.confirm(
+                "Esta carta ya esta en 0. Si continuas, tambien se va a eliminar del Sheet."
+            ));
+        }
+
+        const title = stockDeleteDialog.querySelector("[data-stock-delete-title]");
+        const closeButtons = stockDeleteDialog.querySelectorAll("[data-stock-delete-cancel]");
+        const confirmButton = stockDeleteDialog.querySelector("[data-stock-delete-confirm]");
+
+        if (title) {
+            title.textContent = cardName
+                    ? `Eliminar "${cardName}" del Sheet`
+                    : "Eliminar carta del Sheet";
+        }
+
+        stockDeleteDialog.hidden = false;
+        stockDeleteDialog.setAttribute("aria-hidden", "false");
+
+        return new Promise(resolve => {
+            let resolved = false;
+
+            const finish = value => {
+                if (resolved) {
+                    return;
+                }
+
+                resolved = true;
+                stockDeleteDialog.hidden = true;
+                stockDeleteDialog.setAttribute("aria-hidden", "true");
+                confirmButton?.removeEventListener("click", confirm);
+                closeButtons.forEach(button => button.removeEventListener("click", cancel));
+                stockDeleteDialog.removeEventListener("click", backdropCancel);
+                document.removeEventListener("keydown", escapeCancel);
+                resolve(value);
+            };
+
+            const confirm = () => finish(true);
+            const cancel = () => finish(false);
+            const backdropCancel = event => {
+                if (event.target === stockDeleteDialog) {
+                    finish(false);
+                }
+            };
+            const escapeCancel = event => {
+                if (event.key === "Escape") {
+                    finish(false);
+                }
+            };
+
+            confirmButton?.addEventListener("click", confirm);
+            closeButtons.forEach(button => button.addEventListener("click", cancel));
+            stockDeleteDialog.addEventListener("click", backdropCancel);
+            document.addEventListener("keydown", escapeCancel);
+            confirmButton?.focus();
+        });
     }
 
 // ---- Toast ----
