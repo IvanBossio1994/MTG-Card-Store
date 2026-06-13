@@ -2412,6 +2412,42 @@ public class DashboardController {
         latestUpdates = List.copyOf(refreshed);
     }
 
+    private void removeLatestUpdateForDeletedRow(int deletedRowIndex) {
+        if (latestUpdates.isEmpty()) {
+            return;
+        }
+
+        List<UpdateResult> refreshed = new ArrayList<>();
+
+        for (UpdateResult update : latestUpdates) {
+            if (update.rowIndex() == deletedRowIndex) {
+                continue;
+            }
+
+            if (update.rowIndex() > deletedRowIndex) {
+                refreshed.add(new UpdateResult(
+                        update.name(),
+                        update.edition(),
+                        update.setCode(),
+                        update.collectorNumber(),
+                        update.localPrice(),
+                        update.ckPriceUsd(),
+                        update.action(),
+                        update.rowIndex() - 1,
+                        update.stockQuantity(),
+                        update.writeRequired()
+                ));
+            } else {
+                refreshed.add(update);
+            }
+        }
+
+        latestUpdates = List.copyOf(refreshed);
+        latestUpdatedCount = refreshed.stream()
+                .filter(UpdateResult::writeRequired)
+                .count();
+    }
+
     private void refreshLatestUpdateForCard(InventoryCard card) {
         if (latestUpdates.isEmpty() || card == null || card.getRowIndex() <= 0) {
             return;
@@ -2818,6 +2854,7 @@ public class DashboardController {
     public ResponseEntity<?> updateQuantity(
             @RequestParam int rowIndex,
             @RequestParam int change,
+            @RequestParam(defaultValue = "false") boolean deleteWhenZero,
             HttpServletRequest request
     ) {
         try {
@@ -2828,6 +2865,23 @@ public class DashboardController {
             }
 
             int previousQuantity = quantity(card);
+
+            if (previousQuantity <= 0 && change < 0) {
+                if (!deleteWhenZero) {
+                    return ResponseEntity.badRequest()
+                            .body(new ApiMessage(false, "La carta ya esta en 0. Confirma el borrado para eliminarla del Sheet."));
+                }
+
+                inventoryService.deleteInventoryRow(rowIndex);
+                removeLatestUpdateForDeletedRow(rowIndex);
+
+                return ResponseEntity.ok(new StockDeleteResponse(
+                        rowIndex,
+                        true,
+                        "Carta eliminada del Sheet"
+                ));
+            }
+
             int newQuantity = Math.max(previousQuantity + change, 0);
 
             if (previousQuantity != newQuantity) {
@@ -2968,6 +3022,13 @@ public class DashboardController {
             int rowIndex,
             int stockQuantity,
             String action,
+            String message
+    ) {
+    }
+
+    public record StockDeleteResponse(
+            int rowIndex,
+            boolean deleted,
             String message
     ) {
     }

@@ -310,6 +310,34 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public void deleteInventoryRow(int rowIndex) throws Exception {
+        if (rowIndex <= 1) {
+            throw new IllegalArgumentException("No se puede eliminar la fila de encabezados del inventario.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        Integer sheetId = inventorySheetId(sheetsService);
+
+        if (sheetId == null) {
+            throw new IllegalStateException("No se encontro la hoja de inventario configurada.");
+        }
+
+        var deleteRequest = new com.google.api.services.sheets.v4.model.Request()
+                .setDeleteDimension(new com.google.api.services.sheets.v4.model.DeleteDimensionRequest()
+                        .setRange(new com.google.api.services.sheets.v4.model.DimensionRange()
+                                .setSheetId(sheetId)
+                                .setDimension("ROWS")
+                                .setStartIndex(rowIndex - 1)
+                                .setEndIndex(rowIndex)));
+
+        var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                .setRequests(List.of(deleteRequest));
+
+        sheetsService.spreadsheets()
+                .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
+                .execute();
+    }
+
     public int appendInventoryCard(InventoryCard card) throws Exception {
         Sheets sheetsService = getSheetsService();
         SheetColumns columns = sheetColumns(sheetsService);
@@ -920,6 +948,7 @@ public class GoogleSheetsService {
 
         SheetColumns columns = sheetColumns(new ArrayList<>(header));
         List<com.google.api.services.sheets.v4.model.Request> requests = new ArrayList<>();
+        addLeftAlignColumnRequest(requests, sheetId, columns.index(ColumnKey.QUANTITY));
         addLeftAlignColumnRequest(requests, sheetId, columns.index(ColumnKey.LOCAL_PRICE));
         addLeftAlignColumnRequest(requests, sheetId, columns.index(ColumnKey.CK_PRICE_USD));
 

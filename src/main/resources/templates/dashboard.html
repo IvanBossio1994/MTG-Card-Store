@@ -53,6 +53,7 @@
                 <a class="clear-search-button"
                    th:if="${(query != null && query != '') || (searchSet != null && searchSet != '') || (searchNumber != null && searchNumber != '')}"
                    th:href="@{/}"
+                   data-clear-search
                    aria-label="Borrar búsqueda"
                    title="Borrar búsqueda">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -106,7 +107,7 @@
                                     class="stock-button decrease"
                                     th:attr="data-row=${result.rowIndex}"
                                     th:disabled="${result.rowIndex <= 0}"
-                                    th:title="${result.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : 'Registrar unidad vendida'">
+                                    th:title="${result.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : (${result.stockQuantity <= 0} ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')">
                                 -
                             </button>
                             <span class="stock-value"
@@ -191,7 +192,7 @@
                                         class="stock-button decrease"
                                         th:attr="data-row=${update.rowIndex}"
                                         th:disabled="${update.rowIndex <= 0}"
-                                        th:title="${update.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : 'Registrar unidad vendida'">
+                                        th:title="${update.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : (${update.stockQuantity <= 0} ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')">
                                     -
                                 </button>
                                 <span class="stock-value"

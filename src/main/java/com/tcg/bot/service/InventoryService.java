@@ -54,6 +54,10 @@ public class InventoryService {
         googleSheetsService.updateQuantity(rowIndex, change);
     }
 
+    public void deleteInventoryRow(int rowIndex) throws Exception {
+        googleSheetsService.deleteInventoryRow(rowIndex);
+    }
+
     public int appendInventoryCard(InventoryCard card) throws Exception {
         return googleSheetsService.appendInventoryCard(card);
     }

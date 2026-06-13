@@ -355,6 +355,27 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    const clearSearchButton = document.querySelector("[data-clear-search]");
+
+    if (clearSearchButton && searchInputs.length > 0) {
+        clearSearchButton.addEventListener("click", event => {
+            event.preventDefault();
+
+            searchInputs.forEach(input => {
+                input.value = "";
+            });
+
+            searchControl?.classList.remove("invalid");
+            searchInput?.removeAttribute("aria-invalid");
+
+            if (searchFormatError) {
+                searchFormatError.hidden = true;
+            }
+
+            searchInput?.focus();
+        });
+    }
+
     const cardSuggestions = document.getElementById("card-suggestions");
 
     if (searchInput && cardSuggestions) {
@@ -899,6 +920,18 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
+                    const deleteWhenZero = !increase && currentValue <= 0;
+
+                    if (deleteWhenZero) {
+                        const confirmed = window.confirm(
+                            "Esta carta ya esta en 0. Si continuas, tambien se va a eliminar del Sheet."
+                        );
+
+                        if (!confirmed) {
+                            return;
+                        }
+                    }
+
                     const response = await fetch(
                         "/inventory/quantity",
                         {
@@ -910,7 +943,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             body:
                                 new URLSearchParams({
                                     rowIndex,
-                                    change
+                                    change,
+                                    deleteWhenZero
                                 })
                         }
                     );
@@ -926,6 +960,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     const result = await response.json();
                     const updatedRowIndex = String(result.rowIndex || rowIndex);
+
+                    if (result.deleted) {
+                        removeStockRows(updatedRowIndex);
+                        showToast(
+                            result.message || "Carta eliminada del Sheet",
+                            "success"
+                        );
+                        return;
+                    }
+
                     const updatedQuantity = Number.isFinite(Number(result.stockQuantity))
                             ? Number(result.stockQuantity)
                             : Math.max(currentValue + change, 0);
@@ -992,9 +1036,9 @@ document.addEventListener("DOMContentLoaded", () => {
             relatedButton.dataset.row = rowIndex;
 
             if (relatedButton.classList.contains("decrease")) {
-                relatedButton.disabled = normalizedQuantity <= 0;
+                relatedButton.disabled = false;
                 relatedButton.title = normalizedQuantity <= 0
-                        ? "No hay unidades para vender"
+                        ? "Eliminar carta del Sheet"
                         : "Registrar unidad vendida";
             }
 
@@ -1044,6 +1088,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     row.hidden = false;
                 }
+            }
+        });
+
+        updateStockSummary();
+    }
+
+    function removeStockRows(rowIndex) {
+        if (!rowIndex || rowIndex === "0") {
+            return;
+        }
+
+        const removedIndex = Number(rowIndex);
+        const relatedButtons = document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`);
+        const rows = new Set();
+
+        relatedButtons.forEach(button => {
+            const row = button.closest("tr");
+
+            if (row) {
+                rows.add(row);
+            }
+        });
+
+        rows.forEach(row => row.remove());
+
+        document.querySelectorAll(".stock-button[data-row]").forEach(button => {
+            const currentIndex = Number(button.dataset.row);
+
+            if (Number.isFinite(currentIndex) && currentIndex > removedIndex) {
+                button.dataset.row = String(currentIndex - 1);
             }
         });
 
