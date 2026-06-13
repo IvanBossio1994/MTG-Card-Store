@@ -7,7 +7,6 @@ import com.tcg.bot.dto.SearchQuery;
 import com.tcg.bot.model.InventoryCard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import jakarta.annotation.PostConstruct;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -18,6 +17,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 public class CardKingdomApiService {
@@ -34,9 +34,6 @@ public class CardKingdomApiService {
             new ObjectMapper();
 
     private final StoreSettingsService storeSettingsService;
-    private volatile CardKingdomPriceListResponse cachedPriceList;
-    private volatile Path cachedPriceListPath;
-    private volatile FileTime cachedPriceListModified;
 
     // ---- Duración cache ----
     private static final long CACHE_HOURS = 1;
@@ -45,17 +42,18 @@ public class CardKingdomApiService {
         this.storeSettingsService = storeSettingsService;
     }
 
-    @PostConstruct
-    public void warmPriceListCache() {
-        Thread warmupThread = new Thread(() -> {
-            try {
-                getPriceList(false);
-            } catch (Exception e) {
-                log.debug("No se pudo precalentar el cache CK.", e);
+    public Optional<Instant> getPriceListLastUpdated() {
+        try {
+            Path cachePath = storeSettingsService.getCardKingdomCachePath();
+            if (!Files.exists(cachePath)) {
+                return Optional.empty();
             }
-        }, "ck-pricelist-cache-warmup");
-        warmupThread.setDaemon(true);
-        warmupThread.start();
+
+            return Optional.of(Files.getLastModifiedTime(cachePath).toInstant());
+        } catch (Exception e) {
+            log.warn("No se pudo leer la fecha del cache local de Card Kingdom.", e);
+            return Optional.empty();
+        }
     }
 
     /**
@@ -68,17 +66,11 @@ public class CardKingdomApiService {
     /**
      * Obtiene pricelist CK, permitiendo forzar una descarga actualizada.
      */
-    public synchronized CardKingdomPriceListResponse getPriceList(boolean forceRefresh) {
+    public CardKingdomPriceListResponse getPriceList(boolean forceRefresh) {
 
         try {
 
             Path cachePath = storeSettingsService.getCardKingdomCachePath();
-
-            if (!forceRefresh
-                    && cachedPriceList != null
-                    && cachePath.equals(cachedPriceListPath)) {
-                return cachedPriceList;
-            }
 
             // ---- Existe cache ----
             if (!forceRefresh && Files.exists(cachePath)) {
@@ -87,12 +79,6 @@ public class CardKingdomApiService {
                         Files.getLastModifiedTime(
                                 cachePath
                         );
-
-                if (cachedPriceList != null
-                        && cachePath.equals(cachedPriceListPath)
-                        && lastModified.equals(cachedPriceListModified)) {
-                    return cachedPriceList;
-                }
 
                 Instant cacheInstant =
                         lastModified.toInstant();
@@ -113,12 +99,10 @@ public class CardKingdomApiService {
                                     cachePath
                             );
 
-                    CardKingdomPriceListResponse cachedResponse = objectMapper.readValue(
+                    return objectMapper.readValue(
                             cachedJson,
                             CardKingdomPriceListResponse.class
                     );
-                    rememberPriceList(cachePath, lastModified, cachedResponse);
-                    return cachedResponse;
                 }
 
                 log.info("Cache vencida. Re descargando...");
@@ -162,12 +146,10 @@ public class CardKingdomApiService {
             log.info("Cache CK guardada.");
 
             // ---- Parsear ----
-            CardKingdomPriceListResponse downloadedResponse = objectMapper.readValue(
+            return objectMapper.readValue(
                     json,
                     CardKingdomPriceListResponse.class
             );
-            rememberPriceList(cachePath, Files.getLastModifiedTime(cachePath), downloadedResponse);
-            return downloadedResponse;
 
         } catch (Exception e) {
 
@@ -184,26 +166,14 @@ public class CardKingdomApiService {
             }
 
             log.info("Usando cache CK existente porque no se pudo descargar la pricelist.");
-            CardKingdomPriceListResponse cachedResponse = objectMapper.readValue(
+            return objectMapper.readValue(
                     Files.readString(cachePath),
                     CardKingdomPriceListResponse.class
             );
-            rememberPriceList(cachePath, Files.getLastModifiedTime(cachePath), cachedResponse);
-            return cachedResponse;
         } catch (Exception cacheException) {
             log.warn("No se pudo leer el cache local de Card Kingdom.", cacheException);
             return null;
         }
-    }
-
-    private void rememberPriceList(
-            Path cachePath,
-            FileTime lastModified,
-            CardKingdomPriceListResponse response
-    ) {
-        cachedPriceListPath = cachePath;
-        cachedPriceListModified = lastModified;
-        cachedPriceList = response;
     }
 
     /**

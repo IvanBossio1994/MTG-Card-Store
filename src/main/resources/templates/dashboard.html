@@ -142,6 +142,10 @@
                 <div>
                     <p class="eyebrow">Sincronización con la app</p>
                     <h2>Sheet sincronizado</h2>
+                    <p class="section-meta"
+                       th:text="${priceListLastUpdated != null && priceListLastUpdated != '' ? 'Lista de precios actualizada: ' + priceListLastUpdated : 'Lista de precios sin actualizar todavia'}">
+                        Lista de precios sin actualizar todavia
+                    </p>
                 </div>
                 <span class="badge" th:if="${updatePerformed == true}"
                       th:text="${updatedCount + ' filas sincronizadas'}">0 filas</span>
