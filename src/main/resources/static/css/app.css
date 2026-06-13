@@ -1854,6 +1854,7 @@ tr.in-stock {
 .updates td {
     padding-right: 10px;
     padding-left: 10px;
+    text-align: center;
 }
 
 .updates th:nth-child(1),
@@ -1865,6 +1866,7 @@ tr.in-stock {
 .updates td:nth-child(2) {
     width: 20%;
     min-width: 170px;
+    text-align: left;
     white-space: normal;
 }
 
@@ -1872,6 +1874,7 @@ tr.in-stock {
 .updates td:nth-child(3) {
     width: 17%;
     min-width: 145px;
+    text-align: left;
     white-space: normal;
 }
 
@@ -1887,7 +1890,6 @@ tr.in-stock {
 .updates th:nth-child(7),
 .updates td:nth-child(7) {
     width: 118px;
-    text-align: right;
 }
 
 .updates th:nth-child(8),
@@ -1895,13 +1897,9 @@ tr.in-stock {
     width: 118px;
 }
 
-.updates th:nth-child(9),
-.updates td:nth-child(9) {
-    width: 104px;
-}
-
 .updates .stock-controls {
     gap: 6px;
+    justify-content: center;
 }
 
 .updates .stock-button {
