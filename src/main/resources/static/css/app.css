@@ -1297,6 +1297,83 @@ tr.in-stock {
     width: fit-content;
 }
 
+.movements-page {
+    position: relative;
+}
+
+.movements-page-locked {
+    min-height: calc(100vh - 72px);
+}
+
+.movements-page-locked > :not(.movement-lock-layer) {
+    filter: blur(7px);
+    opacity: 0.72;
+    pointer-events: none;
+    user-select: none;
+}
+
+.movement-lock-layer {
+    position: fixed;
+    z-index: 70;
+    top: 72px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(2px);
+}
+
+.movement-lock-dialog {
+    width: min(100%, 460px);
+    padding: 24px;
+    border: 1px solid rgba(228, 231, 236, 0.86);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 24px 70px rgba(16, 24, 40, 0.22);
+}
+
+.movement-lock-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.movement-lock-head .eyebrow {
+    margin-bottom: 4px;
+}
+
+.movement-lock-head h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.15;
+}
+
+.movement-lock-copy {
+    margin: 0 0 18px;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.movement-lock-dialog .alert {
+    margin: 0 0 14px;
+}
+
+.movement-lock-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.movement-lock-actions .secondary-button,
+.movement-lock-actions .primary-button {
+    min-height: 44px;
+}
+
 .movement-tabs-panel {
     display: grid;
     gap: 18px;

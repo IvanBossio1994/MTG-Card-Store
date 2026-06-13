@@ -15,7 +15,7 @@
         <div class="hero-copy">
             <p class="eyebrow">Acceso protegido</p>
             <h1>Movimientos</h1>
-            <p class="supporting">Ingresa la contrasena para revisar movimientos, caja y reporte.</p>
+            <p class="supporting">Ingresa la contraseña para revisar movimientos, caja y reporte.</p>
         </div>
     </section>
 
@@ -29,7 +29,7 @@
                 </svg>
             </span>
             <div>
-                <p class="eyebrow">Contrasena requerida</p>
+                <p class="eyebrow">Contraseña requerida</p>
                 <h2>Desbloquear movimientos</h2>
             </div>
         </div>
@@ -39,7 +39,7 @@
         <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}">
             <input type="hidden" name="returnTo" th:value="${returnTo}">
             <div class="movement-access-field">
-                <label for="movement-password">Contrasena</label>
+                <label for="movement-password">Contraseña</label>
                 <input id="movement-password" name="password" type="password" autocomplete="current-password" required autofocus>
             </div>
             <button class="primary-button" type="submit">Desbloquear</button>

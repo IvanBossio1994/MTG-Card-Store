@@ -336,11 +336,7 @@ public class DashboardController {
             Model model
     ) {
         addBaseModel(model, "");
-
-        if (!isMovementsUnlocked(request.getSession(false))) {
-            model.addAttribute("returnTo", movementAccessReturnPath(request));
-            return "movement-access";
-        }
+        boolean movementsLocked = !isMovementsUnlocked(request.getSession(false));
 
         String selectedMovementDate = movementDate == null ? "" : movementDate.trim();
         String selectedCashDate = cashDate == null ? "" : cashDate.trim();
@@ -349,6 +345,11 @@ public class DashboardController {
         model.addAttribute("selectedMovementDate", selectedMovementDate);
         model.addAttribute("selectedCashDate", selectedCashDate);
         model.addAttribute("activeTab", activeTab);
+
+        if (movementsLocked) {
+            addLockedMovementPreviewModel(model, request);
+            return "movements";
+        }
 
         if ("true".equalsIgnoreCase(movementFilter) && selectedMovementDate.isBlank()) {
             model.addAttribute("movementDateError", "Elegi una fecha para filtrar movimientos.");
@@ -368,6 +369,7 @@ public class DashboardController {
             model.addAttribute("cashTodayTotal", "0");
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
+            addMovementLockModel(model, movementsLocked, request);
             return "movements";
         }
 
@@ -409,7 +411,28 @@ public class DashboardController {
         }
 
         addCashRegisterModel(model, selectedCashDate, allMovements);
+        addMovementLockModel(model, movementsLocked, request);
         return "movements";
+    }
+
+    private void addMovementLockModel(Model model, boolean movementsLocked, HttpServletRequest request) {
+        model.addAttribute("movementsLocked", movementsLocked);
+        if (movementsLocked) {
+            model.addAttribute("returnTo", movementAccessReturnPath(request));
+        }
+    }
+
+    private void addLockedMovementPreviewModel(Model model, HttpServletRequest request) {
+        model.addAttribute("movements", List.of());
+        model.addAttribute("movementGroups", List.of());
+        model.addAttribute("movementCount", 0);
+        model.addAttribute("movementCountLabel", "movimientos hoy");
+        model.addAttribute("cashEntries", List.of());
+        model.addAttribute("cashGroups", List.of());
+        model.addAttribute("cashTodayTotal", "0");
+        model.addAttribute("cashSelectedTotal", "0");
+        model.addAttribute("cashReportMonths", List.of());
+        addMovementLockModel(model, true, request);
     }
 
     @PostMapping("/movimientos/acceso")
@@ -424,7 +447,7 @@ public class DashboardController {
             return "redirect:" + safeMovementAccessReturnPath(returnTo);
         }
 
-        redirectAttributes.addFlashAttribute("accessError", "Contrasena incorrecta.");
+        redirectAttributes.addFlashAttribute("accessError", "Contraseña incorrecta.");
         return "redirect:" + safeMovementAccessReturnPath(returnTo);
     }
 

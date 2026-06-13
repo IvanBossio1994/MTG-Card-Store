@@ -10,7 +10,7 @@
 <body>
 <header th:replace="~{fragments/layout :: topbar('Historial de stock')}"></header>
 <div th:replace="~{fragments/layout :: menu('movements')}"></div>
-<main class="page">
+<main class="page movements-page" th:classappend="${movementsLocked} ? ' movements-page-locked' : ''">
     <section class="hero">
         <div class="hero-copy">
             <p class="eyebrow">Historial</p>
@@ -273,6 +273,44 @@
                     </div>
                 </article>
             </div>
+        </div>
+    </section>
+
+    <section class="movement-lock-layer" th:if="${movementsLocked}" role="dialog" aria-modal="true"
+             aria-labelledby="movement-lock-title" aria-describedby="movement-lock-copy">
+        <div class="movement-lock-dialog">
+            <div class="movement-lock-head">
+                <span class="movement-access-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                </span>
+                <div>
+                    <p class="eyebrow">Módulo pago</p>
+                    <h2 id="movement-lock-title">Movimientos bloqueados</h2>
+                </div>
+            </div>
+
+            <p id="movement-lock-copy" class="movement-lock-copy">
+                Activa el acceso para ver movimientos, caja diaria y reportes de ventas.
+            </p>
+
+            <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
+
+            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}">
+                <input type="hidden" name="returnTo" th:value="${returnTo}">
+                <div class="movement-access-field">
+                    <label for="movement-password">Clave de acceso</label>
+                    <input id="movement-password" name="password" type="password"
+                           autocomplete="current-password" required autofocus>
+                </div>
+                <div class="movement-lock-actions">
+                    <button class="primary-button" type="submit">Desbloquear</button>
+                    <a class="secondary-button link-button" th:href="@{/}">Volver al inicio</a>
+                </div>
+            </form>
         </div>
     </section>
 </main>
