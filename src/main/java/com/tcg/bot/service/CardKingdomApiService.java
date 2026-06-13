@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 public class CardKingdomApiService {
@@ -39,6 +40,20 @@ public class CardKingdomApiService {
 
     public CardKingdomApiService(StoreSettingsService storeSettingsService) {
         this.storeSettingsService = storeSettingsService;
+    }
+
+    public Optional<Instant> getPriceListLastUpdated() {
+        try {
+            Path cachePath = storeSettingsService.getCardKingdomCachePath();
+            if (!Files.exists(cachePath)) {
+                return Optional.empty();
+            }
+
+            return Optional.of(Files.getLastModifiedTime(cachePath).toInstant());
+        } catch (Exception e) {
+            log.warn("No se pudo leer la fecha del cache local de Card Kingdom.", e);
+            return Optional.empty();
+        }
     }
 
     /**
