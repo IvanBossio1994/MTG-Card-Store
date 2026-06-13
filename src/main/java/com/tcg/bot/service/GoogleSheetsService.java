@@ -36,6 +36,7 @@ public class GoogleSheetsService {
     private static final String DEFAULT_INVENTORY_SHEET_NAME = "Inventario";
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
+    private static final String REPORT_SHEET_NAME = "Reporte";
 
     private final StoreSettingsService storeSettingsService;
     private final String configuredCredentialsPath;
@@ -611,6 +612,39 @@ public class GoogleSheetsService {
         ));
     }
 
+    public void syncReportSheet(List<List<Object>> rows) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureWritableSheet(sheetsService, REPORT_SHEET_NAME);
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(rows == null || rows.isEmpty()
+                        ? List.of(reportHeader())
+                        : rows);
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), "'" + REPORT_SHEET_NAME + "'!A1:M", body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    private List<Object> reportHeader() {
+        return List.of(
+                "Mes",
+                "Total ventas",
+                "Cartas vendidas",
+                "Cartas ingresadas",
+                "Diferencia stock",
+                "Carta",
+                "Set",
+                "Codigo",
+                "Numero",
+                "Printing",
+                "Vendidas carta",
+                "Ingresadas carta",
+                "Total ventas carta"
+        );
+    }
+
     private CashRegisterEntry cashEntryFromRow(List<Object> row) {
         CashRegisterEntry entry = new CashRegisterEntry();
         String thirdColumn = getColumnValue(row, 2);
@@ -842,6 +876,7 @@ public class GoogleSheetsService {
 
         if (!exists && products != null && !products.isEmpty()
                 && migrateExistingInventoryFromAnySheetIfNeeded(sheetsService, sheetTitles, products, inventorySheetName)) {
+            formatInventoryPriceColumns(sheetsService, inventoryHeader());
             return;
         }
 
@@ -875,6 +910,7 @@ public class GoogleSheetsService {
                 : values.get(0);
 
         if (migrateExistingInventorySheetIfNeeded(sheetsService, header, products)) {
+            formatInventoryPriceColumns(sheetsService, inventoryHeader());
             return;
         }
 
@@ -882,6 +918,7 @@ public class GoogleSheetsService {
 
         List<String> updatedHeader = completedInventoryHeader(header);
         if (sameHeader(header, updatedHeader)) {
+            formatInventoryPriceColumns(sheetsService, header);
             return;
         }
 
@@ -905,6 +942,73 @@ public class GoogleSheetsService {
                     )
                     .execute();
         }
+
+        formatInventoryPriceColumns(sheetsService, updatedHeader);
+    }
+
+    private void formatInventoryPriceColumns(Sheets sheetsService, List<?> header) throws Exception {
+        Integer sheetId = configuredInventorySheetId(sheetsService);
+        if (sheetId == null) {
+            return;
+        }
+
+        SheetColumns columns = sheetColumns(new ArrayList<>(header));
+        List<com.google.api.services.sheets.v4.model.Request> requests = new ArrayList<>();
+        addLeftAlignColumnRequest(requests, sheetId, columns.index(ColumnKey.LOCAL_PRICE));
+        addLeftAlignColumnRequest(requests, sheetId, columns.index(ColumnKey.CK_PRICE_USD));
+
+        if (requests.isEmpty()) {
+            return;
+        }
+
+        var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                .setRequests(requests);
+
+        sheetsService.spreadsheets()
+                .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
+                .execute();
+    }
+
+    private void addLeftAlignColumnRequest(
+            List<com.google.api.services.sheets.v4.model.Request> requests,
+            int sheetId,
+            int columnIndex
+    ) {
+        if (columnIndex < 0) {
+            return;
+        }
+
+        requests.add(new com.google.api.services.sheets.v4.model.Request()
+                .setRepeatCell(new com.google.api.services.sheets.v4.model.RepeatCellRequest()
+                        .setRange(new com.google.api.services.sheets.v4.model.GridRange()
+                                .setSheetId(sheetId)
+                                .setStartRowIndex(1)
+                                .setStartColumnIndex(columnIndex)
+                                .setEndColumnIndex(columnIndex + 1))
+                        .setCell(new com.google.api.services.sheets.v4.model.CellData()
+                                .setUserEnteredFormat(new com.google.api.services.sheets.v4.model.CellFormat()
+                                        .setHorizontalAlignment("LEFT")))
+                        .setFields("userEnteredFormat.horizontalAlignment")));
+    }
+
+    private Integer configuredInventorySheetId(Sheets sheetsService) throws Exception {
+        var spreadsheet = sheetsService.spreadsheets()
+                .get(storeSettingsService.getSpreadsheetId())
+                .setFields("sheets.properties(sheetId,title)")
+                .execute();
+
+        String inventorySheetName = storeSettingsService.getInventorySheetName();
+
+        if (spreadsheet.getSheets() == null) {
+            return null;
+        }
+
+        return spreadsheet.getSheets()
+                .stream()
+                .filter(sheet -> inventorySheetName.equals(sheet.getProperties().getTitle()))
+                .map(sheet -> sheet.getProperties().getSheetId())
+                .findFirst()
+                .orElse(null);
     }
 
     private boolean migrateExistingInventorySheetIfNeeded(
@@ -1129,7 +1233,8 @@ public class GoogleSheetsService {
 
     private boolean isSystemSheet(String sheetTitle) {
         return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
-                || CASH_SHEET_NAME.equals(sheetTitle);
+                || CASH_SHEET_NAME.equals(sheetTitle)
+                || REPORT_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {
@@ -1242,10 +1347,12 @@ public class GoogleSheetsService {
             CardKingdomProduct product
     ) {
         String sku = product.getSku() == null ? "" : product.getSku();
-        String setCode = columnOrDefault(sourceRow, mapping.setCodeColumn(), sku.contains("-") ? sku.substring(0, sku.indexOf("-")) : "");
+        String setCode = columnOrDefault(sourceRow, mapping.setCodeColumn(), setCodeFromSku(sku));
         String setName = columnOrDefault(sourceRow, mapping.setNameColumn(), product.getEdition());
         String collectorNumber = columnOrDefault(sourceRow, mapping.collectorNumberColumn(), collectorFromSku(sku));
-        String printing = columnOrDefault(sourceRow, mapping.printingColumn(), "true".equalsIgnoreCase(product.getFoil()) ? "foil" : "nonfoil");
+        String printing = normalizePrinting(
+                columnOrDefault(sourceRow, mapping.printingColumn(), productPrinting(product))
+        );
         String quantity = columnOrDefault(sourceRow, mapping.quantityColumn(), "1");
 
         return List.of(
@@ -1254,9 +1361,9 @@ public class GoogleSheetsService {
                 setCode,
                 setName == null ? "" : setName,
                 collectorNumber,
-                columnOrDefault(sourceRow, mapping.conditionColumn(), "NM"),
+                normalizeCondition(columnOrDefault(sourceRow, mapping.conditionColumn(), "NM")),
                 printing,
-                columnOrDefault(sourceRow, mapping.languageColumn(), ""),
+                normalizeLanguage(columnOrDefault(sourceRow, mapping.languageColumn(), "EN")),
                 "",
                 "",
                 ""
@@ -1306,6 +1413,85 @@ public class GoogleSheetsService {
         return value.isBlank() ? (fallback == null ? "" : fallback) : value;
     }
 
+    private String normalizeCondition(String value) {
+        String normalized = normalizeCardName(value);
+
+        if (normalized.isBlank()) {
+            return "NM";
+        }
+
+        if (normalized.equals("nm")
+                || normalized.equals("near mint")
+                || normalized.equals("nearmint")
+                || normalized.equals("mint")
+                || normalized.equals("m")) {
+            return "NM";
+        }
+
+        if (normalized.equals("ex")
+                || normalized.equals("excellent")
+                || normalized.equals("excelente")
+                || normalized.equals("lightly played")
+                || normalized.equals("lp")) {
+            return "EX";
+        }
+
+        if (normalized.equals("vg")
+                || normalized.equals("very good")
+                || normalized.equals("verygood")
+                || normalized.equals("moderately played")
+                || normalized.equals("mp")) {
+            return "VG";
+        }
+
+        if (normalized.equals("g")
+                || normalized.equals("good")
+                || normalized.equals("heavily played")
+                || normalized.equals("hp")) {
+            return "G";
+        }
+
+        if (normalized.equals("poor")
+                || normalized.equals("damaged")
+                || normalized.equals("dmg")) {
+            return "PO";
+        }
+
+        return value == null ? "NM" : value.trim();
+    }
+
+    private String normalizePrinting(String value) {
+        String normalized = normalizeCardName(value);
+
+        if (normalized.contains("foil") && !normalized.contains("non foil") && !normalized.contains("nonfoil")) {
+            if (normalized.contains("no foil") || normalized.contains("not foil")) {
+                return "nonfoil";
+            }
+
+            return "foil";
+        }
+
+        return "nonfoil";
+    }
+
+    private String normalizeLanguage(String value) {
+        String normalized = normalizeCardName(value);
+
+        if (normalized.isBlank()) {
+            return "EN";
+        }
+
+        if (normalized.equals("english") || normalized.equals("ingles") || normalized.equals("en")) {
+            return "EN";
+        }
+
+        if (normalized.equals("spanish") || normalized.equals("espanol") || normalized.equals("es")) {
+            return "ES";
+        }
+
+        return value == null ? "EN" : value.trim().toUpperCase();
+    }
+
     private String cellValue(List<Object> row, int column) {
         if (column < 0 || column >= row.size() || row.get(column) == null) {
             return "";
@@ -1333,6 +1519,18 @@ public class GoogleSheetsService {
         }
 
         return sku.substring(sku.indexOf("-") + 1);
+    }
+
+    private String setCodeFromSku(String sku) {
+        if (sku == null || !sku.contains("-")) {
+            return "";
+        }
+
+        return sku.substring(0, sku.indexOf("-"));
+    }
+
+    private String productPrinting(CardKingdomProduct product) {
+        return "true".equalsIgnoreCase(product.getFoil()) ? "foil" : "nonfoil";
     }
 
     private int parseInteger(String value) {

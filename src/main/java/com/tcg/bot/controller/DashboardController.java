@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
@@ -45,6 +46,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.text.NumberFormat;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -60,6 +62,7 @@ public class DashboardController {
     private final StoreSettingsService storeSettingsService;
     private volatile List<UpdateResult> latestUpdates = List.of();
     private volatile long latestUpdatedCount;
+    private volatile SuggestionIndex suggestionIndex = new SuggestionIndex(0, 0, List.of(), new ConcurrentHashMap<>());
     private static final Pattern LEADING_QUANTITY_PATTERN =
             Pattern.compile("^\\s*(\\d+)\\s*x?\\s+(.+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TRAILING_QUANTITY_PATTERN =
@@ -95,6 +98,23 @@ public class DashboardController {
         this.priceComparisonService = priceComparisonService;
         this.pricingSettingsService = pricingSettingsService;
         this.storeSettingsService = storeSettingsService;
+    }
+
+    @PostConstruct
+    public void warmSuggestionIndexCache() {
+        Thread warmupThread = new Thread(() -> {
+            try {
+                var priceList = cardKingdomApiService.getPriceList();
+                if (priceList != null && priceList.getData() != null) {
+                    suggestionIndexFor(priceList.getData()).suggestionsFor("cent");
+                    log.info("Indice de sugerencias CK precalentado.");
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo precalentar el indice de sugerencias.", e);
+            }
+        }, "card-suggestion-index-warmup");
+        warmupThread.setDaemon(true);
+        warmupThread.start();
     }
 
     @ModelAttribute("movementsUnlocked")
@@ -187,6 +207,18 @@ public class DashboardController {
     }
 
     private String buildSearchQuery(String query, String setFilter, String numberFilter) {
+        if (!query.isBlank() && setFilter.isBlank() && numberFilter.isBlank()) {
+            ParsedImportLine parsedLine = parseImportLine(query);
+            if (parsedLine != null
+                    && (!parsedLine.setCode().isBlank() || !parsedLine.collectorNumber().isBlank())) {
+                return buildSearchQuery(
+                        parsedLine.name(),
+                        parsedLine.setCode(),
+                        parsedLine.collectorNumber()
+                );
+            }
+        }
+
         List<String> parts = new ArrayList<>();
 
         if (!query.isBlank()) {
@@ -253,33 +285,64 @@ public class DashboardController {
                 return ResponseEntity.ok(List.of());
             }
 
-            Map<String, CardSuggestion> suggestions = new LinkedHashMap<>();
+            return ResponseEntity.ok(suggestionIndexFor(priceList.getData()).suggestionsFor(normalizedQuery));
+        } catch (Exception e) {
+            return ResponseEntity.ok(List.of());
+        }
+    }
 
-            for (CardKingdomProduct product : priceList.getData()) {
-                if (suggestions.size() >= 8) {
-                    break;
-                }
+    private SuggestionIndex suggestionIndexFor(List<CardKingdomProduct> products) {
+        int identity = System.identityHashCode(products);
+        SuggestionIndex current = suggestionIndex;
 
+        if (current.identity() == identity && current.size() == products.size()) {
+            return current;
+        }
+
+        synchronized (this) {
+            current = suggestionIndex;
+            if (current.identity() == identity && current.size() == products.size()) {
+                return current;
+            }
+
+            List<SuggestionCandidate> candidates = new ArrayList<>();
+
+            for (CardKingdomProduct product : products) {
                 String name = product.getName();
                 if (name == null || name.isBlank()) {
                     continue;
                 }
 
                 String variation = product.getVariation();
-                if (!matchesSuggestion(name, variation, normalizedQuery)) {
-                    continue;
-                }
-
-                String key = name.toLowerCase();
-                suggestions.putIfAbsent(key, new CardSuggestion(
+                candidates.add(new SuggestionCandidate(
                         name,
-                        variation == null ? "" : variation
+                        variation == null ? "" : variation,
+                        normalizeSuggestionText(name),
+                        normalizeSuggestionText(variation),
+                        1
                 ));
+
+                String variationAlias = suggestionVariationAlias(variation);
+                if (!variationAlias.isBlank()
+                        && !normalizeSuggestionText(variationAlias).equals(normalizeSuggestionText(name))) {
+                    candidates.add(new SuggestionCandidate(
+                            variationAlias,
+                            name + " - " + variation,
+                            normalizeSuggestionText(variationAlias),
+                            normalizeSuggestionText(name + " " + variation),
+                            0
+                    ));
+                }
             }
 
-            return ResponseEntity.ok(new ArrayList<>(suggestions.values()));
-        } catch (Exception e) {
-            return ResponseEntity.ok(List.of());
+            SuggestionIndex rebuilt = new SuggestionIndex(
+                    identity,
+                    products.size(),
+                    List.copyOf(candidates),
+                    new ConcurrentHashMap<>()
+            );
+            suggestionIndex = rebuilt;
+            return rebuilt;
         }
     }
 
@@ -316,6 +379,17 @@ public class DashboardController {
                 .replaceAll("[^a-z0-9/]+", " ")
                 .trim()
                 .replaceAll("\\s+", " ");
+    }
+
+    private String suggestionVariationAlias(String variation) {
+        if (variation == null || variation.isBlank()) {
+            return "";
+        }
+
+        return variation.trim()
+                .replaceFirst("^\\d+\\s*-\\s*", "")
+                .replaceFirst("(?i)^(surge\\s+foil|foil|etched\\s+foil|borderless|extended\\s+art|showcase)\\s*-\\s*", "")
+                .trim();
     }
 
     @GetMapping("/configuracion")
@@ -453,6 +527,10 @@ public class DashboardController {
 
     private boolean isMovementsUnlocked(HttpSession session) {
         return session != null && Boolean.TRUE.equals(session.getAttribute(MOVEMENTS_ACCESS_SESSION_KEY));
+    }
+
+    private boolean movementsModuleEnabled(HttpServletRequest request) {
+        return request != null && isMovementsUnlocked(request.getSession(false));
     }
 
     private String movementAccessReturnPath(HttpServletRequest request) {
@@ -701,7 +779,9 @@ public class DashboardController {
             model.addAttribute("cashGroups", groupCashEntriesByMonth(entries, selectedDate));
             model.addAttribute("cashTodayTotal", formatCashTotal(totalSalesForDate(allEntries, today)));
             model.addAttribute("cashSelectedTotal", formatCashTotal(totalSalesForDate(entries, selectedDate)));
-            model.addAttribute("cashReportMonths", cashReportMonths(allEntries, allMovements));
+            List<CashReportMonth> reports = cashReportMonths(allEntries, allMovements);
+            model.addAttribute("cashReportMonths", reports);
+            syncReportSheet(model, reports);
         } catch (Exception e) {
             model.addAttribute("cashEntries", List.of());
             model.addAttribute("cashGroups", List.of());
@@ -709,6 +789,15 @@ public class DashboardController {
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
             model.addAttribute("cashError", "No se pudo cargar la caja.");
+        }
+    }
+
+    private void syncReportSheet(Model model, List<CashReportMonth> reports) {
+        try {
+            inventoryService.syncReportSheet(reportSheetRows(reports));
+        } catch (Exception e) {
+            log.warn("No se pudo sincronizar la hoja Reporte.", e);
+            model.addAttribute("reportSyncError", "No se pudo sincronizar la hoja Reporte.");
         }
     }
 
@@ -810,7 +899,7 @@ public class DashboardController {
         }
     }
 
-    private String formatCashTotal(double value) {
+    private static String formatCashTotal(double value) {
         return NumberFormat
                 .getIntegerInstance(ARGENTINA_LOCALE)
                 .format(Math.round(value));
@@ -880,7 +969,7 @@ public class DashboardController {
                 String monthKey = monthKey(movement.getDate());
                 CashReportCardAccumulator cardReport = cardsByMonth
                         .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
-                        .computeIfAbsent(movementReportKey(movement), key -> new CashReportCardAccumulator());
+                        .computeIfAbsent(movementReportKey(movement), key -> CashReportCardAccumulator.fromMovement(movement));
 
                 if (quantity > 0) {
                     cardReport.addEntry(quantity);
@@ -902,7 +991,10 @@ public class DashboardController {
                     continue;
                 }
 
-                CashReportCardAccumulator cardReport = monthCards.get(cashEntryReportKey(entry));
+                CashReportCardAccumulator cardReport = monthCards.computeIfAbsent(
+                        cashEntryReportKey(entry),
+                        key -> CashReportCardAccumulator.fromCashEntry(entry)
+                );
                 if (cardReport != null) {
                     cardReport.addSaleTotal(parseCashTotal(entry.getTotal()));
                 }
@@ -914,7 +1006,7 @@ public class DashboardController {
             CashReportAccumulator report = new CashReportAccumulator();
 
             for (CashReportCardAccumulator cardReport : monthEntry.getValue().values()) {
-                if (!cardReport.hasEntryAndSale()) {
+                if (!cardReport.hasReportActivity()) {
                     continue;
                 }
 
@@ -944,6 +1036,70 @@ public class DashboardController {
                         maxMovementQuantity
                 ))
                 .toList();
+    }
+
+    private List<List<Object>> reportSheetRows(List<CashReportMonth> reports) {
+        List<List<Object>> rows = new ArrayList<>();
+        rows.add(List.of(
+                "Mes",
+                "Total ventas",
+                "Cartas vendidas",
+                "Cartas ingresadas",
+                "Diferencia stock",
+                "Carta",
+                "Set",
+                "Codigo",
+                "Numero",
+                "Printing",
+                "Vendidas carta",
+                "Ingresadas carta",
+                "Total ventas carta"
+        ));
+
+        if (reports == null || reports.isEmpty()) {
+            return rows;
+        }
+
+        for (CashReportMonth report : reports) {
+            if (report.cards().isEmpty()) {
+                rows.add(List.of(
+                        report.label(),
+                        report.totalSales(),
+                        report.soldQuantity(),
+                        report.enteredQuantity(),
+                        report.balanceQuantity(),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        ""
+                ));
+                continue;
+            }
+
+            for (CashReportCard card : report.cards()) {
+                rows.add(List.of(
+                        report.label(),
+                        report.totalSales(),
+                        report.soldQuantity(),
+                        report.enteredQuantity(),
+                        report.balanceQuantity(),
+                        card.name(),
+                        card.setName(),
+                        card.setCode(),
+                        card.collectorNumber(),
+                        card.printing(),
+                        card.soldQuantity(),
+                        card.enteredQuantity(),
+                        card.totalSales()
+                ));
+            }
+        }
+
+        return rows;
     }
 
     private String cashEntryReportKey(CashRegisterEntry entry) {
@@ -1004,6 +1160,14 @@ public class DashboardController {
         return Math.max(8, Math.round(value / max * 100)) + "%";
     }
 
+    private String percentValue(double value, double total) {
+        if (total <= 0) {
+            return "0";
+        }
+
+        return String.valueOf(Math.round(value / total * 100));
+    }
+
     @GetMapping("/importar-lista")
     public String importList(Model model) {
         addBaseModel(model, "");
@@ -1035,6 +1199,7 @@ public class DashboardController {
     public String confirmImportList(
             @RequestParam("rawList") String rawList,
             @RequestParam(name = "selected", required = false) List<String> selected,
+            HttpServletRequest request,
             RedirectAttributes redirectAttributes,
             Model model
     ) {
@@ -1057,6 +1222,7 @@ public class DashboardController {
             Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
             List<InventoryCard> cardsToAppend = new ArrayList<>();
             List<InventoryMovement> movements = new ArrayList<>();
+            boolean logMovements = movementsModuleEnabled(request);
             int added = 0;
             int updated = 0;
 
@@ -1081,7 +1247,9 @@ public class DashboardController {
                     InventoryCard newCard = createInventoryCard(product);
                     newCard.setQuantity(String.valueOf(quantity));
                     cardsToAppend.add(newCard);
-                    movements.add(createMovement("ENTRADA", quantity, newCard, 0, quantity, "Importar lista"));
+                    if (logMovements) {
+                        movements.add(createMovement("ENTRADA", quantity, newCard, 0, quantity, "Importar lista"));
+                    }
                     added++;
                     continue;
                 }
@@ -1095,14 +1263,25 @@ public class DashboardController {
                 existingCard.setQuantity(String.valueOf(updatedQuantity));
                 applyStockAction(existingCard);
                 cardsToWrite.put(existingCard.getRowIndex(), existingCard);
-                movements.add(createMovement("ENTRADA", quantity, existingCard, updatedQuantity - quantity, updatedQuantity, "Importar lista"));
+                if (logMovements) {
+                    movements.add(createMovement(
+                            "ENTRADA",
+                            quantity,
+                            existingCard,
+                            updatedQuantity - quantity,
+                            updatedQuantity,
+                            "Importar lista"
+                    ));
+                }
                 updated++;
             }
 
             inventoryService.updateQuantities(quantitiesByRow);
             inventoryService.updateInventoryRows(cardsToWrite);
             inventoryService.appendInventoryCards(cardsToAppend);
-            inventoryService.appendMovements(movements);
+            if (logMovements) {
+                inventoryService.appendMovements(movements);
+            }
             refreshLatestUpdatesFromInventory();
 
             redirectAttributes.addFlashAttribute(
@@ -1215,6 +1394,14 @@ public class DashboardController {
                         .distinct()
                         .toList();
                 List<ImportOption> alternatives = createImportOptions(otherVersions, parsedLine, inventoryIndex);
+
+                if (alternatives.isEmpty()) {
+                    alternatives = createImportOptions(
+                            findPossibleVariantProducts(priceList.getData(), parsedLine),
+                            parsedLine,
+                            inventoryIndex
+                    );
+                }
 
                 String status = parsedLine.duplicateCount() > 0
                         ? importStatus(parsedLine)
@@ -1382,6 +1569,40 @@ public class DashboardController {
                 .toList();
     }
 
+    private List<CardKingdomProduct> findPossibleVariantProducts(
+            List<CardKingdomProduct> products,
+            ParsedImportLine parsedLine
+    ) {
+        String requestedName = normalizeImportedName(parsedLine.name());
+        if (requestedName.length() < 5 || products == null || products.isEmpty()) {
+            return List.of();
+        }
+
+        return products.stream()
+                .filter(product -> {
+                    if (!parsedLine.setCode().isBlank()
+                            && (product.getSku() == null
+                            || !product.getSku().toLowerCase()
+                            .startsWith(parsedLine.setCode().toLowerCase() + "-"))) {
+                        return false;
+                    }
+
+                    if (!parsedLine.collectorNumber().isBlank()
+                            && !importCollectorFromSku(product.getSku()).equals(parsedLine.collectorNumber())) {
+                        return false;
+                    }
+
+                    String variation = normalizeImportedName(product.getVariation());
+                    String productName = normalizeImportedName(product.getName());
+                    return (!variation.isBlank()
+                            && (variation.contains(requestedName) || requestedName.contains(variation)))
+                            || (!productName.isBlank()
+                            && (productName.contains(requestedName) || requestedName.contains(productName)));
+                })
+                .distinct()
+                .toList();
+    }
+
     private Map<String, int[]> indexInventoryForImport(List<InventoryCard> inventoryCards) {
         Map<String, int[]> inventoryIndex = new HashMap<>();
 
@@ -1458,6 +1679,15 @@ public class DashboardController {
                 indexedProducts.add(product);
             }
         }
+
+        for (String candidate : importVariationNameCandidates(name)) {
+            List<CardKingdomProduct> indexedProducts =
+                    productsByName.computeIfAbsent(candidate, ignored -> new ArrayList<>());
+
+            if (!indexedProducts.contains(product)) {
+                indexedProducts.add(product);
+            }
+        }
     }
 
     private List<CardKingdomProduct> searchImportedProducts(
@@ -1518,6 +1748,26 @@ public class DashboardController {
         }
 
         return candidates;
+    }
+
+    private List<String> importVariationNameCandidates(String variation) {
+        String normalizedVariation = normalizeImportedName(variation);
+        if (normalizedVariation.isBlank()) {
+            return List.of();
+        }
+
+        List<String> candidates = new ArrayList<>();
+        addImportCandidate(candidates, normalizedVariation.replaceFirst("^\\d+\\s*-\\s*", ""));
+        addImportCandidate(candidates, normalizedVariation.replaceFirst("^\\d+\\s*-\\s*(?:surge\\s+foil|foil|etched\\s+foil|borderless|extended\\s+art|showcase)\\s*-\\s*", ""));
+        addImportCandidate(candidates, normalizedVariation.replaceFirst("^(?:surge\\s+foil|foil|etched\\s+foil|borderless|extended\\s+art|showcase)\\s*-\\s*", ""));
+        return candidates;
+    }
+
+    private void addImportCandidate(List<String> candidates, String candidate) {
+        String normalizedCandidate = normalizeImportedName(candidate);
+        if (!normalizedCandidate.isBlank() && !candidates.contains(normalizedCandidate)) {
+            candidates.add(normalizedCandidate);
+        }
     }
 
     private ParsedImportLine parseImportLine(String line) {
@@ -2287,6 +2537,98 @@ public class DashboardController {
     ) {
     }
 
+    private record SuggestionCandidate(
+            String name,
+            String variation,
+            String normalizedName,
+            String normalizedVariation,
+            int priority
+    ) {
+    }
+
+    private record SuggestionIndex(
+            int identity,
+            int size,
+            List<SuggestionCandidate> candidates,
+            ConcurrentHashMap<String, List<CardSuggestion>> cache
+    ) {
+        List<CardSuggestion> suggestionsFor(String normalizedQuery) {
+            return cache.computeIfAbsent(normalizedQuery, this::buildSuggestions);
+        }
+
+        private List<CardSuggestion> buildSuggestions(String normalizedQuery) {
+            Map<String, CardSuggestion> suggestions = new LinkedHashMap<>();
+
+            var rankedCandidates = candidates.stream()
+                    .filter(candidate -> suggestionScore(candidate, normalizedQuery) >= 0)
+                    .sorted(Comparator
+                            .comparingInt((SuggestionCandidate candidate) -> suggestionScore(candidate, normalizedQuery))
+                            .thenComparingInt(SuggestionCandidate::priority)
+                            .thenComparing(SuggestionCandidate::name))
+                    .toList();
+
+            for (SuggestionCandidate candidate : rankedCandidates) {
+                if (suggestions.size() >= 8) {
+                    break;
+                }
+
+                suggestions.putIfAbsent(candidate.name().toLowerCase(), new CardSuggestion(
+                        candidate.name(),
+                        candidate.variation()
+                ));
+            }
+
+            return List.copyOf(suggestions.values());
+        }
+
+        private int suggestionScore(SuggestionCandidate candidate, String normalizedQuery) {
+            if (candidate.normalizedName().equals(normalizedQuery)) {
+                return 0;
+            }
+
+            if (candidate.normalizedName().startsWith(normalizedQuery)) {
+                return 1;
+            }
+
+            if (wordStartsWith(candidate.normalizedName(), normalizedQuery)) {
+                return 2;
+            }
+
+            if (candidate.normalizedVariation().startsWith(normalizedQuery)) {
+                return 3;
+            }
+
+            if (wordStartsWith(candidate.normalizedVariation(), normalizedQuery)) {
+                return 4;
+            }
+
+            if (candidate.normalizedName().contains(normalizedQuery)) {
+                return 5;
+            }
+
+            if (candidate.normalizedVariation().contains(normalizedQuery)) {
+                return 6;
+            }
+
+            for (String faceName : normalizedQuery.split("/")) {
+                String normalizedFace = faceName.trim();
+
+                if (!normalizedFace.isBlank()
+                        && (candidate.normalizedName().contains(normalizedFace)
+                        || candidate.normalizedVariation().contains(normalizedFace))) {
+                    return 7;
+                }
+            }
+
+            return -1;
+        }
+
+        private boolean wordStartsWith(String value, String normalizedQuery) {
+            return value.contains(" " + normalizedQuery)
+                    || value.contains("/" + normalizedQuery);
+        }
+    }
+
     public record UpdateResult(
             String name,
             String edition,
@@ -2350,9 +2692,25 @@ public class DashboardController {
             int soldQuantity,
             int enteredQuantity,
             int balanceQuantity,
+            int movementTotal,
+            String soldShare,
+            String enteredShare,
             String salesWidth,
             String soldWidth,
-            String enteredWidth
+            String enteredWidth,
+            List<CashReportCard> cards
+    ) {
+    }
+
+    public record CashReportCard(
+            String name,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            int soldQuantity,
+            int enteredQuantity,
+            String totalSales
     ) {
     }
 
@@ -2360,11 +2718,13 @@ public class DashboardController {
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
+        private final List<CashReportCardAccumulator> cards = new ArrayList<>();
 
         void addCard(CashReportCardAccumulator cardReport) {
             salesTotal += cardReport.salesTotal;
             soldQuantity += cardReport.soldQuantity;
             enteredQuantity += cardReport.enteredQuantity;
+            cards.add(cardReport);
         }
 
         CashReportMonth toReport(
@@ -2373,6 +2733,7 @@ public class DashboardController {
                 double maxSales,
                 int maxMovementQuantity
         ) {
+            int movementTotal = soldQuantity + enteredQuantity;
             return new CashReportMonth(
                     key,
                     label,
@@ -2380,17 +2741,52 @@ public class DashboardController {
                     soldQuantity,
                     enteredQuantity,
                     enteredQuantity - soldQuantity,
+                    movementTotal,
+                    percentValue(soldQuantity, movementTotal),
+                    percentValue(enteredQuantity, movementTotal),
                     percent(salesTotal, maxSales),
                     percent(soldQuantity, maxMovementQuantity),
-                    percent(enteredQuantity, maxMovementQuantity)
+                    percent(enteredQuantity, maxMovementQuantity),
+                    cards.stream()
+                            .sorted(Comparator
+                                    .comparingDouble((CashReportCardAccumulator card) -> card.salesTotal)
+                                    .reversed()
+                                    .thenComparing(card -> card.name))
+                            .map(CashReportCardAccumulator::toReportCard)
+                            .toList()
             );
         }
     }
 
     private static class CashReportCardAccumulator {
+        private String name;
+        private String setName;
+        private String setCode;
+        private String collectorNumber;
+        private String printing;
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
+
+        static CashReportCardAccumulator fromMovement(InventoryMovement movement) {
+            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
+            accumulator.name = safeReportValue(movement.getName());
+            accumulator.setName = safeReportValue(movement.getSetName());
+            accumulator.setCode = safeReportValue(movement.getSetCode());
+            accumulator.collectorNumber = safeReportValue(movement.getCollectorNumber());
+            accumulator.printing = safeReportValue(movement.getPrinting());
+            return accumulator;
+        }
+
+        static CashReportCardAccumulator fromCashEntry(CashRegisterEntry entry) {
+            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
+            accumulator.name = safeReportValue(entry.getName());
+            accumulator.setName = safeReportValue(entry.getSetName());
+            accumulator.setCode = safeReportValue(entry.getSetCode());
+            accumulator.collectorNumber = safeReportValue(entry.getCollectorNumber());
+            accumulator.printing = safeReportValue(entry.getPrinting());
+            return accumulator;
+        }
 
         void addSaleTotal(double total) {
             salesTotal += total;
@@ -2404,8 +2800,25 @@ public class DashboardController {
             enteredQuantity += quantity;
         }
 
-        boolean hasEntryAndSale() {
-            return soldQuantity > 0 && enteredQuantity > 0;
+        boolean hasReportActivity() {
+            return soldQuantity > 0 || enteredQuantity > 0 || salesTotal > 0;
+        }
+
+        CashReportCard toReportCard() {
+            return new CashReportCard(
+                    name,
+                    setName,
+                    setCode,
+                    collectorNumber,
+                    printing,
+                    soldQuantity,
+                    enteredQuantity,
+                    formatCashTotal(salesTotal)
+            );
+        }
+
+        private static String safeReportValue(String value) {
+            return value == null ? "" : value;
         }
     }
 
@@ -2530,7 +2943,11 @@ public class DashboardController {
 
     @PostMapping("/inventory/quantity")
     @ResponseBody
-    public ResponseEntity<?> updateQuantity(@RequestParam int rowIndex, @RequestParam int change) {
+    public ResponseEntity<?> updateQuantity(
+            @RequestParam int rowIndex,
+            @RequestParam int change,
+            HttpServletRequest request
+    ) {
         try {
             InventoryCard card = findInventoryCardByRow(rowIndex);
             if (card == null) {
@@ -2545,23 +2962,26 @@ public class DashboardController {
                 card.setQuantity(String.valueOf(newQuantity));
                 applyStockAction(card);
                 inventoryService.updateStockState(rowIndex, card);
-                inventoryService.appendMovement(createMovement(
-                        change > 0 ? "ENTRADA" : "SALIDA",
-                        Math.abs(newQuantity - previousQuantity),
-                        card,
-                        previousQuantity,
-                        newQuantity,
-                        change > 0 ? "Agregado al stock" : "Unidad vendida"
-                ));
 
-                if (change < 0) {
-                    LocalDateTime now = LocalDateTime.now(APP_ZONE);
-                    inventoryService.appendCashSale(
-                            now.format(MOVEMENT_DATE_FORMAT),
-                            now.format(MOVEMENT_TIME_FORMAT),
+                if (movementsModuleEnabled(request)) {
+                    inventoryService.appendMovement(createMovement(
+                            change > 0 ? "ENTRADA" : "SALIDA",
+                            Math.abs(newQuantity - previousQuantity),
                             card,
-                            Math.abs(newQuantity - previousQuantity)
-                    );
+                            previousQuantity,
+                            newQuantity,
+                            change > 0 ? "Agregado al stock" : "Unidad vendida"
+                    ));
+
+                    if (change < 0) {
+                        LocalDateTime now = LocalDateTime.now(APP_ZONE);
+                        inventoryService.appendCashSale(
+                                now.format(MOVEMENT_DATE_FORMAT),
+                                now.format(MOVEMENT_TIME_FORMAT),
+                                card,
+                                Math.abs(newQuantity - previousQuantity)
+                        );
+                    }
                 }
 
                 refreshLatestUpdateForCard(card);
@@ -2582,7 +3002,7 @@ public class DashboardController {
 
     @PostMapping("/inventory/cards")
     @ResponseBody
-    public ResponseEntity<?> addInventoryCard(@RequestParam String sku) {
+    public ResponseEntity<?> addInventoryCard(@RequestParam String sku, HttpServletRequest request) {
         try {
             CardKingdomProduct product = findProductBySku(sku);
 
@@ -2594,7 +3014,9 @@ public class DashboardController {
             InventoryCard card = createInventoryCard(product);
             int rowIndex = inventoryService.appendInventoryCard(card);
             card.setRowIndex(rowIndex);
-            inventoryService.appendMovement(createMovement("ENTRADA", 1, card, 0, 1, "Busqueda"));
+            if (movementsModuleEnabled(request)) {
+                inventoryService.appendMovement(createMovement("ENTRADA", 1, card, 0, 1, "Busqueda"));
+            }
             refreshLatestUpdateForCard(card);
 
             return ResponseEntity.ok(new StockCreateResponse(rowIndex));

@@ -121,12 +121,12 @@
                             </button>
                         </div>
                     </td>
-                    <td th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</td>
-                    <td th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
-                    <td th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
-                    <td th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
+                    <td class="card-name-cell" th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</td>
+                    <td class="set-name-cell" th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
+                    <td class="compact-cell" th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
+                    <td class="variation-cell" th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
                     <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
-                    <td th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
+                    <td class="price-cell" th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(results)}">
                     <td class="empty" colspan="7">No se encontraron cartas para esa búsqueda.</td>
@@ -203,12 +203,12 @@
                                 </button>
                             </div>
                         </td>
-                        <td th:text="${update.name != null && update.name != '' ? update.name : '-'}">Sol Ring</td>
-                        <td th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
-                        <td th:text="${update.setCode != null && update.setCode != '' ? update.setCode : '-'}">CMM</td>
-                        <td th:text="${update.collectorNumber != null && update.collectorNumber != '' ? update.collectorNumber : '-'}">410</td>
-                        <td th:text="${update.localPrice != null && update.localPrice != '' ? '$ ' + update.formattedLocalPrice : '-'}">-</td>
-                        <td th:text="${update.ckPriceUsd != null && update.ckPriceUsd != '' ? '$ ' + update.formattedCkPriceUsd : '-'}">-</td>
+                        <td class="card-name-cell" th:text="${update.name != null && update.name != '' ? update.name : '-'}">Sol Ring</td>
+                        <td class="set-name-cell" th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
+                        <td class="compact-cell" th:text="${update.setCode != null && update.setCode != '' ? update.setCode : '-'}">CMM</td>
+                        <td class="compact-cell" th:text="${update.collectorNumber != null && update.collectorNumber != '' ? update.collectorNumber : '-'}">410</td>
+                        <td class="price-cell" th:text="${update.localPrice != null && update.localPrice != '' ? '$ ' + update.formattedLocalPrice : '-'}">-</td>
+                        <td class="price-cell" th:text="${update.ckPriceUsd != null && update.ckPriceUsd != '' ? '$ ' + update.formattedCkPriceUsd : '-'}">-</td>
                         <td>
                             <span class="status stock-action-status" th:classappend="${update.action != null ? update.action.toLowerCase().replace(' ', '-') : ''}"
                                   th:text="${update.action != null && update.action != '' ? update.action : '-'}">CON STOCK</span>

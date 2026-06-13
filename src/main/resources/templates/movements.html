@@ -23,6 +23,7 @@
         <p class="alert error" th:if="${error}" th:text="${error}"></p>
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
         <p class="alert error" th:if="${cashError}" th:text="${cashError}"></p>
+        <p class="alert error" th:if="${reportSyncError}" th:text="${reportSyncError}"></p>
 
         <div class="movement-tab-list" role="tablist" aria-label="Secciones de movimientos">
             <button th:classappend="${activeTab == 'movements'} ? ' active' : ''"
@@ -232,7 +233,29 @@
                 <p>Cuando haya ventas registradas, el resumen mensual se va a generar solo.</p>
             </div>
 
-            <div class="report-month-list" th:unless="${#lists.isEmpty(cashReportMonths)}">
+            <div class="report-dashboard" th:unless="${#lists.isEmpty(cashReportMonths)}">
+                <section class="report-hero-card" th:with="latest=${cashReportMonths[0]}">
+                    <div class="report-hero-copy">
+                        <p class="eyebrow">Reporte sincronizado</p>
+                        <h2 th:text="${latest.label}">Junio 2026</h2>
+                        <div class="report-hero-kpis">
+                            <div>
+                                <span>Ventas</span>
+                                <strong th:text="${'$ ' + latest.totalSales}">$ 0</strong>
+                            </div>
+                            <div>
+                                <span>Vendidas</span>
+                                <strong th:text="${latest.soldQuantity}">0</strong>
+                            </div>
+                            <div>
+                                <span>Ingresadas</span>
+                                <strong th:text="${latest.enteredQuantity}">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <img class="report-cat-image" th:src="@{/images/report-cat-chart.png}" alt="">
+                </section>
+
                 <article class="report-month-card" th:each="report : ${cashReportMonths}">
                     <div class="report-month-head">
                         <div>
@@ -257,18 +280,41 @@
                         </div>
                     </div>
 
-                    <div class="report-bars">
-                        <div class="report-bar-row">
-                            <span>Ventas</span>
-                            <div class="report-bar"><i th:style="${'width:' + report.salesWidth}"></i></div>
+                    <div class="report-visual-grid">
+                        <div class="report-donut-card">
+                            <div class="report-donut"
+                                 th:style="${'--sold:' + report.soldShare + ';--entered:' + report.enteredShare}"></div>
+                            <div class="report-donut-legend">
+                                <span><i class="sold"></i>Vendidas</span>
+                                <span><i class="entered"></i>Ingresadas</span>
+                            </div>
                         </div>
-                        <div class="report-bar-row">
-                            <span>Vendidas</span>
-                            <div class="report-bar"><i class="sold" th:style="${'width:' + report.soldWidth}"></i></div>
+
+                        <div class="report-bars">
+                            <div class="report-bar-row">
+                                <span>Ventas</span>
+                                <div class="report-bar"><i th:style="${'width:' + report.salesWidth}"></i></div>
+                            </div>
+                            <div class="report-bar-row">
+                                <span>Vendidas</span>
+                                <div class="report-bar"><i class="sold" th:style="${'width:' + report.soldWidth}"></i></div>
+                            </div>
+                            <div class="report-bar-row">
+                                <span>Ingresadas</span>
+                                <div class="report-bar"><i class="entered" th:style="${'width:' + report.enteredWidth}"></i></div>
+                            </div>
                         </div>
-                        <div class="report-bar-row">
-                            <span>Ingresadas</span>
-                            <div class="report-bar"><i class="entered" th:style="${'width:' + report.enteredWidth}"></i></div>
+                    </div>
+
+                    <div class="report-card-list" th:unless="${#lists.isEmpty(report.cards)}">
+                        <div class="report-card-row" th:each="card : ${report.cards}">
+                            <div>
+                                <strong th:text="${card.name != null && card.name != '' ? card.name : '-'}">Sol Ring</strong>
+                                <span th:text="${(card.setCode != null && card.setCode != '' ? card.setCode : '-') + ' / ' + (card.collectorNumber != null && card.collectorNumber != '' ? card.collectorNumber : '-') + ' / ' + (card.printing != null && card.printing != '' ? card.printing : '-')}">CMM / 410 / nonfoil</span>
+                            </div>
+                            <span th:text="${card.soldQuantity + ' vendidas'}">0 vendidas</span>
+                            <span th:text="${card.enteredQuantity + ' ingresadas'}">0 ingresadas</span>
+                            <strong th:text="${'$ ' + card.totalSales}">$ 0</strong>
                         </div>
                     </div>
                 </article>

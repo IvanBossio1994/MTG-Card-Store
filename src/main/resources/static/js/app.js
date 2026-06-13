@@ -359,7 +359,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (searchInput && cardSuggestions) {
         let suggestionTimer = null;
+        let suggestionRequest = null;
         let activeSuggestionIndex = -1;
+        const suggestionCache = new Map();
 
         const closeSuggestions = () => {
             cardSuggestions.hidden = true;
@@ -438,17 +440,41 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         const fetchSuggestions = async value => {
+            const cacheKey = value.toLowerCase();
+            if (suggestionCache.has(cacheKey)) {
+                renderSuggestions(suggestionCache.get(cacheKey));
+                return;
+            }
+
+            if (suggestionRequest) {
+                suggestionRequest.abort();
+            }
+
+            const request = new AbortController();
+            suggestionRequest = request;
+
             try {
-                const response = await fetch(`/api/cartas/sugerencias?q=${encodeURIComponent(value)}`);
+                const response = await fetch(
+                        `/api/cartas/sugerencias?q=${encodeURIComponent(value)}`,
+                        {signal: request.signal}
+                );
 
                 if (!response.ok) {
                     closeSuggestions();
                     return;
                 }
 
-                renderSuggestions(await response.json());
+                const suggestions = await response.json();
+                suggestionCache.set(cacheKey, suggestions);
+                renderSuggestions(suggestions);
             } catch (e) {
-                closeSuggestions();
+                if (e.name !== "AbortError") {
+                    closeSuggestions();
+                }
+            } finally {
+                if (suggestionRequest === request) {
+                    suggestionRequest = null;
+                }
             }
         };
 
@@ -461,7 +487,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            suggestionTimer = setTimeout(() => fetchSuggestions(value), 180);
+            suggestionTimer = setTimeout(() => fetchSuggestions(value), 50);
         });
 
         searchInput.addEventListener("keydown", event => {
