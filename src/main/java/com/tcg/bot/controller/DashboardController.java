@@ -2,6 +2,7 @@ package com.tcg.bot.controller;
 
 import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CashRegisterEntry;
+import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.service.CardKingdomApiService;
@@ -694,6 +695,131 @@ public class DashboardController {
 
         redirectAttributes.addFlashAttribute("accessError", "Contraseña incorrecta.");
         return "redirect:" + safeMovementAccessReturnPath(returnTo);
+    }
+
+    @GetMapping("/reservas")
+    public String reservations(Model model) {
+        addBaseModel(model, "");
+        model.addAttribute("reservationStatuses", reservationStatuses());
+
+        try {
+            List<CardReservation> reservations = inventoryService.getReservations();
+            model.addAttribute("reservations", reservations);
+            model.addAttribute("reservationCount", reservations.size());
+            model.addAttribute("reservedCount", reservations.stream()
+                    .filter(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                    .count());
+            model.addAttribute("wantedCount", reservations.stream()
+                    .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
+                    .count());
+        } catch (Exception e) {
+            log.warn("No se pudieron cargar las reservas.", e);
+            model.addAttribute("reservations", List.of());
+            model.addAttribute("reservationCount", 0);
+            model.addAttribute("reservedCount", 0);
+            model.addAttribute("wantedCount", 0);
+            model.addAttribute("error", "No se pudieron cargar las reservas: " + syncErrorMessage(e));
+        }
+
+        return "reservations";
+    }
+
+    @PostMapping("/reservas")
+    public String createReservation(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "setName", required = false) String setName,
+            @RequestParam(name = "setCode", required = false) String setCode,
+            @RequestParam(name = "collectorNumber", required = false) String collectorNumber,
+            @RequestParam(name = "printing", required = false) String printing,
+            @RequestParam(name = "quantity", required = false) String quantity,
+            @RequestParam(name = "client", required = false) String client,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "notes", required = false) String notes,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (isBlank(name) || isBlank(client) || isBlank(phone)) {
+            redirectAttributes.addFlashAttribute(
+                    "error",
+                    "Completa nombre de carta, cliente y telefono para guardar la reserva."
+            );
+            return "redirect:/reservas";
+        }
+
+        try {
+            CardReservation reservation = new CardReservation();
+            LocalDateTime now = LocalDateTime.now(APP_ZONE);
+            reservation.setId("RSV-" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            reservation.setStatus(normalizedReservationStatus(status));
+            reservation.setName(name.trim());
+            reservation.setSetName(blankToEmpty(setName));
+            reservation.setSetCode(blankToEmpty(setCode));
+            reservation.setCollectorNumber(blankToEmpty(collectorNumber));
+            reservation.setPrinting(blankToEmpty(printing));
+            reservation.setQuantity(normalizedReservationQuantity(quantity));
+            reservation.setClient(client.trim());
+            reservation.setPhone(phone.trim());
+            reservation.setDni(blankToEmpty(dni));
+            reservation.setReservationDate(now.format(MOVEMENT_DATE_TIME_FORMAT));
+            reservation.setPickupDate(normalizedPickupDate(pickupDate));
+            reservation.setPaymentDate("");
+            reservation.setNotes(blankToEmpty(notes));
+
+            inventoryService.appendReservation(reservation);
+            redirectAttributes.addFlashAttribute("success", "Reserva guardada en el Sheet.");
+        } catch (Exception e) {
+            log.warn("No se pudo guardar la reserva.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo guardar la reserva: " + syncErrorMessage(e));
+        }
+
+        return "redirect:/reservas";
+    }
+
+    private List<String> reservationStatuses() {
+        return List.of(
+                CardReservation.STATUS_WANTED,
+                CardReservation.STATUS_RESERVED,
+                CardReservation.STATUS_PAID,
+                CardReservation.STATUS_RETIRED,
+                CardReservation.STATUS_CANCELLED
+        );
+    }
+
+    private String normalizedReservationStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return CardReservation.STATUS_WANTED;
+        }
+
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        return reservationStatuses().contains(normalized)
+                ? normalized
+                : CardReservation.STATUS_WANTED;
+    }
+
+    private String normalizedReservationQuantity(String quantity) {
+        if (quantity == null || quantity.isBlank()) {
+            return "1";
+        }
+
+        try {
+            return String.valueOf(Math.max(1, Integer.parseInt(quantity.trim())));
+        } catch (NumberFormatException e) {
+            return "1";
+        }
+    }
+
+    private String normalizedPickupDate(String pickupDate) {
+        if (pickupDate == null || pickupDate.isBlank()) {
+            return "A convenir";
+        }
+
+        return pickupDate.trim();
+    }
+
+    private String blankToEmpty(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private boolean isMovementsUnlocked(HttpSession session) {

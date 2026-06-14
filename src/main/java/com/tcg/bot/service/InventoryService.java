@@ -2,6 +2,7 @@ package com.tcg.bot.service;
 
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.dto.CardKingdomProduct;
+import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import org.springframework.stereotype.Service;
@@ -100,5 +101,13 @@ public class InventoryService {
 
     public void appendCashSale(String date, String time, InventoryCard card, int quantity) throws Exception {
         googleSheetsService.appendCashSale(date, time, card, quantity);
+    }
+
+    public List<CardReservation> getReservations() throws Exception {
+        return googleSheetsService.getReservations();
+    }
+
+    public void appendReservation(CardReservation reservation) throws Exception {
+        googleSheetsService.appendReservation(reservation);
     }
 }

@@ -27,6 +27,7 @@
         </div>
         <nav class="menu-nav" aria-label="Menu principal">
             <a th:classappend="${active == 'home'} ? 'active'" th:href="@{/}">Inicio</a>
+            <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">Reservas</a>
             <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">Configuracion</a>
             <a class="movement-menu-link" th:classappend="${active == 'movements'} ? ' active'" th:href="@{/movimientos}">
                 <span>Movimientos</span>
