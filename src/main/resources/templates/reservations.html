@@ -8,14 +8,14 @@
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Pedidos y reservas')}"></header>
+<header th:replace="~{fragments/layout :: topbar('Reservas')}"></header>
 <div th:replace="~{fragments/layout :: menu('reservations')}"></div>
 <main class="page reservations-page">
     <section class="hero">
         <div class="hero-copy">
             <p class="eyebrow">Reservas</p>
-            <h1>Pedidos de clientes</h1>
-            <p class="supporting">Registra cartas buscadas o separadas y sincronizalas con la hoja Reservas del Sheet.</p>
+            <h1>Reservas de clientes</h1>
+            <p class="supporting">Consulta las reservas generadas desde Inicio o Importar y sincronizadas con la hoja Reservas del Sheet.</p>
         </div>
     </section>
 
@@ -29,83 +29,13 @@
             <strong th:text="${reservedCount}">0</strong>
         </div>
         <div class="cash-summary-card">
-            <span>Buscadas</span>
+            <span>Sin stock</span>
             <strong th:text="${wantedCount}">0</strong>
         </div>
     </section>
 
-    <section class="panel reservation-form-panel">
-        <div class="section-head">
-            <div>
-                <p class="eyebrow">Nueva reserva</p>
-                <h2>Datos del pedido</h2>
-            </div>
-        </div>
-
-        <p class="alert error" th:if="${error}" th:text="${error}"></p>
-        <p class="alert success" th:if="${success}" th:text="${success}"></p>
-
-        <form class="reservation-form" method="post" th:action="@{/reservas}">
-            <div class="reservation-grid">
-                <label>
-                    Estado
-                    <select name="status">
-                        <option th:each="status : ${reservationStatuses}"
-                                th:value="${status}"
-                                th:text="${status}"
-                                th:selected="${status == 'BUSCADA'}">BUSCADA</option>
-                    </select>
-                </label>
-                <label>
-                    Cantidad
-                    <input name="quantity" type="number" min="1" value="1">
-                </label>
-                <label class="wide">
-                    Carta
-                    <input name="name" type="text" required autocomplete="off">
-                </label>
-                <label>
-                    Nombre del set
-                    <input name="setName" type="text" autocomplete="off">
-                </label>
-                <label>
-                    Codigo de set
-                    <input name="setCode" type="text" autocomplete="off">
-                </label>
-                <label>
-                    Numero de carta
-                    <input name="collectorNumber" type="text" autocomplete="off">
-                </label>
-                <label>
-                    Printing
-                    <input name="printing" type="text" autocomplete="off" placeholder="foil / nonfoil">
-                </label>
-                <label>
-                    Cliente
-                    <input name="client" type="text" required autocomplete="off">
-                </label>
-                <label>
-                    Telefono
-                    <input name="phone" type="text" required autocomplete="off">
-                </label>
-                <label>
-                    DNI
-                    <input name="dni" type="text" autocomplete="off">
-                </label>
-                <label>
-                    Fecha de retiro
-                    <input name="pickupDate" type="text" placeholder="A convenir o 2026-06-20">
-                </label>
-                <label class="wide">
-                    Notas
-                    <input name="notes" type="text" autocomplete="off">
-                </label>
-            </div>
-            <div class="reservation-actions">
-                <button class="primary-button" type="submit">Guardar reserva</button>
-            </div>
-        </form>
-    </section>
+    <p class="alert error" th:if="${error}" th:text="${error}"></p>
+    <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
     <section class="panel reservation-table-panel">
         <div class="section-head">
@@ -115,50 +45,82 @@
             </div>
         </div>
 
-        <div class="placeholder" th:if="${#lists.isEmpty(reservations)}">
+        <div class="placeholder" th:if="${#lists.isEmpty(reservationGroups)}">
             <strong>No hay reservas registradas</strong>
-            <p>Cuando guardes una reserva, se va a crear o actualizar la hoja Reservas en el Sheet.</p>
+            <p>Cuando guardes una reserva desde Inicio o Importar, se va a crear o actualizar la hoja Reservas en el Sheet.</p>
         </div>
 
-        <div class="table-wrap reservation-table-wrap" th:unless="${#lists.isEmpty(reservations)}">
-            <table class="reservation-table">
-                <thead>
-                <tr>
-                    <th>Estado</th>
-                    <th>Carta</th>
-                    <th>Set</th>
-                    <th>Codigo/Nro.</th>
-                    <th>Printing</th>
-                    <th>Cant.</th>
-                    <th>Cliente</th>
-                    <th>Telefono</th>
-                    <th>DNI</th>
-                    <th>Reserva</th>
-                    <th>Retiro</th>
-                    <th>Pago</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="reservation : ${reservations}">
-                    <td>
-                        <span class="status"
-                              th:classappend="${reservation.status == null ? '' : #strings.toLowerCase(reservation.status)}"
-                              th:text="${reservation.status != null && reservation.status != '' ? reservation.status : '-'}">BUSCADA</span>
-                    </td>
-                    <td th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</td>
-                    <td th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</td>
-                    <td th:text="${(reservation.setCode != null && reservation.setCode != '' ? reservation.setCode : '-') + ' / ' + (reservation.collectorNumber != null && reservation.collectorNumber != '' ? reservation.collectorNumber : '-')}">CMM / 410</td>
-                    <td th:text="${reservation.printing != null && reservation.printing != '' ? reservation.printing : '-'}">nonfoil</td>
-                    <td th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</td>
-                    <td th:text="${reservation.client != null && reservation.client != '' ? reservation.client : '-'}">Cliente</td>
-                    <td th:text="${reservation.phone != null && reservation.phone != '' ? reservation.phone : '-'}">Telefono</td>
-                    <td th:text="${reservation.dni != null && reservation.dni != '' ? reservation.dni : '-'}">DNI</td>
-                    <td th:text="${reservation.formattedReservationDate != null && reservation.formattedReservationDate != '' ? reservation.formattedReservationDate : '-'}">14/06/2026</td>
-                    <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
-                    <td th:text="${reservation.formattedPaymentDate != null && reservation.formattedPaymentDate != '' ? reservation.formattedPaymentDate : '-'}">-</td>
-                </tr>
-                </tbody>
-            </table>
+        <div class="reservation-group-list" th:unless="${#lists.isEmpty(reservationGroups)}">
+            <details class="reservation-group-card" th:each="group : ${reservationGroups}">
+                <summary>
+                    <span class="reservation-customer">
+                        <strong th:text="${group.client}">Cliente</strong>
+                    </span>
+                    <span class="reservation-group-meta">
+                        <span th:text="${group.phone + ' | DNI ' + group.dni}">Telefono | DNI</span>
+                        <strong th:text="${group.totalQuantity + ' unidad(es)'}">1 unidad</strong>
+                    </span>
+                    <form class="reservation-delete-form" method="post" th:action="@{/reservas/eliminar-grupo}"
+                          onclick="event.stopPropagation();"
+                          onsubmit="return confirm('Eliminar esta reserva? Las cartas apartadas vuelven al stock.');">
+                        <input type="hidden" name="groupKey" th:value="${group.key}">
+                        <button class="reservation-delete-button" type="submit" aria-label="Eliminar reserva">&times;</button>
+                    </form>
+                    <span class="reservation-status-bar"
+                          th:classappend="${group.status == null ? '' : #strings.toLowerCase(group.status).replace(' ', '-')}"
+                          th:text="${group.status}">Sin Stock</span>
+                </summary>
+
+                <div class="reservation-group-body">
+                    <div class="reservation-meta-grid">
+                        <div>
+                            <span>Reserva</span>
+                            <strong th:text="${group.reservationDate != null && group.reservationDate != '' ? group.reservationDate : '-'}">-</strong>
+                        </div>
+                        <div>
+                            <span>Retiro</span>
+                            <strong th:text="${group.pickupDate != null && group.pickupDate != '' ? group.pickupDate : '-'}">-</strong>
+                        </div>
+                        <div>
+                            <span>Pago</span>
+                            <strong th:text="${group.paymentDate != null && group.paymentDate != '' ? group.paymentDate : '-'}">-</strong>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap reservation-items-wrap">
+                        <table class="reservation-items-table">
+                            <thead>
+                            <tr>
+                                <th>Estado</th>
+                                <th>Carta</th>
+                                <th>Set</th>
+                                <th>Codigo/Nro.</th>
+                                <th>Printing</th>
+                                <th>Cant.</th>
+                                <th>Retiro</th>
+                                <th>Notas</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="reservation : ${group.items}">
+                                <td>
+                                    <span class="status"
+                                          th:classappend="${reservation.status == null ? '' : #strings.toLowerCase(reservation.status).replace(' ', '-')}"
+                                          th:text="${reservation.status != null && reservation.status != '' ? reservation.status : '-'}">Sin Stock</span>
+                                </td>
+                                <td th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</td>
+                                <td th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</td>
+                                <td th:text="${(reservation.setCode != null && reservation.setCode != '' ? reservation.setCode : '-') + ' / ' + (reservation.collectorNumber != null && reservation.collectorNumber != '' ? reservation.collectorNumber : '-')}">CMM / 410</td>
+                                <td th:text="${reservation.printing != null && reservation.printing != '' ? reservation.printing : '-'}">nonfoil</td>
+                                <td th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</td>
+                                <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
+                                <td th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
         </div>
     </section>
 </main>

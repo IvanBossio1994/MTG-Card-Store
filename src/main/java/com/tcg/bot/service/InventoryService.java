@@ -110,4 +110,12 @@ public class InventoryService {
     public void appendReservation(CardReservation reservation) throws Exception {
         googleSheetsService.appendReservation(reservation);
     }
+
+    public void updateReservationStatus(String reservationId, String status) throws Exception {
+        googleSheetsService.updateReservationStatus(reservationId, status);
+    }
+
+    public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
+        googleSheetsService.deleteReservationRows(rowIndexes);
+    }
 }

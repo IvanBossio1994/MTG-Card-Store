@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -633,10 +634,12 @@ public class GoogleSheetsService {
             return reservations;
         }
 
-        for (var row : values) {
+        for (int index = 0; index < values.size(); index++) {
+            var row = values.get(index);
             CardReservation reservation = new CardReservation();
+            reservation.setRowIndex(index + 2);
             reservation.setId(getColumnValue(row, 0));
-            reservation.setStatus(getColumnValue(row, 1));
+            reservation.setStatus(normalizedCardStatus(getColumnValue(row, 1)));
             reservation.setName(getColumnValue(row, 2));
             reservation.setSetName(getColumnValue(row, 3));
             reservation.setSetCode(getColumnValue(row, 4));
@@ -684,6 +687,66 @@ public class GoogleSheetsService {
                 .append(storeSettingsService.getSpreadsheetId(), reservationRange("A:O"), body)
                 .setValueInputOption("RAW")
                 .setInsertDataOption("INSERT_ROWS")
+                .execute();
+    }
+
+    public void updateReservationStatus(String reservationId, String status) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(status))));
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("B" + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
+        if (rowIndexes == null || rowIndexes.isEmpty()) {
+            return;
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        Integer sheetId = sheetId(sheetsService, RESERVATIONS_SHEET_NAME);
+
+        if (sheetId == null) {
+            throw new IllegalStateException("No se encontro la hoja Reservas.");
+        }
+
+        List<com.google.api.services.sheets.v4.model.Request> requests = rowIndexes.stream()
+                .filter(rowIndex -> rowIndex != null && rowIndex > 1)
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .map(rowIndex -> new com.google.api.services.sheets.v4.model.Request()
+                        .setDeleteDimension(new com.google.api.services.sheets.v4.model.DeleteDimensionRequest()
+                                .setRange(new com.google.api.services.sheets.v4.model.DimensionRange()
+                                        .setSheetId(sheetId)
+                                        .setDimension("ROWS")
+                                        .setStartIndex(rowIndex - 1)
+                                        .setEndIndex(rowIndex))))
+                .toList();
+
+        if (requests.isEmpty()) {
+            return;
+        }
+
+        var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                .setRequests(requests);
+
+        sheetsService.spreadsheets()
+                .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
                 .execute();
     }
 
@@ -810,13 +873,14 @@ public class GoogleSheetsService {
 
     private Integer inventorySheetId(Sheets sheetsService) throws Exception {
         ensureInventorySheet(sheetsService);
+        return sheetId(sheetsService, storeSettingsService.getInventorySheetName());
+    }
 
+    private Integer sheetId(Sheets sheetsService, String sheetName) throws Exception {
         var spreadsheet = sheetsService.spreadsheets()
                 .get(storeSettingsService.getSpreadsheetId())
                 .setFields("sheets.properties(sheetId,title)")
                 .execute();
-
-        String inventorySheetName = storeSettingsService.getInventorySheetName();
 
         if (spreadsheet.getSheets() == null) {
             return null;
@@ -824,7 +888,7 @@ public class GoogleSheetsService {
 
         return spreadsheet.getSheets()
                 .stream()
-                .filter(sheet -> inventorySheetName.equals(sheet.getProperties().getTitle()))
+                .filter(sheet -> sheetName.equals(sheet.getProperties().getTitle()))
                 .map(sheet -> sheet.getProperties().getSheetId())
                 .findFirst()
                 .orElse(null);
@@ -2033,6 +2097,48 @@ public class GoogleSheetsService {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    private int reservationRowIndex(Sheets sheetsService, String reservationId) throws Exception {
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A2:A"))
+                .execute();
+
+        var values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            return 0;
+        }
+
+        for (int index = 0; index < values.size(); index++) {
+            String id = getColumnValue(values.get(index), 0);
+            if (reservationId.trim().equalsIgnoreCase(id)) {
+                return index + 2;
+            }
+        }
+
+        return 0;
+    }
+
+    private String normalizedCardStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return CardReservation.STATUS_WANTED;
+        }
+
+        String normalized = status.trim()
+                .replace("-", " ")
+                .replace("_", " ")
+                .replaceAll("\\s+", " ")
+                .toUpperCase(java.util.Locale.ROOT);
+
+        if (normalized.equals("EN STOCK") || normalized.equals("CON STOCK")) {
+            return CardReservation.STATUS_IN_STOCK;
+        }
+
+        if (normalized.equals("RESERVADA")) {
+            return CardReservation.STATUS_RESERVED;
+        }
+
+        return CardReservation.STATUS_WANTED;
     }
 
     private String formatCashNumber(double value) {

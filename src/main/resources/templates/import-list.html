@@ -56,6 +56,7 @@
 
         <form id="import-confirm-form" method="post" th:action="@{/importar-lista/confirmar}" th:unless="${#lists.isEmpty(importResults)}">
             <input type="hidden" name="rawList" th:value="${rawList}">
+            <input id="honor-reservations-input" type="hidden" name="honorReservations" value="false">
             <div class="import-actions" th:if="${readyCount > 0}">
                 <label class="check-control">
                     <input id="select-all-import-results" type="checkbox">
@@ -86,7 +87,8 @@
                                 <div class="import-select-state">
                                 <input class="import-result-checkbox" type="checkbox" name="selected"
                                        th:if="${result.selectable}"
-                                       th:value="${result.sku + '|' + result.quantity}">
+                                       th:value="${result.sku + '|' + result.quantity}"
+                                       th:attr="data-name=${result.name},data-set-name=${result.edition},data-sku=${result.sku},data-printing=${result.printing}">
                                 <span class="status carta-duplicada"
                                       th:if="${result.status == 'CARTA DUPLICADA'}">
                                     CARTA DUPLICADA
@@ -124,7 +126,8 @@
                                 <div class="version-option-grid">
                                     <label class="version-option" th:each="option : ${result.alternatives}">
                                         <input class="import-result-checkbox" type="checkbox" name="selected"
-                                               th:value="${option.sku + '|' + option.quantity}">
+                                               th:value="${option.sku + '|' + option.quantity}"
+                                               th:attr="data-name=${option.name},data-set-name=${option.edition},data-sku=${option.sku},data-printing=${option.printing}">
                                         <span>
                                             <strong th:text="${option.name}">Sol Ring</strong>
                                             <small th:text="${option.edition + ' | ' + option.sku + ' | ' + option.printing + ' | $ ' + option.formattedNmPrice + ' | Stock ' + option.stockQuantity}">

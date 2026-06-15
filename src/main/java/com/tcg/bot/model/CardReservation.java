@@ -11,11 +11,9 @@ import java.time.format.DateTimeFormatter;
 @Setter
 public class CardReservation {
 
-    public static final String STATUS_WANTED = "BUSCADA";
-    public static final String STATUS_RESERVED = "RESERVADA";
-    public static final String STATUS_PAID = "PAGADA";
-    public static final String STATUS_RETIRED = "RETIRADA";
-    public static final String STATUS_CANCELLED = "CANCELADA";
+    public static final String STATUS_IN_STOCK = "En Stock";
+    public static final String STATUS_WANTED = "Sin Stock";
+    public static final String STATUS_RESERVED = "Reservada";
 
     private static final DateTimeFormatter SHEET_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -41,6 +39,7 @@ public class CardReservation {
     private String pickupDate;
     private String paymentDate;
     private String notes;
+    private int rowIndex;
 
     public String getFormattedReservationDate() {
         return formatDateTime(reservationDate);

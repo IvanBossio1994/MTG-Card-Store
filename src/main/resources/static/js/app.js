@@ -183,16 +183,68 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (importConfirmForm && loadingOverlay) {
-        importConfirmForm.addEventListener("submit", () => {
+        importConfirmForm.addEventListener("submit", async event => {
+            if (importConfirmForm.dataset.reservationDecision === "done") {
+                showLoadingOverlay(
+                    importConfirmForm,
+                    "Añadiendo...",
+                    "Añadiendo al stock",
+                    "Guardando las cartas seleccionadas en Google Sheet..."
+                );
+                return;
+            }
+
+            event.preventDefault();
+
+            const honorReservationsInput = document.getElementById("honor-reservations-input");
+            const selectedImportCards = Array.from(importConfirmForm.querySelectorAll(".import-result-checkbox:checked"));
+            let pendingCount = 0;
+
+            for (const checkbox of selectedImportCards) {
+                const sku = checkbox.dataset.sku || "";
+                const skuParts = sku.split("-");
+                const params = new URLSearchParams({
+                    name: checkbox.dataset.name || "",
+                    setName: checkbox.dataset.setName || "",
+                    setCode: skuParts[0] || "",
+                    collectorNumber: skuParts.slice(1).join("-"),
+                    printing: checkbox.dataset.printing || ""
+                });
+
+                try {
+                    const response = await fetch(`/api/reservas/pendientes?${params.toString()}`, {
+                        headers: {"Accept": "application/json"}
+                    });
+                    if (response.ok) {
+                        const reservations = await response.json();
+                        pendingCount += reservations.length;
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            if (pendingCount > 0) {
+                const separate = window.confirm(
+                        `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. Queres separar esas unidades para reservas antes de sumar stock?`
+                );
+                if (honorReservationsInput) {
+                    honorReservationsInput.value = separate ? "true" : "false";
+                }
+            } else if (honorReservationsInput) {
+                honorReservationsInput.value = "false";
+            }
+
+            importConfirmForm.dataset.reservationDecision = "done";
             showLoadingOverlay(
                 importConfirmForm,
                 "Añadiendo...",
                 "Añadiendo al stock",
                 "Guardando las cartas seleccionadas en Google Sheet..."
             );
+            importConfirmForm.submit();
         });
     }
-
     const movementDateInputs = document.querySelectorAll(".movement-date-field input[type='date']");
 
     movementDateInputs.forEach(movementDateInput => {
@@ -517,6 +569,146 @@ document.addEventListener("DOMContentLoaded", () => {
     const stockSummary = document.getElementById("stock-summary");
     const stockFilterButtons = document.querySelectorAll(".stock-filter-button");
     const stockDeleteDialog = document.getElementById("stock-delete-dialog");
+    const pendingReservationModal = document.getElementById("pending-reservation-modal");
+    const pendingReservationCardName = document.getElementById("pending-reservation-card-name");
+    const pendingReservationList = document.getElementById("pending-reservation-list");
+    const pendingReservationConfirm = document.querySelector("[data-pending-reservation-confirm]");
+    const pendingReservationStock = document.querySelector("[data-pending-reservation-stock]");
+    const reservationModal = document.getElementById("reservation-modal");
+    const reservationModalForm = document.getElementById("reservation-modal-form");
+    const reservationModalCardName = document.getElementById("reservation-modal-card-name");
+    const reservationModalError = document.getElementById("reservation-modal-error");
+    const removeFromStockControl = document.getElementById("remove-from-stock-control");
+    const addReservationButtons = document.querySelectorAll(".add-reservation-button");
+
+    if (reservationModal && reservationModalForm && addReservationButtons.length > 0) {
+        const closeReservationModal = () => {
+            reservationModal.hidden = true;
+            reservationModal.setAttribute("aria-hidden", "true");
+            reservationModalForm.reset();
+
+            if (reservationModalError) {
+                reservationModalError.hidden = true;
+                reservationModalError.textContent = "";
+            }
+        };
+
+        const setReservationValue = (name, value) => {
+            const field = reservationModalForm.elements[name];
+            if (field) {
+                field.value = value || "";
+            }
+        };
+
+        addReservationButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                const stockQuantity = Number(button.dataset.stockQuantity || 0);
+                setReservationValue("status", "Sin Stock");
+                setReservationValue("name", button.dataset.name);
+                setReservationValue("setName", button.dataset.setName);
+                setReservationValue("setCode", button.dataset.setCode);
+                setReservationValue("collectorNumber", button.dataset.collectorNumber);
+                setReservationValue("printing", button.dataset.printing);
+                setReservationValue("rowIndex", button.dataset.row);
+                setReservationValue("quantity", "1");
+                setReservationValue("pickupDate", "A convenir");
+
+                if (removeFromStockControl) {
+                    const checkbox = removeFromStockControl.querySelector("input[type='checkbox']");
+                    removeFromStockControl.hidden = stockQuantity <= 0 || !button.dataset.row || button.dataset.row === "0";
+                    if (checkbox) {
+                        checkbox.checked = false;
+                    }
+                }
+
+                if (reservationModalCardName) {
+                    const parts = [
+                        button.dataset.name,
+                        button.dataset.setName,
+                        button.dataset.setCode && button.dataset.collectorNumber
+                                ? `${button.dataset.setCode}-${button.dataset.collectorNumber}`
+                                : "",
+                        button.dataset.printing
+                    ].filter(Boolean);
+                    reservationModalCardName.textContent = parts.join(" | ");
+                }
+
+                reservationModal.hidden = false;
+                reservationModal.setAttribute("aria-hidden", "false");
+                reservationModalForm.elements.client?.focus();
+            });
+        });
+
+        reservationModal.querySelectorAll(".modal-close, .modal-cancel").forEach(button => {
+            button.addEventListener("click", closeReservationModal);
+        });
+
+        reservationModal.addEventListener("click", event => {
+            if (event.target === reservationModal) {
+                closeReservationModal();
+            }
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !reservationModal.hidden) {
+                closeReservationModal();
+            }
+        });
+
+        reservationModalForm.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            if (reservationModalError) {
+                reservationModalError.hidden = true;
+                reservationModalError.textContent = "";
+            }
+
+            const submitButton = reservationModalForm.querySelector("button[type='submit']");
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = "Guardando...";
+            }
+
+            try {
+                const response = await fetch(reservationModalForm.action, {
+                    method: "POST",
+                    body: new FormData(reservationModalForm),
+                    headers: {
+                        "X-Requested-With": "fetch",
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    const message = await responseMessage(response, "No se pudo guardar el pedido.");
+                    if (reservationModalError) {
+                        reservationModalError.textContent = message;
+                        reservationModalError.hidden = false;
+                    }
+                    return;
+                }
+
+                const result = await response.json();
+                if (Number(result.stockQuantity) >= 0 && result.rowIndex) {
+                    syncStockRows(String(result.rowIndex), Number(result.stockQuantity), result.action || "");
+                }
+
+                showToast(result.message || "Pedido guardado en Reservas", "success");
+                closeReservationModal();
+            } catch (error) {
+                console.error(error);
+                if (reservationModalError) {
+                    reservationModalError.textContent = "No se pudo guardar el pedido. Revisa la conexion y volve a intentar.";
+                    reservationModalError.hidden = false;
+                }
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = "Guardar pedido";
+                }
+            }
+        });
+    }
 
     stockFilterButtons.forEach(stockFilterButton => {
         const table = stockFilterButton.closest("table");
@@ -789,6 +981,159 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    let pendingReservationSelection = null;
+
+    const pendingReservationDecision = (button) => new Promise(async resolve => {
+        if (!pendingReservationModal || !pendingReservationList || !pendingReservationConfirm || !pendingReservationStock) {
+            resolve({action: "stock"});
+            return;
+        }
+
+        try {
+            const params = new URLSearchParams({
+                name: button.dataset.name || "",
+                setName: button.dataset.setName || "",
+                setCode: button.dataset.setCode || "",
+                collectorNumber: button.dataset.collectorNumber || "",
+                printing: button.dataset.printing || ""
+            });
+            const response = await fetch(`/api/reservas/pendientes?${params.toString()}`, {
+                headers: {"Accept": "application/json"}
+            });
+
+            if (!response.ok) {
+                resolve({action: "stock"});
+                return;
+            }
+
+            const reservations = await response.json();
+            if (!reservations || reservations.length === 0) {
+                resolve({action: "stock"});
+                return;
+            }
+
+            pendingReservationSelection = reservations[0];
+            pendingReservationList.innerHTML = "";
+
+            if (pendingReservationCardName) {
+                pendingReservationCardName.textContent = [
+                    button.dataset.name,
+                    button.dataset.setName,
+                    button.dataset.setCode && button.dataset.collectorNumber
+                            ? `${button.dataset.setCode}-${button.dataset.collectorNumber}`
+                            : "",
+                    button.dataset.printing
+                ].filter(Boolean).join(" | ");
+            }
+
+            reservations.forEach((reservation, index) => {
+                const label = document.createElement("label");
+                label.className = "pending-reservation-option";
+
+                const input = document.createElement("input");
+                input.type = "radio";
+                input.name = "pendingReservation";
+                input.value = reservation.id || "";
+                input.checked = index === 0;
+
+                input.addEventListener("change", () => {
+                    pendingReservationSelection = reservation;
+                });
+
+                const detail = document.createElement("span");
+                const client = document.createElement("strong");
+                client.textContent = reservation.client || "Cliente";
+                const meta = document.createElement("small");
+                meta.textContent = `${reservation.phone || "Sin telefono"} | Cant. ${reservation.quantity || "1"} | Retiro ${reservation.pickupDate || "A convenir"}`;
+                detail.appendChild(client);
+                detail.appendChild(meta);
+
+                label.appendChild(input);
+                label.appendChild(detail);
+                pendingReservationList.appendChild(label);
+            });
+
+            const cleanup = () => {
+                pendingReservationModal.hidden = true;
+                pendingReservationModal.setAttribute("aria-hidden", "true");
+                pendingReservationConfirm.onclick = null;
+                pendingReservationStock.onclick = null;
+                pendingReservationModal.querySelectorAll("[data-pending-reservation-cancel]").forEach(cancelButton => {
+                    cancelButton.onclick = null;
+                });
+            };
+
+            pendingReservationConfirm.onclick = () => {
+                const selected = pendingReservationSelection || reservations[0];
+                cleanup();
+                resolve({action: "reservation", reservationId: selected.id});
+            };
+
+            pendingReservationStock.onclick = () => {
+                cleanup();
+                resolve({action: "stock"});
+            };
+
+            pendingReservationModal.querySelectorAll("[data-pending-reservation-cancel]").forEach(cancelButton => {
+                cancelButton.onclick = () => {
+                    cleanup();
+                    resolve({action: "cancel"});
+                };
+            });
+
+            pendingReservationModal.hidden = false;
+            pendingReservationModal.setAttribute("aria-hidden", "false");
+        } catch (error) {
+            console.error(error);
+            resolve({action: "stock"});
+        }
+    });
+
+    const separatePendingReservation = async (button, reservationId) => {
+        const response = await fetch("/reservas/separar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json"
+            },
+            body: new URLSearchParams({
+                reservationId,
+                sku: button.dataset.sku || "",
+                rowIndex: button.dataset.row || "0"
+            })
+        });
+
+        if (!response.ok) {
+            showToast(await responseMessage(response, "No se pudo separar la reserva"), "error");
+            return false;
+        }
+
+        const result = await response.json();
+        const rowIndex = String(result.rowIndex || button.dataset.row || "");
+
+        if (rowIndex && rowIndex !== "0") {
+            button.dataset.row = rowIndex;
+
+            const decreaseButton = button.parentElement.querySelector(".stock-button.decrease");
+            if (decreaseButton) {
+                decreaseButton.dataset.row = rowIndex;
+                decreaseButton.disabled = false;
+            }
+
+            const row = button.closest("tr");
+            const reservationButton = row ? row.querySelector(".add-reservation-button") : null;
+            if (reservationButton) {
+                reservationButton.dataset.row = rowIndex;
+                reservationButton.dataset.stockQuantity = String(Math.max(Number(result.stockQuantity) || 0, 0));
+            }
+
+            syncStockRows(rowIndex, Number(result.stockQuantity) || 0, result.action || "Reservada");
+        }
+
+        showToast(result.message || "Carta separada para reserva", "success");
+        return true;
+    };
+
     // ---- Actualiza stock ----
     const stockButtons = document.querySelectorAll(".stock-button");
 
@@ -820,6 +1165,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (Number.isNaN(currentValue)) {
                         currentValue = 0;
+                    }
+
+                    if (increase) {
+                        const pendingDecision = await pendingReservationDecision(button);
+
+                        if (pendingDecision.action === "cancel") {
+                            return;
+                        }
+
+                        if (pendingDecision.action === "reservation") {
+                            await separatePendingReservation(button, pendingDecision.reservationId);
+                            return;
+                        }
                     }
 
                     if ((!rowIndex || rowIndex === "0") && !increase) {
@@ -887,6 +1245,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (row) {
                             row.dataset.inStock = "true";
                             row.classList.add("in-stock");
+
+                            const reservationButton = row.querySelector(".add-reservation-button");
+                            if (reservationButton) {
+                                reservationButton.dataset.row = newRowIndex;
+                                reservationButton.dataset.stockQuantity = "1";
+                            }
                         }
 
                         updateStockSummary();
@@ -954,7 +1318,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             ? Number(result.stockQuantity)
                             : Math.max(currentValue + change, 0);
                     const updatedAction = result.action || (
-                        updatedQuantity > 0 ? "CON STOCK" : "SIN STOCK"
+                        updatedQuantity > 0 ? "En Stock" : "Sin Stock"
                     );
 
                     syncStockRows(updatedRowIndex, updatedQuantity, updatedAction);
@@ -1006,7 +1370,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const normalizedQuantity = Math.max(Number(quantity) || 0, 0);
         const normalizedAction = action || (
-            normalizedQuantity > 0 ? "CON STOCK" : "SIN STOCK"
+            normalizedQuantity > 0 ? "En Stock" : "Sin Stock"
         );
         const relatedButtons = document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`);
         const relatedControls = new Set();
@@ -1050,10 +1414,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (status) {
                     status.textContent = normalizedAction;
-                    status.classList.remove("con-stock", "sin-stock");
+                    status.classList.remove("con-stock", "en-stock", "sin-stock", "reservada");
                     status.classList.add(
                         normalizedAction.toLowerCase().replace(/\s+/g, "-")
                     );
+                }
+
+                const reservationButton = row.querySelector(".add-reservation-button");
+                if (reservationButton) {
+                    reservationButton.dataset.stockQuantity = String(normalizedQuantity);
                 }
 
                 if (!inStock) {
