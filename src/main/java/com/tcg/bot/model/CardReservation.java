@@ -6,6 +6,8 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -40,9 +42,50 @@ public class CardReservation {
     private String paymentDate;
     private String notes;
     private int rowIndex;
+    private int inventoryRowIndex;
+    private int availableStock;
+    private String localPrice;
+    private String formattedLocalPrice;
+    private double lineTotalPrice;
+    private String formattedLineTotalPrice;
+    private double deliverableTotalPrice;
+    private String formattedDeliverableTotalPrice;
+    private List<Integer> sourceRowIndexes = new ArrayList<>();
+
+    public List<Integer> effectiveRowIndexes() {
+        if (sourceRowIndexes == null || sourceRowIndexes.isEmpty()) {
+            return rowIndex > 0 ? List.of(rowIndex) : List.of();
+        }
+
+        return sourceRowIndexes;
+    }
 
     public String getFormattedReservationDate() {
         return formatDateTime(reservationDate);
+    }
+
+    public boolean isDeliverable() {
+        return inventoryRowIndex > 0 && availableStock > 0;
+    }
+
+    public boolean isPartialDelivery() {
+        return isDeliverable() && availableStock < reservationQuantity();
+    }
+
+    public String getDeliveryButtonLabel() {
+        return isPartialDelivery() ? "Entrega parcial" : "Entregar";
+    }
+
+    public int reservationQuantity() {
+        if (quantity == null || quantity.isBlank()) {
+            return 1;
+        }
+
+        try {
+            return Math.max(1, Integer.parseInt(quantity.trim()));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     public String getFormattedPaymentDate() {

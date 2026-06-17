@@ -56,16 +56,35 @@
     </aside>
 </div>
 
-<div th:fragment="loading(title, message)" id="loading-overlay" class="loading-overlay" aria-hidden="true">
-    <div class="loading-card" role="status" aria-live="polite">
-        <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
-             alt="Gatito atigrado revisando cartas">
-        <h2 th:text="${title}">Sincronizando inventario</h2>
-        <p th:text="${message}">Conectando el Sheet con la app y actualizando precios...</p>
-        <div class="loading-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
+<div th:fragment="loading(title, message)" class="app-overlay-root">
+    <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+        <div class="loading-card" role="status" aria-live="polite">
+            <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
+                 alt="Gatito atigrado revisando cartas">
+            <h2 th:text="${title}">Sincronizando inventario</h2>
+            <p th:text="${message}">Conectando el Sheet con la app y actualizando precios...</p>
+            <div class="loading-dots" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-confirm-dialog" class="app-confirm-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true"
+         aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message">
+        <div class="app-confirm-modal">
+            <p class="eyebrow">Confirmar accion</p>
+            <h2 id="app-confirm-title">Confirmar</h2>
+            <p id="app-confirm-message" class="app-confirm-message">Confirma la accion.</p>
+            <div id="app-confirm-total" class="app-confirm-total" hidden>
+                <span>Total a cobrar</span>
+                <strong data-app-confirm-total-value>$ 0</strong>
+            </div>
+            <div class="app-confirm-actions">
+                <button class="secondary-button" type="button" data-app-confirm-cancel>Cancelar</button>
+                <button class="primary-button" type="button" data-app-confirm-accept>Confirmar</button>
+            </div>
         </div>
     </div>
 </div>

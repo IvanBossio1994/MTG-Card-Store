@@ -89,18 +89,36 @@
                             Stock
                         </button>
                     </th>
-                    <th>N°</th>
+                    <th>Nombre de la carta</th>
                     <th>Set</th>
-                    <th>Código/N°</th>
-                    <th>Variación</th>
+                    <th>Codigo</th>
+                    <th>Variacion</th>
                     <th>Printing</th>
+                    <th>Estado</th>
                     <th>Pedido</th>
-                    <th>N°</th>
+                    <th>Precio Card Kingdom</th>
+                    <th>Precio local</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr class="search-result-row" th:each="result : ${results}"
-                    th:attr="data-in-stock=${result.stockQuantity > 0}"
+                    th:attr="data-in-stock=${result.stockQuantity > 0},
+                             data-ck-nm=${result.formattedNmPrice},
+                             data-ck-ex=${result.formattedExPrice},
+                             data-ck-vg=${result.formattedVgPrice},
+                             data-ck-g=${result.formattedGPrice},
+                             data-local-nm=${result.formattedNmLocalPrice},
+                             data-local-ex=${result.formattedExLocalPrice},
+                             data-local-vg=${result.formattedVgLocalPrice},
+                             data-local-g=${result.formattedGLocalPrice},
+                             data-stock-nm=${result.nmStockQuantity},
+                             data-stock-ex=${result.exStockQuantity},
+                             data-stock-vg=${result.vgStockQuantity},
+                             data-stock-g=${result.gStockQuantity},
+                             data-row-nm=${result.nmRowIndex},
+                             data-row-ex=${result.exRowIndex},
+                             data-row-vg=${result.vgRowIndex},
+                             data-row-g=${result.gRowIndex}"
                     th:classappend="${result.stockQuantity > 0} ? 'in-stock' : ''">
                     <td>
                         <div class="stock-controls">
@@ -117,7 +135,7 @@
                             </span>
                             <button type="button"
                                     class="stock-button increase"
-                                    th:attr="data-row=${result.rowIndex},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
+                                    th:attr="data-row=${result.rowIndex},data-condition=${result.selectedCondition},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
                                     th:title="${result.rowIndex <= 0} ? 'Agregar esta impresión al Sheet' : 'Agregar una unidad'">
                                 +
                             </button>
@@ -129,16 +147,33 @@
                     <td class="variation-cell" th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
                     <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
                     <td>
+                        <select class="condition-price-select" aria-label="Estado de la carta">
+                            <option value="NM"
+                                    th:selected="${result.selectedCondition == 'NM'}"
+                                    th:disabled="${result.nmPrice == null || result.nmPrice == ''}">NM</option>
+                            <option value="EX"
+                                    th:selected="${result.selectedCondition == 'EX'}"
+                                    th:disabled="${result.exPrice == null || result.exPrice == ''}">EX</option>
+                            <option value="VG"
+                                    th:selected="${result.selectedCondition == 'VG'}"
+                                    th:disabled="${result.vgPrice == null || result.vgPrice == ''}">VG</option>
+                            <option value="G"
+                                    th:selected="${result.selectedCondition == 'G'}"
+                                    th:disabled="${result.gPrice == null || result.gPrice == ''}">G</option>
+                        </select>
+                    </td>
+                    <td>
                         <button type="button"
                                 class="secondary-button add-reservation-button"
                                 th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${result.rowIndex},data-stock-quantity=${result.stockQuantity}">
                             Añadir a pedido
                         </button>
                     </td>
-                    <td class="price-cell" th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
+                    <td class="price-cell ck-price-cell" th:text="${result.formattedSelectedCkPrice != null && result.formattedSelectedCkPrice != '' ? '$ ' + result.formattedSelectedCkPrice : '-'}">$ 2,49</td>
+                    <td class="price-cell local-price-cell" th:text="${result.localPrice != null && result.localPrice != '' ? '$ ' + result.formattedLocalPrice : '-'}">$ 0</td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(results)}">
-                    <td class="empty" colspan="8">No se encontraron cartas para esa búsqueda.</td>
+                    <td class="empty" colspan="10">No se encontraron cartas para esa búsqueda.</td>
                 </tr>
                 </tbody>
             </table>
@@ -183,11 +218,11 @@
                         <th>Stock</th>
                         <th>Carta</th>
                         <th>Set</th>
-                        <th>Código</th>
-                        <th>N°</th>
-                        <th>Precio local</th>
+                        <th>Codigo</th>
+                        <th>Numero</th>
                         <th>CK USD</th>
-                        <th>Acción</th>
+                        <th>Precio local</th>
+                        <th>Accion</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -220,8 +255,8 @@
                         <td class="set-name-cell" th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
                         <td class="compact-cell" th:text="${update.setCode != null && update.setCode != '' ? update.setCode : '-'}">CMM</td>
                         <td class="compact-cell" th:text="${update.collectorNumber != null && update.collectorNumber != '' ? update.collectorNumber : '-'}">410</td>
-                        <td class="price-cell" th:text="${update.localPrice != null && update.localPrice != '' ? '$ ' + update.formattedLocalPrice : '-'}">-</td>
                         <td class="price-cell" th:text="${update.ckPriceUsd != null && update.ckPriceUsd != '' ? '$ ' + update.formattedCkPriceUsd : '-'}">-</td>
+                        <td class="price-cell" th:text="${update.localPrice != null && update.localPrice != '' ? '$ ' + update.formattedLocalPrice : '-'}">-</td>
                         <td>
                             <span class="status stock-action-status" th:classappend="${update.action != null ? update.action.toLowerCase().replace(' ', '-') : ''}"
                                   th:text="${update.action != null && update.action != '' ? update.action : '-'}">En Stock</span>
@@ -266,7 +301,8 @@
         <div class="reservation-modal-grid">
             <label>
                 Cliente
-                <input name="client" type="text" required autocomplete="off">
+                <input name="client" type="text" required autocomplete="off" list="reservation-client-options">
+                <datalist id="reservation-client-options"></datalist>
             </label>
             <label>
                 Telefono
@@ -496,4 +532,3 @@
 </div>
 </body>
 </html>
-

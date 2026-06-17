@@ -40,6 +40,92 @@ document.addEventListener("DOMContentLoaded", () => {
     const storeForm = document.querySelector(".store-form");
     const loadingOverlay = document.getElementById("loading-overlay");
 
+    const confirmWithAppDialog = form => {
+        const appConfirmDialog = document.getElementById("app-confirm-dialog");
+        if (!appConfirmDialog) {
+            return Promise.resolve(window.confirm(form.dataset.confirmMessage || "Confirma la accion."));
+        }
+
+        const title = appConfirmDialog.querySelector("#app-confirm-title");
+        const message = appConfirmDialog.querySelector("#app-confirm-message");
+        const total = appConfirmDialog.querySelector("#app-confirm-total");
+        const totalValue = appConfirmDialog.querySelector("[data-app-confirm-total-value]");
+        const confirmButton = appConfirmDialog.querySelector("[data-app-confirm-accept]");
+        const cancelButtons = appConfirmDialog.querySelectorAll("[data-app-confirm-cancel]");
+
+        if (title) {
+            title.textContent = form.dataset.confirmTitle || "Confirmar accion";
+        }
+
+        if (message) {
+            message.textContent = form.dataset.confirmMessage || "Confirma la accion.";
+        }
+
+        if (total && totalValue) {
+            const totalText = form.dataset.confirmTotal || "";
+            total.hidden = totalText === "" || totalText === "-";
+            totalValue.textContent = totalText;
+        }
+
+        appConfirmDialog.hidden = false;
+        appConfirmDialog.setAttribute("aria-hidden", "false");
+
+        return new Promise(resolve => {
+            let resolved = false;
+
+            const finish = value => {
+                if (resolved) {
+                    return;
+                }
+
+                resolved = true;
+                appConfirmDialog.hidden = true;
+                appConfirmDialog.setAttribute("aria-hidden", "true");
+                confirmButton?.removeEventListener("click", confirm);
+                cancelButtons.forEach(button => button.removeEventListener("click", cancel));
+                appConfirmDialog.removeEventListener("click", backdropCancel);
+                document.removeEventListener("keydown", escapeCancel);
+                resolve(value);
+            };
+
+            const confirm = () => finish(true);
+            const cancel = () => finish(false);
+            const backdropCancel = event => {
+                if (event.target === appConfirmDialog) {
+                    finish(false);
+                }
+            };
+            const escapeCancel = event => {
+                if (event.key === "Escape") {
+                    finish(false);
+                }
+            };
+
+            confirmButton?.addEventListener("click", confirm);
+            cancelButtons.forEach(button => button.addEventListener("click", cancel));
+            appConfirmDialog.addEventListener("click", backdropCancel);
+            document.addEventListener("keydown", escapeCancel);
+            confirmButton?.focus();
+        });
+    };
+
+    document.querySelectorAll("form[data-app-confirm]").forEach(form => {
+        form.addEventListener("submit", async event => {
+            if (form.dataset.appConfirmAccepted === "true") {
+                return;
+            }
+
+            event.preventDefault();
+            const accepted = await confirmWithAppDialog(form);
+            if (!accepted) {
+                return;
+            }
+
+            form.dataset.appConfirmAccepted = "true";
+            form.submit();
+        });
+    });
+
     const showLoadingOverlay = (form, buttonText, title, message) => {
         if (!form || !loadingOverlay) {
             return;
@@ -225,9 +311,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (pendingCount > 0) {
-                const separate = window.confirm(
-                        `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. Queres separar esas unidades para reservas antes de sumar stock?`
-                );
+                const separate = await confirmWithAppDialog({
+                    dataset: {
+                        confirmTitle: "Reservas pendientes",
+                        confirmMessage: `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. Queres separar esas unidades para reservas antes de sumar stock?`
+                    }
+                });
                 if (honorReservationsInput) {
                     honorReservationsInput.value = separate ? "true" : "false";
                 }
@@ -578,10 +667,142 @@ document.addEventListener("DOMContentLoaded", () => {
     const reservationModalForm = document.getElementById("reservation-modal-form");
     const reservationModalCardName = document.getElementById("reservation-modal-card-name");
     const reservationModalError = document.getElementById("reservation-modal-error");
+    const reservationClientOptions = document.getElementById("reservation-client-options");
     const removeFromStockControl = document.getElementById("remove-from-stock-control");
     const addReservationButtons = document.querySelectorAll(".add-reservation-button");
+    const conditionPriceSelects = document.querySelectorAll(".condition-price-select");
+
+    conditionPriceSelects.forEach(select => {
+        const row = select.closest(".search-result-row");
+        const conditionDataKey = condition => `${condition.toLowerCase()[0].toUpperCase()}${condition.toLowerCase().slice(1)}`;
+        const updateConditionPrices = () => {
+            if (!row) {
+                return;
+            }
+
+            const condition = select.value || "NM";
+            const dataKey = conditionDataKey(condition);
+            const ckPrice = row.dataset[`ck${dataKey}`] || "";
+            const localPrice = row.dataset[`local${dataKey}`] || "";
+            const rowIndex = row.dataset[`row${dataKey}`] || "0";
+            const stockQuantity = Math.max(Number(row.dataset[`stock${dataKey}`]) || 0, 0);
+            const ckCell = row.querySelector(".ck-price-cell");
+            const localCell = row.querySelector(".local-price-cell");
+            const stockValue = row.querySelector(".stock-value");
+            const increaseButton = row.querySelector(".stock-button.increase");
+            const decreaseButton = row.querySelector(".stock-button.decrease");
+            const reservationButton = row.querySelector(".add-reservation-button");
+
+            if (ckCell) {
+                ckCell.textContent = ckPrice ? `$ ${ckPrice}` : "-";
+            }
+
+            if (localCell) {
+                localCell.textContent = localPrice ? `$ ${localPrice}` : "-";
+            }
+
+            if (stockValue) {
+                stockValue.textContent = String(stockQuantity);
+            }
+
+            if (increaseButton) {
+                increaseButton.dataset.row = rowIndex;
+                increaseButton.dataset.condition = condition;
+            }
+
+            if (decreaseButton) {
+                decreaseButton.dataset.row = rowIndex;
+                decreaseButton.dataset.condition = condition;
+                decreaseButton.disabled = rowIndex === "0";
+            }
+
+            if (reservationButton) {
+                reservationButton.dataset.row = rowIndex;
+                reservationButton.dataset.condition = condition;
+                reservationButton.dataset.stockQuantity = String(stockQuantity);
+            }
+
+            const hasAnyStock = ["nm", "ex", "vg", "g"].some(item => Number(row.dataset[`stock${item[0].toUpperCase()}${item.slice(1)}`]) > 0);
+            row.dataset.inStock = hasAnyStock ? "true" : "false";
+            row.classList.toggle("in-stock", hasAnyStock);
+        };
+
+        if (select.selectedOptions.length === 0 || select.selectedOptions[0].disabled) {
+            const firstAvailableOption = Array.from(select.options).find(option => !option.disabled);
+            if (firstAvailableOption) {
+                select.value = firstAvailableOption.value;
+            }
+        }
+
+        updateConditionPrices();
+        select.addEventListener("change", updateConditionPrices);
+    });
 
     if (reservationModal && reservationModalForm && addReservationButtons.length > 0) {
+        let reservationClients = [];
+        let reservationClientsLoaded = false;
+
+        const normalizeClientValue = value => (value || "").trim().toLowerCase();
+
+        const loadReservationClients = async () => {
+            if (reservationClientsLoaded) {
+                return;
+            }
+
+            reservationClientsLoaded = true;
+
+            try {
+                const response = await fetch("/api/reservas/clientes", {
+                    headers: {"Accept": "application/json"}
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                reservationClients = await response.json();
+
+                if (reservationClientOptions) {
+                    reservationClientOptions.replaceChildren();
+                    reservationClients.forEach(client => {
+                        if (!client.client) {
+                            return;
+                        }
+
+                        const option = document.createElement("option");
+                        option.value = client.client;
+                        option.label = client.phone
+                                ? `${client.client} | ${client.phone}`
+                                : client.client;
+                        reservationClientOptions.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        const selectedReservationClient = () => {
+            const clientInput = reservationModalForm.elements.client;
+            const value = normalizeClientValue(clientInput?.value);
+
+            if (!value) {
+                return null;
+            }
+
+            return reservationClients.find(client => normalizeClientValue(client.client) === value) || null;
+        };
+
+        const applySelectedReservationClient = () => {
+            const client = selectedReservationClient();
+            if (!client) {
+                return;
+            }
+
+            setReservationValue("phone", client.phone);
+            setReservationValue("dni", client.dni);
+        };
+
         const closeReservationModal = () => {
             reservationModal.hidden = true;
             reservationModal.setAttribute("aria-hidden", "true");
@@ -601,8 +822,9 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         addReservationButtons.forEach(button => {
-            button.addEventListener("click", () => {
+            button.addEventListener("click", async () => {
                 const stockQuantity = Number(button.dataset.stockQuantity || 0);
+                await loadReservationClients();
                 setReservationValue("status", "Sin Stock");
                 setReservationValue("name", button.dataset.name);
                 setReservationValue("setName", button.dataset.setName);
@@ -638,6 +860,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 reservationModalForm.elements.client?.focus();
             });
         });
+
+        reservationModalForm.elements.client?.addEventListener("input", applySelectedReservationClient);
+        reservationModalForm.elements.client?.addEventListener("change", applySelectedReservationClient);
 
         reservationModal.querySelectorAll(".modal-close, .modal-cancel").forEach(button => {
             button.addEventListener("click", closeReservationModal);
@@ -1099,6 +1324,7 @@ document.addEventListener("DOMContentLoaded", () => {
             body: new URLSearchParams({
                 reservationId,
                 sku: button.dataset.sku || "",
+                condition: button.dataset.condition || "NM",
                 rowIndex: button.dataset.row || "0"
             })
         });
@@ -1209,7 +1435,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 },
                                 body:
                                     new URLSearchParams({
-                                        sku
+                                        sku,
+                                        condition: button.dataset.condition || "NM"
                                     })
                             }
                         );
@@ -1227,14 +1454,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         if (newRowIndex) {
                             button.dataset.row = newRowIndex;
+                            const selectedCondition = button.dataset.condition || "NM";
+                            const conditionKey = `${selectedCondition.toLowerCase()[0].toUpperCase()}${selectedCondition.toLowerCase().slice(1)}`;
 
                             const decreaseButton =
                                 button.parentElement.querySelector(".stock-button.decrease");
 
                             if (decreaseButton) {
                                 decreaseButton.dataset.row = newRowIndex;
+                                decreaseButton.dataset.condition = selectedCondition;
                                 decreaseButton.disabled = false;
                                 decreaseButton.title = "Registrar unidad vendida";
+                            }
+
+                            const row = button.closest(".search-result-row");
+                            if (row) {
+                                row.dataset[`row${conditionKey}`] = newRowIndex;
+                                row.dataset[`stock${conditionKey}`] = "1";
                             }
                         }
 
@@ -1342,7 +1578,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 } finally {
 
-                    button.disabled = false;
+                    button.disabled = button.classList.contains("decrease")
+                            && (!button.dataset.row || button.dataset.row === "0");
                 }
             });
         });
@@ -1406,7 +1643,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const row = control.closest("tr");
 
             if (row) {
-                const inStock = normalizedQuantity > 0;
+                const condition = control.querySelector(".stock-button.increase")?.dataset.condition || "NM";
+                const conditionKey = `${condition.toLowerCase()[0].toUpperCase()}${condition.toLowerCase().slice(1)}`;
+                row.dataset[`stock${conditionKey}`] = String(normalizedQuantity);
+                row.dataset[`row${conditionKey}`] = rowIndex;
+                const inStock = ["nm", "ex", "vg", "g"]
+                        .some(item => Number(row.dataset[`stock${item[0].toUpperCase()}${item.slice(1)}`]) > 0);
                 row.dataset.inStock = String(inStock);
                 row.classList.toggle("in-stock", inStock);
 
@@ -1450,17 +1692,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const removedIndex = Number(rowIndex);
         const relatedButtons = document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`);
-        const rows = new Set();
+        const rowsToRemove = new Set();
 
         relatedButtons.forEach(button => {
             const row = button.closest("tr");
 
             if (row) {
-                rows.add(row);
+                if (row.classList.contains("search-result-row")) {
+                    const condition = button.dataset.condition || "NM";
+                    const conditionKey = `${condition.toLowerCase()[0].toUpperCase()}${condition.toLowerCase().slice(1)}`;
+                    row.dataset[`stock${conditionKey}`] = "0";
+                    row.dataset[`row${conditionKey}`] = "0";
+                    button.dataset.row = "0";
+
+                    if (button.classList.contains("decrease")) {
+                        button.disabled = true;
+                    }
+
+                    const select = row.querySelector(".condition-price-select");
+                    const stockValue = row.querySelector(".stock-value");
+                    const reservationButton = row.querySelector(".add-reservation-button");
+                    if (select?.value === condition && stockValue) {
+                        stockValue.textContent = "0";
+                    }
+
+                    if (select?.value === condition && reservationButton) {
+                        reservationButton.dataset.row = "0";
+                        reservationButton.dataset.stockQuantity = "0";
+                    }
+
+                    const inStock = ["nm", "ex", "vg", "g"]
+                            .some(item => Number(row.dataset[`stock${item[0].toUpperCase()}${item.slice(1)}`]) > 0);
+                    row.dataset.inStock = String(inStock);
+                    row.classList.toggle("in-stock", inStock);
+                } else {
+                    rowsToRemove.add(row);
+                }
             }
         });
 
-        rows.forEach(row => row.remove());
+        rowsToRemove.forEach(row => row.remove());
 
         document.querySelectorAll(".stock-button[data-row]").forEach(button => {
             const currentIndex = Number(button.dataset.row);
@@ -1468,6 +1739,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (Number.isFinite(currentIndex) && currentIndex > removedIndex) {
                 button.dataset.row = String(currentIndex - 1);
             }
+        });
+
+        document.querySelectorAll(".search-result-row").forEach(row => {
+            ["Nm", "Ex", "Vg", "G"].forEach(conditionKey => {
+                const currentIndex = Number(row.dataset[`row${conditionKey}`]);
+                if (Number.isFinite(currentIndex) && currentIndex > removedIndex) {
+                    row.dataset[`row${conditionKey}`] = String(currentIndex - 1);
+                }
+            });
         });
 
         updateStockSummary();

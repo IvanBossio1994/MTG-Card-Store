@@ -115,6 +115,10 @@ public class InventoryService {
         googleSheetsService.updateReservationStatus(reservationId, status);
     }
 
+    public void updateReservationQuantity(String reservationId, String quantity) throws Exception {
+        googleSheetsService.updateReservationQuantity(reservationId, quantity);
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         googleSheetsService.deleteReservationRows(rowIndexes);
     }

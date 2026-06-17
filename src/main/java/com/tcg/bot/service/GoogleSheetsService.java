@@ -30,6 +30,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GoogleSheetsService {
@@ -44,6 +45,8 @@ public class GoogleSheetsService {
     private final String configuredCredentialsPath;
     private final String configuredServiceAccountEmail;
     private volatile String serviceAccountEmail;
+    private final Map<String, SpreadsheetMetadata> spreadsheetMetadataCache = new ConcurrentHashMap<>();
+    private final Map<String, SheetColumns> inventoryColumnsCache = new ConcurrentHashMap<>();
 
     public GoogleSheetsService(
             StoreSettingsService storeSettingsService,
@@ -115,6 +118,65 @@ public class GoogleSheetsService {
 
     public void clearServiceAccountEmailCache() {
         serviceAccountEmail = null;
+    }
+
+    private String cacheKey() {
+        return storeSettingsService.getSpreadsheetId();
+    }
+
+    private String inventoryColumnsCacheKey() {
+        return cacheKey() + "|" + storeSettingsService.getInventorySheetName();
+    }
+
+    private SpreadsheetMetadata spreadsheetMetadata(Sheets sheetsService) throws Exception {
+        String spreadsheetId = storeSettingsService.getSpreadsheetId();
+        SpreadsheetMetadata cached = spreadsheetMetadataCache.get(spreadsheetId);
+        if (cached != null) {
+            return cached;
+        }
+
+        synchronized (spreadsheetMetadataCache) {
+            cached = spreadsheetMetadataCache.get(spreadsheetId);
+            if (cached != null) {
+                return cached;
+            }
+
+            var spreadsheet = sheetsService.spreadsheets()
+                    .get(spreadsheetId)
+                    .setFields("sheets.properties(sheetId,title)")
+                    .execute();
+
+            Map<String, Integer> idsByTitle = new HashMap<>();
+            if (spreadsheet.getSheets() != null) {
+                spreadsheet.getSheets().forEach(sheet -> idsByTitle.put(
+                        sheet.getProperties().getTitle(),
+                        sheet.getProperties().getSheetId()
+                ));
+            }
+
+            SpreadsheetMetadata metadata = new SpreadsheetMetadata(idsByTitle);
+            spreadsheetMetadataCache.put(spreadsheetId, metadata);
+            return metadata;
+        }
+    }
+
+    private void cacheSheet(String sheetName, Integer sheetId) {
+        if (sheetName == null || sheetName.isBlank()) {
+            return;
+        }
+
+        spreadsheetMetadataCache.compute(cacheKey(), (unused, metadata) -> {
+            Map<String, Integer> idsByTitle = metadata == null
+                    ? new HashMap<>()
+                    : new HashMap<>(metadata.idsByTitle());
+            idsByTitle.put(sheetName, sheetId == null ? -1 : sheetId);
+            return new SpreadsheetMetadata(idsByTitle);
+        });
+    }
+
+    private void clearSheetStructureCache() {
+        spreadsheetMetadataCache.remove(cacheKey());
+        inventoryColumnsCache.remove(inventoryColumnsCacheKey());
     }
 
     private InputStream openCredentialsStream() throws Exception {
@@ -712,6 +774,28 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public void updateReservationQuantity(String reservationId, String quantity) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(quantity))));
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("H" + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         if (rowIndexes == null || rowIndexes.isEmpty()) {
             return;
@@ -877,21 +961,8 @@ public class GoogleSheetsService {
     }
 
     private Integer sheetId(Sheets sheetsService, String sheetName) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties(sheetId,title)")
-                .execute();
-
-        if (spreadsheet.getSheets() == null) {
-            return null;
-        }
-
-        return spreadsheet.getSheets()
-                .stream()
-                .filter(sheet -> sheetName.equals(sheet.getProperties().getTitle()))
-                .map(sheet -> sheet.getProperties().getSheetId())
-                .findFirst()
-                .orElse(null);
+        Integer sheetId = spreadsheetMetadata(sheetsService).idsByTitle().get(sheetName);
+        return sheetId == null || sheetId < 0 ? null : sheetId;
     }
 
     private List<com.google.api.services.sheets.v4.model.ValueRange> automaticUpdateRanges(
@@ -935,6 +1006,11 @@ public class GoogleSheetsService {
     }
 
     private SheetColumns sheetColumns(Sheets sheetsService) throws Exception {
+        SheetColumns cached = inventoryColumnsCache.get(inventoryColumnsCacheKey());
+        if (cached != null) {
+            return cached;
+        }
+
         ensureInventorySheet(sheetsService);
 
         var response = sheetsService.spreadsheets().values()
@@ -944,10 +1020,14 @@ public class GoogleSheetsService {
         var values = response.getValues();
 
         if (values == null || values.isEmpty()) {
-            return SheetColumns.defaults();
+            SheetColumns defaults = SheetColumns.defaults();
+            inventoryColumnsCache.put(inventoryColumnsCacheKey(), defaults);
+            return defaults;
         }
 
-        return sheetColumns(values.get(0));
+        SheetColumns columns = sheetColumns(values.get(0));
+        inventoryColumnsCache.put(inventoryColumnsCacheKey(), columns);
+        return columns;
     }
 
     private SheetColumns sheetColumns(List<Object> header) {
@@ -980,17 +1060,9 @@ public class GoogleSheetsService {
     }
 
     private void ensureInventorySheet(Sheets sheetsService, List<CardKingdomProduct> products) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties.title")
-                .execute();
-
+        SpreadsheetMetadata metadata = spreadsheetMetadata(sheetsService);
         String inventorySheetName = storeSettingsService.getInventorySheetName();
-        List<String> sheetTitles = spreadsheet.getSheets() == null
-                ? List.of()
-                : spreadsheet.getSheets().stream()
-                .map(sheet -> sheet.getProperties().getTitle())
-                .toList();
+        List<String> sheetTitles = new ArrayList<>(metadata.idsByTitle().keySet());
         String sourceSheetName = resolveSheetTitle(sheetTitles, inventorySheetName);
 
         if (products != null
@@ -1003,9 +1075,7 @@ public class GoogleSheetsService {
         }
 
         String requestedInventorySheetName = inventorySheetName;
-        boolean exists = spreadsheet.getSheets() != null
-                && spreadsheet.getSheets().stream()
-                .anyMatch(sheet -> requestedInventorySheetName.equals(sheet.getProperties().getTitle()));
+        boolean exists = metadata.idsByTitle().containsKey(requestedInventorySheetName);
 
         if (!exists && products != null && !products.isEmpty()
                 && migrateExistingInventoryFromAnySheetIfNeeded(sheetsService, sheetTitles, products, inventorySheetName)) {
@@ -1031,6 +1101,7 @@ public class GoogleSheetsService {
             sheetsService.spreadsheets()
                     .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
                     .execute();
+            clearSheetStructureCache();
         }
 
         var headerResponse = sheetsService.spreadsheets().values()
@@ -1126,23 +1197,7 @@ public class GoogleSheetsService {
     }
 
     private Integer configuredInventorySheetId(Sheets sheetsService) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties(sheetId,title)")
-                .execute();
-
-        String inventorySheetName = storeSettingsService.getInventorySheetName();
-
-        if (spreadsheet.getSheets() == null) {
-            return null;
-        }
-
-        return spreadsheet.getSheets()
-                .stream()
-                .filter(sheet -> inventorySheetName.equals(sheet.getProperties().getTitle()))
-                .map(sheet -> sheet.getProperties().getSheetId())
-                .findFirst()
-                .orElse(null);
+        return sheetId(sheetsService, storeSettingsService.getInventorySheetName());
     }
 
     private boolean migrateExistingInventorySheetIfNeeded(
@@ -1298,14 +1353,7 @@ public class GoogleSheetsService {
     }
 
     private void ensureWritableSheet(Sheets sheetsService, String sheetName) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties.title")
-                .execute();
-
-        boolean exists = spreadsheet.getSheets() != null
-                && spreadsheet.getSheets().stream()
-                .anyMatch(sheet -> sheetName.equals(sheet.getProperties().getTitle()));
+        boolean exists = spreadsheetMetadata(sheetsService).idsByTitle().containsKey(sheetName);
 
         if (exists) {
             sheetsService.spreadsheets().values()
@@ -1329,6 +1377,7 @@ public class GoogleSheetsService {
         sheetsService.spreadsheets()
                 .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
                 .execute();
+        clearSheetStructureCache();
     }
 
     private String resolveSheetTitle(List<String> sheetTitles, String requestedSheetName) {
@@ -1520,15 +1569,7 @@ public class GoogleSheetsService {
     }
 
     private String uniqueSheetName(Sheets sheetsService, String baseName) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties.title")
-                .execute();
-
-        Set<String> titles = new LinkedHashSet<>();
-        if (spreadsheet.getSheets() != null) {
-            spreadsheet.getSheets().forEach(sheet -> titles.add(sheet.getProperties().getTitle()));
-        }
+        Set<String> titles = new LinkedHashSet<>(spreadsheetMetadata(sheetsService).idsByTitle().keySet());
 
         if (!titles.contains(baseName)) {
             return baseName;
@@ -1853,14 +1894,7 @@ public class GoogleSheetsService {
     }
 
     private void ensureMovementsSheet(Sheets sheetsService) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties.title")
-                .execute();
-
-        boolean exists = spreadsheet.getSheets() != null
-                && spreadsheet.getSheets().stream()
-                .anyMatch(sheet -> MOVEMENTS_SHEET_NAME.equals(sheet.getProperties().getTitle()));
+        boolean exists = spreadsheetMetadata(sheetsService).idsByTitle().containsKey(MOVEMENTS_SHEET_NAME);
 
         if (!exists) {
             var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
@@ -1874,6 +1908,7 @@ public class GoogleSheetsService {
             sheetsService.spreadsheets()
                     .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
                     .execute();
+            clearSheetStructureCache();
         }
 
         var headerResponse = sheetsService.spreadsheets().values()
@@ -1923,14 +1958,7 @@ public class GoogleSheetsService {
     }
 
     private void ensureCashSheet(Sheets sheetsService) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties.title")
-                .execute();
-
-        boolean exists = spreadsheet.getSheets() != null
-                && spreadsheet.getSheets().stream()
-                .anyMatch(sheet -> CASH_SHEET_NAME.equals(sheet.getProperties().getTitle()));
+        boolean exists = spreadsheetMetadata(sheetsService).idsByTitle().containsKey(CASH_SHEET_NAME);
 
         if (!exists) {
             var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
@@ -1944,6 +1972,7 @@ public class GoogleSheetsService {
             sheetsService.spreadsheets()
                     .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
                     .execute();
+            clearSheetStructureCache();
         }
 
         var headerResponse = sheetsService.spreadsheets().values()
@@ -1988,14 +2017,7 @@ public class GoogleSheetsService {
     }
 
     private void ensureReservationsSheet(Sheets sheetsService) throws Exception {
-        var spreadsheet = sheetsService.spreadsheets()
-                .get(storeSettingsService.getSpreadsheetId())
-                .setFields("sheets.properties.title")
-                .execute();
-
-        boolean exists = spreadsheet.getSheets() != null
-                && spreadsheet.getSheets().stream()
-                .anyMatch(sheet -> RESERVATIONS_SHEET_NAME.equals(sheet.getProperties().getTitle()));
+        boolean exists = spreadsheetMetadata(sheetsService).idsByTitle().containsKey(RESERVATIONS_SHEET_NAME);
 
         if (!exists) {
             var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
@@ -2009,6 +2031,7 @@ public class GoogleSheetsService {
             sheetsService.spreadsheets()
                     .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
                     .execute();
+            clearSheetStructureCache();
         }
 
         List<String> reservationHeader = List.of(
@@ -2316,5 +2339,8 @@ public class GoogleSheetsService {
                     .trim()
                     .replaceAll("\\s+", " ");
         }
+    }
+
+    private record SpreadsheetMetadata(Map<String, Integer> idsByTitle) {
     }
 }
