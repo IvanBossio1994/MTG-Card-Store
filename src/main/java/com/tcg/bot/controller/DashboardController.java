@@ -601,7 +601,29 @@ public class DashboardController {
                     .trim();
         } while (!candidate.equals(previousCandidate));
 
+        String aliasSegment = firstCardAliasSegment(candidate);
+        if (!aliasSegment.isBlank()) {
+            return aliasSegment;
+        }
+
         return isEditionStyleText(candidate) || isEditionAliasText(candidate) ? "" : candidate;
+    }
+
+    private String firstCardAliasSegment(String value) {
+        if (value == null || !value.contains("-")) {
+            return "";
+        }
+
+        for (String segment : value.split("\\s+-\\s+")) {
+            String candidate = segment.trim();
+            if (!candidate.isBlank()
+                    && !isEditionStyleText(candidate)
+                    && !isEditionAliasText(candidate)) {
+                return candidate;
+            }
+        }
+
+        return "";
     }
 
     private boolean isEditionStyleText(String value) {
@@ -621,7 +643,9 @@ public class DashboardController {
         }
 
         String trimmed = value.trim();
-        return trimmed.matches("(?i).*\\bvariants?\\b.*")
+        String normalized = normalizeSuggestionText(trimmed);
+        return normalized.matches("(?i)^[a-z]{1,5}\\d{0,4}[a-z]?$")
+                || normalized.matches("(?i).*\\b(?:variants?|promo|foil|borderless|showcase|extended art|etched|retro frame|oversized|expeditions?|holiday|grand prix|gateway|game day|wpn|idw comic|anniversary|unstable|unsanctioned|planeswalker deck|dossier|magnified|normal|serialized)\\b.*")
                 || trimmed.matches("(?i)^(?:promo pack|promotional|secret lair|commander|commander anthology|modern horizons \\d+|double masters(?: \\d+)?|core set \\d+)$");
     }
 

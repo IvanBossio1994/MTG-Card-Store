@@ -180,6 +180,22 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void keepsNamedAliasBeforeMetadataSegment() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "searchableVariationText",
+                String.class
+        );
+        method.setAccessible(true);
+
+        String candidate = (String) method.invoke(
+                controller,
+                "Paradise Chocobo - Chocobo Bundle Foil"
+        );
+
+        assertThat(candidate).isEqualTo("Paradise Chocobo");
+    }
+
+    @Test
     void doesNotUseEditionNameAsVariationAlias() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(
                 "searchableVariationText",
@@ -195,9 +211,24 @@ class DashboardControllerVariantSearchTests {
                 controller,
                 "Modern Horizons 3"
         );
+        String storePromo = (String) method.invoke(
+                controller,
+                "Store Promo Foil"
+        );
+        String numberedBorderless = (String) method.invoke(
+                controller,
+                "0343 - Borderless"
+        );
+        String promoPackSet = (String) method.invoke(
+                controller,
+                "Promo Pack - M21"
+        );
 
         assertThat(variantsEdition).isEmpty();
         assertThat(baseEdition).isEmpty();
+        assertThat(storePromo).isEmpty();
+        assertThat(numberedBorderless).isEmpty();
+        assertThat(promoPackSet).isEmpty();
     }
 
     @Test
