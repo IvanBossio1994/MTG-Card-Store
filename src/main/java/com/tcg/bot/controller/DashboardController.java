@@ -1040,7 +1040,8 @@ public class DashboardController {
                     quantity,
                     Math.max(quantity - reservedQuantity, 0),
                     reservedQuantity,
-                    reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK
+                    reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK,
+                    rowIndexForCondition(matches, condition)
             ));
         }
 
@@ -3964,7 +3965,8 @@ public class DashboardController {
                     quantity,
                     Math.max(quantity - reservedQuantity, 0),
                     reservedQuantity,
-                    reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK
+                    reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK,
+                    rowIndexForCondition(matches, condition)
             ));
         }
 

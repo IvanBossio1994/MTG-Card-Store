@@ -1999,10 +1999,24 @@ tr.in-stock {
 
 .inventory-condition-option {
     justify-content: space-between;
+    gap: 12px;
 }
 
 .inventory-condition-option .status {
     flex: 0 0 auto;
+}
+
+.condition-reservation-button {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.muted-cell {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .reservation-condition-stock-grid {

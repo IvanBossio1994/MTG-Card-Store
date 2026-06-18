@@ -5,6 +5,7 @@ public record ReservationConditionStock(
         int quantity,
         int availableQuantity,
         int reservedQuantity,
-        String action
+        String action,
+        int rowIndex
 ) {
 }

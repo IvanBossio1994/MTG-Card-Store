@@ -990,11 +990,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 const result = await response.json();
                 if (Number(result.stockQuantity) >= 0 && result.rowIndex) {
                     syncStockRows(String(result.rowIndex), Number(result.stockQuantity), result.action || "");
+                    if (result.action === "Reservada") {
+                        updatePendingStockInfoForButton(activeReservationButton, []);
+                    }
                 } else if (activeReservationButton) {
-                    updatePendingStockInfo(
-                        activeReservationButton.closest("tr"),
+                    updatePendingStockInfoForButton(
+                        activeReservationButton,
                         [
-                            ...pendingClientsFromRow(activeReservationButton.closest("tr")),
+                            ...pendingClientsFromRow(primaryInventoryRowFromButton(activeReservationButton)),
                             reservationModalForm.elements.client?.value || "cliente"
                         ]
                     );
@@ -1329,6 +1332,29 @@ document.addEventListener("DOMContentLoaded", () => {
         note.dataset.clients = cleanClients.join("|");
     }
 
+    function primaryInventoryRowFromButton(button) {
+        const row = button?.closest("tr");
+        if (!row) {
+            return null;
+        }
+
+        if (row.classList.contains("inventory-stock-options-row")) {
+            return row.previousElementSibling;
+        }
+
+        return row;
+    }
+
+    function updatePendingStockInfoForButton(button, clients) {
+        const primaryRow = primaryInventoryRowFromButton(button);
+        updatePendingStockInfo(primaryRow, clients);
+
+        const currentRow = button?.closest("tr");
+        if (currentRow && currentRow !== primaryRow) {
+            updatePendingStockInfo(currentRow, clients);
+        }
+    }
+
     function pendingClientsFromRow(row) {
         const note = row?.querySelector(".pending-stock-info");
         if (!note) {
@@ -1507,10 +1533,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 syncStockRows(rowIndex, Number(result.stockQuantity) || 0, result.action || "Reservada");
             }
 
-            const row = button.closest("tr");
+            const row = primaryInventoryRowFromButton(button);
             const fallbackClients = pendingClientsFromRow(row)
                     .filter(client => !(result.client && client === result.client));
-            updatePendingStockInfo(row, remainingClients.length > 0 ? remainingClients : fallbackClients);
+            updatePendingStockInfoForButton(button, remainingClients.length > 0 ? remainingClients : fallbackClients);
 
             showToast(result.message || "Carta separada para reserva", "success");
             return true;

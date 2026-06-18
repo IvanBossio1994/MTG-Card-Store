@@ -199,6 +199,11 @@
                                 <span class="status stock-action-status"
                                       th:classappend="${stock.action != null ? #strings.toLowerCase(stock.action).replace(' ', '-') : ''}"
                                       th:text="${stock.action}">En Stock</span>
+                                <button type="button"
+                                        class="secondary-button add-reservation-button condition-reservation-button"
+                                        th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                    Añadir a pedido
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -312,9 +317,11 @@
                         <td>
                             <button type="button"
                                     class="secondary-button add-reservation-button"
+                                    th:if="${#lists.isEmpty(update.conditionStocks)}"
                                     th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.displayStockQuantity()}">
                                 Añadir a pedido
                             </button>
+                            <span class="muted-cell" th:if="${!#lists.isEmpty(update.conditionStocks)}">Elegir condicion</span>
                         </td>
                     </tr>
                     <tr class="version-options-row inventory-stock-options-row" hidden
@@ -334,6 +341,11 @@
                                     <span class="status stock-action-status"
                                           th:classappend="${stock.action != null ? #strings.toLowerCase(stock.action).replace(' ', '-') : ''}"
                                           th:text="${stock.action}">En Stock</span>
+                                    <button type="button"
+                                            class="secondary-button add-reservation-button condition-reservation-button"
+                                            th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                        Añadir a pedido
+                                    </button>
                                 </div>
                             </div>
                         </td>
