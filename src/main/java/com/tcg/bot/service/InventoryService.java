@@ -5,6 +5,7 @@ import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.ReservationClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -121,5 +122,13 @@ public class InventoryService {
 
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         googleSheetsService.deleteReservationRows(rowIndexes);
+    }
+
+    public List<ReservationClient> getReservationClients() throws Exception {
+        return googleSheetsService.getReservationClients();
+    }
+
+    public void upsertReservationClient(String client, String phone, String dni, String updatedAt) throws Exception {
+        googleSheetsService.upsertReservationClient(client, phone, dni, updatedAt);
     }
 }

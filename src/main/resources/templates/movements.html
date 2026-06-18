@@ -113,7 +113,11 @@
                                 <td th:text="${movement.collectorNumber != null && movement.collectorNumber != '' ? movement.collectorNumber : '-'}">410</td>
                                 <td th:text="${movement.printing != null && movement.printing != '' ? movement.printing : '-'}">nonfoil</td>
                                 <td th:text="${movement.newStock != null && movement.newStock != '' ? movement.newStock : '-'}">1</td>
-                                <td th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Busqueda</td>
+                                <td>
+                                    <span class="status stock-action-status"
+                                          th:classappend="${movement.source != null ? #strings.toLowerCase(movement.source).replace(' ', '-') : ''}"
+                                          th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Busqueda</span>
+                                </td>
                             </tr>
                             </tbody>
                         </table>
@@ -252,6 +256,10 @@
                             <strong th:text="${report.enteredQuantity}">0</strong>
                         </div>
                         <div class="report-kpi">
+                            <span>Cartas reservadas</span>
+                            <strong th:text="${report.reservedQuantity}">0</strong>
+                        </div>
+                        <div class="report-kpi">
                             <span>Diferencia stock</span>
                             <strong th:text="${report.balanceQuantity}">0</strong>
                         </div>
@@ -269,6 +277,10 @@
                         <div class="report-bar-row">
                             <span>Ingresadas</span>
                             <div class="report-bar"><i class="entered" th:style="${'width:' + report.enteredWidth}"></i></div>
+                        </div>
+                        <div class="report-bar-row">
+                            <span>Reservadas</span>
+                            <div class="report-bar"><i class="reserved" th:style="${'width:' + report.reservedWidth}"></i></div>
                         </div>
                     </div>
                 </article>

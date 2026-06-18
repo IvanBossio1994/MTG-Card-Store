@@ -103,7 +103,7 @@
                                 <th>Stock Local</th>
                                 <th>Retiro</th>
                                 <th>Notas</th>
-                                <th>Entregar</th>
+                                <th>Acciones</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -124,7 +124,7 @@
                                     th:text="${reservation.inventoryRowIndex > 0 ? reservation.availableStock : '-'}">0</td>
                                 <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
                                 <td th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</td>
-                                <td class="reservation-deliver-cell">
+                                <td class="reservation-action-cell">
                                     <form method="post" th:action="@{/reservas/entregar}"
                                           th:if="${reservation.deliverable}"
                                           data-app-confirm
@@ -140,6 +140,13 @@
                                     <span class="reservation-deliver-unavailable"
                                           th:unless="${reservation.deliverable}"
                                           th:title="${reservation.availableStock > 0 ? 'Stock disponible: ' + reservation.availableStock : 'Sin stock compatible'}">-</span>
+                                    <form method="post" th:action="@{/reservas/eliminar}"
+                                          data-app-confirm
+                                          data-confirm-title="Quitar carta"
+                                          th:attr="data-confirm-message=${'Quitar ' + (reservation.name != null && reservation.name != '' ? reservation.name : 'esta carta') + ' del pedido? Si estaba reservada, vuelve al stock.'}">
+                                        <input type="hidden" name="reservationId" th:value="${reservation.id}">
+                                        <button class="reservation-line-delete-button" type="submit" aria-label="Quitar carta">&times;</button>
+                                    </form>
                                 </td>
                             </tr>
                             </tbody>
@@ -154,7 +161,7 @@
                                     <span class="reservation-total-count" th:text="${group.totalQuantity}">0</span>
                                 </td>
                                 <td colspan="3"></td>
-                                <td class="reservation-deliver-cell">
+                                <td class="reservation-action-cell reservation-total-actions">
                                     <form method="post" th:action="@{/reservas/entregar-grupo}"
                                           th:if="${group.availableQuantity > 0}"
                                           data-app-confirm

@@ -743,6 +743,51 @@ document.addEventListener("DOMContentLoaded", () => {
         let reservationClientsLoaded = false;
 
         const normalizeClientValue = value => (value || "").trim().toLowerCase();
+        const digitsOnly = value => (value || "").replace(/\D/g, "");
+
+        const renderReservationClients = () => {
+            if (!reservationClientOptions) {
+                return;
+            }
+
+            reservationClientOptions.replaceChildren();
+            reservationClients.forEach(client => {
+                if (!client.client) {
+                    return;
+                }
+
+                const option = document.createElement("option");
+                option.value = client.client;
+                option.label = client.phone
+                        ? `${client.client} | ${client.phone}`
+                        : client.client;
+                reservationClientOptions.appendChild(option);
+            });
+        };
+
+        const upsertReservationClientOption = client => {
+            if (!client || !client.client) {
+                return;
+            }
+
+            const normalizedClient = normalizeClientValue(client.client);
+            const existingIndex = reservationClients.findIndex(
+                    existing => normalizeClientValue(existing.client) === normalizedClient
+            );
+            const nextClient = {
+                client: client.client,
+                phone: client.phone || "",
+                dni: client.dni || ""
+            };
+
+            if (existingIndex >= 0) {
+                reservationClients[existingIndex] = nextClient;
+            } else {
+                reservationClients.unshift(nextClient);
+            }
+
+            renderReservationClients();
+        };
 
         const loadReservationClients = async () => {
             if (reservationClientsLoaded) {
@@ -761,22 +806,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 reservationClients = await response.json();
-
-                if (reservationClientOptions) {
-                    reservationClientOptions.replaceChildren();
-                    reservationClients.forEach(client => {
-                        if (!client.client) {
-                            return;
-                        }
-
-                        const option = document.createElement("option");
-                        option.value = client.client;
-                        option.label = client.phone
-                                ? `${client.client} | ${client.phone}`
-                                : client.client;
-                        reservationClientOptions.appendChild(option);
-                    });
-                }
+                renderReservationClients();
             } catch (error) {
                 console.error(error);
             }
@@ -803,6 +833,16 @@ document.addEventListener("DOMContentLoaded", () => {
             setReservationValue("dni", client.dni);
         };
 
+        const restrictNumericField = (field, maxLength) => {
+            if (!field) {
+                return;
+            }
+
+            field.addEventListener("input", () => {
+                field.value = digitsOnly(field.value).slice(0, maxLength);
+            });
+        };
+
         const closeReservationModal = () => {
             reservationModal.hidden = true;
             reservationModal.setAttribute("aria-hidden", "true");
@@ -821,6 +861,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
+        restrictNumericField(reservationModalForm.elements.phone, 10);
+        restrictNumericField(reservationModalForm.elements.dni, 8);
+
         addReservationButtons.forEach(button => {
             button.addEventListener("click", async () => {
                 const stockQuantity = Number(button.dataset.stockQuantity || 0);
@@ -837,9 +880,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (removeFromStockControl) {
                     const checkbox = removeFromStockControl.querySelector("input[type='checkbox']");
-                    removeFromStockControl.hidden = stockQuantity <= 0 || !button.dataset.row || button.dataset.row === "0";
+                    const canReserveFromStock = stockQuantity > 0 && button.dataset.row && button.dataset.row !== "0";
+                    removeFromStockControl.hidden = !canReserveFromStock;
                     if (checkbox) {
-                        checkbox.checked = false;
+                        checkbox.checked = canReserveFromStock;
                     }
                 }
 
@@ -917,6 +961,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (Number(result.stockQuantity) >= 0 && result.rowIndex) {
                     syncStockRows(String(result.rowIndex), Number(result.stockQuantity), result.action || "");
                 }
+
+                upsertReservationClientOption({
+                    client: result.client || reservationModalForm.elements.client?.value,
+                    phone: result.phone || reservationModalForm.elements.phone?.value,
+                    dni: result.dni || reservationModalForm.elements.dni?.value
+                });
 
                 showToast(result.message || "Pedido guardado en Reservas", "success");
                 closeReservationModal();

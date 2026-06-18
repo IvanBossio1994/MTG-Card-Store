@@ -101,7 +101,8 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr class="search-result-row" th:each="result : ${results}"
+                <th:block th:each="result, iter : ${results}">
+                <tr class="search-result-row"
                     th:attr="data-in-stock=${result.stockQuantity > 0},
                              data-ck-nm=${result.formattedNmPrice},
                              data-ck-ex=${result.formattedExPrice},
@@ -130,7 +131,7 @@
                                 -
                             </button>
                             <span class="stock-value"
-                                  th:text="${result.stockQuantity}">
+                                  th:text="${result.displayStockQuantity}">
                                 0
                             </span>
                             <button type="button"
@@ -141,7 +142,16 @@
                             </button>
                         </div>
                     </td>
-                    <td class="card-name-cell" th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</td>
+                    <td class="card-name-cell">
+                        <div class="inventory-card-name">
+                            <span th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
+                            <button class="version-toggle inventory-stock-toggle" type="button"
+                                    th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                                    th:attr="aria-controls=${'search-stock-options-' + iter.index}"
+                                    aria-expanded="false"
+                                    aria-label="Ver stock por condición"></button>
+                        </div>
+                    </td>
                     <td class="set-name-cell" th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
                     <td class="compact-cell" th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
                     <td class="variation-cell" th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
@@ -172,6 +182,28 @@
                     <td class="price-cell ck-price-cell" th:text="${result.formattedSelectedCkPrice != null && result.formattedSelectedCkPrice != '' ? '$ ' + result.formattedSelectedCkPrice : '-'}">$ 2,49</td>
                     <td class="price-cell local-price-cell" th:text="${result.localPrice != null && result.localPrice != '' ? '$ ' + result.formattedLocalPrice : '-'}">$ 0</td>
                 </tr>
+                <tr class="version-options-row inventory-stock-options-row" hidden
+                    th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                    th:id="${'search-stock-options-' + iter.index}">
+                    <td colspan="10">
+                        <div class="version-options-header">
+                            <span>Stock en Sheet por condición</span>
+                            <strong th:text="${#lists.size(result.conditionStocks) + ' condiciones'}">0 condiciones</strong>
+                        </div>
+                        <div class="version-option-grid inventory-condition-grid">
+                            <div class="version-option inventory-condition-option" th:each="stock : ${result.conditionStocks}">
+                                <span>
+                                    <strong th:text="${stock.condition}">NM</strong>
+                                    <small th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                </span>
+                                <span class="status stock-action-status"
+                                      th:classappend="${stock.action != null ? #strings.toLowerCase(stock.action).replace(' ', '-') : ''}"
+                                      th:text="${stock.action}">En Stock</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                </th:block>
                 <tr th:if="${#lists.isEmpty(results)}">
                     <td class="empty" colspan="10">No se encontraron cartas para esa búsqueda.</td>
                 </tr>
@@ -223,10 +255,12 @@
                         <th>CK USD</th>
                         <th>Precio local</th>
                         <th>Accion</th>
+                        <th>Pedido</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr class="synced-table-row" th:each="update : ${updates}"
+                    <th:block th:each="update, iter : ${updates}">
+                    <tr class="synced-table-row"
                         th:attr="data-in-stock=${update.stockQuantity > 0}"
                         th:classappend="${update.stockQuantity > 0} ? 'in-stock' : ''">
                         <td>
@@ -238,20 +272,29 @@
                                         th:title="${update.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : (${update.stockQuantity <= 0} ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')">
                                     -
                                 </button>
-                                <span class="stock-value"
-                                      th:text="${update.stockQuantity}">
+                            <span class="stock-value"
+                                      th:text="${update.displayStockQuantity}">
                                     0
                                 </span>
                                 <button type="button"
                                         class="stock-button increase"
-                                        th:attr="data-row=${update.rowIndex},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"
+                                        th:attr="data-row=${update.rowIndex},data-condition=${update.condition},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"
                                         th:disabled="${update.rowIndex <= 0}"
                                         th:title="${update.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : 'Agregar una unidad'">
                                     +
                                 </button>
                             </div>
                         </td>
-                        <td class="card-name-cell" th:text="${update.name != null && update.name != '' ? update.name : '-'}">Sol Ring</td>
+                        <td class="card-name-cell">
+                            <div class="inventory-card-name">
+                                <span th:text="${update.name != null && update.name != '' ? update.name : '-'}">Sol Ring</span>
+                                <button class="version-toggle inventory-stock-toggle" type="button"
+                                        th:if="${!#lists.isEmpty(update.conditionStocks)}"
+                                        th:attr="aria-controls=${'synced-stock-options-' + iter.index}"
+                                        aria-expanded="false"
+                                        aria-label="Ver stock por condición"></button>
+                            </div>
+                        </td>
                         <td class="set-name-cell" th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
                         <td class="compact-cell" th:text="${update.setCode != null && update.setCode != '' ? update.setCode : '-'}">CMM</td>
                         <td class="compact-cell" th:text="${update.collectorNumber != null && update.collectorNumber != '' ? update.collectorNumber : '-'}">410</td>
@@ -261,7 +304,36 @@
                             <span class="status stock-action-status" th:classappend="${update.action != null ? update.action.toLowerCase().replace(' ', '-') : ''}"
                                   th:text="${update.action != null && update.action != '' ? update.action : '-'}">En Stock</span>
                         </td>
+                        <td>
+                            <button type="button"
+                                    class="secondary-button add-reservation-button"
+                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.stockQuantity}">
+                                Añadir a pedido
+                            </button>
+                        </td>
                     </tr>
+                    <tr class="version-options-row inventory-stock-options-row" hidden
+                        th:if="${!#lists.isEmpty(update.conditionStocks)}"
+                        th:id="${'synced-stock-options-' + iter.index}">
+                        <td colspan="9">
+                            <div class="version-options-header">
+                                <span>Stock en Sheet por condición</span>
+                                <strong th:text="${#lists.size(update.conditionStocks) + ' condiciones'}">0 condiciones</strong>
+                            </div>
+                            <div class="version-option-grid inventory-condition-grid">
+                                <div class="version-option inventory-condition-option" th:each="stock : ${update.conditionStocks}">
+                                    <span>
+                                        <strong th:text="${stock.condition}">NM</strong>
+                                        <small th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                    </span>
+                                    <span class="status stock-action-status"
+                                          th:classappend="${stock.action != null ? #strings.toLowerCase(stock.action).replace(' ', '-') : ''}"
+                                          th:text="${stock.action}">En Stock</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    </th:block>
                     </tbody>
                 </table>
             </div>
@@ -306,7 +378,7 @@
             </label>
             <label>
                 Telefono
-                <input name="phone" type="text" required autocomplete="off">
+                <input name="phone" type="text" required autocomplete="off" inputmode="numeric" maxlength="10" pattern="(11|15)[0-9]{8}" title="Debe tener 10 digitos y empezar con 11 o 15">
             </label>
             <label>
                 Cantidad
@@ -314,7 +386,7 @@
             </label>
             <label>
                 DNI
-                <input name="dni" type="text" autocomplete="off">
+                <input name="dni" type="text" autocomplete="off" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" title="Debe tener 7 u 8 digitos">
             </label>
             <label class="wide">
                 Fecha de retiro

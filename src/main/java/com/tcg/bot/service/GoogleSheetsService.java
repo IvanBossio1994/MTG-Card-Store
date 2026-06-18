@@ -12,6 +12,7 @@ import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.ReservationClient;
 import com.tcg.bot.model.CashRegisterEntry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class GoogleSheetsService {
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
     private static final String RESERVATIONS_SHEET_NAME = "Reservas";
+    private static final String CLIENTS_SHEET_NAME = "Clientes";
 
     private final StoreSettingsService storeSettingsService;
     private final String configuredCredentialsPath;
@@ -752,6 +754,76 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public List<ReservationClient> getReservationClients() throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureClientsSheet(sheetsService);
+
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), clientRange("A2:D"))
+                .execute();
+
+        var values = response.getValues();
+        List<ReservationClient> clients = new ArrayList<>();
+
+        if (values == null || values.isEmpty()) {
+            return clients;
+        }
+
+        for (int index = 0; index < values.size(); index++) {
+            var row = values.get(index);
+            String clientName = getColumnValue(row, 0);
+            if (clientName.isBlank()) {
+                continue;
+            }
+
+            ReservationClient client = new ReservationClient();
+            client.setRowIndex(index + 2);
+            client.setClient(clientName);
+            client.setPhone(getColumnValue(row, 1));
+            client.setDni(getColumnValue(row, 2));
+            client.setUpdatedAt(getColumnValue(row, 3));
+            clients.add(client);
+        }
+
+        Collections.reverse(clients);
+        return clients;
+    }
+
+    public void upsertReservationClient(String client, String phone, String dni, String updatedAt) throws Exception {
+        if (client == null || client.isBlank()) {
+            return;
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureClientsSheet(sheetsService);
+
+        String normalizedClient = normalizedClientName(client);
+        int rowIndex = clientRowIndex(sheetsService, normalizedClient);
+        List<Object> row = List.of(
+                client.trim(),
+                safe(phone == null ? "" : phone.trim()),
+                safe(dni == null ? "" : dni.trim()),
+                safe(updatedAt)
+        );
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(row));
+
+        if (rowIndex > 0) {
+            sheetsService.spreadsheets().values()
+                    .update(storeSettingsService.getSpreadsheetId(), clientRange("A" + rowIndex + ":D" + rowIndex), body)
+                    .setValueInputOption("RAW")
+                    .execute();
+            return;
+        }
+
+        sheetsService.spreadsheets().values()
+                .append(storeSettingsService.getSpreadsheetId(), clientRange("A:D"), body)
+                .setValueInputOption("RAW")
+                .setInsertDataOption("INSERT_ROWS")
+                .execute();
+    }
+
     public void updateReservationStatus(String reservationId, String status) throws Exception {
         if (reservationId == null || reservationId.isBlank()) {
             throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
@@ -1053,6 +1125,10 @@ public class GoogleSheetsService {
 
     private String reservationRange(String cells) {
         return "'" + RESERVATIONS_SHEET_NAME + "'!" + cells;
+    }
+
+    private String clientRange(String cells) {
+        return "'" + CLIENTS_SHEET_NAME + "'!" + cells;
     }
 
     private void ensureInventorySheet(Sheets sheetsService) throws Exception {
@@ -1417,7 +1493,8 @@ public class GoogleSheetsService {
     private boolean isSystemSheet(String sheetTitle) {
         return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
                 || CASH_SHEET_NAME.equals(sheetTitle)
-                || RESERVATIONS_SHEET_NAME.equals(sheetTitle);
+                || RESERVATIONS_SHEET_NAME.equals(sheetTitle)
+                || CLIENTS_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {
@@ -2071,6 +2148,44 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    private void ensureClientsSheet(Sheets sheetsService) throws Exception {
+        boolean exists = spreadsheetMetadata(sheetsService).idsByTitle().containsKey(CLIENTS_SHEET_NAME);
+
+        if (!exists) {
+            var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
+                    .setAddSheet(new com.google.api.services.sheets.v4.model.AddSheetRequest()
+                            .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties()
+                                    .setTitle(CLIENTS_SHEET_NAME)));
+
+            var batchRequest = new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                    .setRequests(List.of(addSheetRequest));
+
+            sheetsService.spreadsheets()
+                    .batchUpdate(storeSettingsService.getSpreadsheetId(), batchRequest)
+                    .execute();
+            clearSheetStructureCache();
+        }
+
+        List<String> clientHeader = List.of("Cliente", "Telefono", "DNI", "Actualizado");
+        var headerResponse = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), clientRange("A1:D1"))
+                .execute();
+
+        if (headerResponse.getValues() != null
+                && !headerResponse.getValues().isEmpty()
+                && sameHeader(headerResponse.getValues().get(0), clientHeader)) {
+            return;
+        }
+
+        var headerBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(new ArrayList<>(clientHeader)));
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), clientRange("A1:D1"), headerBody)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
     private void appendCashRow(Sheets sheetsService, List<Object> values) throws Exception {
         var body = new com.google.api.services.sheets.v4.model.ValueRange()
                 .setValues(List.of(values));
@@ -2108,6 +2223,34 @@ public class GoogleSheetsService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private int clientRowIndex(Sheets sheetsService, String normalizedClient) throws Exception {
+        if (normalizedClient == null || normalizedClient.isBlank()) {
+            return 0;
+        }
+
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), clientRange("A2:A"))
+                .execute();
+
+        var values = response.getValues();
+        if (values == null || values.isEmpty()) {
+            return 0;
+        }
+
+        for (int index = 0; index < values.size(); index++) {
+            String client = getColumnValue(values.get(index), 0);
+            if (normalizedClient.equals(normalizedClientName(client))) {
+                return index + 2;
+            }
+        }
+
+        return 0;
+    }
+
+    private String normalizedClientName(String value) {
+        return value == null ? "" : value.trim().toLowerCase().replaceAll("\\s+", " ");
     }
 
     private double parseCashNumber(String value) {

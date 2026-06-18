@@ -1931,34 +1931,126 @@ tr.in-stock {
 
 .reservation-items-table {
     table-layout: fixed;
-    min-width: 1320px;
+    min-width: 1240px;
 }
 
 .reservation-items-table th,
 .reservation-items-table td {
-    padding: 12px 10px;
+    padding: 11px 10px;
+    vertical-align: middle;
     white-space: normal;
     overflow-wrap: anywhere;
 }
 
 .reservation-items-table th:nth-child(1),
 .reservation-items-table td:nth-child(1) {
-    width: 100px;
+    width: 96px;
+    text-align: center;
 }
 
 .reservation-items-table th:nth-child(2),
 .reservation-items-table td:nth-child(2) {
-    width: 220px;
+    width: 210px;
+}
+
+.inventory-card-name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.inventory-card-name span {
+    min-width: 0;
+}
+
+.inventory-stock-toggle {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--blue);
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.inventory-stock-toggle::after {
+    margin-left: 0;
+    border-top-color: var(--blue);
+}
+
+.inventory-stock-toggle[aria-expanded="true"] {
+    background: var(--blue-soft);
+    border-color: rgba(23, 105, 224, 0.35);
+}
+
+.inventory-condition-grid {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.inventory-condition-option {
+    justify-content: space-between;
+}
+
+.inventory-condition-option .status {
+    flex: 0 0 auto;
+}
+
+.reservation-condition-stock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    padding: 12px 16px 16px;
+}
+
+.reservation-condition-stock {
+    display: grid;
+    gap: 4px;
+    padding: 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.reservation-condition-stock strong {
+    font-size: 14px;
+}
+
+.reservation-condition-stock span,
+.reservation-condition-stock small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.reservation-condition-stock em {
+    width: fit-content;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: var(--green-soft);
+    color: var(--green);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.reservation-condition-stock em.reserved {
+    background: var(--blue-soft);
+    color: var(--blue);
 }
 
 .reservation-items-table th:nth-child(3),
 .reservation-items-table td:nth-child(3) {
-    width: 210px;
+    width: 180px;
 }
 
 .reservation-items-table th:nth-child(4),
 .reservation-items-table td:nth-child(4) {
-    width: 90px;
+    width: 96px;
     text-align: center;
 }
 
@@ -1970,20 +2062,25 @@ tr.in-stock {
 
 .reservation-items-table th:nth-child(6),
 .reservation-items-table td:nth-child(6) {
-    width: 100px;
-    text-align: center;
+    width: 112px;
+    text-align: right;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    font-variant-numeric: tabular-nums;
 }
 
 .reservation-items-table th:nth-child(7),
 .reservation-items-table td:nth-child(7) {
     width: 64px;
     text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 .reservation-items-table th:nth-child(8),
 .reservation-items-table td:nth-child(8) {
     width: 84px;
     text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 .reservation-items-table th:nth-child(9),
@@ -2000,7 +2097,7 @@ tr.in-stock {
 
 .reservation-items-table th:nth-child(11),
 .reservation-items-table td:nth-child(11) {
-    width: 120px;
+    width: 142px;
     text-align: center;
 }
 
@@ -2009,7 +2106,14 @@ tr.in-stock {
     font-weight: 700;
 }
 
-.reservation-deliver-cell form {
+.reservation-action-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.reservation-action-cell form {
     display: flex;
     justify-content: center;
 }
@@ -2041,8 +2145,34 @@ tr.in-stock {
 }
 
 .reservation-deliver-unavailable {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
     color: var(--muted);
     font-weight: 700;
+}
+
+.reservation-line-delete-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(220, 38, 38, 0.22);
+    border-radius: 8px;
+    color: var(--red);
+    background: var(--red-soft);
+    cursor: pointer;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.reservation-line-delete-button:hover {
+    border-color: rgba(220, 38, 38, 0.45);
+    background: #fee2e2;
 }
 
 .reservation-total-row td {
@@ -2082,6 +2212,10 @@ tr.in-stock {
     border-radius: 999px;
     color: var(--blue);
     background: var(--blue-soft);
+}
+
+.reservation-total-actions {
+    justify-content: flex-end;
 }
 
 .reservation-total-row .reservation-deliver-button {
@@ -2180,6 +2314,10 @@ tr.in-stock {
 
 .report-bar i.entered {
     background: var(--blue);
+}
+
+.report-bar i.reserved {
+    background: var(--amber);
 }
 
 .placeholder {
@@ -2369,6 +2507,11 @@ tr.in-stock {
 .status.venta {
     color: var(--green);
     background: var(--green-soft);
+}
+
+.status.unidad-vendida {
+    color: var(--red);
+    background: var(--red-soft);
 }
 
 .status.no-encontrada {

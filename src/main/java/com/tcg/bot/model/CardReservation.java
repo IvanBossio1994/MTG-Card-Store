@@ -51,6 +51,7 @@ public class CardReservation {
     private double deliverableTotalPrice;
     private String formattedDeliverableTotalPrice;
     private List<Integer> sourceRowIndexes = new ArrayList<>();
+    private List<ReservationConditionStock> conditionStocks = new ArrayList<>();
 
     public List<Integer> effectiveRowIndexes() {
         if (sourceRowIndexes == null || sourceRowIndexes.isEmpty()) {

@@ -5,6 +5,8 @@ import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.ReservationClient;
+import com.tcg.bot.model.ReservationConditionStock;
 import com.tcg.bot.service.CardKingdomApiService;
 import com.tcg.bot.service.InventoryService;
 import com.tcg.bot.service.PriceComparisonService;
@@ -842,12 +844,12 @@ public class DashboardController {
     }
 
     private String reservationGroupStatus(List<CardReservation> reservations) {
-        if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))) {
-            return CardReservation.STATUS_WANTED;
-        }
-
         if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))) {
             return CardReservation.STATUS_RESERVED;
+        }
+
+        if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))) {
+            return CardReservation.STATUS_WANTED;
         }
 
         return CardReservation.STATUS_IN_STOCK;
@@ -858,6 +860,15 @@ public class DashboardController {
             int availableQuantity,
             int totalQuantity
     ) {
+        if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))) {
+            int reservedQuantity = reservations.stream()
+                    .filter(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                    .mapToInt(reservation -> reservationQuantity(reservation.getQuantity()))
+                    .sum();
+            return reservedQuantity + " " + cardQuantityWord(reservedQuantity) + " reservadas"
+                    + (availableQuantity > 0 ? " | " + availableQuantity + " disponibles" : "");
+        }
+
         if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))) {
             return availableQuantity + " " + cardQuantityWord(availableQuantity) + " disponibles de "
                     + totalQuantity + " " + reservedQuantityWord(totalQuantity);
@@ -890,6 +901,7 @@ public class DashboardController {
             if (card == null) {
                 reservation.setInventoryRowIndex(0);
                 reservation.setAvailableStock(0);
+                reservation.setConditionStocks(conditionStocksForReservation(reservation, inventoryCards));
                 applyReservationPriceFromProduct(reservation, products);
                 continue;
             }
@@ -899,7 +911,14 @@ public class DashboardController {
             reservation.setFormattedLocalPrice(formatLocalPrice(card.getLocalPrice()));
             reservation.setLineTotalPrice(lineTotalPrice(card.getLocalPrice(), reservationQuantity(reservation.getQuantity())));
             reservation.setFormattedLineTotalPrice(formatCashTotal(reservation.getLineTotalPrice()));
-            int remainingStock = remainingStockByInventoryRow.computeIfAbsent(card.getRowIndex(), unused -> quantity(card));
+            reservation.setConditionStocks(conditionStocksForReservation(reservation, inventoryCards));
+            int stockQuantity = quantity(card);
+            if (isReservedStatus(card.getAction())
+                    && !CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
+                stockQuantity = 0;
+            }
+            int initialStockQuantity = stockQuantity;
+            int remainingStock = remainingStockByInventoryRow.computeIfAbsent(card.getRowIndex(), unused -> initialStockQuantity);
             reservation.setAvailableStock(remainingStock);
             int deliverableQuantity = Math.min(remainingStock, reservationQuantity(reservation.getQuantity()));
             reservation.setDeliverableTotalPrice(lineTotalPrice(card.getLocalPrice(), deliverableQuantity));
@@ -909,6 +928,49 @@ public class DashboardController {
                     Math.max(remainingStock - reservationQuantity(reservation.getQuantity()), 0)
             );
         }
+    }
+
+    private List<ReservationConditionStock> conditionStocksForReservation(
+            CardReservation reservation,
+            List<InventoryCard> inventoryCards
+    ) {
+        if (reservation == null || inventoryCards == null || inventoryCards.isEmpty()) {
+            return List.of();
+        }
+
+        List<ReservationConditionStock> stocks = new ArrayList<>();
+        for (String condition : List.of("NM", "EX", "VG", "G")) {
+            List<InventoryCard> matches = inventoryCards.stream()
+                    .filter(card -> matchesReservationInventoryCard(reservation, card))
+                    .filter(card -> displayCondition(card.getCondition()).equals(condition))
+                    .toList();
+
+            int quantity = matches.stream().mapToInt(this::quantity).sum();
+            int reservedQuantity = matches.stream()
+                    .filter(card -> isReservedStatus(card.getAction()))
+                    .mapToInt(this::quantity)
+                    .sum();
+
+            if (quantity <= 0 && reservedQuantity <= 0) {
+                continue;
+            }
+
+            stocks.add(new ReservationConditionStock(
+                    condition,
+                    quantity,
+                    Math.max(quantity - reservedQuantity, 0),
+                    reservedQuantity,
+                    reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK
+            ));
+        }
+
+        long stockedConditionCount = stocks.stream()
+                .filter(stock -> stock.quantity() > 0)
+                .map(ReservationConditionStock::condition)
+                .distinct()
+                .count();
+
+        return stockedConditionCount > 1 ? stocks : List.of();
     }
 
     private void applyReservationPriceFromProduct(
@@ -959,18 +1021,27 @@ public class DashboardController {
     }
 
     private int returnReservedCardToStock(CardReservation reservation, HttpServletRequest request) throws Exception {
+        return returnReservedCardToStock(reservation, request, inventoryService.getInventoryCards());
+    }
+
+    private int returnReservedCardToStock(
+            CardReservation reservation,
+            HttpServletRequest request,
+            List<InventoryCard> inventoryCards
+    ) throws Exception {
         int quantityToReturn = reservationQuantity(reservation.getQuantity());
         if (quantityToReturn <= 0) {
             return 0;
         }
 
-        InventoryCard card = findInventoryCardForReservation(reservation);
+        InventoryCard card = findInventoryCardForReservation(reservation, inventoryCards);
         int previousQuantity = card == null ? 0 : quantity(card);
 
         if (card == null) {
             card = inventoryCardFromReservation(reservation, quantityToReturn);
             int rowIndex = inventoryService.appendInventoryCard(card);
             card.setRowIndex(rowIndex);
+            inventoryCards.add(card);
         } else {
             card.setQuantity(String.valueOf(previousQuantity + quantityToReturn));
             card.setAction(ACTION_IN_STOCK);
@@ -1071,10 +1142,11 @@ public class DashboardController {
                 return "redirect:/reservas";
             }
 
+            List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
             int returnedToStock = 0;
             for (CardReservation reservation : reservations) {
                 if (CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
-                    returnedToStock += returnReservedCardToStock(reservation, request);
+                    returnedToStock += returnReservedCardToStock(reservation, request, inventoryCards);
                 }
             }
 
@@ -1097,6 +1169,50 @@ public class DashboardController {
         return "redirect:/reservas";
     }
 
+    @PostMapping("/reservas/eliminar")
+    public String deleteReservation(
+            @RequestParam("reservationId") String reservationId,
+            HttpServletRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (isBlank(reservationId)) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo identificar la carta a quitar.");
+            return "redirect:/reservas";
+        }
+
+        try {
+            List<CardReservation> reservations = inventoryService.getReservations();
+            CardReservation reservation = consolidateDuplicateReservations(reservations)
+                    .stream()
+                    .filter(item -> reservationId.equalsIgnoreCase(item.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (reservation == null) {
+                redirectAttributes.addFlashAttribute("error", "No se encontro la carta seleccionada.");
+                return "redirect:/reservas";
+            }
+
+            int returnedToStock = 0;
+            if (CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
+                returnedToStock = returnReservedCardToStock(reservation, request);
+            }
+
+            inventoryService.deleteReservationRows(reservation.effectiveRowIndexes());
+            refreshLatestUpdatesFromInventory();
+            redirectAttributes.addFlashAttribute(
+                    "success",
+                    "Carta quitada del pedido de " + blankToDash(reservation.getClient()) + "."
+                            + (returnedToStock > 0 ? " Se devolvieron " + returnedToStock + " carta(s) al stock." : "")
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo quitar la carta del pedido.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo quitar la carta: " + syncErrorMessage(e));
+        }
+
+        return "redirect:/reservas";
+    }
+
     @PostMapping("/reservas/entregar")
     public String deliverReservation(
             @RequestParam("reservationId") String reservationId,
@@ -1109,7 +1225,8 @@ public class DashboardController {
         }
 
         try {
-            CardReservation reservation = inventoryService.getReservations()
+            List<CardReservation> reservations = inventoryService.getReservations();
+            CardReservation reservation = reservations
                     .stream()
                     .filter(item -> reservationId.equalsIgnoreCase(item.getId()))
                     .findFirst()
@@ -1119,7 +1236,7 @@ public class DashboardController {
                 redirectAttributes.addFlashAttribute("error", "No se encontro la reserva seleccionada.");
                 return "redirect:/reservas";
             }
-            reservation = consolidateDuplicateReservations(inventoryService.getReservations())
+            reservation = consolidateDuplicateReservations(reservations)
                     .stream()
                     .filter(item -> reservationId.equalsIgnoreCase(item.getId()))
                     .findFirst()
@@ -1154,6 +1271,13 @@ public class DashboardController {
                         newQuantity,
                         "Entrega reserva"
                 ));
+                LocalDateTime now = LocalDateTime.now(APP_ZONE);
+                inventoryService.appendCashSale(
+                        now.format(MOVEMENT_DATE_FORMAT),
+                        now.format(MOVEMENT_TIME_FORMAT),
+                        card,
+                        quantityToDeliver
+                );
             }
 
             int remainingReservationQuantity = requestedQuantity - quantityToDeliver;
@@ -1241,6 +1365,13 @@ public class DashboardController {
                             newQuantity,
                             "Entrega reserva"
                     ));
+                    LocalDateTime now = LocalDateTime.now(APP_ZONE);
+                    inventoryService.appendCashSale(
+                            now.format(MOVEMENT_DATE_FORMAT),
+                            now.format(MOVEMENT_TIME_FORMAT),
+                            card,
+                            quantityToDeliver
+                    );
                 }
 
                 refreshLatestUpdateForCard(card);
@@ -1306,6 +1437,12 @@ public class DashboardController {
             return "redirect:/reservas";
         }
 
+        String contactError = reservationContactError(phone, dni);
+        if (!isBlank(contactError)) {
+            redirectAttributes.addFlashAttribute("error", contactError);
+            return "redirect:/reservas";
+        }
+
         try {
             saveReservation(status, name, setName, setCode, collectorNumber, printing, quantity, client, phone, dni, pickupDate, notes);
             redirectAttributes.addFlashAttribute("success", "Reserva guardada en el Sheet.");
@@ -1341,6 +1478,12 @@ public class DashboardController {
                     .body(new ApiMessage(false, "Completa carta, cliente y telefono para guardar la reserva."));
         }
 
+        String contactError = reservationContactError(phone, dni);
+        if (!isBlank(contactError)) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiMessage(false, contactError));
+        }
+
         try {
             int reservationQuantity = reservationQuantity(quantity);
             InventoryCard reservedCard = null;
@@ -1370,19 +1513,19 @@ public class DashboardController {
             saveReservation(reservationStatus, name, setName, setCode, collectorNumber, printing, String.valueOf(reservationQuantity), client, phone, dni, pickupDate, notes);
 
             if (removeFromStock && reservedCard != null) {
-                updatedQuantity = previousQuantity - reservationQuantity;
+                updatedQuantity = previousQuantity;
                 reservedCard.setQuantity(String.valueOf(updatedQuantity));
-                reservedCard.setAction(updatedQuantity <= 0 ? ACTION_RESERVED : ACTION_IN_STOCK);
+                reservedCard.setAction(previousQuantity <= reservationQuantity ? ACTION_RESERVED : ACTION_IN_STOCK);
                 inventoryService.updateStockState(rowIndex, reservedCard);
 
                 if (movementsModuleEnabled(request)) {
                     inventoryService.appendMovement(createMovement(
-                            "SALIDA",
+                            "ENTRADA",
                             reservationQuantity,
                             reservedCard,
                             previousQuantity,
                             updatedQuantity,
-                            "Reserva " + client.trim()
+                            ACTION_RESERVED
                     ));
                 }
 
@@ -1391,10 +1534,13 @@ public class DashboardController {
 
             return ResponseEntity.ok(new ReservationCreateResponse(
                     true,
-                    removeFromStock ? "Pedido reservado y retirado del stock." : "Pedido guardado en Reservas.",
+                    removeFromStock ? "Pedido reservado en stock." : "Pedido guardado en Reservas.",
                     rowIndex,
                     updatedQuantity,
-                    updatedQuantity >= 0 ? reservedCard.getAction() : ""
+                    updatedQuantity >= 0 ? reservedCard.getAction() : "",
+                    client.trim(),
+                    digitsOnly(phone),
+                    digitsOnly(dni)
             ));
         } catch (Exception e) {
             log.warn("No se pudo guardar la reserva desde busqueda.", e);
@@ -1442,6 +1588,20 @@ public class DashboardController {
         try {
             Map<String, ReservationClientView> clientsByName = new LinkedHashMap<>();
 
+            for (ReservationClient savedClient : inventoryService.getReservationClients()) {
+                String client = savedClient.getClient();
+                if (isBlank(client)) {
+                    continue;
+                }
+
+                String key = normalizedCardText(client);
+                clientsByName.putIfAbsent(key, new ReservationClientView(
+                        client.trim(),
+                        blankToEmpty(savedClient.getPhone()),
+                        blankToEmpty(savedClient.getDni())
+                ));
+            }
+
             for (CardReservation reservation : inventoryService.getReservations()) {
                 String client = reservation.getClient();
                 if (isBlank(client)) {
@@ -1469,7 +1629,8 @@ public class DashboardController {
             @RequestParam String reservationId,
             @RequestParam(name = "sku", required = false) String sku,
             @RequestParam(name = "condition", required = false, defaultValue = "NM") String condition,
-            @RequestParam(name = "rowIndex", required = false, defaultValue = "0") int rowIndex
+            @RequestParam(name = "rowIndex", required = false, defaultValue = "0") int rowIndex,
+            HttpServletRequest request
     ) {
         try {
             var reservation = inventoryService.getReservations()
@@ -1486,15 +1647,27 @@ public class DashboardController {
             int updatedRowIndex = rowIndex;
             int stockQuantity = 0;
             String action = ACTION_RESERVED;
+            int reservationQuantity = reservationQuantity(reservation.getQuantity());
+            InventoryCard reservedCard = null;
+            int previousQuantity = 0;
 
             if (rowIndex > 0) {
                 InventoryCard card = findInventoryCardByRow(rowIndex);
                 if (card != null) {
+                    reservedCard = card;
                     stockQuantity = quantity(card);
+                    previousQuantity = stockQuantity;
                     if (stockQuantity <= 0) {
+                        stockQuantity = reservationQuantity;
+                        card.setQuantity(String.valueOf(stockQuantity));
                         card.setAction(ACTION_RESERVED);
                         inventoryService.updateStockState(rowIndex, card);
                         refreshLatestUpdateForCard(card);
+                    } else if (stockQuantity <= reservationQuantity) {
+                        card.setAction(ACTION_RESERVED);
+                        inventoryService.updateStockState(rowIndex, card);
+                        refreshLatestUpdateForCard(card);
+                        action = ACTION_RESERVED;
                     } else {
                         action = stockActionForQuantity(stockQuantity);
                     }
@@ -1507,14 +1680,26 @@ public class DashboardController {
                 }
 
                 InventoryCard card = createInventoryCard(product, condition);
-                card.setQuantity("0");
+                card.setQuantity(String.valueOf(reservationQuantity));
                 card.setAction(ACTION_RESERVED);
                 updatedRowIndex = inventoryService.appendInventoryCard(card);
                 card.setRowIndex(updatedRowIndex);
+                reservedCard = card;
+                stockQuantity = reservationQuantity;
                 refreshLatestUpdateForCard(card);
             }
 
             inventoryService.updateReservationStatus(reservationId, CardReservation.STATUS_RESERVED);
+            if (reservedCard != null && movementsModuleEnabled(request)) {
+                inventoryService.appendMovement(createMovement(
+                        "ENTRADA",
+                        reservationQuantity,
+                        reservedCard,
+                        previousQuantity,
+                        stockQuantity,
+                        ACTION_RESERVED
+                ));
+            }
 
             return ResponseEntity.ok(new ReservationStockResponse(
                     true,
@@ -1566,12 +1751,19 @@ public class DashboardController {
         reservation.setPrinting(blankToEmpty(printing));
         reservation.setQuantity(normalizedReservationQuantity(quantity));
         reservation.setClient(client.trim());
-        reservation.setPhone(phone.trim());
-        reservation.setDni(blankToEmpty(dni));
+        reservation.setPhone(digitsOnly(phone));
+        reservation.setDni(digitsOnly(dni));
         reservation.setReservationDate(now.format(MOVEMENT_DATE_TIME_FORMAT));
         reservation.setPickupDate(normalizedPickupDate(pickupDate));
         reservation.setPaymentDate("");
         reservation.setNotes(blankToEmpty(notes));
+
+        inventoryService.upsertReservationClient(
+                reservation.getClient(),
+                reservation.getPhone(),
+                reservation.getDni(),
+                now.format(MOVEMENT_DATE_TIME_FORMAT)
+        );
 
         CardReservation existingReservation = inventoryService.getReservations()
                 .stream()
@@ -1629,6 +1821,32 @@ public class DashboardController {
         } catch (NumberFormatException e) {
             return 1;
         }
+    }
+
+    private String reservationContactError(String phone, String dni) {
+        String phoneDigits = digitsOnly(phone);
+        if (!phoneDigits.equals(blankToEmpty(phone))) {
+            return "El telefono solo puede tener numeros.";
+        }
+
+        if (phoneDigits.length() != 10 || !(phoneDigits.startsWith("11") || phoneDigits.startsWith("15"))) {
+            return "El telefono debe tener 10 digitos y empezar con 11 o 15.";
+        }
+
+        String dniDigits = digitsOnly(dni);
+        if (!dniDigits.equals(blankToEmpty(dni))) {
+            return "El DNI solo puede tener numeros.";
+        }
+
+        if (!dniDigits.isBlank() && (dniDigits.length() < 7 || dniDigits.length() > 8)) {
+            return "El DNI debe tener 7 u 8 digitos.";
+        }
+
+        return "";
+    }
+
+    private String digitsOnly(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\D", "");
     }
 
     private String normalizeStatusText(String status) {
@@ -2132,6 +2350,16 @@ public class DashboardController {
 
         if (movements != null) {
             for (InventoryMovement movement : movements) {
+                int movementQuantity = Math.abs(signedQuantity(movement));
+                if (isReservationMovement(movement) && movementQuantity > 0) {
+                    String monthKey = monthKey(movement.getDate());
+                    CashReportCardAccumulator cardReport = cardsByMonth
+                            .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
+                            .computeIfAbsent(movementReportKey(movement), key -> new CashReportCardAccumulator());
+                    cardReport.addReserved(movementQuantity);
+                    continue;
+                }
+
                 int quantity = signedQuantity(movement);
 
                 if (quantity == 0) {
@@ -2191,7 +2419,7 @@ public class DashboardController {
                 .orElse(0);
 
         int maxMovementQuantity = reports.values().stream()
-                .mapToInt(report -> Math.max(report.soldQuantity, report.enteredQuantity))
+                .mapToInt(report -> Math.max(Math.max(report.soldQuantity, report.enteredQuantity), report.reservedQuantity))
                 .max()
                 .orElse(0);
 
@@ -2225,6 +2453,10 @@ public class DashboardController {
                 movement.getCollectorNumber(),
                 movement.getPrinting()
         );
+    }
+
+    private boolean isReservationMovement(InventoryMovement movement) {
+        return movement != null && ACTION_RESERVED.equalsIgnoreCase(blankToEmpty(movement.getSource()));
     }
 
     private String reportCardKey(
@@ -2359,11 +2591,21 @@ public class DashboardController {
 
                 if (existingCard == null) {
                     InventoryCard newCard = createInventoryCard(product);
-                    newCard.setQuantity(String.valueOf(Math.max(stockQuantityToAdd, 0)));
+                    newCard.setQuantity(String.valueOf(quantity));
                     newCard.setAction(stockQuantityToAdd > 0 ? ACTION_IN_STOCK : ACTION_RESERVED);
                     cardsToAppend.add(newCard);
                     if (logMovements && stockQuantityToAdd > 0) {
                         movements.add(createMovement("ENTRADA", stockQuantityToAdd, newCard, 0, stockQuantityToAdd, "Importar lista"));
+                    }
+                    if (logMovements && reservationAllocation.reservedQuantity() > 0) {
+                        movements.add(createMovement(
+                                "ENTRADA",
+                                reservationAllocation.reservedQuantity(),
+                                newCard,
+                                0,
+                                quantity,
+                                ACTION_RESERVED
+                        ));
                     }
                     added++;
                     continue;
@@ -2373,21 +2615,31 @@ public class DashboardController {
                 int updatedQuantity = quantitiesByRow.getOrDefault(
                         existingCard.getRowIndex(),
                         previousQuantity
-                ) + stockQuantityToAdd;
+                ) + quantity;
                 quantitiesByRow.put(existingCard.getRowIndex(), updatedQuantity);
                 existingCard.setQuantity(String.valueOf(updatedQuantity));
-                existingCard.setAction(updatedQuantity > 0 ? ACTION_IN_STOCK : (
-                        reservationAllocation.reservedQuantity() > 0 ? ACTION_RESERVED : ACTION_OUT_OF_STOCK
-                ));
+                existingCard.setAction(reservationAllocation.reservedQuantity() > 0 && stockQuantityToAdd <= 0
+                        ? ACTION_RESERVED
+                        : stockActionForQuantity(updatedQuantity));
                 cardsToWrite.put(existingCard.getRowIndex(), existingCard);
                 if (logMovements && stockQuantityToAdd > 0) {
                     movements.add(createMovement(
                             "ENTRADA",
                             stockQuantityToAdd,
                             existingCard,
-                            updatedQuantity - stockQuantityToAdd,
+                            updatedQuantity - quantity,
                             updatedQuantity,
                             "Importar lista"
+                    ));
+                }
+                if (logMovements && reservationAllocation.reservedQuantity() > 0) {
+                    movements.add(createMovement(
+                            "ENTRADA",
+                            reservationAllocation.reservedQuantity(),
+                            existingCard,
+                            previousQuantity,
+                            updatedQuantity,
+                            ACTION_RESERVED
                     ));
                 }
                 updated++;
@@ -3322,7 +3574,7 @@ public class DashboardController {
         Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
 
         for (var card : cards) {
-            UpdateResult update = updateCard(card.getRowIndex(), card, priceList);
+            UpdateResult update = updateCard(card.getRowIndex(), card, priceList, cards);
             updates.add(update);
 
             if (card.getRowIndex() > 0 && update.writeRequired()) {
@@ -3358,11 +3610,13 @@ public class DashboardController {
     private UpdateResult updateCard(
             int rowIndex,
             InventoryCard card,
-            com.tcg.bot.dto.CardKingdomPriceListResponse priceList
+            com.tcg.bot.dto.CardKingdomPriceListResponse priceList,
+            List<InventoryCard> inventoryCards
     ) throws Exception {
         String previousCkPrice = card.getCkPriceUsd();
         String previousLocalPrice = card.getLocalPrice();
         String previousAction = card.getAction();
+        List<ReservationConditionStock> conditionStocks = conditionStocksForInventoryCard(card, inventoryCards);
 
         if (quantity(card) <= 0) {
             card.setAction(isReservedStatus(previousAction) ? ACTION_RESERVED : ACTION_OUT_OF_STOCK);
@@ -3376,6 +3630,8 @@ public class DashboardController {
                     card.getLocalPrice(),
                     card.getCkPriceUsd(),
                     card.getAction(),
+                    displayCondition(card.getCondition()),
+                    conditionStocks,
                     rowIndex,
                     quantity(card),
                     !Objects.equals(previousAction, card.getAction())
@@ -3387,7 +3643,7 @@ public class DashboardController {
         if (product == null) {
             card.setCkPriceUsd("");
             card.setLocalPrice("");
-            applyStockAction(card);
+            applyStockAction(card, previousAction);
 
             return new UpdateResult(
                     card.getName(),
@@ -3398,6 +3654,8 @@ public class DashboardController {
                     card.getLocalPrice(),
                     card.getCkPriceUsd(),
                     card.getAction(),
+                    displayCondition(card.getCondition()),
+                    conditionStocks,
                     rowIndex,
                     quantity(card),
                     changed(previousCkPrice, previousLocalPrice, previousAction, card)
@@ -3409,7 +3667,7 @@ public class DashboardController {
         if (ckPrice == null) {
             card.setCkPriceUsd("");
             card.setLocalPrice("");
-            applyStockAction(card);
+            applyStockAction(card, previousAction);
 
             return new UpdateResult(
                     card.getName(),
@@ -3420,6 +3678,8 @@ public class DashboardController {
                     card.getLocalPrice(),
                     "",
                     card.getAction(),
+                    displayCondition(card.getCondition()),
+                    conditionStocks,
                     rowIndex,
                     quantity(card),
                     changed(previousCkPrice, previousLocalPrice, previousAction, card)
@@ -3429,7 +3689,7 @@ public class DashboardController {
         String localPrice = String.format("%.0f", priceComparisonService.calculateLocalPrice(ckPrice));
         card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         card.setLocalPrice(localPrice);
-        card.setAction(ACTION_IN_STOCK);
+        applyStockAction(card, previousAction);
 
         if (!changed(previousCkPrice, previousLocalPrice, previousAction, card)) {
             return new UpdateResult(
@@ -3441,6 +3701,8 @@ public class DashboardController {
                     card.getLocalPrice(),
                     card.getCkPriceUsd(),
                     card.getAction(),
+                    displayCondition(card.getCondition()),
+                    conditionStocks,
                     rowIndex,
                     quantity(card),
                     false
@@ -3456,6 +3718,8 @@ public class DashboardController {
                 card.getLocalPrice(),
                 card.getCkPriceUsd(),
                 card.getAction(),
+                displayCondition(card.getCondition()),
+                conditionStocks,
                 rowIndex,
                 quantity(card),
                 true
@@ -3495,6 +3759,7 @@ public class DashboardController {
         int exRowIndex = rowIndexForCondition(matches, "EX");
         int vgRowIndex = rowIndexForCondition(matches, "VG");
         int gRowIndex = rowIndexForCondition(matches, "G");
+        List<ReservationConditionStock> conditionStocks = conditionStocksForInventoryCards(matches);
 
         String nmPrice = product.getConditionValues() == null
                 ? ""
@@ -3560,6 +3825,7 @@ public class DashboardController {
                 exRowIndex,
                 vgRowIndex,
                 gRowIndex,
+                conditionStocks,
                 localPrice,
                 stockQuantity,
                 rowIndex
@@ -3571,6 +3837,66 @@ public class DashboardController {
                 .filter(card -> displayCondition(card.getCondition()).equals(condition))
                 .mapToInt(this::quantity)
                 .sum();
+    }
+
+    private List<ReservationConditionStock> conditionStocksForInventoryCard(
+            InventoryCard card,
+            List<InventoryCard> inventoryCards
+    ) {
+        if (card == null || inventoryCards == null || inventoryCards.isEmpty()) {
+            return List.of();
+        }
+
+        List<InventoryCard> matches = inventoryCards.stream()
+                .filter(candidate -> sameInventoryCardFamily(card, candidate))
+                .toList();
+        return conditionStocksForInventoryCards(matches);
+    }
+
+    private List<ReservationConditionStock> conditionStocksForInventoryCards(List<InventoryCard> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return List.of();
+        }
+
+        List<ReservationConditionStock> stocks = new ArrayList<>();
+        for (String condition : List.of("NM", "EX", "VG", "G")) {
+            List<InventoryCard> matches = cards.stream()
+                    .filter(card -> displayCondition(card.getCondition()).equals(condition))
+                    .toList();
+            int quantity = matches.stream().mapToInt(this::quantity).sum();
+            int reservedQuantity = matches.stream()
+                    .filter(card -> isReservedStatus(card.getAction()))
+                    .mapToInt(this::quantity)
+                    .sum();
+
+            if (quantity <= 0) {
+                continue;
+            }
+
+            stocks.add(new ReservationConditionStock(
+                    condition,
+                    quantity,
+                    Math.max(quantity - reservedQuantity, 0),
+                    reservedQuantity,
+                    reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK
+            ));
+        }
+
+        long stockedConditionCount = stocks.stream()
+                .filter(stock -> stock.quantity() > 0)
+                .map(ReservationConditionStock::condition)
+                .distinct()
+                .count();
+
+        return stockedConditionCount > 1 ? stocks : List.of();
+    }
+
+    private boolean sameInventoryCardFamily(InventoryCard first, InventoryCard second) {
+        return normalizedCardText(first.getName()).equals(normalizedCardText(second.getName()))
+                && normalizedCardText(first.getSetName()).equals(normalizedCardText(second.getSetName()))
+                && normalizedCardText(first.getSetCode()).equals(normalizedCardText(second.getSetCode()))
+                && collectorNumber(first.getCollectorNumber()).equals(collectorNumber(second.getCollectorNumber()))
+                && normalizedPrintingForReservation(first.getPrinting()).equals(normalizedPrintingForReservation(second.getPrinting()));
     }
 
     private int rowIndexForCondition(List<InventoryCard> cards, String condition) {
@@ -3845,6 +4171,8 @@ public class DashboardController {
                         update.localPrice(),
                         update.ckPriceUsd(),
                         update.action(),
+                        update.condition(),
+                        update.conditionStocks(),
                         update.rowIndex() - 1,
                         update.stockQuantity(),
                         update.writeRequired()
@@ -3893,7 +4221,9 @@ public class DashboardController {
                 card.getPrinting(),
                 card.getLocalPrice(),
                 card.getCkPriceUsd(),
-                stockActionForQuantity(quantity(card)),
+                displayStockAction(card),
+                displayCondition(card.getCondition()),
+                conditionStocksForInventoryCards(List.of(card)),
                 card.getRowIndex(),
                 quantity(card),
                 false
@@ -3901,7 +4231,22 @@ public class DashboardController {
     }
 
     private void applyStockAction(InventoryCard card) {
-        card.setAction(stockActionForQuantity(quantity(card)));
+        applyStockAction(card, card.getAction());
+    }
+
+    private void applyStockAction(InventoryCard card, String previousAction) {
+        card.setAction(isReservedStatus(previousAction) && quantity(card) > 0
+                ? ACTION_RESERVED
+                : stockActionForQuantity(quantity(card)));
+    }
+
+    private String displayStockAction(InventoryCard card) {
+        int quantity = quantity(card);
+        if (isReservedStatus(card.getAction()) && quantity > 0) {
+            return ACTION_RESERVED;
+        }
+
+        return stockActionForQuantity(quantity);
     }
 
     private String stockActionForQuantity(int quantity) {
@@ -3933,6 +4278,7 @@ public class DashboardController {
             int exRowIndex,
             int vgRowIndex,
             int gRowIndex,
+            List<ReservationConditionStock> conditionStocks,
             String localPrice,
             int stockQuantity,
             int rowIndex
@@ -3980,6 +4326,16 @@ public class DashboardController {
 
         public String formattedGLocalPrice() {
             return formatLocalPrice(gLocalPrice);
+        }
+
+        public int displayStockQuantity() {
+            if (conditionStocks == null || conditionStocks.isEmpty()) {
+                return stockQuantity;
+            }
+
+            return conditionStocks.stream()
+                    .mapToInt(ReservationConditionStock::quantity)
+                    .sum();
         }
     }
 
@@ -4097,6 +4453,8 @@ public class DashboardController {
             String localPrice,
             String ckPriceUsd,
             String action,
+            String condition,
+            List<ReservationConditionStock> conditionStocks,
             int rowIndex,
             int stockQuantity,
             boolean writeRequired
@@ -4107,6 +4465,16 @@ public class DashboardController {
 
         public String formattedCkPriceUsd() {
             return formatUsdPrice(ckPriceUsd);
+        }
+
+        public int displayStockQuantity() {
+            if (conditionStocks == null || conditionStocks.isEmpty()) {
+                return stockQuantity;
+            }
+
+            return conditionStocks.stream()
+                    .mapToInt(ReservationConditionStock::quantity)
+                    .sum();
         }
     }
 
@@ -4151,10 +4519,12 @@ public class DashboardController {
             String totalSales,
             int soldQuantity,
             int enteredQuantity,
+            int reservedQuantity,
             int balanceQuantity,
             String salesWidth,
             String soldWidth,
-            String enteredWidth
+            String enteredWidth,
+            String reservedWidth
     ) {
     }
 
@@ -4162,11 +4532,13 @@ public class DashboardController {
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
+        private int reservedQuantity;
 
         void addCard(CashReportCardAccumulator cardReport) {
             salesTotal += cardReport.salesTotal;
             soldQuantity += cardReport.soldQuantity;
             enteredQuantity += cardReport.enteredQuantity;
+            reservedQuantity += cardReport.reservedQuantity;
         }
 
         CashReportMonth toReport(
@@ -4181,10 +4553,12 @@ public class DashboardController {
                     formatCashTotal(salesTotal),
                     soldQuantity,
                     enteredQuantity,
+                    reservedQuantity,
                     enteredQuantity - soldQuantity,
                     percent(salesTotal, maxSales),
                     percent(soldQuantity, maxMovementQuantity),
-                    percent(enteredQuantity, maxMovementQuantity)
+                    percent(enteredQuantity, maxMovementQuantity),
+                    percent(reservedQuantity, maxMovementQuantity)
             );
         }
     }
@@ -4193,6 +4567,7 @@ public class DashboardController {
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
+        private int reservedQuantity;
 
         void addSaleTotal(double total) {
             salesTotal += total;
@@ -4206,8 +4581,12 @@ public class DashboardController {
             enteredQuantity += quantity;
         }
 
+        void addReserved(int quantity) {
+            reservedQuantity += quantity;
+        }
+
         boolean hasEntryAndSale() {
-            return soldQuantity > 0 && enteredQuantity > 0;
+            return soldQuantity > 0 || enteredQuantity > 0 || reservedQuantity > 0 || salesTotal > 0;
         }
     }
 
@@ -4400,7 +4779,7 @@ public class DashboardController {
             return ResponseEntity.ok(new StockUpdateResponse(
                     rowIndex,
                     newQuantity,
-                    stockActionForQuantity(newQuantity),
+                    displayStockAction(card),
                     change > 0 ? "Unidad agregada" : "Unidad vendida"
             ));
         } catch (Exception e) {
@@ -4515,7 +4894,10 @@ public class DashboardController {
             String message,
             int rowIndex,
             int stockQuantity,
-            String action
+            String action,
+            String client,
+            String phone,
+            String dni
     ) {
     }
 
