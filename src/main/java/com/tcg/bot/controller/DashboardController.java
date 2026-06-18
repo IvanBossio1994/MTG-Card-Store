@@ -1946,6 +1946,10 @@ public class DashboardController {
                 || normalizeStatusText(status).equals("RESERVADA");
     }
 
+    private boolean isOutOfStockStatus(String status) {
+        return normalizeStatusText(status).equals(normalizeStatusText(ACTION_OUT_OF_STOCK));
+    }
+
     private String normalizedPickupDate(String pickupDate) {
         if (pickupDate == null || pickupDate.isBlank()) {
             return "A convenir";
@@ -4178,7 +4182,7 @@ public class DashboardController {
     }
 
     private void addLatestUpdates(Model model) {
-        model.addAttribute("updates", latestUpdates);
+        model.addAttribute("updates", groupedLatestUpdates());
         model.addAttribute("updatePerformed", !latestUpdates.isEmpty());
         model.addAttribute("updatedCount", latestUpdatedCount);
         model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
@@ -4187,6 +4191,40 @@ public class DashboardController {
         if (latestUpdates.isEmpty()) {
             return;
         }
+    }
+
+    private List<UpdateResult> groupedLatestUpdates() {
+        if (latestUpdates.isEmpty()) {
+            return latestUpdates;
+        }
+
+        Map<String, UpdateResult> grouped = new LinkedHashMap<>();
+        for (UpdateResult update : latestUpdates) {
+            grouped.merge(update.reservationKey(), update, this::preferredUpdateResult);
+        }
+
+        return new ArrayList<>(grouped.values());
+    }
+
+    private UpdateResult preferredUpdateResult(UpdateResult current, UpdateResult candidate) {
+        int currentTotalStock = current.displayStockQuantity();
+        int candidateTotalStock = candidate.displayStockQuantity();
+
+        if (currentTotalStock <= 0 && candidateTotalStock > 0) {
+            return candidate;
+        }
+
+        if ((current.conditionStocks() == null || current.conditionStocks().isEmpty())
+                && candidate.conditionStocks() != null
+                && !candidate.conditionStocks().isEmpty()) {
+            return candidate;
+        }
+
+        if (isOutOfStockStatus(current.displayAction()) && !isOutOfStockStatus(candidate.displayAction())) {
+            return candidate;
+        }
+
+        return current;
     }
 
     private Map<String, PendingReservationInfo> pendingReservationQuantitiesSafely() {
@@ -4592,6 +4630,37 @@ public class DashboardController {
             return conditionStocks.stream()
                     .mapToInt(ReservationConditionStock::quantity)
                     .sum();
+        }
+
+        public String displayAction() {
+            if (conditionStocks != null && !conditionStocks.isEmpty()) {
+                int totalStock = conditionStocks.stream()
+                        .mapToInt(ReservationConditionStock::quantity)
+                        .sum();
+                int reservedStock = conditionStocks.stream()
+                        .mapToInt(ReservationConditionStock::reservedQuantity)
+                        .sum();
+
+                if (totalStock <= 0) {
+                    return ACTION_OUT_OF_STOCK;
+                }
+
+                if (reservedStock > 0 && reservedStock >= totalStock) {
+                    return ACTION_RESERVED;
+                }
+
+                return ACTION_IN_STOCK;
+            }
+
+            if (action != null && !action.isBlank()) {
+                return action;
+            }
+
+            return stockQuantity > 0 ? ACTION_IN_STOCK : ACTION_OUT_OF_STOCK;
+        }
+
+        public String displayActionClass() {
+            return displayAction().toLowerCase(Locale.ROOT).replace(" ", "-");
         }
 
         public String reservationKey() {

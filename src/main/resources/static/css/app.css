@@ -2114,12 +2114,14 @@ tr.in-stock {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: nowrap;
     gap: 8px;
 }
 
 .reservation-action-cell form {
     display: flex;
     justify-content: center;
+    flex: 0 0 auto;
 }
 
 .reservation-deliver-button {
@@ -2161,6 +2163,7 @@ tr.in-stock {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 auto;
     width: 32px;
     height: 32px;
     padding: 0;
@@ -2594,7 +2597,7 @@ tr.in-stock {
 
 .loading-overlay {
     position: fixed;
-    z-index: 100;
+    z-index: 100000;
     inset: 0;
     display: none;
     place-items: center;

@@ -254,7 +254,7 @@
                         <th>Numero</th>
                         <th>CK USD</th>
                         <th>Precio local</th>
-                        <th>Accion</th>
+                        <th>Estado</th>
                         <th>Pedido</th>
                     </tr>
                     </thead>
@@ -262,8 +262,8 @@
                     <th:block th:each="update, iter : ${updates}">
                     <tr class="synced-table-row"
                         th:with="pendingInfo=${pendingReservationQuantities != null ? pendingReservationQuantities[update.reservationKey()] : null}"
-                        th:attr="data-in-stock=${update.stockQuantity > 0}"
-                        th:classappend="${update.stockQuantity > 0} ? 'in-stock' : ''">
+                        th:attr="data-in-stock=${update.displayStockQuantity() > 0}"
+                        th:classappend="${update.displayStockQuantity() > 0} ? 'in-stock' : ''">
                         <td>
                             <div class="stock-controls">
                                 <button type="button"
@@ -302,8 +302,8 @@
                         <td class="price-cell" th:text="${update.ckPriceUsd != null && update.ckPriceUsd != '' ? '$ ' + update.formattedCkPriceUsd : '-'}">-</td>
                         <td class="price-cell" th:text="${update.localPrice != null && update.localPrice != '' ? '$ ' + update.formattedLocalPrice : '-'}">-</td>
                         <td>
-                            <span class="status stock-action-status" th:classappend="${update.action != null ? update.action.toLowerCase().replace(' ', '-') : ''}"
-                                  th:text="${update.action != null && update.action != '' ? update.action : '-'}">En Stock</span>
+                            <span class="status stock-action-status" th:classappend="${update.displayActionClass()}"
+                                  th:text="${update.displayAction()}">En Stock</span>
                             <span class="pending-stock-info"
                                   th:if="${pendingInfo != null}"
                                   th:title="${pendingInfo.tooltip}"
@@ -312,7 +312,7 @@
                         <td>
                             <button type="button"
                                     class="secondary-button add-reservation-button"
-                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.stockQuantity}">
+                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.displayStockQuantity()}">
                                 Añadir a pedido
                             </button>
                         </td>

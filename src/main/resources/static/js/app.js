@@ -991,16 +991,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (Number(result.stockQuantity) >= 0 && result.rowIndex) {
                     syncStockRows(String(result.rowIndex), Number(result.stockQuantity), result.action || "");
                 } else if (activeReservationButton) {
-                    const row = activeReservationButton.closest("tr");
-                    const status = row?.querySelector(".stock-action-status");
-                    if (status && !status.parentElement.querySelector(".pending-stock-info")) {
-                        const note = document.createElement("span");
-                        note.className = "pending-stock-info";
-                        note.title = `Carta pedida para ${reservationModalForm.elements.client?.value || "cliente"}.`;
-                        note.setAttribute("aria-label", "Carta pedida");
-                        note.textContent = "i";
-                        status.insertAdjacentElement("afterend", note);
-                    }
+                    updatePendingStockInfo(
+                        activeReservationButton.closest("tr"),
+                        [
+                            ...pendingClientsFromRow(activeReservationButton.closest("tr")),
+                            reservationModalForm.elements.client?.value || "cliente"
+                        ]
+                    );
                 }
 
                 upsertReservationClientOption({
@@ -1300,6 +1297,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let pendingReservationSelection = null;
 
+    function updatePendingStockInfo(row, clients) {
+        if (!row) {
+            return;
+        }
+
+        const status = row.querySelector(".stock-action-status");
+        if (!status) {
+            return;
+        }
+
+        const cleanClients = Array.from(new Set((clients || [])
+                .map(client => String(client || "").trim())
+                .filter(Boolean)));
+        let note = status.parentElement.querySelector(".pending-stock-info");
+
+        if (cleanClients.length === 0) {
+            note?.remove();
+            return;
+        }
+
+        if (!note) {
+            note = document.createElement("span");
+            note.className = "pending-stock-info";
+            note.setAttribute("aria-label", "Carta pedida");
+            note.textContent = "i";
+            status.insertAdjacentElement("afterend", note);
+        }
+
+        note.title = `Carta pedida para ${cleanClients.join(", ")}.`;
+        note.dataset.clients = cleanClients.join("|");
+    }
+
+    function pendingClientsFromRow(row) {
+        const note = row?.querySelector(".pending-stock-info");
+        if (!note) {
+            return [];
+        }
+
+        if (note.dataset.clients) {
+            return note.dataset.clients.split("|").map(client => client.trim()).filter(Boolean);
+        }
+
+        return note.title
+                .replace(/^Carta pedida para\s+/i, "")
+                .replace(/\.$/, "")
+                .split(",")
+                .map(client => client.trim())
+                .filter(Boolean);
+    }
+
     const pendingReservationDecision = (button) => new Promise(async resolve => {
         if (!pendingReservationModal || !pendingReservationList || !pendingReservationConfirm || !pendingReservationStock) {
             resolve({action: "stock"});
@@ -1382,8 +1429,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             pendingReservationConfirm.onclick = () => {
                 const selected = pendingReservationSelection || reservations[0];
+                const remainingClients = reservations
+                        .filter(reservation => reservation.id !== selected.id)
+                        .map(reservation => reservation.client)
+                        .filter(Boolean);
                 cleanup();
-                resolve({action: "reservation", reservationId: selected.id});
+                resolve({action: "reservation", reservationId: selected.id, remainingClients});
             };
 
             pendingReservationStock.onclick = () => {
@@ -1406,7 +1457,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    const separatePendingReservation = async (button, reservationId) => {
+    const separatePendingReservation = async (button, reservationId, remainingClients = []) => {
         showLoadingOverlay(
             null,
             "",
@@ -1456,6 +1507,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 syncStockRows(rowIndex, Number(result.stockQuantity) || 0, result.action || "Reservada");
             }
 
+            const row = button.closest("tr");
+            const fallbackClients = pendingClientsFromRow(row)
+                    .filter(client => !(result.client && client === result.client));
+            updatePendingStockInfo(row, remainingClients.length > 0 ? remainingClients : fallbackClients);
+
             showToast(result.message || "Carta separada para reserva", "success");
             return true;
         } finally {
@@ -1504,7 +1560,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
 
                         if (pendingDecision.action === "reservation") {
-                            await separatePendingReservation(button, pendingDecision.reservationId);
+                            await separatePendingReservation(
+                                button,
+                                pendingDecision.reservationId,
+                                pendingDecision.remainingClients || []
+                            );
                             return;
                         }
                     }
@@ -1661,6 +1721,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
 
                     syncStockRows(updatedRowIndex, updatedQuantity, updatedAction);
+                    const groupedRow = button.closest("tr");
+                    if (groupedRow?.querySelector(".inventory-stock-toggle")) {
+                        const groupedQuantity = Math.max(currentValue + change, 0);
+                        valueElement.textContent = String(groupedQuantity);
+                        groupedRow?.querySelector(".add-reservation-button")
+                                ?.setAttribute("data-stock-quantity", String(groupedQuantity));
+                        groupedRow?.classList.toggle("in-stock", groupedQuantity > 0);
+                        if (groupedRow) {
+                            groupedRow.dataset.inStock = String(groupedQuantity > 0);
+                        }
+                        const groupedStatus = groupedRow?.querySelector(".stock-action-status");
+                        if (groupedStatus && groupedQuantity > 0 && updatedAction === "Sin Stock") {
+                            groupedStatus.textContent = "En Stock";
+                            groupedStatus.classList.remove("sin-stock", "reservada");
+                            groupedStatus.classList.add("en-stock");
+                        }
+                    }
                     showToast(
                         result.message || (
                             increase
