@@ -180,6 +180,27 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void doesNotUseEditionNameAsVariationAlias() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "searchableVariationText",
+                String.class
+        );
+        method.setAccessible(true);
+
+        String variantsEdition = (String) method.invoke(
+                controller,
+                "Modern Horizons 3 Variants"
+        );
+        String baseEdition = (String) method.invoke(
+                controller,
+                "Modern Horizons 3"
+        );
+
+        assertThat(variantsEdition).isEmpty();
+        assertThat(baseEdition).isEmpty();
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void filtersSearchResultsByCleanNameOrVariationOnly() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(

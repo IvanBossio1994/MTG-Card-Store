@@ -69,7 +69,7 @@ public class DashboardController {
     private final StoreSettingsService storeSettingsService;
     private volatile List<UpdateResult> latestUpdates = List.of();
     private volatile long latestUpdatedCount;
-    private volatile SuggestionIndex suggestionIndex = new SuggestionIndex(0, 0, List.of(), new ConcurrentHashMap<>());
+    private volatile SuggestionIndex suggestionIndex = new SuggestionIndex(0, 0, List.of(), Map.of(), new ConcurrentHashMap<>());
     private volatile ReservationsCache reservationsCache = new ReservationsCache(0, List.of());
     private static final Pattern LEADING_QUANTITY_PATTERN =
             Pattern.compile("^\\s*(\\d+)\\s*x?\\s+(.+)$", Pattern.CASE_INSENSITIVE);
@@ -490,10 +490,50 @@ public class DashboardController {
                     identity,
                     products.size(),
                     List.copyOf(candidates),
+                    suggestionPrefixIndex(candidates),
                     new ConcurrentHashMap<>()
             );
             suggestionIndex = rebuilt;
             return rebuilt;
+        }
+    }
+
+    private Map<String, List<SuggestionCandidate>> suggestionPrefixIndex(List<SuggestionCandidate> candidates) {
+        Map<String, List<SuggestionCandidate>> indexed = new HashMap<>();
+        for (SuggestionCandidate candidate : candidates) {
+            for (String prefix : suggestionPrefixes(candidate)) {
+                indexed.computeIfAbsent(prefix, ignored -> new ArrayList<>()).add(candidate);
+            }
+        }
+
+        return indexed.entrySet().stream()
+                .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> List.copyOf(entry.getValue())
+                ));
+    }
+
+    private List<String> suggestionPrefixes(SuggestionCandidate candidate) {
+        java.util.Set<String> prefixes = new java.util.LinkedHashSet<>();
+        addSuggestionPrefixes(prefixes, candidate.normalizedName());
+        addSuggestionPrefixes(prefixes, candidate.normalizedVariation());
+        return List.copyOf(prefixes);
+    }
+
+    private void addSuggestionPrefixes(java.util.Set<String> prefixes, String text) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+
+        addSuggestionPrefix(prefixes, text);
+        for (String word : text.split("\\s+")) {
+            addSuggestionPrefix(prefixes, word);
+        }
+    }
+
+    private void addSuggestionPrefix(java.util.Set<String> prefixes, String value) {
+        if (value != null && value.length() >= 3) {
+            prefixes.add(value.substring(0, 3));
         }
     }
 
@@ -561,7 +601,7 @@ public class DashboardController {
                     .trim();
         } while (!candidate.equals(previousCandidate));
 
-        return isEditionStyleText(candidate) ? "" : candidate;
+        return isEditionStyleText(candidate) || isEditionAliasText(candidate) ? "" : candidate;
     }
 
     private boolean isEditionStyleText(String value) {
@@ -573,6 +613,16 @@ public class DashboardController {
         return trimmed.matches("(?i)^[a-z]$")
                 || trimmed.matches("^\\d+$")
                 || VARIATION_STYLE_ONLY_PATTERN.matcher(trimmed).matches();
+    }
+
+    private boolean isEditionAliasText(String value) {
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.matches("(?i).*\\bvariants?\\b.*")
+                || trimmed.matches("(?i)^(?:promo pack|promotional|secret lair|commander|commander anthology|modern horizons \\d+|double masters(?: \\d+)?|core set \\d+)$");
     }
 
     @GetMapping("/configuracion")
@@ -4774,6 +4824,7 @@ public class DashboardController {
             int identity,
             int size,
             List<SuggestionCandidate> candidates,
+            Map<String, List<SuggestionCandidate>> candidatesByPrefix,
             ConcurrentHashMap<String, List<CardSuggestion>> cache
     ) {
         List<CardSuggestion> suggestionsFor(String normalizedQuery) {
@@ -4782,8 +4833,11 @@ public class DashboardController {
 
         private List<CardSuggestion> buildSuggestions(String normalizedQuery) {
             Map<String, CardSuggestion> suggestions = new LinkedHashMap<>();
+            List<SuggestionCandidate> sourceCandidates = normalizedQuery.length() >= 3
+                    ? candidatesByPrefix.getOrDefault(normalizedQuery.substring(0, 3), candidates)
+                    : candidates;
 
-            var rankedCandidates = candidates.stream()
+            var rankedCandidates = sourceCandidates.stream()
                     .map(candidate -> new ScoredSuggestionCandidate(
                             candidate,
                             suggestionScore(candidate, normalizedQuery)

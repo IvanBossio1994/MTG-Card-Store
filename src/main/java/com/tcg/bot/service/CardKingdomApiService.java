@@ -37,6 +37,7 @@ public class CardKingdomApiService {
 
     // ---- Duración cache ----
     private static final long CACHE_HOURS = 1;
+    private volatile CachedPriceList cachedPriceList;
 
     public CardKingdomApiService(StoreSettingsService storeSettingsService) {
         this.storeSettingsService = storeSettingsService;
@@ -92,17 +93,35 @@ public class CardKingdomApiService {
                 // ---- Cache válida ----
                 if (hoursOld < CACHE_HOURS) {
 
-                    log.info("Usando cache local CK.");
+                    CachedPriceList memoryCache = cachedPriceList;
+                    if (memoryCache != null
+                            && memoryCache.path().equals(cachePath)
+                            && memoryCache.lastModified().equals(lastModified)) {
+                        return memoryCache.response();
+                    }
 
-                    String cachedJson =
-                            Files.readString(
-                                    cachePath
-                            );
+                    synchronized (this) {
+                        memoryCache = cachedPriceList;
+                        if (memoryCache != null
+                                && memoryCache.path().equals(cachePath)
+                                && memoryCache.lastModified().equals(lastModified)) {
+                            return memoryCache.response();
+                        }
 
-                    return objectMapper.readValue(
-                            cachedJson,
-                            CardKingdomPriceListResponse.class
-                    );
+                        log.info("Usando cache local CK.");
+
+                        String cachedJson =
+                                Files.readString(
+                                        cachePath
+                                );
+
+                        CardKingdomPriceListResponse parsed = objectMapper.readValue(
+                                cachedJson,
+                                CardKingdomPriceListResponse.class
+                        );
+                        cachedPriceList = new CachedPriceList(cachePath, lastModified, parsed);
+                        return parsed;
+                    }
                 }
 
                 log.info("Cache vencida. Re descargando...");
@@ -142,14 +161,17 @@ public class CardKingdomApiService {
                     cachePath,
                     json
             );
+            FileTime lastModified = Files.getLastModifiedTime(cachePath);
 
             log.info("Cache CK guardada.");
 
             // ---- Parsear ----
-            return objectMapper.readValue(
+            CardKingdomPriceListResponse parsed = objectMapper.readValue(
                     json,
                     CardKingdomPriceListResponse.class
             );
+            cachedPriceList = new CachedPriceList(cachePath, lastModified, parsed);
+            return parsed;
 
         } catch (Exception e) {
 
@@ -165,15 +187,32 @@ public class CardKingdomApiService {
                 return null;
             }
 
+            FileTime lastModified = Files.getLastModifiedTime(cachePath);
+            CachedPriceList memoryCache = cachedPriceList;
+            if (memoryCache != null
+                    && memoryCache.path().equals(cachePath)
+                    && memoryCache.lastModified().equals(lastModified)) {
+                return memoryCache.response();
+            }
+
             log.info("Usando cache CK existente porque no se pudo descargar la pricelist.");
-            return objectMapper.readValue(
+            CardKingdomPriceListResponse parsed = objectMapper.readValue(
                     Files.readString(cachePath),
                     CardKingdomPriceListResponse.class
             );
+            cachedPriceList = new CachedPriceList(cachePath, lastModified, parsed);
+            return parsed;
         } catch (Exception cacheException) {
             log.warn("No se pudo leer el cache local de Card Kingdom.", cacheException);
             return null;
         }
+    }
+
+    private record CachedPriceList(
+            Path path,
+            FileTime lastModified,
+            CardKingdomPriceListResponse response
+    ) {
     }
 
     /**
