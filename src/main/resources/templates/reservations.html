@@ -63,8 +63,11 @@
                     <form class="reservation-delete-form" method="post" th:action="@{/reservas/eliminar-grupo}"
                           onclick="event.stopPropagation();"
                           data-app-confirm
+                          data-loading-button="Eliminando..."
+                          data-loading-title="Eliminando reserva"
+                          data-loading-message="Quitando el pedido y devolviendo cartas reservadas al stock..."
                           data-confirm-title="Eliminar reserva"
-                          data-confirm-message="Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
+                          data-confirm-message="¿Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
                         <input type="hidden" name="groupKey" th:value="${group.key}">
                         <button class="reservation-delete-button" type="submit" aria-label="Eliminar reserva">&times;</button>
                     </form>
@@ -110,8 +113,8 @@
                             <tr th:each="reservation : ${group.items}">
                                 <td>
                                     <span class="status"
-                                          th:classappend="${reservation.status == null ? '' : #strings.toLowerCase(reservation.status).replace(' ', '-')}"
-                                          th:text="${reservation.status != null && reservation.status != '' ? reservation.status : '-'}">Sin Stock</span>
+                                          th:classappend="${reservation.displayStatus == null ? '' : #strings.toLowerCase(reservation.displayStatus).replace(' ', '-')}"
+                                          th:text="${reservation.displayStatus != null && reservation.displayStatus != '' ? reservation.displayStatus : '-'}">Sin Stock</span>
                                 </td>
                                 <td th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</td>
                                 <td th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</td>
@@ -121,13 +124,16 @@
                                     th:text="${reservation.formattedLocalPrice != null && reservation.formattedLocalPrice != '' ? '$ ' + reservation.formattedLocalPrice : '-'}">-</td>
                                 <td th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</td>
                                 <td class="reservation-local-stock"
-                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.availableStock : '-'}">0</td>
+                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock : '-'}">0</td>
                                 <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
                                 <td th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</td>
                                 <td class="reservation-action-cell">
                                     <form method="post" th:action="@{/reservas/entregar}"
                                           th:if="${reservation.deliverable}"
                                           data-app-confirm
+                                          data-loading-button="Entregando..."
+                                          data-loading-title="Entregando pedido"
+                                          data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
                                           th:attr="data-confirm-title=${reservation.partialDelivery ? 'Entrega parcial' : 'Entregar reserva'},
                                                    data-confirm-message=${reservation.partialDelivery ? 'Se va a entregar solo el stock disponible y quedara el resto reservado.' : 'Se va a entregar esta reserva y descontar stock.'},
                                                    data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'}">
@@ -139,9 +145,12 @@
                                     </form>
                                     <span class="reservation-deliver-unavailable"
                                           th:unless="${reservation.deliverable}"
-                                          th:title="${reservation.availableStock > 0 ? 'Stock disponible: ' + reservation.availableStock : 'Sin stock compatible'}">-</span>
+                                          th:title="${reservation.currentStock > 0 ? 'Stock local: ' + reservation.currentStock + '. Ya esta asignado a pedidos anteriores.' : 'Sin stock compatible'}">-</span>
                                     <form method="post" th:action="@{/reservas/eliminar}"
                                           data-app-confirm
+                                          data-loading-button="Quitando..."
+                                          data-loading-title="Quitando carta"
+                                          data-loading-message="Actualizando Reservas y devolviendo stock si corresponde..."
                                           data-confirm-title="Quitar carta"
                                           th:attr="data-confirm-message=${'Quitar ' + (reservation.name != null && reservation.name != '' ? reservation.name : 'esta carta') + ' del pedido? Si estaba reservada, vuelve al stock.'}">
                                         <input type="hidden" name="reservationId" th:value="${reservation.id}">
@@ -165,6 +174,9 @@
                                     <form method="post" th:action="@{/reservas/entregar-grupo}"
                                           th:if="${group.availableQuantity > 0}"
                                           data-app-confirm
+                                          data-loading-button="Entregando..."
+                                          data-loading-title="Entregando disponibles"
+                                          data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
                                           th:attr="data-confirm-title=${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'},
                                                    data-confirm-message=${group.availableQuantity < group.totalQuantity ? 'Se van a entregar solo las cartas disponibles y quedara el resto reservado.' : 'Se van a entregar todas las cartas disponibles de esta reserva.'},
                                                    data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'}">

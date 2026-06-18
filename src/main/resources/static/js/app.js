@@ -122,12 +122,18 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             form.dataset.appConfirmAccepted = "true";
+            showLoadingOverlay(
+                form,
+                form.dataset.loadingButton || "Procesando...",
+                form.dataset.loadingTitle || "Procesando accion",
+                form.dataset.loadingMessage || "Actualizando Google Sheet y sincronizando cambios..."
+            );
             form.submit();
         });
     });
 
     const showLoadingOverlay = (form, buttonText, title, message) => {
-        if (!form || !loadingOverlay) {
+        if (!loadingOverlay) {
             return;
         }
 
@@ -145,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
             loadingMessage.textContent = message;
         }
 
-        const button = form.querySelector("button[type='submit']");
+        const button = form ? form.querySelector("button[type='submit']") : null;
         if (button) {
             button.disabled = true;
             button.textContent = buttonText;
@@ -334,6 +340,22 @@ document.addEventListener("DOMContentLoaded", () => {
             importConfirmForm.submit();
         });
     }
+
+    document.querySelectorAll("form[data-loading-title]:not([data-app-confirm])").forEach(form => {
+        if (form === updateForm || form === storeForm || form === importAnalyzeForm || form === importConfirmForm) {
+            return;
+        }
+
+        form.addEventListener("submit", () => {
+            showLoadingOverlay(
+                form,
+                form.dataset.loadingButton || "Procesando...",
+                form.dataset.loadingTitle,
+                form.dataset.loadingMessage || "Actualizando datos..."
+            );
+        });
+    });
+
     const movementDateInputs = document.querySelectorAll(".movement-date-field input[type='date']");
 
     movementDateInputs.forEach(movementDateInput => {
@@ -741,6 +763,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (reservationModal && reservationModalForm && addReservationButtons.length > 0) {
         let reservationClients = [];
         let reservationClientsLoaded = false;
+        let activeReservationButton = null;
 
         const normalizeClientValue = value => (value || "").trim().toLowerCase();
         const digitsOnly = value => (value || "").replace(/\D/g, "");
@@ -866,6 +889,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         addReservationButtons.forEach(button => {
             button.addEventListener("click", async () => {
+                activeReservationButton = button;
                 const stockQuantity = Number(button.dataset.stockQuantity || 0);
                 await loadReservationClients();
                 setReservationValue("status", "Sin Stock");
@@ -937,6 +961,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 submitButton.disabled = true;
                 submitButton.textContent = "Guardando...";
             }
+            showLoadingOverlay(
+                reservationModalForm,
+                "Guardando...",
+                "Guardando pedido",
+                "Registrando el cliente y actualizando Reservas..."
+            );
 
             try {
                 const response = await fetch(reservationModalForm.action, {
@@ -960,6 +990,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const result = await response.json();
                 if (Number(result.stockQuantity) >= 0 && result.rowIndex) {
                     syncStockRows(String(result.rowIndex), Number(result.stockQuantity), result.action || "");
+                } else if (activeReservationButton) {
+                    const row = activeReservationButton.closest("tr");
+                    const status = row?.querySelector(".stock-action-status");
+                    if (status && !status.parentElement.querySelector(".pending-stock-info")) {
+                        const note = document.createElement("span");
+                        note.className = "pending-stock-info";
+                        note.title = `Carta pedida para ${reservationModalForm.elements.client?.value || "cliente"}.`;
+                        note.setAttribute("aria-label", "Carta pedida");
+                        note.textContent = "i";
+                        status.insertAdjacentElement("afterend", note);
+                    }
                 }
 
                 upsertReservationClientOption({
@@ -977,6 +1018,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     reservationModalError.hidden = false;
                 }
             } finally {
+                hideLoadingOverlay(reservationModalForm, "Guardar pedido");
                 if (submitButton) {
                     submitButton.disabled = false;
                     submitButton.textContent = "Guardar pedido";
@@ -1319,7 +1361,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const client = document.createElement("strong");
                 client.textContent = reservation.client || "Cliente";
                 const meta = document.createElement("small");
-                meta.textContent = `${reservation.phone || "Sin telefono"} | Cant. ${reservation.quantity || "1"} | Retiro ${reservation.pickupDate || "A convenir"}`;
+                meta.textContent = `${reservation.phone || "Sin telefono"} | Pedido ${reservation.reservationDate || "sin fecha"} | Cant. ${reservation.quantity || "1"} | Retiro ${reservation.pickupDate || "A convenir"}`;
                 detail.appendChild(client);
                 detail.appendChild(meta);
 
@@ -1365,49 +1407,60 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const separatePendingReservation = async (button, reservationId) => {
-        const response = await fetch("/reservas/separar", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Accept": "application/json"
-            },
-            body: new URLSearchParams({
-                reservationId,
-                sku: button.dataset.sku || "",
-                condition: button.dataset.condition || "NM",
-                rowIndex: button.dataset.row || "0"
-            })
-        });
+        showLoadingOverlay(
+            null,
+            "",
+            "Separando pedido",
+            "Marcando la carta como reservada y actualizando el stock..."
+        );
 
-        if (!response.ok) {
-            showToast(await responseMessage(response, "No se pudo separar la reserva"), "error");
-            return false;
-        }
+        try {
+            const response = await fetch("/reservas/separar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json"
+                },
+                body: new URLSearchParams({
+                    reservationId,
+                    sku: button.dataset.sku || "",
+                    condition: button.dataset.condition || "NM",
+                    rowIndex: button.dataset.row || "0"
+                })
+            });
 
-        const result = await response.json();
-        const rowIndex = String(result.rowIndex || button.dataset.row || "");
-
-        if (rowIndex && rowIndex !== "0") {
-            button.dataset.row = rowIndex;
-
-            const decreaseButton = button.parentElement.querySelector(".stock-button.decrease");
-            if (decreaseButton) {
-                decreaseButton.dataset.row = rowIndex;
-                decreaseButton.disabled = false;
+            if (!response.ok) {
+                showToast(await responseMessage(response, "No se pudo separar la reserva"), "error");
+                return false;
             }
 
-            const row = button.closest("tr");
-            const reservationButton = row ? row.querySelector(".add-reservation-button") : null;
-            if (reservationButton) {
-                reservationButton.dataset.row = rowIndex;
-                reservationButton.dataset.stockQuantity = String(Math.max(Number(result.stockQuantity) || 0, 0));
+            const result = await response.json();
+            const rowIndex = String(result.rowIndex || button.dataset.row || "");
+
+            if (rowIndex && rowIndex !== "0") {
+                button.dataset.row = rowIndex;
+
+                const decreaseButton = button.parentElement.querySelector(".stock-button.decrease");
+                if (decreaseButton) {
+                    decreaseButton.dataset.row = rowIndex;
+                    decreaseButton.disabled = false;
+                }
+
+                const row = button.closest("tr");
+                const reservationButton = row ? row.querySelector(".add-reservation-button") : null;
+                if (reservationButton) {
+                    reservationButton.dataset.row = rowIndex;
+                    reservationButton.dataset.stockQuantity = String(Math.max(Number(result.stockQuantity) || 0, 0));
+                }
+
+                syncStockRows(rowIndex, Number(result.stockQuantity) || 0, result.action || "Reservada");
             }
 
-            syncStockRows(rowIndex, Number(result.stockQuantity) || 0, result.action || "Reservada");
+            showToast(result.message || "Carta separada para reserva", "success");
+            return true;
+        } finally {
+            hideLoadingOverlay(null, "");
         }
-
-        showToast(result.message || "Carta separada para reserva", "success");
-        return true;
     };
 
     // ---- Actualiza stock ----

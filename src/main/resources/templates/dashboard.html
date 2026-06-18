@@ -261,6 +261,7 @@
                     <tbody>
                     <th:block th:each="update, iter : ${updates}">
                     <tr class="synced-table-row"
+                        th:with="pendingInfo=${pendingReservationQuantities != null ? pendingReservationQuantities[update.reservationKey()] : null}"
                         th:attr="data-in-stock=${update.stockQuantity > 0}"
                         th:classappend="${update.stockQuantity > 0} ? 'in-stock' : ''">
                         <td>
@@ -303,6 +304,10 @@
                         <td>
                             <span class="status stock-action-status" th:classappend="${update.action != null ? update.action.toLowerCase().replace(' ', '-') : ''}"
                                   th:text="${update.action != null && update.action != '' ? update.action : '-'}">En Stock</span>
+                            <span class="pending-stock-info"
+                                  th:if="${pendingInfo != null}"
+                                  th:title="${pendingInfo.tooltip}"
+                                  aria-label="Carta pedida">i</span>
                         </td>
                         <td>
                             <button type="button"
@@ -480,8 +485,9 @@
                 <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 1 de 5">
+            <div class="tutorial-progress" aria-label="Paso 1 de 6">
                 <span class="active"></span>
+                <span></span>
                 <span></span>
                 <span></span>
                 <span></span>
@@ -506,9 +512,10 @@
                 <p>La primera sincronizacion puede tardar porque descarga Card Kingdom. Despues usa el cache local que elegiste en Configuracion.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 2 de 5">
+            <div class="tutorial-progress" aria-label="Paso 2 de 6">
                 <span></span>
                 <span class="active"></span>
+                <span></span>
                 <span></span>
                 <span></span>
                 <span></span>
@@ -539,10 +546,11 @@
                 </div>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 3 de 5">
+            <div class="tutorial-progress" aria-label="Paso 3 de 6">
                 <span></span>
                 <span></span>
                 <span class="active"></span>
+                <span></span>
                 <span></span>
                 <span></span>
             </div>
@@ -561,7 +569,31 @@
                 <p>La app marca cada resultado como encontrada, otra versión o no encontrada. Si hay alternativas, podés desplegarlas y elegir cuáles sumar al stock.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 4 de 5">
+            <div class="tutorial-progress" aria-label="Paso 4 de 6">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span class="active"></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <div class="tutorial-step">
+            <img class="tutorial-cat tutorial-cat-teacher"
+                 th:src="@{/images/tutorial-cat-teacher.png}"
+                 alt="Gatito revisando pedidos">
+
+            <p class="eyebrow">Paso 5</p>
+            <h2>Gestiona reservas</h2>
+
+            <div class="tutorial-copy">
+                <p>Desde Inicio podés añadir una carta a pedido y guardar cliente, teléfono y DNI para reutilizarlos al instante.</p>
+                <p>En "Reservas" ves qué cartas están pendientes, reservadas o listas para entregar, y podés entregar o quitar cartas individuales.</p>
+            </div>
+
+            <div class="tutorial-progress" aria-label="Paso 5 de 6">
+                <span></span>
                 <span></span>
                 <span></span>
                 <span></span>
@@ -575,7 +607,7 @@
                  th:src="@{/images/tutorial-cat-detective.png}"
                  alt="Gatito detective">
 
-            <p class="eyebrow">Paso 5</p>
+            <p class="eyebrow">Paso 6</p>
             <h2>Revisá movimientos y caja</h2>
 
             <div class="tutorial-copy">
@@ -587,7 +619,8 @@
                 <p>Flujo normal: sincronizar al abrir, buscar o importar cartas, usar + y -, y revisar caja al final del día.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 5 de 5">
+            <div class="tutorial-progress" aria-label="Paso 6 de 6">
+                <span></span>
                 <span></span>
                 <span></span>
                 <span></span>

@@ -44,6 +44,9 @@ public class CardReservation {
     private int rowIndex;
     private int inventoryRowIndex;
     private int availableStock;
+    private int currentStock;
+    private int deliverableStock;
+    private String displayStatus;
     private String localPrice;
     private String formattedLocalPrice;
     private double lineTotalPrice;
@@ -66,11 +69,11 @@ public class CardReservation {
     }
 
     public boolean isDeliverable() {
-        return inventoryRowIndex > 0 && availableStock > 0;
+        return inventoryRowIndex > 0 && deliverableStock > 0;
     }
 
     public boolean isPartialDelivery() {
-        return isDeliverable() && availableStock < reservationQuantity();
+        return isDeliverable() && deliverableStock < reservationQuantity();
     }
 
     public String getDeliveryButtonLabel() {
@@ -87,6 +90,10 @@ public class CardReservation {
         } catch (NumberFormatException e) {
             return 1;
         }
+    }
+
+    public String getDisplayStatus() {
+        return displayStatus == null || displayStatus.isBlank() ? status : displayStatus;
     }
 
     public String getFormattedPaymentDate() {

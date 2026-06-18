@@ -311,7 +311,10 @@
 
             <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
 
-            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}">
+            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
+                  data-loading-button="Desbloqueando..."
+                  data-loading-title="Verificando acceso"
+                  data-loading-message="Revisando la contraseña y abriendo movimientos...">
                 <input type="hidden" name="returnTo" th:value="${returnTo}">
                 <div class="movement-access-field">
                     <label for="movement-password">Clave de acceso</label>

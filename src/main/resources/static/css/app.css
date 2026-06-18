@@ -1771,6 +1771,10 @@ tr.in-stock {
     margin-bottom: 22px;
 }
 
+.reservations-page > .alert {
+    margin: 18px 0 22px;
+}
+
 .reservation-group-list {
     display: grid;
     gap: 14px;
@@ -2135,13 +2139,13 @@ tr.in-stock {
 }
 
 .reservation-deliver-button.partial {
-    border-color: var(--amber);
-    color: #111827;
-    background: var(--amber-soft);
+    border-color: var(--green);
+    color: #fff;
+    background: var(--green);
 }
 
 .reservation-deliver-button.partial:hover {
-    background: #ffe8a3;
+    background: #05603a;
 }
 
 .reservation-deliver-unavailable {
@@ -2185,6 +2189,14 @@ tr.in-stock {
     font-weight: 800;
 }
 
+.reservation-total-row .price-cell {
+    min-width: 150px;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+    font-variant-numeric: tabular-nums;
+}
+
 .reservation-total-row td:first-child {
     border-bottom-left-radius: 10px;
 }
@@ -2215,7 +2227,7 @@ tr.in-stock {
 }
 
 .reservation-total-actions {
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .reservation-total-row .reservation-deliver-button {
@@ -2496,6 +2508,24 @@ tr.in-stock {
 .status.sin-stock {
     color: var(--red);
     background: var(--red-soft);
+}
+
+.pending-stock-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-left: 8px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(23, 105, 224, 0.22);
+    color: var(--blue);
+    background: var(--blue-soft);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: help;
 }
 
 .status.con-stock,
