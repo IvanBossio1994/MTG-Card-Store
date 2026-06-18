@@ -49,6 +49,7 @@ public class GoogleSheetsService {
     private volatile String serviceAccountEmail;
     private final Map<String, SpreadsheetMetadata> spreadsheetMetadataCache = new ConcurrentHashMap<>();
     private final Map<String, SheetColumns> inventoryColumnsCache = new ConcurrentHashMap<>();
+    private final Set<String> verifiedReservationHeaders = ConcurrentHashMap.newKeySet();
 
     public GoogleSheetsService(
             StoreSettingsService storeSettingsService,
@@ -179,6 +180,7 @@ public class GoogleSheetsService {
     private void clearSheetStructureCache() {
         spreadsheetMetadataCache.remove(cacheKey());
         inventoryColumnsCache.remove(inventoryColumnsCacheKey());
+        verifiedReservationHeaders.remove(cacheKey());
     }
 
     private InputStream openCredentialsStream() throws Exception {
@@ -2111,6 +2113,11 @@ public class GoogleSheetsService {
             clearSheetStructureCache();
         }
 
+        String headerCacheKey = cacheKey();
+        if (verifiedReservationHeaders.contains(headerCacheKey)) {
+            return;
+        }
+
         List<String> reservationHeader = List.of(
                 "ID",
                 "Estado",
@@ -2136,6 +2143,7 @@ public class GoogleSheetsService {
         if (headerResponse.getValues() != null
                 && !headerResponse.getValues().isEmpty()
                 && sameHeader(headerResponse.getValues().get(0), reservationHeader)) {
+            verifiedReservationHeaders.add(headerCacheKey);
             return;
         }
 
@@ -2146,6 +2154,7 @@ public class GoogleSheetsService {
                 .update(storeSettingsService.getSpreadsheetId(), reservationRange("A1:O1"), headerBody)
                 .setValueInputOption("RAW")
                 .execute();
+        verifiedReservationHeaders.add(headerCacheKey);
     }
 
     private void ensureClientsSheet(Sheets sheetsService) throws Exception {

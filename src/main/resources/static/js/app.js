@@ -292,35 +292,39 @@ document.addEventListener("DOMContentLoaded", () => {
             const selectedImportCards = Array.from(importConfirmForm.querySelectorAll(".import-result-checkbox:checked"));
             let pendingCount = 0;
 
-            for (const checkbox of selectedImportCards) {
-                const sku = checkbox.dataset.sku || "";
-                const skuParts = sku.split("-");
-                const params = new URLSearchParams({
-                    name: checkbox.dataset.name || "",
-                    setName: checkbox.dataset.setName || "",
-                    setCode: skuParts[0] || "",
-                    collectorNumber: skuParts.slice(1).join("-"),
-                    printing: checkbox.dataset.printing || ""
+            try {
+                const response = await fetch("/api/reservas/pendientes/resumen", {
+                    headers: {"Accept": "application/json"}
                 });
+                const reservationsByKey = response.ok ? await response.json() : {};
+                const countedReservationIds = new Set();
 
-                try {
-                    const response = await fetch(`/api/reservas/pendientes?${params.toString()}`, {
-                        headers: {"Accept": "application/json"}
+                for (const checkbox of selectedImportCards) {
+                    const sku = checkbox.dataset.sku || "";
+                    const skuParts = sku.split("-");
+                    const key = reservationLookupKey(
+                        checkbox.dataset.name || "",
+                        checkbox.dataset.setName || "",
+                        skuParts[0] || "",
+                        skuParts.slice(1).join("-"),
+                        checkbox.dataset.printing || ""
+                    );
+                    (reservationsByKey[key] || []).forEach(reservation => {
+                        if (reservation.id && !countedReservationIds.has(reservation.id)) {
+                            countedReservationIds.add(reservation.id);
+                            pendingCount += 1;
+                        }
                     });
-                    if (response.ok) {
-                        const reservations = await response.json();
-                        pendingCount += reservations.length;
-                    }
-                } catch (error) {
-                    console.error(error);
                 }
+            } catch (error) {
+                console.error(error);
             }
 
             if (pendingCount > 0) {
                 const separate = await confirmWithAppDialog({
                     dataset: {
                         confirmTitle: "Reservas pendientes",
-                        confirmMessage: `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. Queres separar esas unidades para reservas antes de sumar stock?`
+                        confirmMessage: `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. ¿Queres separar esas unidades para reservas antes de sumar stock?`
                     }
                 });
                 if (honorReservationsInput) {
@@ -339,6 +343,40 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             importConfirmForm.submit();
         });
+    }
+
+    function reservationLookupKey(name, setName, setCode, collectorNumber, printing) {
+        return [
+            lookupText(name),
+            lookupText(setName),
+            lookupText(setCode),
+            lookupCollectorNumber(collectorNumber),
+            lookupPrinting(printing)
+        ].join("|");
+    }
+
+    function lookupText(value) {
+        return String(value || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/\p{M}/gu, "")
+                .replace(/\s+/g, " ");
+    }
+
+    function lookupCollectorNumber(value) {
+        return lookupText(value).replace(/[^a-z0-9]/g, "").replace(/^0+(?!$)/, "");
+    }
+
+    function lookupPrinting(value) {
+        const normalized = lookupText(value);
+        if (normalized === "foil") {
+            return "foil";
+        }
+        if (normalized === "no foil" || normalized === "non foil" || normalized === "nonfoil") {
+            return "nonfoil";
+        }
+        return normalized;
     }
 
     document.querySelectorAll("form[data-loading-title]:not([data-app-confirm])").forEach(form => {
@@ -602,6 +640,33 @@ document.addEventListener("DOMContentLoaded", () => {
             activeSuggestionIndex = -1;
         };
 
+        const suggestionMatches = (suggestion, value) => {
+            const query = value.toLowerCase();
+            const name = String(suggestion.name || "").toLowerCase();
+            const variation = String(suggestion.variation || "").toLowerCase();
+            return name.includes(query) || variation.includes(query);
+        };
+
+        const cachedSuggestionsFor = value => {
+            const cacheKey = value.toLowerCase();
+            if (suggestionCache.has(cacheKey)) {
+                return suggestionCache.get(cacheKey);
+            }
+
+            let bestPrefix = "";
+            let bestSuggestions = null;
+            suggestionCache.forEach((suggestions, key) => {
+                if (cacheKey.startsWith(key) && key.length > bestPrefix.length) {
+                    bestPrefix = key;
+                    bestSuggestions = suggestions;
+                }
+            });
+
+            return bestSuggestions
+                    ? bestSuggestions.filter(suggestion => suggestionMatches(suggestion, value))
+                    : null;
+        };
+
         const fetchSuggestions = async value => {
             const cacheKey = value.toLowerCase();
             if (suggestionCache.has(cacheKey)) {
@@ -650,7 +715,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            suggestionTimer = setTimeout(() => fetchSuggestions(value), 50);
+            const cachedSuggestions = cachedSuggestionsFor(value);
+            if (cachedSuggestions) {
+                renderSuggestions(cachedSuggestions);
+            }
+
+            suggestionTimer = setTimeout(() => fetchSuggestions(value), cachedSuggestions ? 0 : 20);
         });
 
         searchInput.addEventListener("keydown", event => {
@@ -1174,6 +1244,14 @@ document.addEventListener("DOMContentLoaded", () => {
         updateImportSelectionState();
     }
 
+    document.querySelectorAll(".inventory-stock-toggle").forEach(button => {
+        const optionsRow = document.getElementById(button.getAttribute("aria-controls"));
+        if (optionsRow) {
+            optionsRow.hidden = true;
+        }
+        button.setAttribute("aria-expanded", "false");
+    });
+
     document.querySelectorAll(".version-toggle").forEach(button => {
         button.addEventListener("click", () => {
             const optionsRow = document.getElementById(button.getAttribute("aria-controls"));
@@ -1456,7 +1534,7 @@ document.addEventListener("DOMContentLoaded", () => {
             pendingReservationConfirm.onclick = () => {
                 const selected = pendingReservationSelection || reservations[0];
                 const remainingClients = reservations
-                        .filter(reservation => reservation.id !== selected.id)
+                        .filter(reservation => String(reservation.id) !== String(selected.id))
                         .map(reservation => reservation.client)
                         .filter(Boolean);
                 cleanup();
@@ -1748,7 +1826,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     syncStockRows(updatedRowIndex, updatedQuantity, updatedAction);
                     const groupedRow = button.closest("tr");
-                    if (groupedRow?.querySelector(".inventory-stock-toggle")) {
+                    if (groupedRow?.querySelector(".inventory-stock-toggle")
+                            && !button.closest(".inventory-condition-option")) {
                         const groupedQuantity = Math.max(currentValue + change, 0);
                         valueElement.textContent = String(groupedQuantity);
                         groupedRow?.querySelector(".add-reservation-button")
@@ -1817,6 +1896,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         const relatedButtons = document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`);
         const relatedControls = new Set();
+        syncConditionStockOptions(rowIndex, normalizedQuantity, normalizedAction);
 
         relatedButtons.forEach(relatedButton => {
             relatedControls.add(relatedButton.closest(".stock-controls"));
@@ -1844,6 +1924,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (value) {
                 value.textContent = String(normalizedQuantity);
+            }
+
+            if (control.closest(".inventory-condition-option")) {
+                return;
             }
 
             const row = control.closest("tr");
@@ -1889,6 +1973,56 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         updateStockSummary();
+    }
+
+    function syncConditionStockOptions(rowIndex, quantity, action) {
+        document.querySelectorAll(`.inventory-condition-option[data-row="${rowIndex}"]`).forEach(option => {
+            option.dataset.stockQuantity = String(quantity);
+
+            const summary = option.querySelector(".condition-stock-summary");
+            if (summary) {
+                summary.textContent = action === "Reservada"
+                        ? `${quantity} total | ${quantity} reservadas`
+                        : `${quantity} total | ${quantity} disponibles`;
+            }
+
+            const stockValue = option.querySelector(".stock-value");
+            if (stockValue) {
+                stockValue.textContent = String(quantity);
+            }
+
+            const status = option.querySelector(".stock-action-status");
+            if (status) {
+                status.textContent = action;
+                status.classList.remove("con-stock", "en-stock", "sin-stock", "reservada");
+                status.classList.add(action.toLowerCase().replace(/\s+/g, "-"));
+            }
+
+            const reservationButton = option.querySelector(".add-reservation-button");
+            if (reservationButton) {
+                reservationButton.dataset.stockQuantity = String(quantity);
+                reservationButton.dataset.row = rowIndex;
+            }
+
+            const optionsRow = option.closest(".inventory-stock-options-row");
+            const primaryRow = optionsRow?.previousElementSibling;
+            if (primaryRow) {
+                const total = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
+                        .reduce((sum, item) => sum + (Number(item.dataset.stockQuantity) || 0), 0);
+                const stockTotal = primaryRow.querySelector(".stock-total-display, .stock-value");
+                if (stockTotal) {
+                    stockTotal.textContent = String(total);
+                }
+                const primaryStatus = primaryRow.querySelector(".stock-action-status");
+                if (primaryStatus && total > 0 && primaryStatus.textContent.trim() === "Sin Stock") {
+                    primaryStatus.textContent = "En Stock";
+                    primaryStatus.classList.remove("sin-stock", "reservada");
+                    primaryStatus.classList.add("en-stock");
+                }
+                primaryRow.dataset.inStock = String(total > 0);
+                primaryRow.classList.toggle("in-stock", total > 0);
+            }
+        });
     }
 
     function removeStockRows(rowIndex) {

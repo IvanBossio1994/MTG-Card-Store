@@ -122,12 +122,12 @@
                              data-row-g=${result.gRowIndex}"
                     th:classappend="${result.stockQuantity > 0} ? 'in-stock' : ''">
                     <td>
-                        <div class="stock-controls">
+                        <div class="stock-controls" th:if="${#lists.isEmpty(result.conditionStocks)}">
                             <button type="button"
                                     class="stock-button decrease"
                                     th:attr="data-row=${result.rowIndex}"
                                     th:disabled="${result.rowIndex <= 0}"
-                                    th:title="${result.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : (${result.stockQuantity <= 0} ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')">
+                                    th:title="${result.rowIndex <= 0 ? 'Esta impresión todavía no existe en tu Sheet' : (result.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                 -
                             </button>
                             <span class="stock-value"
@@ -137,7 +137,7 @@
                             <button type="button"
                                     class="stock-button increase"
                                     th:attr="data-row=${result.rowIndex},data-condition=${result.selectedCondition},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
-                                    th:title="${result.rowIndex <= 0} ? 'Agregar esta impresión al Sheet' : 'Agregar una unidad'">
+                                    th:title="${result.rowIndex <= 0 ? 'Agregar esta impresión al Sheet' : 'Agregar una unidad'}">
                                 +
                             </button>
                         </div>
@@ -151,6 +151,8 @@
                                     aria-expanded="false"
                                     aria-label="Ver stock por condición"></button>
                         </div>
+                        <span class="stock-total-display" th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                              th:text="${result.displayStockQuantity}">0</span>
                     </td>
                     <td class="set-name-cell" th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
                     <td class="compact-cell" th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
@@ -175,9 +177,11 @@
                     <td>
                         <button type="button"
                                 class="secondary-button add-reservation-button"
+                                th:if="${#lists.isEmpty(result.conditionStocks)}"
                                 th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${result.rowIndex},data-stock-quantity=${result.stockQuantity}">
                             Añadir a pedido
                         </button>
+                        <span class="muted-cell" th:if="${!#lists.isEmpty(result.conditionStocks)}">Elegir condicion</span>
                     </td>
                     <td class="price-cell ck-price-cell" th:text="${result.formattedSelectedCkPrice != null && result.formattedSelectedCkPrice != '' ? '$ ' + result.formattedSelectedCkPrice : '-'}">$ 2,49</td>
                     <td class="price-cell local-price-cell" th:text="${result.localPrice != null && result.localPrice != '' ? '$ ' + result.formattedLocalPrice : '-'}">$ 0</td>
@@ -191,10 +195,36 @@
                             <strong th:text="${#lists.size(result.conditionStocks) + ' condiciones'}">0 condiciones</strong>
                         </div>
                         <div class="version-option-grid inventory-condition-grid">
-                            <div class="version-option inventory-condition-option" th:each="stock : ${result.conditionStocks}">
-                                <span>
+                            <div class="version-option inventory-condition-option" th:each="stock : ${result.conditionStocks}"
+                                 th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                <div class="stock-controls condition-stock-controls">
+                                    <button type="button"
+                                            class="stock-button decrease"
+                                            th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition}"
+                                            th:disabled="${stock.rowIndex <= 0}"
+                                            th:title="${stock.rowIndex <= 0 ? 'Esta condicion todavia no existe en tu Sheet' : (stock.quantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
+                                        -
+                                    </button>
+                                    <span class="stock-value" th:text="${stock.quantity}">0</span>
+                                    <button type="button"
+                                            class="stock-button increase"
+                                            th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
+                                            th:disabled="${stock.rowIndex <= 0}"
+                                            th:title="${stock.rowIndex <= 0 ? 'Esta condicion todavia no existe en tu Sheet' : 'Agregar una unidad'}">
+                                        +
+                                    </button>
+                                </div>
+                                <span class="condition-cell">
                                     <strong th:text="${stock.condition}">NM</strong>
-                                    <small th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                    <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                </span>
+                                <span class="condition-meta-cell">
+                                    <small>CK USD</small>
+                                    <strong th:text="${stock.ckPriceUsd != null && stock.ckPriceUsd != '' ? '$ ' + stock.ckPriceUsd : '-'}">-</strong>
+                                </span>
+                                <span class="condition-meta-cell">
+                                    <small>Precio local</small>
+                                    <strong th:text="${stock.localPrice != null && stock.localPrice != '' ? '$ ' + stock.localPrice : '-'}">-</strong>
                                 </span>
                                 <span class="status stock-action-status"
                                       th:classappend="${stock.action != null ? #strings.toLowerCase(stock.action).replace(' ', '-') : ''}"
@@ -270,12 +300,12 @@
                         th:attr="data-in-stock=${update.displayStockQuantity() > 0}"
                         th:classappend="${update.displayStockQuantity() > 0} ? 'in-stock' : ''">
                         <td>
-                            <div class="stock-controls">
+                            <div class="stock-controls" th:if="${#lists.isEmpty(update.conditionStocks)}">
                                 <button type="button"
                                         class="stock-button decrease"
                                         th:attr="data-row=${update.rowIndex}"
                                         th:disabled="${update.rowIndex <= 0}"
-                                        th:title="${update.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : (${update.stockQuantity <= 0} ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')">
+                                        th:title="${update.rowIndex <= 0 ? 'Esta impresión todavía no existe en tu Sheet' : (update.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                     -
                                 </button>
                             <span class="stock-value"
@@ -286,10 +316,12 @@
                                         class="stock-button increase"
                                         th:attr="data-row=${update.rowIndex},data-condition=${update.condition},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"
                                         th:disabled="${update.rowIndex <= 0}"
-                                        th:title="${update.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : 'Agregar una unidad'">
+                                        th:title="${update.rowIndex <= 0 ? 'Esta impresión todavía no existe en tu Sheet' : 'Agregar una unidad'}">
                                     +
                                 </button>
                             </div>
+                            <span class="stock-total-display" th:if="${!#lists.isEmpty(update.conditionStocks)}"
+                                  th:text="${update.displayStockQuantity()}">0</span>
                         </td>
                         <td class="card-name-cell">
                             <div class="inventory-card-name">
@@ -333,10 +365,36 @@
                                 <strong th:text="${#lists.size(update.conditionStocks) + ' condiciones'}">0 condiciones</strong>
                             </div>
                             <div class="version-option-grid inventory-condition-grid">
-                                <div class="version-option inventory-condition-option" th:each="stock : ${update.conditionStocks}">
-                                    <span>
+                                <div class="version-option inventory-condition-option" th:each="stock : ${update.conditionStocks}"
+                                     th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                    <div class="stock-controls condition-stock-controls">
+                                        <button type="button"
+                                                class="stock-button decrease"
+                                                th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition}"
+                                                th:disabled="${stock.rowIndex <= 0}"
+                                                th:title="${stock.rowIndex <= 0 ? 'Esta condicion todavia no existe en tu Sheet' : (stock.quantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
+                                            -
+                                        </button>
+                                        <span class="stock-value" th:text="${stock.quantity}">0</span>
+                                        <button type="button"
+                                                class="stock-button increase"
+                                                th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"
+                                                th:disabled="${stock.rowIndex <= 0}"
+                                                th:title="${stock.rowIndex <= 0 ? 'Esta condicion todavia no existe en tu Sheet' : 'Agregar una unidad'}">
+                                            +
+                                        </button>
+                                    </div>
+                                    <span class="condition-cell">
                                         <strong th:text="${stock.condition}">NM</strong>
-                                        <small th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                        <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                    </span>
+                                    <span class="condition-meta-cell">
+                                        <small>CK USD</small>
+                                        <strong th:text="${stock.ckPriceUsd != null && stock.ckPriceUsd != '' ? '$ ' + stock.ckPriceUsd : '-'}">-</strong>
+                                    </span>
+                                    <span class="condition-meta-cell">
+                                        <small>Precio local</small>
+                                        <strong th:text="${stock.localPrice != null && stock.localPrice != '' ? '$ ' + stock.localPrice : '-'}">-</strong>
                                     </span>
                                     <span class="status stock-action-status"
                                           th:classappend="${stock.action != null ? #strings.toLowerCase(stock.action).replace(' ', '-') : ''}"

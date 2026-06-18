@@ -53,6 +53,7 @@ import java.time.format.TextStyle;
 import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -69,10 +70,15 @@ public class DashboardController {
     private volatile List<UpdateResult> latestUpdates = List.of();
     private volatile long latestUpdatedCount;
     private volatile SuggestionIndex suggestionIndex = new SuggestionIndex(0, 0, List.of(), new ConcurrentHashMap<>());
+    private volatile ReservationsCache reservationsCache = new ReservationsCache(0, List.of());
     private static final Pattern LEADING_QUANTITY_PATTERN =
             Pattern.compile("^\\s*(\\d+)\\s*x?\\s+(.+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TRAILING_QUANTITY_PATTERN =
             Pattern.compile("^\\s*(.+?)\\s+x\\s*(\\d+)\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TRAILING_FOIL_PATTERN =
+            Pattern.compile("(?i)\\s+(F|FOIL)\\s*$");
+    private static final Pattern TRAILING_NONFOIL_PATTERN =
+            Pattern.compile("(?i)\\s+(NF|NON[- ]?FOIL)\\s*$");
     private static final Pattern SET_CODE_PATTERN =
             Pattern.compile("[\\[(]([A-Za-z0-9]{2,8})[\\])]");
     private static final Pattern COLLECTOR_PATTERN =
@@ -1041,7 +1047,9 @@ public class DashboardController {
                     Math.max(quantity - reservedQuantity, 0),
                     reservedQuantity,
                     reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK,
-                    rowIndexForCondition(matches, condition)
+                    rowIndexForCondition(matches, condition),
+                    firstNonBlankInventoryValue(matches, InventoryCard::getCkPriceUsd),
+                    firstNonBlankInventoryValue(matches, InventoryCard::getLocalPrice)
             ));
         }
 
@@ -1644,25 +1652,83 @@ public class DashboardController {
         }
 
         try {
-            return ResponseEntity.ok(inventoryService.getReservations()
+            return ResponseEntity.ok(cachedReservations()
                     .stream()
                     .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
                     .filter(reservation -> matchesReservation(reservation, name, setName, setCode, collectorNumber, printing))
                     .sorted(Comparator.comparingInt(CardReservation::getRowIndex))
-                    .map(reservation -> new PendingReservationView(
-                            reservation.getId(),
-                            reservation.getClient(),
-                            reservation.getPhone(),
-                            reservation.getQuantity(),
-                            reservation.getPickupDate(),
-                            reservation.getFormattedReservationDate(),
-                            reservation.getNotes()
-                    ))
+                    .map(this::pendingReservationView)
                     .toList());
         } catch (Exception e) {
             log.warn("No se pudieron consultar reservas pendientes.", e);
             return ResponseEntity.ok(List.of());
         }
+    }
+
+    @GetMapping("/api/reservas/pendientes/resumen")
+    @ResponseBody
+    public ResponseEntity<Map<String, List<PendingReservationView>>> pendingReservationsSummary() {
+        try {
+            Map<String, List<PendingReservationView>> reservationsByKey = new HashMap<>();
+
+            for (CardReservation reservation : cachedReservations()) {
+                if (!CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus())) {
+                    continue;
+                }
+
+                String key = reservationLookupKey(
+                        reservation.getName(),
+                        reservation.getSetName(),
+                        reservation.getSetCode(),
+                        reservation.getCollectorNumber(),
+                        reservation.getPrinting()
+                );
+                reservationsByKey.computeIfAbsent(key, unused -> new ArrayList<>())
+                        .add(pendingReservationView(reservation));
+            }
+
+            reservationsByKey.values().forEach(reservations ->
+                    reservations.sort(Comparator.comparing(view -> blankToEmpty(view.id()))));
+            return ResponseEntity.ok(reservationsByKey);
+        } catch (Exception e) {
+            log.warn("No se pudo consultar el resumen de reservas pendientes.", e);
+            return ResponseEntity.ok(Map.of());
+        }
+    }
+
+    private PendingReservationView pendingReservationView(CardReservation reservation) {
+        return new PendingReservationView(
+                reservation.getId(),
+                reservation.getClient(),
+                reservation.getPhone(),
+                reservation.getQuantity(),
+                reservation.getPickupDate(),
+                reservation.getFormattedReservationDate(),
+                reservation.getNotes()
+        );
+    }
+
+    private List<CardReservation> cachedReservations() throws Exception {
+        long now = System.currentTimeMillis();
+        ReservationsCache cache = reservationsCache;
+        if (cache.loadedAtMillis() > 0 && now - cache.loadedAtMillis() < 10_000) {
+            return cache.reservations();
+        }
+
+        synchronized (this) {
+            cache = reservationsCache;
+            if (cache.loadedAtMillis() > 0 && now - cache.loadedAtMillis() < 10_000) {
+                return cache.reservations();
+            }
+
+            List<CardReservation> reservations = inventoryService.getReservations();
+            reservationsCache = new ReservationsCache(now, reservations);
+            return reservations;
+        }
+    }
+
+    private void invalidateReservationsCache() {
+        reservationsCache = new ReservationsCache(0, List.of());
     }
 
     @GetMapping("/api/reservas/clientes")
@@ -1773,6 +1839,7 @@ public class DashboardController {
             }
 
             inventoryService.updateReservationStatus(reservationId, CardReservation.STATUS_RESERVED);
+            invalidateReservationsCache();
             if (reservedCard != null && movementsModuleEnabled(request)) {
                 inventoryService.appendMovement(createMovement(
                         "ENTRADA",
@@ -1789,7 +1856,8 @@ public class DashboardController {
                     "Carta separada para el pedido de " + reservation.getClient() + ".",
                     updatedRowIndex,
                     stockQuantity,
-                    action
+                    action,
+                    reservation.getClient()
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -1862,6 +1930,7 @@ public class DashboardController {
         }
 
         inventoryService.appendReservation(reservation);
+        invalidateReservationsCache();
     }
 
     private String normalizedReservationStatus(String status) {
@@ -2640,7 +2709,7 @@ public class DashboardController {
             List<InventoryCard> cardsToAppend = new ArrayList<>();
             List<InventoryMovement> movements = new ArrayList<>();
             List<CardReservation> pendingReservations = honorReservations
-                    ? inventoryService.getReservations()
+                    ? cachedReservations()
                     .stream()
                     .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
                     .toList()
@@ -2737,6 +2806,9 @@ public class DashboardController {
             inventoryService.appendInventoryCards(cardsToAppend);
             for (String reservationId : reservationsToMarkReserved) {
                 inventoryService.updateReservationStatus(reservationId, CardReservation.STATUS_RESERVED);
+            }
+            if (!reservationsToMarkReserved.isEmpty()) {
+                invalidateReservationsCache();
             }
             if (logMovements) {
                 inventoryService.appendMovements(movements);
@@ -2910,7 +2982,7 @@ public class DashboardController {
                 results.add(new ImportResult(
                         parsedLine.originalLine(),
                         parsedLine.quantity(),
-                        importResult.name(),
+                        displayImportName(product, parsedLine),
                         importResult.edition(),
                         importResult.sku(),
                         importResult.variation(),
@@ -3067,7 +3139,7 @@ public class DashboardController {
         return new ImportResult(
                 parsedLine.originalLine(),
                 parsedLine.quantity(),
-                product.getName(),
+                displayImportName(product, parsedLine),
                 product.getEdition(),
                 product.getSku(),
                 product.getVariation(),
@@ -3096,7 +3168,7 @@ public class DashboardController {
                     ImportResult importResult = createImportResult(product, parsedLine, inventoryIndex);
                     return new ImportOption(
                             parsedLine.quantity(),
-                            importResult.name(),
+                            displayImportName(product, parsedLine),
                             importResult.edition(),
                             importResult.sku(),
                             importResult.variation(),
@@ -3131,10 +3203,10 @@ public class DashboardController {
                         return false;
                     }
 
-                    String variation = normalizeImportedName(searchableVariationText(product.getVariation()));
                     String productName = normalizeImportedName(product.getName());
-                    return normalizedImportNameMatches(variation, requestedName)
-                            || normalizedImportNameMatches(productName, requestedName);
+                    boolean variationMatches = importVariationNameCandidates(product.getVariation()).stream()
+                            .anyMatch(candidate -> normalizedImportNameMatches(candidate, requestedName));
+                    return variationMatches || normalizedImportNameMatches(productName, requestedName);
                 })
                 .distinct()
                 .toList();
@@ -3294,13 +3366,21 @@ public class DashboardController {
     }
 
     private List<String> importVariationNameCandidates(String variation) {
-        String normalizedVariation = normalizeImportedName(searchableVariationText(variation));
+        String variationText = searchableVariationText(variation);
+        String normalizedVariation = normalizeImportedName(variationText);
         if (normalizedVariation.isBlank()) {
             return List.of();
         }
 
         List<String> candidates = new ArrayList<>();
         addImportCandidate(candidates, normalizedVariation);
+        for (String part : variationText.split("\\s+-\\s+")) {
+            addImportCandidate(candidates, part);
+        }
+        addImportCandidate(candidates, variationText
+                .replaceAll("(?i)\\b(non[- ]?foil|foil)\\b", "")
+                .replaceAll("\\s+-\\s*$", "")
+                .trim());
         return candidates;
     }
 
@@ -3337,6 +3417,17 @@ public class DashboardController {
             quantity = Integer.parseInt(trailingQuantity.group(2));
         }
 
+        Boolean foil = null;
+        Matcher trailingNonfoil = TRAILING_NONFOIL_PATTERN.matcher(namePart);
+        Matcher trailingFoil = TRAILING_FOIL_PATTERN.matcher(namePart);
+        if (trailingNonfoil.find()) {
+            foil = false;
+            namePart = trailingNonfoil.replaceFirst("").trim();
+        } else if (trailingFoil.find()) {
+            foil = true;
+            namePart = trailingFoil.replaceFirst("").trim();
+        }
+
         String setCode = "";
         Matcher setCodeMatcher = SET_CODE_PATTERN.matcher(namePart);
         if (setCodeMatcher.find()) {
@@ -3352,10 +3443,9 @@ public class DashboardController {
         }
 
         String lowercaseNamePart = namePart.toLowerCase();
-        Boolean foil = null;
-        if (lowercaseNamePart.contains("nonfoil") || lowercaseNamePart.contains("non foil")) {
+        if (foil == null && (lowercaseNamePart.contains("nonfoil") || lowercaseNamePart.contains("non foil"))) {
             foil = false;
-        } else if (lowercaseNamePart.contains("foil")) {
+        } else if (foil == null && lowercaseNamePart.contains("foil")) {
             foil = true;
         }
         namePart = namePart
@@ -3885,6 +3975,17 @@ public class DashboardController {
         String exLocalPrice = localPriceFromCkPrice(exPrice);
         String vgLocalPrice = localPriceFromCkPrice(vgPrice);
         String gLocalPrice = localPriceFromCkPrice(gPrice);
+        conditionStocks = withConditionPrices(
+                conditionStocks,
+                nmPrice,
+                exPrice,
+                vgPrice,
+                gPrice,
+                nmLocalPrice,
+                exLocalPrice,
+                vgLocalPrice,
+                gLocalPrice
+        );
         String localPrice = localPriceFromCkPrice(selectedCkPrice);
 
         return new SearchResult(
@@ -3924,6 +4025,35 @@ public class DashboardController {
                 .filter(card -> displayCondition(card.getCondition()).equals(condition))
                 .mapToInt(this::quantity)
                 .sum();
+    }
+
+    private List<ReservationConditionStock> withConditionPrices(
+            List<ReservationConditionStock> stocks,
+            String nmPrice,
+            String exPrice,
+            String vgPrice,
+            String gPrice,
+            String nmLocalPrice,
+            String exLocalPrice,
+            String vgLocalPrice,
+            String gLocalPrice
+    ) {
+        if (stocks == null || stocks.isEmpty()) {
+            return List.of();
+        }
+
+        return stocks.stream()
+                .map(stock -> new ReservationConditionStock(
+                        stock.condition(),
+                        stock.quantity(),
+                        stock.availableQuantity(),
+                        stock.reservedQuantity(),
+                        stock.action(),
+                        stock.rowIndex(),
+                        conditionPrice(stock.condition(), nmPrice, exPrice, vgPrice, gPrice),
+                        conditionPrice(stock.condition(), nmLocalPrice, exLocalPrice, vgLocalPrice, gLocalPrice)
+                ))
+                .toList();
     }
 
     private List<ReservationConditionStock> conditionStocksForInventoryCard(
@@ -3966,7 +4096,9 @@ public class DashboardController {
                     Math.max(quantity - reservedQuantity, 0),
                     reservedQuantity,
                     reservedQuantity > 0 && reservedQuantity >= quantity ? ACTION_RESERVED : ACTION_IN_STOCK,
-                    rowIndexForCondition(matches, condition)
+                    rowIndexForCondition(matches, condition),
+                    firstNonBlankInventoryValue(matches, InventoryCard::getCkPriceUsd),
+                    firstNonBlankInventoryValue(matches, InventoryCard::getLocalPrice)
             ));
         }
 
@@ -3985,6 +4117,18 @@ public class DashboardController {
                 && normalizedCardText(first.getSetCode()).equals(normalizedCardText(second.getSetCode()))
                 && collectorNumber(first.getCollectorNumber()).equals(collectorNumber(second.getCollectorNumber()))
                 && normalizedPrintingForReservation(first.getPrinting()).equals(normalizedPrintingForReservation(second.getPrinting()));
+    }
+
+    private String firstNonBlankInventoryValue(List<InventoryCard> cards, Function<InventoryCard, String> mapper) {
+        if (cards == null || cards.isEmpty()) {
+            return "";
+        }
+
+        return cards.stream()
+                .map(mapper)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst()
+                .orElse("");
     }
 
     private int rowIndexForCondition(List<InventoryCard> cards, String condition) {
@@ -4200,12 +4344,20 @@ public class DashboardController {
             return latestUpdates;
         }
 
-        Map<String, UpdateResult> grouped = new LinkedHashMap<>();
+        Map<String, List<UpdateResult>> grouped = new LinkedHashMap<>();
         for (UpdateResult update : latestUpdates) {
-            grouped.merge(update.reservationKey(), update, this::preferredUpdateResult);
+            grouped.computeIfAbsent(update.reservationKey(), unused -> new ArrayList<>()).add(update);
         }
 
-        return new ArrayList<>(grouped.values());
+        List<UpdateResult> results = new ArrayList<>();
+        for (List<UpdateResult> updates : grouped.values()) {
+            UpdateResult selected = updates.stream()
+                    .reduce(this::preferredUpdateResult)
+                    .orElse(updates.get(0));
+            results.add(withGroupedConditionStocks(selected, updates));
+        }
+
+        return results;
     }
 
     private UpdateResult preferredUpdateResult(UpdateResult current, UpdateResult candidate) {
@@ -4227,6 +4379,100 @@ public class DashboardController {
         }
 
         return current;
+    }
+
+    private UpdateResult withGroupedConditionStocks(UpdateResult selected, List<UpdateResult> updates) {
+        List<ReservationConditionStock> conditionStocks = conditionStocksForUpdates(updates);
+        return new UpdateResult(
+                selected.name(),
+                selected.edition(),
+                selected.setCode(),
+                selected.collectorNumber(),
+                selected.printing(),
+                selected.localPrice(),
+                selected.ckPriceUsd(),
+                selected.action(),
+                selected.condition(),
+                conditionStocks.isEmpty() ? selected.conditionStocks() : conditionStocks,
+                selected.rowIndex(),
+                selected.stockQuantity(),
+                selected.writeRequired()
+        );
+    }
+
+    private String displayImportName(CardKingdomProduct product, ParsedImportLine parsedLine) {
+        if (product == null) {
+            return parsedLine == null ? "" : parsedLine.name();
+        }
+
+        String requestedName = parsedLine == null ? "" : normalizeImportedName(parsedLine.name());
+        String productName = normalizeImportedName(product.getName());
+        if (!requestedName.isBlank() && requestedName.equals(productName)) {
+            return product.getName();
+        }
+
+        String variationName = searchableVariationText(product.getVariation());
+        if (!requestedName.isBlank()
+                && requestedName.equals(normalizeImportedName(variationName))
+                && !variationName.isBlank()) {
+            return variationName;
+        }
+
+        if (!requestedName.isBlank()
+                && parsedLine != null
+                && importVariationNameCandidates(product.getVariation()).stream()
+                .anyMatch(candidate -> requestedName.equals(candidate))) {
+            return parsedLine.name();
+        }
+
+        return product.getName();
+    }
+
+    private List<ReservationConditionStock> conditionStocksForUpdates(List<UpdateResult> updates) {
+        if (updates == null || updates.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, UpdateResult> byCondition = new LinkedHashMap<>();
+        for (String condition : List.of("NM", "EX", "VG", "G")) {
+            updates.stream()
+                    .filter(update -> displayCondition(update.condition()).equals(condition))
+                    .reduce(this::preferredUpdateResult)
+                    .ifPresent(update -> byCondition.put(condition, update));
+        }
+
+        long stockedConditionCount = byCondition.values().stream()
+                .filter(update -> update.stockQuantity() > 0)
+                .map(UpdateResult::condition)
+                .distinct()
+                .count();
+
+        if (stockedConditionCount <= 1) {
+            return List.of();
+        }
+
+        List<ReservationConditionStock> stocks = new ArrayList<>();
+        for (Map.Entry<String, UpdateResult> entry : byCondition.entrySet()) {
+            UpdateResult update = entry.getValue();
+            int quantity = Math.max(update.stockQuantity(), 0);
+            if (quantity <= 0) {
+                continue;
+            }
+
+            int reservedQuantity = isReservedStatus(update.action()) ? quantity : 0;
+            stocks.add(new ReservationConditionStock(
+                    entry.getKey(),
+                    quantity,
+                    Math.max(quantity - reservedQuantity, 0),
+                    reservedQuantity,
+                    update.displayAction(),
+                    update.rowIndex(),
+                    update.ckPriceUsd(),
+                    update.localPrice()
+            ));
+        }
+
+        return stocks;
     }
 
     private Map<String, PendingReservationInfo> pendingReservationQuantitiesSafely() {
@@ -4518,6 +4764,12 @@ public class DashboardController {
     ) {
     }
 
+    private record ReservationsCache(
+            long loadedAtMillis,
+            List<CardReservation> reservations
+    ) {
+    }
+
     private record SuggestionIndex(
             int identity,
             int size,
@@ -4532,18 +4784,23 @@ public class DashboardController {
             Map<String, CardSuggestion> suggestions = new LinkedHashMap<>();
 
             var rankedCandidates = candidates.stream()
-                    .filter(candidate -> suggestionScore(candidate, normalizedQuery) >= 0)
+                    .map(candidate -> new ScoredSuggestionCandidate(
+                            candidate,
+                            suggestionScore(candidate, normalizedQuery)
+                    ))
+                    .filter(candidate -> candidate.score() >= 0)
                     .sorted(Comparator
-                            .comparingInt((SuggestionCandidate candidate) -> suggestionScore(candidate, normalizedQuery))
-                            .thenComparingInt(SuggestionCandidate::priority)
-                            .thenComparing(SuggestionCandidate::name))
+                            .comparingInt(ScoredSuggestionCandidate::score)
+                            .thenComparingInt(candidate -> candidate.candidate().priority())
+                            .thenComparing(candidate -> candidate.candidate().name()))
                     .toList();
 
-            for (SuggestionCandidate candidate : rankedCandidates) {
+            for (ScoredSuggestionCandidate rankedCandidate : rankedCandidates) {
                 if (suggestions.size() >= 8) {
                     break;
                 }
 
+                SuggestionCandidate candidate = rankedCandidate.candidate();
                 suggestions.putIfAbsent(candidate.name().toLowerCase(), new CardSuggestion(
                         candidate.name(),
                         candidate.variation()
@@ -4668,6 +4925,12 @@ public class DashboardController {
         public String reservationKey() {
             return reservationLookupKey(name, edition, setCode, collectorNumber, printing);
         }
+    }
+
+    private record ScoredSuggestionCandidate(
+            SuggestionCandidate candidate,
+            int score
+    ) {
     }
 
     public record MovementMonthGroup(
@@ -5116,7 +5379,8 @@ public class DashboardController {
             String message,
             int rowIndex,
             int stockQuantity,
-            String action
+            String action,
+            String client
     ) {
     }
 

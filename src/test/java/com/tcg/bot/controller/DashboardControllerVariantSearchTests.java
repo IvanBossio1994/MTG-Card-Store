@@ -69,6 +69,51 @@ class DashboardControllerVariantSearchTests {
 
     @Test
     @SuppressWarnings("unchecked")
+    void importsNamedPromoAliasFromVariantSegment() throws Exception {
+        Method indexMethod = DashboardController.class.getDeclaredMethod(
+                "indexProductsByNameOrVariation",
+                List.class
+        );
+        Method searchMethod = DashboardController.class.getDeclaredMethod(
+                "searchImportedProducts",
+                java.util.Map.class,
+                DashboardController.ParsedImportLine.class
+        );
+        indexMethod.setAccessible(true);
+        searchMethod.setAccessible(true);
+
+        CardKingdomProduct product = product(
+                "Birds of Paradise",
+                "Paradise Chocobo - Chocobo Bundle Foil"
+        );
+        product.setSku("FIC-0483");
+        product.setFoil("true");
+        DashboardController.ParsedImportLine line = new DashboardController.ParsedImportLine(
+                "1 Paradise Chocobo (FIC) 483 F",
+                1,
+                "Paradise Chocobo",
+                "FIC",
+                "483",
+                true,
+                0
+        );
+
+        java.util.Map<String, List<CardKingdomProduct>> index =
+                (java.util.Map<String, List<CardKingdomProduct>>) indexMethod.invoke(
+                        controller,
+                        List.of(product)
+                );
+        List<CardKingdomProduct> results = (List<CardKingdomProduct>) searchMethod.invoke(
+                controller,
+                index,
+                line
+        );
+
+        assertThat(results).containsExactly(product);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void doesNotIndexEditionStyleAsImportName() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(
                 "importVariationNameCandidates",
