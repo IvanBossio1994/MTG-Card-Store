@@ -110,6 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     document.querySelectorAll("form[data-app-confirm]").forEach(form => {
+        form.dataset.appConfirmBound = "true";
         form.addEventListener("submit", async event => {
             if (form.dataset.appConfirmAccepted === "true") {
                 return;
@@ -130,6 +131,32 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             form.submit();
         });
+    });
+
+    document.addEventListener("submit", async event => {
+        const form = event.target;
+        if (!form.matches?.("form[data-app-confirm]") || form.dataset.appConfirmBound === "true") {
+            return;
+        }
+
+        if (form.dataset.appConfirmAccepted === "true") {
+            return;
+        }
+
+        event.preventDefault();
+        const accepted = await confirmWithAppDialog(form);
+        if (!accepted) {
+            return;
+        }
+
+        form.dataset.appConfirmAccepted = "true";
+        showLoadingOverlay(
+            form,
+            form.dataset.loadingButton || "Procesando...",
+            form.dataset.loadingTitle || "Procesando accion",
+            form.dataset.loadingMessage || "Actualizando Google Sheet y sincronizando cambios..."
+        );
+        form.submit();
     });
 
     const showLoadingOverlay = (form, buttonText, title, message) => {
@@ -195,6 +222,159 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) {
             return fallback;
         }
+    };
+
+    const openDatePicker = (dateInput, event) => {
+        if (!dateInput || typeof dateInput.showPicker !== "function") {
+            return;
+        }
+
+        try {
+            event?.preventDefault();
+            dateInput.focus();
+            dateInput.showPicker();
+        } catch (e) {
+            // El navegador puede bloquearlo si no lo considera una accion directa del usuario.
+        }
+    };
+
+    const hiddenInput = (name, value) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value || "";
+        return input;
+    };
+
+    const refreshPickupAlerts = async () => {
+        try {
+            const response = await fetch("/api/reservas/retiro/alertas", {
+                headers: {"Accept": "application/json"}
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            renderPickupAlerts(await response.json());
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const renderPickupAlerts = alerts => {
+        const searchPanel = document.querySelector(".search-panel");
+        if (!searchPanel) {
+            return;
+        }
+
+        let panel = document.querySelector(".pickup-warning-panel");
+        if (!alerts || alerts.length === 0) {
+            panel?.remove();
+            return;
+        }
+
+        if (!panel) {
+            panel = document.createElement("section");
+            panel.className = "pickup-warning-panel";
+            searchPanel.insertAdjacentElement("beforebegin", panel);
+        }
+
+        panel.replaceChildren();
+
+        const content = document.createElement("div");
+        content.className = "pickup-warning-content";
+
+        const head = document.createElement("div");
+        head.className = "pickup-warning-head";
+        const titleWrap = document.createElement("div");
+        const eyebrow = document.createElement("p");
+        eyebrow.className = "eyebrow";
+        eyebrow.textContent = "Retiros";
+        const title = document.createElement("h2");
+        title.textContent = "Pedidos por retirar";
+        titleWrap.append(eyebrow, title);
+        head.appendChild(titleWrap);
+
+        const list = document.createElement("div");
+        list.className = "pickup-warning-list";
+
+        alerts.forEach(alert => {
+            const item = document.createElement("article");
+            item.className = `pickup-warning-item${alert.overdue ? " overdue" : ""}`;
+
+            const copy = document.createElement("div");
+            copy.className = "pickup-warning-copy";
+            const client = document.createElement("strong");
+            client.textContent = alert.client || "Cliente";
+            const date = document.createElement("span");
+            date.textContent = alert.overdue
+                    ? `Fecha vencida: ${alert.formattedPickupDate || alert.pickupDate || "-"}`
+                    : `Retira hoy: ${alert.formattedPickupDate || alert.pickupDate || "-"}`;
+            const detail = document.createElement("p");
+            detail.textContent = `${alert.cardSummary || "Pedido"} | ${alert.totalQuantity || 0} unidad(es)`
+                    + (alert.phone && alert.phone !== "-" ? ` | Tel. ${alert.phone}` : "");
+            copy.append(client, date, detail);
+            item.appendChild(copy);
+
+            if (alert.overdue) {
+                const actions = document.createElement("div");
+                actions.className = "pickup-warning-actions";
+
+                if (Number(alert.reservedQuantity) > 0) {
+                    const releaseForm = document.createElement("form");
+                    releaseForm.method = "post";
+                    releaseForm.action = "/reservas/retiro/liberar";
+                    releaseForm.dataset.appConfirm = "";
+                    releaseForm.dataset.loadingButton = "Liberando...";
+                    releaseForm.dataset.loadingTitle = "Liberando pedido";
+                    releaseForm.dataset.loadingMessage = "Devolviendo cartas reservadas al stock y actualizando Reservas...";
+                    releaseForm.dataset.confirmTitle = "Liberar pedido vencido";
+                    releaseForm.dataset.confirmMessage = `Se van a devolver ${alert.reservedQuantity} carta(s) reservadas al stock y se quitara este pedido.`;
+                    releaseForm.append(
+                            hiddenInput("groupKey", alert.groupKey),
+                            hiddenInput("currentPickupDate", alert.pickupDate),
+                            hiddenInput("returnTo", "/")
+                    );
+                    const releaseButton = document.createElement("button");
+                    releaseButton.className = "secondary-button danger-soft-button compact-action-button";
+                    releaseButton.type = "submit";
+                    releaseButton.textContent = "Volver al stock";
+                    releaseForm.appendChild(releaseButton);
+                    actions.appendChild(releaseForm);
+                }
+
+                const rescheduleForm = document.createElement("form");
+                rescheduleForm.className = "pickup-reschedule-form";
+                rescheduleForm.method = "post";
+                rescheduleForm.action = "/reservas/retiro/reprogramar";
+                rescheduleForm.dataset.loadingButton = "Guardando...";
+                rescheduleForm.dataset.loadingTitle = "Reprogramando retiro";
+                rescheduleForm.dataset.loadingMessage = "Actualizando la fecha de retiro en Reservas...";
+                rescheduleForm.append(
+                        hiddenInput("groupKey", alert.groupKey),
+                        hiddenInput("currentPickupDate", alert.pickupDate),
+                        hiddenInput("returnTo", "/")
+                );
+                const input = document.createElement("input");
+                input.className = "pickup-inline-date-input";
+                input.name = "pickupDate";
+                input.type = "date";
+                input.required = true;
+                const trigger = document.createElement("button");
+                trigger.className = "primary-button compact-action-button pickup-date-trigger";
+                trigger.type = "button";
+                trigger.textContent = "Cambiar fecha";
+                rescheduleForm.append(trigger, input);
+                actions.appendChild(rescheduleForm);
+                item.appendChild(actions);
+            }
+
+            list.appendChild(item);
+        });
+
+        content.append(head, list);
+        panel.append(content);
     };
 
     if (updateForm && loadingOverlay) {
@@ -394,21 +574,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    const movementDateInputs = document.querySelectorAll(".movement-date-field input[type='date']");
+    const movementDateInputs = document.querySelectorAll(".movement-date-field input[type='date'], input[type='date'][data-open-datepicker]");
 
     movementDateInputs.forEach(movementDateInput => {
         const openMovementDatePicker = event => {
-            if (typeof movementDateInput.showPicker !== "function") {
-                return;
-            }
-
-            try {
-                event?.preventDefault();
-                movementDateInput.focus();
-                movementDateInput.showPicker();
-            } catch (e) {
-                // El navegador puede bloquearlo si no lo considera una acción directa del usuario.
-            }
+            openDatePicker(movementDateInput, event);
         };
 
         movementDateInput.addEventListener("pointerdown", openMovementDatePicker);
@@ -418,6 +588,48 @@ document.addEventListener("DOMContentLoaded", () => {
                 openMovementDatePicker(event);
             }
         });
+    });
+
+    document.addEventListener("pointerdown", event => {
+        const dateInput = event.target.closest?.("input[type='date'][data-open-datepicker]");
+        if (dateInput && !Array.from(movementDateInputs).includes(dateInput)) {
+            openDatePicker(dateInput, event);
+        }
+    });
+
+    document.querySelectorAll(".reservation-pickup-edit-form").forEach(form => {
+        const input = form.querySelector(".reservation-pickup-edit-input");
+        const button = form.querySelector(".reservation-pickup-edit-button");
+        if (!input || !button) {
+            return;
+        }
+
+        button.addEventListener("click", event => {
+            openDatePicker(input, event);
+        });
+
+        input.addEventListener("change", () => {
+            if (input.value) {
+                form.requestSubmit();
+            }
+        });
+    });
+
+    document.addEventListener("click", event => {
+        const trigger = event.target.closest?.(".pickup-date-trigger");
+        if (!trigger) {
+            return;
+        }
+
+        const input = trigger.closest("form")?.querySelector(".pickup-inline-date-input");
+        openDatePicker(input, event);
+    });
+
+    document.addEventListener("change", event => {
+        const input = event.target.closest?.(".pickup-inline-date-input");
+        if (input?.value) {
+            input.closest("form")?.requestSubmit();
+        }
     });
 
     const movementFilterForms = document.querySelectorAll(".movement-filter-form");
@@ -954,8 +1166,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
-        restrictNumericField(reservationModalForm.elements.phone, 10);
-        restrictNumericField(reservationModalForm.elements.dni, 8);
+        restrictNumericField(reservationModalForm.elements.phone, 15);
+        restrictNumericField(reservationModalForm.elements.dni, 15);
 
         addReservationButtons.forEach(button => {
             button.addEventListener("click", async () => {
@@ -970,7 +1182,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 setReservationValue("printing", button.dataset.printing);
                 setReservationValue("rowIndex", button.dataset.row);
                 setReservationValue("quantity", "1");
-                setReservationValue("pickupDate", "A convenir");
+                setReservationValue("pickupDate", "");
 
                 if (removeFromStockControl) {
                     const checkbox = removeFromStockControl.querySelector("input[type='checkbox']");
@@ -1080,6 +1292,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 showToast(result.message || "Pedido guardado en Reservas", "success");
+                await refreshPickupAlerts();
                 closeReservationModal();
             } catch (error) {
                 console.error(error);

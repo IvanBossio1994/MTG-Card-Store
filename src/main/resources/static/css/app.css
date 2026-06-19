@@ -1350,6 +1350,148 @@ tr.in-stock {
     align-self: flex-end;
 }
 
+.pickup-warning-panel {
+    display: grid;
+    gap: 14px;
+    margin: 0 0 18px;
+    padding: 16px 18px 18px;
+    border: 1px solid #f1d38a;
+    border-radius: 8px;
+    background: #fffaf0;
+    box-shadow: var(--shadow);
+}
+
+.pickup-warning-content {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.pickup-warning-head {
+    display: grid;
+    gap: 2px;
+}
+
+.pickup-warning-head h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.pickup-warning-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+    gap: 10px;
+    align-items: stretch;
+}
+
+.pickup-warning-item {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    align-items: stretch;
+    gap: 10px;
+    min-height: 132px;
+    padding: 12px 14px;
+    border: 1px solid rgba(154, 103, 0, 0.22);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.pickup-warning-item.overdue {
+    border-color: rgba(180, 35, 24, 0.22);
+    background: #fff9f8;
+}
+
+.pickup-warning-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.pickup-warning-copy strong {
+    font-size: 15px;
+}
+
+.pickup-warning-copy span {
+    color: var(--amber);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.pickup-warning-item.overdue .pickup-warning-copy span {
+    color: var(--red);
+}
+
+.pickup-warning-copy p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.pickup-warning-actions,
+.pickup-reschedule-form {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: nowrap;
+}
+
+.pickup-reschedule-form label {
+    display: grid;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.compact-date-input {
+    width: 142px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #c8d4ec;
+    border-radius: 8px;
+    color: var(--text);
+    background: #fff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.compact-action-button {
+    min-height: 31px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.pickup-inline-date-form {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.pickup-inline-date-input {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.compact-date-input:focus {
+    border-color: var(--blue);
+    outline: 3px solid rgba(23, 105, 224, 0.12);
+}
+
+.danger-soft-button {
+    border-color: rgba(180, 35, 24, 0.28);
+    color: var(--red);
+    background: var(--red-soft);
+}
+
 .movement-access-panel {
     max-width: 560px;
 }
@@ -1921,7 +2063,7 @@ tr.in-stock {
     background: #fbfcfe;
 }
 
-.reservation-meta-grid div {
+.reservation-meta-grid > div {
     display: grid;
     gap: 5px;
 }
@@ -1935,6 +2077,51 @@ tr.in-stock {
 
 .reservation-meta-grid strong {
     font-size: 14px;
+}
+
+.reservation-meta-grid .reservation-pickup-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.reservation-pickup-edit-form {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.reservation-pickup-edit-input {
+    position: absolute;
+    inset: 0;
+    width: 28px;
+    height: 28px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.reservation-pickup-edit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--blue);
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.reservation-pickup-edit-button:hover {
+    background: var(--blue-soft);
 }
 
 .reservation-items-table {
@@ -3025,6 +3212,12 @@ tr.in-stock {
     font: inherit;
 }
 
+.reservation-modal-grid .compact-date-input {
+    width: 170px;
+    height: 38px;
+    padding: 0 10px;
+}
+
 .reservation-modal-grid input:focus {
     border-color: var(--blue);
     outline: 3px solid rgba(23, 105, 224, 0.12);
@@ -3228,6 +3421,12 @@ tr.in-stock {
     width: min(320px, 70vw);
     max-height: 300px;
     margin-bottom: 8px;
+}
+
+.tutorial-cat-warning {
+    width: min(300px, 68vw);
+    max-height: 270px;
+    margin-bottom: 12px;
 }
 
 .tutorial-step-structure .eyebrow {
@@ -3477,6 +3676,25 @@ tr.in-stock {
         grid-column: span 1;
     }
 
+    .pickup-warning-panel,
+    .pickup-warning-item {
+        align-items: stretch;
+        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .pickup-warning-list {
+        grid-template-columns: 1fr;
+    }
+
+    .compact-date-input {
+        width: 100%;
+    }
+
+    .reservation-modal-grid .compact-date-input {
+        width: 100%;
+    }
+
     .modal-card {
         padding: 24px;
     }
@@ -3515,6 +3733,11 @@ tr.in-stock {
     .tutorial-cat-teacher {
         width: min(245px, 76vw);
         max-height: 225px;
+    }
+
+    .tutorial-cat-warning {
+        width: min(235px, 74vw);
+        max-height: 220px;
     }
 
     .tutorial-step-structure .tutorial-table {

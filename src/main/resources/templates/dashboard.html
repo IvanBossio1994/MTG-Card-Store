@@ -19,6 +19,56 @@
         </div>
     </section>
 
+    <section class="pickup-warning-panel" th:if="${pickupAlerts != null && !#lists.isEmpty(pickupAlerts)}">
+        <div class="pickup-warning-content">
+            <div class="pickup-warning-head">
+                <p class="eyebrow">Retiros</p>
+                <h2>Pedidos por retirar</h2>
+            </div>
+
+            <div class="pickup-warning-list">
+                <article class="pickup-warning-item"
+                         th:each="alert : ${pickupAlerts}"
+                         th:classappend="${alert.overdue} ? ' overdue' : ''">
+                    <div class="pickup-warning-copy">
+                        <strong th:text="${alert.client}">Cliente</strong>
+                        <span th:text="${alert.overdue ? 'Fecha vencida: ' + alert.formattedPickupDate : 'Retira hoy: ' + alert.formattedPickupDate}">Retira hoy</span>
+                        <p th:text="${alert.cardSummary + ' | ' + alert.totalQuantity + ' unidad(es)' + (alert.phone != '-' ? ' | Tel. ' + alert.phone : '')}">
+                            Pedido
+                        </p>
+                    </div>
+
+                    <div class="pickup-warning-actions" th:if="${alert.overdue}">
+                        <form method="post" th:action="@{/reservas/retiro/liberar}"
+                              th:if="${alert.reservedQuantity > 0}"
+                              data-app-confirm
+                              data-loading-button="Liberando..."
+                              data-loading-title="Liberando pedido"
+                              data-loading-message="Devolviendo cartas reservadas al stock y actualizando Reservas..."
+                              data-confirm-title="Liberar pedido vencido"
+                              th:attr="data-confirm-message=${'Se van a devolver ' + alert.reservedQuantity + ' carta(s) reservadas al stock y se quitara este pedido.'}">
+                            <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
+                            <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
+                            <input type="hidden" name="returnTo" value="/">
+                            <button class="secondary-button danger-soft-button compact-action-button" type="submit">Volver al stock</button>
+                        </form>
+
+                        <form class="pickup-reschedule-form pickup-inline-date-form" method="post" th:action="@{/reservas/retiro/reprogramar}"
+                              data-loading-button="Guardando..."
+                              data-loading-title="Reprogramando retiro"
+                              data-loading-message="Actualizando la fecha de retiro en Reservas...">
+                            <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
+                            <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
+                            <input type="hidden" name="returnTo" value="/">
+                            <button class="primary-button compact-action-button pickup-date-trigger" type="button">Cambiar fecha</button>
+                            <input class="pickup-inline-date-input" name="pickupDate" type="date" required>
+                        </form>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
     <section class="panel search-panel">
         <form class="search-form" method="get" th:action="@{/}">
             <label for="q">Buscar carta</label>
@@ -453,7 +503,7 @@
             </label>
             <label>
                 Telefono
-                <input name="phone" type="text" required autocomplete="off" inputmode="numeric" maxlength="10" pattern="(11|15)[0-9]{8}" title="Debe tener 10 digitos y empezar con 11 o 15">
+                <input name="phone" type="text" required autocomplete="off" inputmode="numeric" maxlength="15" pattern="[0-9]{1,15}" title="Debe tener solo numeros, hasta 15 digitos">
             </label>
             <label>
                 Cantidad
@@ -461,11 +511,11 @@
             </label>
             <label>
                 DNI
-                <input name="dni" type="text" autocomplete="off" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" title="Debe tener 7 u 8 digitos">
+                <input name="dni" type="text" required autocomplete="off" inputmode="numeric" maxlength="15" pattern="[0-9]{1,15}" title="Debe tener solo numeros, hasta 15 digitos">
             </label>
             <label class="wide">
                 Fecha de retiro
-                <input name="pickupDate" type="text" placeholder="A convenir o 2026-06-20">
+                <input class="compact-date-input" name="pickupDate" type="date" required data-open-datepicker>
             </label>
             <label class="wide">
                 Notas
@@ -650,9 +700,9 @@
         </div>
 
         <div class="tutorial-step">
-            <img class="tutorial-cat tutorial-cat-teacher"
-                 th:src="@{/images/tutorial-cat-teacher.png}"
-                 alt="Gatito revisando pedidos">
+            <img class="tutorial-cat tutorial-cat-warning"
+                 th:src="@{/images/cat-warning.png}"
+                 alt="Gatito avisando sobre pedidos">
 
             <p class="eyebrow">Paso 5</p>
             <h2>Gestiona reservas</h2>

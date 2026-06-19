@@ -870,6 +870,28 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public void updateReservationPickupDate(String reservationId, String pickupDate) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(pickupDate))));
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("M" + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         if (rowIndexes == null || rowIndexes.isEmpty()) {
             return;
