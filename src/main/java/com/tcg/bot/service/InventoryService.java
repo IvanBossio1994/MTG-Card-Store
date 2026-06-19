@@ -120,6 +120,10 @@ public class InventoryService {
         googleSheetsService.updateReservationQuantity(reservationId, quantity);
     }
 
+    public void updateReservationPickupDate(String reservationId, String pickupDate) throws Exception {
+        googleSheetsService.updateReservationPickupDate(reservationId, pickupDate);
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         googleSheetsService.deleteReservationRows(rowIndexes);
     }

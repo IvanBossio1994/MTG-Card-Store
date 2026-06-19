@@ -98,6 +98,8 @@ public class DashboardController {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter MOVEMENT_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter PICKUP_DISPLAY_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MOVEMENT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter PRICE_LIST_UPDATED_FORMAT =
@@ -167,6 +169,7 @@ public class DashboardController {
             Model model
     ) {
         addBaseModel(model, query);
+        addPickupAlerts(model);
         model.addAttribute("searchSet", setFilter == null ? "" : setFilter);
         model.addAttribute("searchNumber", numberFilter == null ? "" : numberFilter);
 
@@ -865,6 +868,7 @@ public class DashboardController {
                     formatCashTotal(deliverableTotalPrice),
                     first.getFormattedReservationDate(),
                     first.getFormattedPickupDate(),
+                    blankToEmpty(first.getPickupDate()),
                     first.getFormattedPaymentDate(),
                     customerReservations
             ));
@@ -1206,10 +1210,11 @@ public class DashboardController {
             card.setRowIndex(rowIndex);
             inventoryCards.add(card);
         } else {
-            card.setQuantity(String.valueOf(previousQuantity + quantityToReturn));
+            card.setQuantity(String.valueOf(previousQuantity > 0 ? previousQuantity : quantityToReturn));
             card.setAction(ACTION_IN_STOCK);
             inventoryService.updateStockState(card.getRowIndex(), card);
         }
+        int currentQuantity = quantity(card);
 
         if (movementsModuleEnabled(request)) {
             inventoryService.appendMovement(createMovement(
@@ -1217,7 +1222,7 @@ public class DashboardController {
                     quantityToReturn,
                     card,
                     previousQuantity,
-                    previousQuantity + quantityToReturn,
+                    currentQuantity,
                     "Reserva cancelada"
             ));
         }
@@ -1592,10 +1597,10 @@ public class DashboardController {
             @RequestParam(name = "notes", required = false) String notes,
             RedirectAttributes redirectAttributes
     ) {
-        if (isBlank(name) || isBlank(client) || isBlank(phone)) {
+        if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || isBlank(pickupDate)) {
             redirectAttributes.addFlashAttribute(
                     "error",
-                    "Completa nombre de carta, cliente y telefono para guardar la reserva."
+                    "Completa nombre de carta, cliente, telefono, DNI y fecha de retiro para guardar la reserva."
             );
             return "redirect:/reservas";
         }
@@ -1603,6 +1608,12 @@ public class DashboardController {
         String contactError = reservationContactError(phone, dni);
         if (!isBlank(contactError)) {
             redirectAttributes.addFlashAttribute("error", contactError);
+            return "redirect:/reservas";
+        }
+
+        String pickupDateError = reservationPickupDateError(pickupDate);
+        if (!isBlank(pickupDateError)) {
+            redirectAttributes.addFlashAttribute("error", pickupDateError);
             return "redirect:/reservas";
         }
 
@@ -1636,15 +1647,21 @@ public class DashboardController {
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
             HttpServletRequest request
     ) {
-        if (isBlank(name) || isBlank(client) || isBlank(phone)) {
+        if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || isBlank(pickupDate)) {
             return ResponseEntity.badRequest()
-                    .body(new ApiMessage(false, "Completa carta, cliente y telefono para guardar la reserva."));
+                    .body(new ApiMessage(false, "Completa carta, cliente, telefono, DNI y fecha de retiro para guardar la reserva."));
         }
 
         String contactError = reservationContactError(phone, dni);
         if (!isBlank(contactError)) {
             return ResponseEntity.badRequest()
                     .body(new ApiMessage(false, contactError));
+        }
+
+        String pickupDateError = reservationPickupDateError(pickupDate);
+        if (!isBlank(pickupDateError)) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiMessage(false, pickupDateError));
         }
 
         try {
@@ -1780,6 +1797,118 @@ public class DashboardController {
                 reservation.getFormattedReservationDate(),
                 reservation.getNotes()
         );
+    }
+
+    @PostMapping("/reservas/retiro/reprogramar")
+    public String reschedulePickupAlert(
+            @RequestParam("groupKey") String groupKey,
+            @RequestParam("currentPickupDate") String currentPickupDate,
+            @RequestParam("pickupDate") String pickupDate,
+            @RequestParam(name = "returnTo", required = false, defaultValue = "/") String returnTo,
+            RedirectAttributes redirectAttributes
+    ) {
+        String pickupDateError = reservationPickupDateError(pickupDate);
+        if (!isBlank(pickupDateError)) {
+            redirectAttributes.addFlashAttribute("error", pickupDateError);
+            return "redirect:" + pickupActionReturnPath(returnTo);
+        }
+
+        try {
+            List<CardReservation> reservations = reservationsForPickupGroup(groupKey, currentPickupDate);
+            if (reservations.isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "No se encontro el pedido a reprogramar.");
+                return "redirect:" + pickupActionReturnPath(returnTo);
+            }
+
+            String normalizedPickupDate = normalizedPickupDate(pickupDate);
+            for (CardReservation reservation : reservations) {
+                inventoryService.updateReservationPickupDate(reservation.getId(), normalizedPickupDate);
+            }
+            invalidateReservationsCache();
+
+            redirectAttributes.addFlashAttribute(
+                    "success",
+                    "Fecha de retiro actualizada para el pedido de " + blankToDash(reservations.get(0).getClient()) + "."
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo reprogramar la fecha de retiro.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo actualizar la fecha de retiro: " + syncErrorMessage(e));
+        }
+
+        return "redirect:" + pickupActionReturnPath(returnTo);
+    }
+
+    @PostMapping("/reservas/retiro/liberar")
+    public String releaseOverduePickupAlert(
+            @RequestParam("groupKey") String groupKey,
+            @RequestParam("currentPickupDate") String currentPickupDate,
+            @RequestParam(name = "returnTo", required = false, defaultValue = "/") String returnTo,
+            HttpServletRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            List<CardReservation> reservations = reservationsForPickupGroup(groupKey, currentPickupDate);
+            if (reservations.isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "No se encontro el pedido vencido.");
+                return "redirect:" + pickupActionReturnPath(returnTo);
+            }
+
+            List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
+            int returnedToStock = 0;
+            for (CardReservation reservation : reservations) {
+                if (CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
+                    returnedToStock += returnReservedCardToStock(reservation, request, inventoryCards);
+                }
+            }
+
+            inventoryService.deleteReservationRows(reservations.stream()
+                    .map(CardReservation::getRowIndex)
+                    .toList());
+            refreshLatestUpdatesFromInventory();
+            invalidateReservationsCache();
+
+            redirectAttributes.addFlashAttribute(
+                    "success",
+                    "Pedido de " + blankToDash(reservations.get(0).getClient()) + " liberado."
+                            + (returnedToStock > 0 ? " Se devolvieron " + returnedToStock + " carta(s) al stock." : "")
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo liberar el pedido vencido.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo liberar el pedido: " + syncErrorMessage(e));
+        }
+
+        return "redirect:" + pickupActionReturnPath(returnTo);
+    }
+
+    @GetMapping("/api/reservas/retiro/alertas")
+    @ResponseBody
+    public ResponseEntity<List<PickupAlertView>> pickupAlerts() {
+        try {
+            return ResponseEntity.ok(pickupAlerts(inventoryService.getReservations()));
+        } catch (Exception e) {
+            log.warn("No se pudieron consultar alertas de retiro.", e);
+            return ResponseEntity.ok(List.of());
+        }
+    }
+
+    private List<CardReservation> reservationsForPickupGroup(String groupKey, String pickupDate) throws Exception {
+        if (isBlank(groupKey) || isBlank(pickupDate)) {
+            return List.of();
+        }
+
+        return inventoryService.getReservations()
+                .stream()
+                .filter(reservation -> groupKey.equals(customerReservationKey(reservation)))
+                .filter(reservation -> pickupDate.equals(blankToEmpty(reservation.getPickupDate()).trim()))
+                .toList();
+    }
+
+    private String pickupActionReturnPath(String returnTo) {
+        if ("/reservas".equals(returnTo)) {
+            return "/reservas";
+        }
+
+        return "/";
     }
 
     private List<CardReservation> cachedReservations() throws Exception {
@@ -2055,8 +2184,8 @@ public class DashboardController {
             return "El telefono solo puede tener numeros.";
         }
 
-        if (phoneDigits.length() != 10 || !(phoneDigits.startsWith("11") || phoneDigits.startsWith("15"))) {
-            return "El telefono debe tener 10 digitos y empezar con 11 o 15.";
+        if (phoneDigits.isBlank() || phoneDigits.length() > 15) {
+            return "El telefono debe tener solo numeros, hasta 15 digitos.";
         }
 
         String dniDigits = digitsOnly(dni);
@@ -2064,8 +2193,8 @@ public class DashboardController {
             return "El DNI solo puede tener numeros.";
         }
 
-        if (!dniDigits.isBlank() && (dniDigits.length() < 7 || dniDigits.length() > 8)) {
-            return "El DNI debe tener 7 u 8 digitos.";
+        if (dniDigits.isBlank() || dniDigits.length() > 15) {
+            return "El DNI debe tener solo numeros, hasta 15 digitos.";
         }
 
         return "";
@@ -2096,10 +2225,23 @@ public class DashboardController {
 
     private String normalizedPickupDate(String pickupDate) {
         if (pickupDate == null || pickupDate.isBlank()) {
-            return "A convenir";
+            return "";
         }
 
-        return pickupDate.trim();
+        return LocalDate.parse(pickupDate.trim(), MOVEMENT_DATE_FORMAT).format(MOVEMENT_DATE_FORMAT);
+    }
+
+    private String reservationPickupDateError(String pickupDate) {
+        if (pickupDate == null || pickupDate.isBlank()) {
+            return "Completa la fecha de retiro para guardar la reserva.";
+        }
+
+        try {
+            LocalDate.parse(pickupDate.trim(), MOVEMENT_DATE_FORMAT);
+            return "";
+        } catch (RuntimeException e) {
+            return "La fecha de retiro no es valida.";
+        }
     }
 
     private boolean matchesReservation(
@@ -3733,6 +3875,7 @@ public class DashboardController {
         }
 
         addBaseModel(model, "");
+        addPickupAlerts(model);
         addLatestUpdates(model);
 
         return "dashboard";
@@ -3741,20 +3884,25 @@ public class DashboardController {
     @PostMapping("/actualizar")
     public String updateInventory(Model model) {
         addBaseModel(model, "");
+        addPickupAlerts(model);
         addLatestUpdates(model);
 
         try {
             ensureInventorySetup();
             if (!synchronizeInventory(true)) {
                 model.addAttribute("error", "No se pudo obtener la lista actualizada de Card Kingdom.");
+                addPickupAlerts(model);
                 return "dashboard";
             }
+            addPickupAlerts(model);
             addLatestUpdates(model);
         } catch (IllegalStateException e) {
             model.addAttribute("error", e.getMessage());
+            addPickupAlerts(model);
         } catch (Exception e) {
             log.warn("No se pudo actualizar el inventario.", e);
             model.addAttribute("error", "No se pudo actualizar el inventario: " + syncErrorMessage(e));
+            addPickupAlerts(model);
         }
 
         return "dashboard";
@@ -4388,6 +4536,90 @@ public class DashboardController {
         model.addAttribute("credentialsPath", inventoryService.getConfiguredCredentialsPath());
         model.addAttribute("localCredentialsConfigured", storeSettingsService.hasGoogleCredentials());
         model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
+    }
+
+    private void addPickupAlerts(Model model) {
+        try {
+            model.addAttribute("pickupAlerts", pickupAlerts(inventoryService.getReservations()));
+        } catch (Exception e) {
+            log.warn("No se pudieron cargar alertas de retiro.", e);
+            model.addAttribute("pickupAlerts", List.of());
+        }
+    }
+
+    private List<PickupAlertView> pickupAlerts(List<CardReservation> reservations) {
+        if (reservations == null || reservations.isEmpty()) {
+            return List.of();
+        }
+
+        LocalDate today = LocalDate.now(APP_ZONE);
+        Map<String, List<CardReservation>> reservationsByPickup = new LinkedHashMap<>();
+
+        for (CardReservation reservation : reservations) {
+            LocalDate pickupDate = parsePickupDate(reservation.getPickupDate());
+            if (pickupDate == null || pickupDate.isAfter(today)) {
+                continue;
+            }
+
+            String key = customerReservationKey(reservation) + "|" + pickupDate.format(MOVEMENT_DATE_FORMAT);
+            reservationsByPickup.computeIfAbsent(key, unused -> new ArrayList<>()).add(reservation);
+        }
+
+        List<PickupAlertView> alerts = new ArrayList<>();
+        for (List<CardReservation> groupReservations : reservationsByPickup.values()) {
+            CardReservation first = groupReservations.get(0);
+            LocalDate pickupDate = parsePickupDate(first.getPickupDate());
+            if (pickupDate == null) {
+                continue;
+            }
+
+            int totalQuantity = groupReservations.stream()
+                    .mapToInt(reservation -> reservationQuantity(reservation.getQuantity()))
+                    .sum();
+            int reservedQuantity = groupReservations.stream()
+                    .filter(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                    .mapToInt(reservation -> reservationQuantity(reservation.getQuantity()))
+                    .sum();
+            String cardSummary = groupReservations.stream()
+                    .map(CardReservation::getName)
+                    .filter(name -> !isBlank(name))
+                    .distinct()
+                    .limit(3)
+                    .collect(java.util.stream.Collectors.joining(", "));
+
+            if (groupReservations.size() > 3) {
+                cardSummary += " y " + (groupReservations.size() - 3) + " mas";
+            }
+
+            alerts.add(new PickupAlertView(
+                    customerReservationKey(first),
+                    pickupDate.format(MOVEMENT_DATE_FORMAT),
+                    pickupDate.format(PICKUP_DISPLAY_DATE_FORMAT),
+                    pickupDate.isBefore(today),
+                    blankToDash(first.getClient()),
+                    blankToDash(first.getPhone()),
+                    totalQuantity,
+                    reservedQuantity,
+                    cardSummary.isBlank() ? "Pedido sin detalle" : cardSummary
+            ));
+        }
+
+        alerts.sort(Comparator
+                .comparing(PickupAlertView::overdue).reversed()
+                .thenComparing(PickupAlertView::pickupDate));
+        return alerts;
+    }
+
+    private LocalDate parsePickupDate(String pickupDate) {
+        if (pickupDate == null || pickupDate.isBlank()) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(pickupDate.trim(), MOVEMENT_DATE_FORMAT);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private void addStoreModel(Model model) {
@@ -5445,6 +5677,19 @@ public class DashboardController {
     ) {
     }
 
+    public record PickupAlertView(
+            String groupKey,
+            String pickupDate,
+            String formattedPickupDate,
+            boolean overdue,
+            String client,
+            String phone,
+            int totalQuantity,
+            int reservedQuantity,
+            String cardSummary
+    ) {
+    }
+
     public record ReservationClientView(
             String client,
             String phone,
@@ -5476,6 +5721,7 @@ public class DashboardController {
             String formattedDeliverableTotalPrice,
             String reservationDate,
             String pickupDate,
+            String pickupDateRaw,
             String paymentDate,
             List<CardReservation> items
     ) {

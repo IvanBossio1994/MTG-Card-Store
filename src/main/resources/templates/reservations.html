@@ -63,7 +63,7 @@
                     <form class="reservation-delete-form" method="post" th:action="@{/reservas/eliminar-grupo}"
                           onclick="event.stopPropagation();"
                           data-app-confirm
-                          data-loading-button="Eliminando..."
+                          data-loading-button="&times;"
                           data-loading-title="Eliminando reserva"
                           data-loading-message="Quitando el pedido y devolviendo cartas reservadas al stock..."
                           data-confirm-title="Eliminar reserva"
@@ -84,7 +84,21 @@
                         </div>
                         <div>
                             <span>Retiro</span>
-                            <strong th:text="${group.pickupDate != null && group.pickupDate != '' ? group.pickupDate : '-'}">-</strong>
+                            <div class="reservation-pickup-edit">
+                                <strong th:text="${group.pickupDate != null && group.pickupDate != '' ? group.pickupDate : '-'}">-</strong>
+                                <form class="reservation-pickup-edit-form" method="post" th:action="@{/reservas/retiro/reprogramar}"
+                                      data-loading-button="Guardando..."
+                                      data-loading-title="Actualizando retiro"
+                                      data-loading-message="Guardando la nueva fecha de retiro en Reservas...">
+                                    <input type="hidden" name="groupKey" th:value="${group.key}">
+                                    <input type="hidden" name="currentPickupDate" th:value="${group.pickupDateRaw}">
+                                    <input type="hidden" name="returnTo" value="/reservas">
+                                    <input class="reservation-pickup-edit-input" name="pickupDate" type="date"
+                                           th:value="${group.pickupDateRaw}" required>
+                                    <button class="reservation-pickup-edit-button" type="button"
+                                            aria-label="Editar fecha de retiro" title="Editar fecha de retiro">✎</button>
+                                </form>
+                            </div>
                         </div>
                         <div>
                             <span>Pago</span>
@@ -148,7 +162,7 @@
                                           th:title="${reservation.currentStock > 0 ? 'Stock local: ' + reservation.currentStock + '. Ya esta asignado a pedidos anteriores.' : 'Sin stock compatible'}">-</span>
                                     <form method="post" th:action="@{/reservas/eliminar}"
                                           data-app-confirm
-                                          data-loading-button="Quitando..."
+                                          data-loading-button="&times;"
                                           data-loading-title="Quitando carta"
                                           data-loading-message="Actualizando Reservas y devolviendo stock si corresponde..."
                                           data-confirm-title="Quitar carta"
