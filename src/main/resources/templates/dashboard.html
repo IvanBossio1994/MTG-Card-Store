@@ -191,18 +191,19 @@
                                 +
                             </button>
                         </div>
+                        <div class="stock-summary-controls" th:if="${!#lists.isEmpty(result.conditionStocks)}">
+                            <span class="stock-total-display"
+                                  th:text="${result.displayStockQuantity}">0</span>
+                            <button class="version-toggle inventory-stock-toggle" type="button"
+                                    th:attr="aria-controls=${'search-stock-options-' + iter.index}"
+                                    aria-expanded="false"
+                                    aria-label="Ver stock por condicion"></button>
+                        </div>
                     </td>
                     <td class="card-name-cell">
                         <div class="inventory-card-name">
                             <span th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
-                            <button class="version-toggle inventory-stock-toggle" type="button"
-                                    th:if="${!#lists.isEmpty(result.conditionStocks)}"
-                                    th:attr="aria-controls=${'search-stock-options-' + iter.index}"
-                                    aria-expanded="false"
-                                    aria-label="Ver stock por condición"></button>
                         </div>
-                        <span class="stock-total-display" th:if="${!#lists.isEmpty(result.conditionStocks)}"
-                              th:text="${result.displayStockQuantity}">0</span>
                     </td>
                     <td class="set-name-cell" th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
                     <td class="compact-cell" th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>

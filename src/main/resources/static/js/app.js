@@ -597,6 +597,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    document.querySelectorAll("[data-flexible-date-checkbox]").forEach(checkbox => {
+        const field = checkbox.closest("label");
+        const input = field?.querySelector("[data-flexible-date-input]");
+        if (!input) {
+            return;
+        }
+
+        const syncFlexibleDate = () => {
+            input.required = !checkbox.checked;
+            input.disabled = checkbox.checked;
+            if (checkbox.checked) {
+                input.value = "";
+            }
+        };
+
+        checkbox.addEventListener("change", syncFlexibleDate);
+        syncFlexibleDate();
+    });
+
     document.querySelectorAll(".reservation-pickup-edit-form").forEach(form => {
         const input = form.querySelector(".reservation-pickup-edit-input");
         const button = form.querySelector(".reservation-pickup-edit-button");
@@ -1397,7 +1416,6 @@ document.addEventListener("DOMContentLoaded", () => {
         clientInput?.addEventListener("focus", loadReservationClients);
         clientInput?.addEventListener("input", applySelectedReservationClient);
         clientInput?.addEventListener("change", applySelectedReservationClient);
-        loadReservationClients();
     });
 
     stockFilterButtons.forEach(stockFilterButton => {
@@ -1986,6 +2004,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if ((!rowIndex || rowIndex === "0") && increase) {
                         const sku = button.dataset.sku;
+                        const searchRowBeforeCreate = button.closest(".search-result-row");
+                        const selectedConditionBeforeCreate = button.dataset.condition || "NM";
+                        const selectedConditionKeyBeforeCreate =
+                                `${selectedConditionBeforeCreate.toLowerCase()[0].toUpperCase()}${selectedConditionBeforeCreate.toLowerCase().slice(1)}`;
+                        const shouldRefreshSearchRowAfterCreate = searchRowBeforeCreate
+                                && Number(searchRowBeforeCreate.dataset[`stock${selectedConditionKeyBeforeCreate}`]) <= 0
+                                && ["Nm", "Ex", "Vg", "G"].some(conditionKey =>
+                                        conditionKey !== selectedConditionKeyBeforeCreate
+                                        && Number(searchRowBeforeCreate.dataset[`stock${conditionKey}`]) > 0
+                                );
 
                         if (!sku) {
                             showToast(
@@ -2066,6 +2094,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             "Carta agregada al Sheet",
                             "success"
                         );
+
+                        if (shouldRefreshSearchRowAfterCreate) {
+                            window.setTimeout(() => {
+                                window.location.reload();
+                            }, 350);
+                        }
 
                         return;
                     }

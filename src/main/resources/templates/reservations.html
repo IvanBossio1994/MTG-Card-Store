@@ -37,7 +37,7 @@
     <p class="alert error" th:if="${error}" th:text="${error}"></p>
     <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
-    <details class="panel import-panel reservation-bulk-panel reservation-bulk-details" open>
+    <details class="panel import-panel reservation-bulk-panel reservation-bulk-details">
         <summary class="reservation-bulk-summary">
             <div>
                 <p class="eyebrow">Pedido masivo</p>
@@ -48,6 +48,9 @@
 
         <form id="bulk-reservation-analyze-form" class="import-form reservation-bulk-form" method="post"
               data-reservation-client-form
+              data-loading-button="Analizando..."
+              data-loading-title="Analizando pedido"
+              data-loading-message="Revisando la lista y buscando versiones disponibles..."
               th:action="@{/reservas/pedido-masivo/analizar}">
             <div class="reservation-modal-grid">
                 <label>
@@ -61,7 +64,15 @@
                 </label>
                 <label>
                     Fecha de retiro
-                    <input class="compact-date-input" name="pickupDate" type="date" required data-open-datepicker th:value="${bulkPickupDate}">
+                    <span class="pickup-date-choice">
+                        <input class="compact-date-input" name="pickupDate" type="date" data-flexible-date-input
+                               data-open-datepicker th:required="${!bulkPickupFlexible}" th:value="${bulkPickupDate}">
+                        <span class="check-control pickup-flexible-check">
+                            <input name="pickupFlexible" type="checkbox" value="true" data-flexible-date-checkbox
+                                   th:checked="${bulkPickupFlexible}">
+                            <span>A convenir</span>
+                        </span>
+                    </span>
                 </label>
                 <label>
                     DNI
@@ -114,6 +125,7 @@
             <input type="hidden" name="phone" th:value="${bulkPhone}">
             <input type="hidden" name="dni" th:value="${bulkDni}">
             <input type="hidden" name="pickupDate" th:value="${bulkPickupDate}">
+            <input type="hidden" name="pickupFlexible" th:if="${bulkPickupFlexible}" value="true">
             <input type="hidden" name="notes" th:value="${bulkNotes}">
             <input type="hidden" name="removeFromStock" th:if="${bulkRemoveFromStock}" value="true">
             <div class="import-actions" th:if="${bulkReadyCount > 0}">

@@ -569,7 +569,7 @@ h2 {
     position: relative;
     display: block;
     margin: -4px 0 18px;
-    padding-left: 18px;
+    padding-left: 0;
     cursor: pointer;
     list-style: none;
 }
@@ -579,10 +579,18 @@ h2 {
 }
 
 .reservation-bulk-summary::before {
+    content: none;
+}
+
+.reservation-bulk-summary h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reservation-bulk-summary h2::before {
     content: "";
-    position: absolute;
-    top: 34px;
-    left: 0;
+    flex: 0 0 auto;
     width: 8px;
     height: 8px;
     border-right: 2px solid var(--blue);
@@ -591,7 +599,7 @@ h2 {
     transition: transform 0.16s ease;
 }
 
-.reservation-bulk-details[open] > .reservation-bulk-summary::before {
+.reservation-bulk-details[open] > .reservation-bulk-summary h2::before {
     transform: rotate(45deg);
 }
 
@@ -623,6 +631,25 @@ h2 {
 .reservation-bulk-form input:focus {
     border-color: var(--blue);
     outline: 3px solid rgba(23, 105, 224, 0.12);
+}
+
+.reservation-bulk-panel {
+    margin-bottom: 22px;
+}
+
+.reservation-bulk-results-panel {
+    margin-bottom: 28px;
+}
+
+.pickup-date-choice {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.pickup-date-choice .check-control {
+    color: var(--text);
 }
 
 .import-form textarea {
@@ -1263,6 +1290,12 @@ tr.in-stock {
 
 .stock-controls {
     display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stock-summary-controls {
+    display: inline-flex;
     align-items: center;
     gap: 8px;
 }
@@ -3254,6 +3287,12 @@ tr.in-stock {
     width: 18px;
     height: 18px;
     accent-color: var(--blue);
+}
+
+.reservation-modal-grid .pickup-flexible-check input {
+    width: 18px;
+    height: 18px;
+    padding: 0;
 }
 
 .reservation-modal-grid input {

@@ -112,6 +112,10 @@ public class InventoryService {
         googleSheetsService.appendReservation(reservation);
     }
 
+    public void appendReservations(List<CardReservation> reservations) throws Exception {
+        googleSheetsService.appendReservations(reservations);
+    }
+
     public void updateReservationStatus(String reservationId, String status) throws Exception {
         googleSheetsService.updateReservationStatus(reservationId, status);
     }
