@@ -1142,7 +1142,9 @@ h2 {
 
 #search-results-table th:nth-child(1),
 #search-results-table td:nth-child(1) {
-    width: 92px;
+    width: 122px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 #search-results-table th:nth-child(2),
@@ -1341,6 +1343,28 @@ tr.in-stock {
 
 .stock-button.decrease {
     color: var(--red);
+}
+
+#search-results-table .stock-controls {
+    display: grid;
+    grid-template-columns: 32px 30px 32px;
+    justify-content: center;
+    gap: 6px;
+}
+
+#search-results-table .stock-value {
+    box-sizing: border-box;
+    width: 30px;
+    min-width: 30px;
+    padding-right: 6px;
+    padding-left: 6px;
+}
+
+#search-results-table .stock-total-display {
+    width: 30px;
+    min-width: 30px;
+    margin-right: auto;
+    margin-left: auto;
 }
 
 .danger-button {
