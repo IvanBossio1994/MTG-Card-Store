@@ -10,7 +10,7 @@
 <body>
 <header th:replace="~{fragments/layout :: topbar('Reservas')}"></header>
 <div th:replace="~{fragments/layout :: menu('reservations')}"></div>
-<main class="page reservations-page">
+<main class="page reservations-page protected-page" th:classappend="${reservationsLocked} ? ' protected-page-locked' : ''">
     <section class="hero">
         <div class="hero-copy">
             <p class="eyebrow">Reservas</p>
@@ -387,6 +387,46 @@
                     </div>
                 </div>
             </details>
+        </div>
+    </section>
+    <section class="movement-lock-layer" th:if="${reservationsLocked}" role="dialog" aria-modal="true"
+             aria-labelledby="reservation-lock-title" aria-describedby="reservation-lock-copy">
+        <div class="movement-lock-dialog">
+            <div class="movement-lock-head">
+                <span class="movement-access-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                </span>
+                <div>
+                    <p class="eyebrow">Modulo protegido</p>
+                    <h2 id="reservation-lock-title">Reservas bloqueadas</h2>
+                </div>
+            </div>
+
+            <p id="reservation-lock-copy" class="movement-lock-copy">
+                Ingresa la misma clave de Movimientos para revisar y administrar reservas.
+            </p>
+
+            <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
+
+            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
+                  data-loading-button="Desbloqueando..."
+                  data-loading-title="Verificando acceso"
+                  data-loading-message="Revisando la contraseña y abriendo reservas...">
+                <input type="hidden" name="returnTo" th:value="${returnTo}">
+                <div class="movement-access-field">
+                    <label for="reservation-password">Clave de acceso</label>
+                    <input id="reservation-password" name="password" type="password"
+                           autocomplete="current-password" required autofocus>
+                </div>
+                <div class="movement-lock-actions">
+                    <button class="primary-button" type="submit">Desbloquear</button>
+                    <a class="secondary-button link-button" th:href="@{/}">Volver al inicio</a>
+                </div>
+            </form>
         </div>
     </section>
 </main>

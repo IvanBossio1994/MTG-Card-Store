@@ -14,6 +14,36 @@ class DashboardControllerVariantSearchTests {
             new DashboardController(null, null, null, null, null);
 
     @Test
+    void allowsReservationsAsProtectedAccessReturnPath() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "safeProtectedAccessReturnPath",
+                String.class
+        );
+        method.setAccessible(true);
+
+        String reservations = (String) method.invoke(controller, "/reservas");
+        String reservationsQuery = (String) method.invoke(controller, "/reservas?tab=pendientes");
+
+        assertThat(reservations).isEqualTo("/reservas");
+        assertThat(reservationsQuery).isEqualTo("/reservas?tab=pendientes");
+    }
+
+    @Test
+    void rejectsExternalProtectedAccessReturnPath() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "safeProtectedAccessReturnPath",
+                String.class
+        );
+        method.setAccessible(true);
+
+        String external = (String) method.invoke(controller, "//example.com");
+        String unexpected = (String) method.invoke(controller, "/configuracion");
+
+        assertThat(external).isEqualTo("/movimientos");
+        assertThat(unexpected).isEqualTo("/movimientos");
+    }
+
+    @Test
     void parsesImportStyleSearchQuery() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(
                 "buildSearchQuery",

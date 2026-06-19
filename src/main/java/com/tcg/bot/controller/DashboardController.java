@@ -144,6 +144,11 @@ public class DashboardController {
         return isMovementsUnlocked(request.getSession(false));
     }
 
+    @ModelAttribute("reservationsUnlocked")
+    public boolean reservationsUnlocked(HttpServletRequest request) {
+        return isMovementsUnlocked(request.getSession(false));
+    }
+
     @Scheduled(fixedDelayString = "PT1H2M", initialDelayString = "PT1H2M")
     public void synchronizeInventoryAutomatically() {
         if (!storeSettingsService.hasSpreadsheetConfigured() || !inventoryService.hasCredentialsConfigured()) {
@@ -753,7 +758,7 @@ public class DashboardController {
     private void addMovementLockModel(Model model, boolean movementsLocked, HttpServletRequest request) {
         model.addAttribute("movementsLocked", movementsLocked);
         if (movementsLocked) {
-            model.addAttribute("returnTo", movementAccessReturnPath(request));
+            model.addAttribute("returnTo", protectedAccessReturnPath(request));
         }
     }
 
@@ -779,15 +784,20 @@ public class DashboardController {
     ) {
         if (MOVEMENTS_ACCESS_PASSWORD.equals(password == null ? "" : password.trim())) {
             request.getSession(true).setAttribute(MOVEMENTS_ACCESS_SESSION_KEY, true);
-            return "redirect:" + safeMovementAccessReturnPath(returnTo);
+            return "redirect:" + safeProtectedAccessReturnPath(returnTo);
         }
 
         redirectAttributes.addFlashAttribute("accessError", "Contraseña incorrecta.");
-        return "redirect:" + safeMovementAccessReturnPath(returnTo);
+        return "redirect:" + safeProtectedAccessReturnPath(returnTo);
     }
 
     @GetMapping("/reservas")
-    public String reservations(Model model) {
+    public String reservations(Model model, HttpServletRequest request) {
+        if (!isMovementsUnlocked(request.getSession(false))) {
+            addLockedReservationsPreviewModel(model, request);
+            return "reservations";
+        }
+
         populateReservationsModel(model);
         model.addAttribute("bulkRawList", "");
         model.addAttribute("bulkClient", "");
@@ -804,8 +814,32 @@ public class DashboardController {
         return "reservations";
     }
 
+    private void addLockedReservationsPreviewModel(Model model, HttpServletRequest request) {
+        addBaseModel(model, "");
+        model.addAttribute("reservationsLocked", true);
+        model.addAttribute("returnTo", protectedAccessReturnPath(request));
+        model.addAttribute("reservationStatuses", reservationStatuses());
+        model.addAttribute("reservationGroups", List.of());
+        model.addAttribute("reservationCount", 0);
+        model.addAttribute("reservedCount", 0);
+        model.addAttribute("wantedCount", 0);
+        model.addAttribute("bulkRawList", "");
+        model.addAttribute("bulkClient", "");
+        model.addAttribute("bulkPhone", "");
+        model.addAttribute("bulkDni", "");
+        model.addAttribute("bulkPickupDate", "");
+        model.addAttribute("bulkPickupFlexible", false);
+        model.addAttribute("bulkNotes", "");
+        model.addAttribute("bulkRemoveFromStock", true);
+        model.addAttribute("bulkAnalyzed", false);
+        model.addAttribute("bulkResults", List.of());
+        model.addAttribute("bulkTotalCount", 0);
+        model.addAttribute("bulkReadyCount", 0);
+    }
+
     private void populateReservationsModel(Model model) {
         addBaseModel(model, "");
+        model.addAttribute("reservationsLocked", false);
         model.addAttribute("reservationStatuses", reservationStatuses());
 
         try {
@@ -2639,7 +2673,7 @@ public class DashboardController {
         return request != null && isMovementsUnlocked(request.getSession(false));
     }
 
-    private String movementAccessReturnPath(HttpServletRequest request) {
+    private String protectedAccessReturnPath(HttpServletRequest request) {
         String requestPath = request.getRequestURI();
         String contextPath = request.getContextPath();
 
@@ -2648,21 +2682,22 @@ public class DashboardController {
         }
 
         String queryString = request.getQueryString();
-        return safeMovementAccessReturnPath(
+        return safeProtectedAccessReturnPath(
                 queryString == null || queryString.isBlank()
                         ? requestPath
                         : requestPath + "?" + queryString
         );
     }
 
-    private String safeMovementAccessReturnPath(String returnTo) {
+    private String safeProtectedAccessReturnPath(String returnTo) {
         if (returnTo == null || returnTo.isBlank()
                 || returnTo.contains("\r") || returnTo.contains("\n")
                 || returnTo.startsWith("//")) {
             return "/movimientos";
         }
 
-        if ("/movimientos".equals(returnTo) || returnTo.startsWith("/movimientos?")) {
+        if ("/movimientos".equals(returnTo) || returnTo.startsWith("/movimientos?")
+                || "/reservas".equals(returnTo) || returnTo.startsWith("/reservas?")) {
             return returnTo;
         }
 
