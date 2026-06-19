@@ -44,6 +44,18 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void keepsFlexiblePickupDateAsText() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "normalizedPickupDate",
+                String.class
+        );
+        method.setAccessible(true);
+
+        assertThat((String) method.invoke(controller, "A convenir")).isEqualTo("A convenir");
+        assertThat((String) method.invoke(controller, "2026-06-19")).isEqualTo("2026-06-19");
+    }
+
+    @Test
     void parsesImportStyleSearchQuery() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod(
                 "buildSearchQuery",

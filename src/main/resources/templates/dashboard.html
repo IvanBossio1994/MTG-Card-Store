@@ -145,7 +145,7 @@
                     <th>Variacion</th>
                     <th>Printing</th>
                     <th>Estado</th>
-                    <th>Pedido</th>
+                    <th th:if="${reservationsUnlocked}">Pedido</th>
                     <th>Precio Card Kingdom</th>
                     <th>Precio local</th>
                 </tr>
@@ -224,7 +224,7 @@
                                     th:disabled="${result.gPrice == null || result.gPrice == ''}">G</option>
                         </select>
                     </td>
-                    <td>
+                    <td th:if="${reservationsUnlocked}">
                         <button type="button"
                                 class="secondary-button add-reservation-button"
                                 th:if="${#lists.isEmpty(result.conditionStocks)}"
@@ -239,7 +239,7 @@
                 <tr class="version-options-row inventory-stock-options-row" hidden
                     th:if="${!#lists.isEmpty(result.conditionStocks)}"
                     th:id="${'search-stock-options-' + iter.index}">
-                    <td colspan="10">
+                    <td th:colspan="${reservationsUnlocked ? 10 : 9}">
                         <div class="version-options-header">
                             <span>Stock en Sheet por condición</span>
                             <strong th:text="${#lists.size(result.conditionStocks) + ' condiciones'}">0 condiciones</strong>
@@ -281,6 +281,7 @@
                                       th:text="${stock.action}">En Stock</span>
                                 <button type="button"
                                         class="secondary-button add-reservation-button condition-reservation-button"
+                                        th:if="${reservationsUnlocked}"
                                         th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
                                     Añadir a pedido
                                 </button>
@@ -290,7 +291,7 @@
                 </tr>
                 </th:block>
                 <tr th:if="${#lists.isEmpty(results)}">
-                    <td class="empty" colspan="10">No se encontraron cartas para esa búsqueda.</td>
+                    <td class="empty" th:colspan="${reservationsUnlocked ? 10 : 9}">No se encontraron cartas para esa búsqueda.</td>
                 </tr>
                 </tbody>
             </table>
@@ -340,7 +341,7 @@
                         <th>CK USD</th>
                         <th>Precio local</th>
                         <th>Estado</th>
-                        <th>Pedido</th>
+                        <th th:if="${reservationsUnlocked}">Pedido</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -396,7 +397,7 @@
                                   th:title="${pendingInfo.tooltip}"
                                   aria-label="Carta pedida">i</span>
                         </td>
-                        <td>
+                        <td th:if="${reservationsUnlocked}">
                             <button type="button"
                                     class="secondary-button add-reservation-button"
                                     th:if="${#lists.isEmpty(update.conditionStocks)}"
@@ -409,7 +410,7 @@
                     <tr class="version-options-row inventory-stock-options-row" hidden
                         th:if="${!#lists.isEmpty(update.conditionStocks)}"
                         th:id="${'synced-stock-options-' + iter.index}">
-                        <td colspan="9">
+                        <td th:colspan="${reservationsUnlocked ? 9 : 8}">
                             <div class="version-options-header">
                                 <span>Stock en Sheet por condición</span>
                                 <strong th:text="${#lists.size(update.conditionStocks) + ' condiciones'}">0 condiciones</strong>
@@ -451,6 +452,7 @@
                                           th:text="${stock.action}">En Stock</span>
                                     <button type="button"
                                             class="secondary-button add-reservation-button condition-reservation-button"
+                                            th:if="${reservationsUnlocked}"
                                             th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
                                         Añadir a pedido
                                     </button>
@@ -474,7 +476,7 @@
 </main>
 
 <div th:replace="~{fragments/layout :: loading('Sincronizando inventario', 'Conectando el Sheet con la app y actualizando precios...')}"></div>
-<div id="reservation-modal" class="modal-backdrop" hidden aria-hidden="true">
+<div id="reservation-modal" class="modal-backdrop" hidden aria-hidden="true" th:if="${reservationsUnlocked}">
     <form id="reservation-modal-form" class="modal-card reservation-modal-card" method="post" th:action="@{/reservas}">
         <div class="modal-head">
             <div>
@@ -515,7 +517,14 @@
             </label>
             <label class="wide">
                 Fecha de retiro
-                <input class="compact-date-input" name="pickupDate" type="date" required data-open-datepicker>
+                <span class="pickup-date-choice">
+                    <input class="compact-date-input" name="pickupDate" type="date" data-flexible-date-input
+                           required data-open-datepicker>
+                    <span class="check-control pickup-flexible-check">
+                        <input name="pickupFlexible" type="checkbox" value="true" data-flexible-date-checkbox>
+                        <span>A convenir</span>
+                    </span>
+                </span>
             </label>
             <label class="wide">
                 Notas
@@ -533,7 +542,7 @@
         </div>
     </form>
 </div>
-<div id="pending-reservation-modal" class="modal-backdrop" hidden aria-hidden="true">
+<div id="pending-reservation-modal" class="modal-backdrop" hidden aria-hidden="true" th:if="${reservationsUnlocked}">
     <div class="modal-card pending-reservation-card">
         <div class="modal-head">
             <div>

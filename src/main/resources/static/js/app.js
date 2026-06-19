@@ -1171,6 +1171,7 @@ document.addEventListener("DOMContentLoaded", () => {
             reservationModal.hidden = true;
             reservationModal.setAttribute("aria-hidden", "true");
             reservationModalForm.reset();
+            reservationModalForm.querySelector("[data-flexible-date-checkbox]")?.dispatchEvent(new Event("change"));
 
             if (reservationModalError) {
                 reservationModalError.hidden = true;
@@ -1202,6 +1203,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 setReservationValue("rowIndex", button.dataset.row);
                 setReservationValue("quantity", "1");
                 setReservationValue("pickupDate", "");
+                const pickupFlexibleCheckbox = reservationModalForm.querySelector("[data-flexible-date-checkbox]");
+                if (pickupFlexibleCheckbox) {
+                    pickupFlexibleCheckbox.checked = false;
+                    pickupFlexibleCheckbox.dispatchEvent(new Event("change"));
+                }
 
                 if (removeFromStockControl) {
                     const checkbox = removeFromStockControl.querySelector("input[type='checkbox']");

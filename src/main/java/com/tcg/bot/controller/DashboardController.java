@@ -172,10 +172,12 @@ public class DashboardController {
             @RequestParam(name = "q", required = false) String query,
             @RequestParam(name = "set", required = false) String setFilter,
             @RequestParam(name = "number", required = false) String numberFilter,
+            HttpServletRequest request,
             Model model
     ) {
         addBaseModel(model, query);
-        addPickupAlerts(model);
+        boolean reservationsEnabled = reservationsModuleEnabled(request);
+        addPickupAlerts(model, reservationsEnabled);
         model.addAttribute("searchSet", setFilter == null ? "" : setFilter);
         model.addAttribute("searchNumber", numberFilter == null ? "" : numberFilter);
 
@@ -191,7 +193,7 @@ public class DashboardController {
                 model.addAttribute("searchFormatError", "Completa al menos un filtro para buscar.");
             }
 
-            addLatestUpdates(model);
+            addLatestUpdates(model, reservationsEnabled);
             return "dashboard";
         }
 
@@ -234,7 +236,7 @@ public class DashboardController {
             }
 
             var inventoryCards = inventoryService.getInventoryCards();
-            var pendingReservationQuantities = pendingReservationQuantities();
+            var pendingReservationQuantities = reservationsEnabled ? pendingReservationQuantities() : Map.<String, PendingReservationInfo>of();
             var results = products.stream()
                     .map(product -> createSearchResult(product, inventoryCards))
                     .toList();
@@ -1370,6 +1372,11 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:/reservas";
+        }
+
         if (isBlank(groupKey)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la reserva a eliminar.");
             return "redirect:/reservas";
@@ -1414,6 +1421,11 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:/reservas";
+        }
+
         if (isBlank(reservationId)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la carta a quitar.");
             return "redirect:/reservas";
@@ -1458,6 +1470,11 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:/reservas";
+        }
+
         if (isBlank(reservationId)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la reserva a entregar.");
             return "redirect:/reservas";
@@ -1549,6 +1566,11 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:/reservas";
+        }
+
         if (isBlank(groupKey)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la reserva a entregar.");
             return "redirect:/reservas";
@@ -1662,8 +1684,15 @@ public class DashboardController {
             @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
+            HttpServletRequest request,
             Model model
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            addLockedReservationsPreviewModel(model, request);
+            model.addAttribute("error", "Reservas esta bloqueado.");
+            return "reservations";
+        }
+
         if (rawList == null || rawList.isBlank()) {
             return populateBulkReservationAnalysisModel(
                     rawList,
@@ -1693,9 +1722,15 @@ public class DashboardController {
             @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
+            HttpServletRequest request,
             RedirectAttributes redirectAttributes,
             Model model
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:/reservas";
+        }
+
         if (selected == null || selected.isEmpty()) {
             return populateBulkReservationAnalysisModel(
                     rawList,
@@ -1919,10 +1954,21 @@ public class DashboardController {
             @RequestParam(name = "phone", required = false) String phone,
             @RequestParam(name = "dni", required = false) String dni,
             @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
+            HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || isBlank(pickupDate)) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:/reservas";
+        }
+
+        if (pickupFlexible) {
+            pickupDate = "A convenir";
+        }
+
+        if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || (!pickupFlexible && isBlank(pickupDate))) {
             redirectAttributes.addFlashAttribute(
                     "error",
                     "Completa nombre de carta, cliente, telefono, DNI y fecha de retiro para guardar la reserva."
@@ -1936,7 +1982,7 @@ public class DashboardController {
             return "redirect:/reservas";
         }
 
-        String pickupDateError = reservationPickupDateError(pickupDate);
+        String pickupDateError = pickupFlexible ? "" : reservationPickupDateError(pickupDate);
         if (!isBlank(pickupDateError)) {
             redirectAttributes.addFlashAttribute("error", pickupDateError);
             return "redirect:/reservas";
@@ -1967,12 +2013,22 @@ public class DashboardController {
             @RequestParam(name = "phone", required = false) String phone,
             @RequestParam(name = "dni", required = false) String dni,
             @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
             @RequestParam(name = "rowIndex", required = false, defaultValue = "0") int rowIndex,
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
             HttpServletRequest request
     ) {
-        if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || isBlank(pickupDate)) {
+        if (!reservationsModuleEnabled(request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiMessage(false, "Reservas esta bloqueado."));
+        }
+
+        if (pickupFlexible) {
+            pickupDate = "A convenir";
+        }
+
+        if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || (!pickupFlexible && isBlank(pickupDate))) {
             return ResponseEntity.badRequest()
                     .body(new ApiMessage(false, "Completa carta, cliente, telefono, DNI y fecha de retiro para guardar la reserva."));
         }
@@ -1983,7 +2039,7 @@ public class DashboardController {
                     .body(new ApiMessage(false, contactError));
         }
 
-        String pickupDateError = reservationPickupDateError(pickupDate);
+        String pickupDateError = pickupFlexible ? "" : reservationPickupDateError(pickupDate);
         if (!isBlank(pickupDateError)) {
             return ResponseEntity.badRequest()
                     .body(new ApiMessage(false, pickupDateError));
@@ -2061,8 +2117,13 @@ public class DashboardController {
             @RequestParam(name = "setName", required = false) String setName,
             @RequestParam(name = "setCode", required = false) String setCode,
             @RequestParam(name = "collectorNumber", required = false) String collectorNumber,
-            @RequestParam(name = "printing", required = false) String printing
+            @RequestParam(name = "printing", required = false) String printing,
+            HttpServletRequest request
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            return ResponseEntity.ok(List.of());
+        }
+
         if (isBlank(name)) {
             return ResponseEntity.ok(List.of());
         }
@@ -2083,7 +2144,11 @@ public class DashboardController {
 
     @GetMapping("/api/reservas/pendientes/resumen")
     @ResponseBody
-    public ResponseEntity<Map<String, List<PendingReservationView>>> pendingReservationsSummary() {
+    public ResponseEntity<Map<String, List<PendingReservationView>>> pendingReservationsSummary(HttpServletRequest request) {
+        if (!reservationsModuleEnabled(request)) {
+            return ResponseEntity.ok(Map.of());
+        }
+
         try {
             Map<String, List<PendingReservationView>> reservationsByKey = new HashMap<>();
 
@@ -2130,8 +2195,14 @@ public class DashboardController {
             @RequestParam("currentPickupDate") String currentPickupDate,
             @RequestParam("pickupDate") String pickupDate,
             @RequestParam(name = "returnTo", required = false, defaultValue = "/") String returnTo,
+            HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:" + pickupActionReturnPath(returnTo);
+        }
+
         String pickupDateError = reservationPickupDateError(pickupDate);
         if (!isBlank(pickupDateError)) {
             redirectAttributes.addFlashAttribute("error", pickupDateError);
@@ -2171,6 +2242,11 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+            return "redirect:" + pickupActionReturnPath(returnTo);
+        }
+
         try {
             List<CardReservation> reservations = reservationsForPickupGroup(groupKey, currentPickupDate);
             if (reservations.isEmpty()) {
@@ -2202,7 +2278,11 @@ public class DashboardController {
 
     @GetMapping("/api/reservas/retiro/alertas")
     @ResponseBody
-    public ResponseEntity<List<PickupAlertView>> pickupAlerts() {
+    public ResponseEntity<List<PickupAlertView>> pickupAlerts(HttpServletRequest request) {
+        if (!reservationsModuleEnabled(request)) {
+            return ResponseEntity.ok(List.of());
+        }
+
         try {
             return ResponseEntity.ok(pickupAlerts(inventoryService.getReservations()));
         } catch (Exception e) {
@@ -2260,7 +2340,11 @@ public class DashboardController {
 
     @GetMapping("/api/reservas/clientes")
     @ResponseBody
-    public ResponseEntity<List<ReservationClientView>> reservationClients() {
+    public ResponseEntity<List<ReservationClientView>> reservationClients(HttpServletRequest request) {
+        if (!reservationsModuleEnabled(request)) {
+            return ResponseEntity.ok(List.of());
+        }
+
         try {
             long now = System.currentTimeMillis();
             ReservationClientsCache cache = reservationClientsCache;
@@ -2316,6 +2400,11 @@ public class DashboardController {
             @RequestParam(name = "rowIndex", required = false, defaultValue = "0") int rowIndex,
             HttpServletRequest request
     ) {
+        if (!reservationsModuleEnabled(request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiMessage(false, "Reservas esta bloqueado."));
+        }
+
         try {
             var reservation = inventoryService.getReservations()
                     .stream()
@@ -2595,6 +2684,10 @@ public class DashboardController {
             return "";
         }
 
+        if ("A convenir".equalsIgnoreCase(pickupDate.trim())) {
+            return "A convenir";
+        }
+
         return LocalDate.parse(pickupDate.trim(), MOVEMENT_DATE_FORMAT).format(MOVEMENT_DATE_FORMAT);
     }
 
@@ -2671,6 +2764,10 @@ public class DashboardController {
 
     private boolean movementsModuleEnabled(HttpServletRequest request) {
         return request != null && isMovementsUnlocked(request.getSession(false));
+    }
+
+    private boolean reservationsModuleEnabled(HttpServletRequest request) {
+        return movementsModuleEnabled(request);
     }
 
     private String protectedAccessReturnPath(HttpServletRequest request) {
@@ -3292,7 +3389,7 @@ public class DashboardController {
             Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
             List<InventoryCard> cardsToAppend = new ArrayList<>();
             List<InventoryMovement> movements = new ArrayList<>();
-            List<CardReservation> pendingReservations = honorReservations
+            List<CardReservation> pendingReservations = honorReservations && reservationsModuleEnabled(request)
                     ? cachedReservations()
                     .stream()
                     .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
@@ -4260,6 +4357,7 @@ public class DashboardController {
     public String updatePricingRule(
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
+            HttpServletRequest request,
             Model model
     ) {
         try {
@@ -4276,34 +4374,36 @@ public class DashboardController {
         }
 
         addBaseModel(model, "");
-        addPickupAlerts(model);
-        addLatestUpdates(model);
+        boolean reservationsEnabled = reservationsModuleEnabled(request);
+        addPickupAlerts(model, reservationsEnabled);
+        addLatestUpdates(model, reservationsEnabled);
 
         return "dashboard";
     }
 
     @PostMapping("/actualizar")
-    public String updateInventory(Model model) {
+    public String updateInventory(Model model, HttpServletRequest request) {
         addBaseModel(model, "");
-        addPickupAlerts(model);
-        addLatestUpdates(model);
+        boolean reservationsEnabled = reservationsModuleEnabled(request);
+        addPickupAlerts(model, reservationsEnabled);
+        addLatestUpdates(model, reservationsEnabled);
 
         try {
             ensureInventorySetup();
             if (!synchronizeInventory(true)) {
                 model.addAttribute("error", "No se pudo obtener la lista actualizada de Card Kingdom.");
-                addPickupAlerts(model);
+                addPickupAlerts(model, reservationsEnabled);
                 return "dashboard";
             }
-            addPickupAlerts(model);
-            addLatestUpdates(model);
+            addPickupAlerts(model, reservationsEnabled);
+            addLatestUpdates(model, reservationsEnabled);
         } catch (IllegalStateException e) {
             model.addAttribute("error", e.getMessage());
-            addPickupAlerts(model);
+            addPickupAlerts(model, reservationsEnabled);
         } catch (Exception e) {
             log.warn("No se pudo actualizar el inventario.", e);
             model.addAttribute("error", "No se pudo actualizar el inventario: " + syncErrorMessage(e));
-            addPickupAlerts(model);
+            addPickupAlerts(model, reservationsEnabled);
         }
 
         return "dashboard";
@@ -4939,7 +5039,12 @@ public class DashboardController {
         model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
     }
 
-    private void addPickupAlerts(Model model) {
+    private void addPickupAlerts(Model model, boolean reservationsEnabled) {
+        if (!reservationsEnabled) {
+            model.addAttribute("pickupAlerts", List.of());
+            return;
+        }
+
         try {
             model.addAttribute("pickupAlerts", pickupAlerts(inventoryService.getReservations()));
         } catch (Exception e) {
@@ -5034,12 +5139,12 @@ public class DashboardController {
         }
     }
 
-    private void addLatestUpdates(Model model) {
+    private void addLatestUpdates(Model model, boolean reservationsEnabled) {
         model.addAttribute("updates", groupedLatestUpdates());
         model.addAttribute("updatePerformed", !latestUpdates.isEmpty());
         model.addAttribute("updatedCount", latestUpdatedCount);
         model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
-        model.addAttribute("pendingReservationQuantities", pendingReservationQuantitiesSafely());
+        model.addAttribute("pendingReservationQuantities", reservationsEnabled ? pendingReservationQuantitiesSafely() : Map.of());
 
         if (latestUpdates.isEmpty()) {
             return;
