@@ -787,6 +787,22 @@ public class DashboardController {
 
     @GetMapping("/reservas")
     public String reservations(Model model) {
+        populateReservationsModel(model);
+        model.addAttribute("bulkRawList", "");
+        model.addAttribute("bulkClient", "");
+        model.addAttribute("bulkPhone", "");
+        model.addAttribute("bulkDni", "");
+        model.addAttribute("bulkPickupDate", "");
+        model.addAttribute("bulkNotes", "");
+        model.addAttribute("bulkRemoveFromStock", true);
+        model.addAttribute("bulkAnalyzed", false);
+        model.addAttribute("bulkResults", List.of());
+        model.addAttribute("bulkTotalCount", 0);
+        model.addAttribute("bulkReadyCount", 0);
+        return "reservations";
+    }
+
+    private void populateReservationsModel(Model model) {
         addBaseModel(model, "");
         model.addAttribute("reservationStatuses", reservationStatuses());
 
@@ -818,8 +834,6 @@ public class DashboardController {
             model.addAttribute("wantedCount", 0);
             model.addAttribute("error", "No se pudieron cargar las reservas: " + syncErrorMessage(e));
         }
-
-        return "reservations";
     }
 
     private List<ReservationGroupView> reservationGroups(List<CardReservation> reservations) {
@@ -1581,6 +1595,234 @@ public class DashboardController {
                 .toList();
     }
 
+    @PostMapping("/reservas/pedido-masivo/analizar")
+    public String analyzeBulkReservation(
+            @RequestParam(name = "rawList", required = false) String rawList,
+            @RequestParam(name = "client", required = false) String client,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
+            Model model
+    ) {
+        if (rawList == null || rawList.isBlank()) {
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "Agrega al menos una carta para analizar el pedido."
+            );
+        }
+
+        return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, notes, removeFromStock, model, null);
+    }
+
+    @PostMapping("/reservas/pedido-masivo/confirmar")
+    public String confirmBulkReservation(
+            @RequestParam(name = "rawList", required = false) String rawList,
+            @RequestParam(name = "selected", required = false) List<String> selected,
+            @RequestParam(name = "client", required = false) String client,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
+            RedirectAttributes redirectAttributes,
+            Model model
+    ) {
+        if (selected == null || selected.isEmpty()) {
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "Selecciona al menos una carta para agregar al pedido."
+            );
+        }
+
+        if (isBlank(client) || isBlank(phone) || isBlank(dni) || isBlank(pickupDate)) {
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "Completa cliente, telefono, DNI y fecha de retiro para guardar el pedido."
+            );
+        }
+
+        String contactError = reservationContactError(phone, dni);
+        if (!isBlank(contactError)) {
+            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, notes, removeFromStock, model, contactError);
+        }
+
+        String pickupDateError = reservationPickupDateError(pickupDate);
+        if (!isBlank(pickupDateError)) {
+            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, notes, removeFromStock, model, pickupDateError);
+        }
+
+        try {
+            var inventoryCards = inventoryService.getInventoryCards();
+            var priceList = cardKingdomApiService.getPriceList();
+            Map<String, CardKingdomProduct> productsBySku = indexProductsBySku(
+                    priceList == null ? List.of() : priceList.getData()
+            );
+            Map<String, InventoryCard> inventoryByProductKey = indexInventoryCardsByProductKey(inventoryCards);
+            Map<String, Integer> availableStockByProductKey = new HashMap<>();
+            Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
+            int reserved = 0;
+            int wanted = 0;
+            int saved = 0;
+
+            for (String selection : selected) {
+                String[] parts = selection.split("\\|", -1);
+
+                if (parts.length != 2) {
+                    continue;
+                }
+
+                CardKingdomProduct product = productsBySku.get(parts[0].toLowerCase());
+                int reservationLineQuantity = parsePositiveQuantity(parts[1]);
+
+                if (product == null || reservationLineQuantity <= 0) {
+                    continue;
+                }
+
+                String productKey = productInventoryKey(product);
+                InventoryCard existingCard = inventoryByProductKey.get(productKey);
+                int availableQuantity = availableStockByProductKey.computeIfAbsent(
+                        productKey,
+                        ignored -> existingCard == null ? 0 : quantity(existingCard)
+                );
+                boolean canReserveFromStock = removeFromStock && existingCard != null && availableQuantity >= reservationLineQuantity;
+                String reservationStatus = canReserveFromStock
+                        ? CardReservation.STATUS_RESERVED
+                        : CardReservation.STATUS_WANTED;
+
+                saveReservation(
+                        reservationStatus,
+                        displayImportName(product, null),
+                        product.getEdition(),
+                        setCode(product.getSku()),
+                        collectorNumberForSheet(product.getSku()),
+                        "true".equalsIgnoreCase(product.getFoil()) ? "Foil" : "No Foil",
+                        String.valueOf(reservationLineQuantity),
+                        client,
+                        phone,
+                        dni,
+                        pickupDate,
+                        notes
+                );
+                saved++;
+
+                if (canReserveFromStock) {
+                    availableStockByProductKey.put(productKey, availableQuantity - reservationLineQuantity);
+                    existingCard.setAction(availableQuantity <= reservationLineQuantity ? ACTION_RESERVED : ACTION_IN_STOCK);
+                    cardsToWrite.put(existingCard.getRowIndex(), existingCard);
+                    reserved += reservationLineQuantity;
+                } else {
+                    wanted += reservationLineQuantity;
+                }
+            }
+
+            if (saved <= 0) {
+                return populateBulkReservationAnalysisModel(
+                        rawList,
+                        client,
+                        phone,
+                        dni,
+                        pickupDate,
+                        notes,
+                        removeFromStock,
+                        model,
+                        "No se pudo identificar ninguna carta seleccionada para guardar el pedido."
+                );
+            }
+
+            inventoryService.updateInventoryRows(cardsToWrite);
+            refreshLatestUpdatesFromInventory();
+            invalidateReservationsCache();
+
+            redirectAttributes.addFlashAttribute(
+                    "success",
+                    "Pedido masivo guardado: " + reserved + " carta(s) reservadas y "
+                            + wanted + " carta(s) sin stock."
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo guardar el pedido masivo.", e);
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "No se pudo guardar el pedido masivo: " + syncErrorMessage(e)
+            );
+        }
+
+        return "redirect:/reservas";
+    }
+
+    private String populateBulkReservationAnalysisModel(
+            String rawList,
+            String client,
+            String phone,
+            String dni,
+            String pickupDate,
+            String notes,
+            boolean removeFromStock,
+            Model model,
+            String error
+    ) {
+        populateReservationsModel(model);
+        model.addAttribute("bulkRawList", rawList == null ? "" : rawList);
+        model.addAttribute("bulkClient", blankToEmpty(client));
+        model.addAttribute("bulkPhone", blankToEmpty(phone));
+        model.addAttribute("bulkDni", blankToEmpty(dni));
+        model.addAttribute("bulkPickupDate", blankToEmpty(pickupDate));
+        model.addAttribute("bulkNotes", blankToEmpty(notes));
+        model.addAttribute("bulkRemoveFromStock", removeFromStock);
+        model.addAttribute("bulkAnalyzed", true);
+
+        if (error != null && !error.isBlank()) {
+            model.addAttribute("error", error);
+        }
+
+        try {
+            var results = analyzeImportLines(rawList);
+            model.addAttribute("bulkResults", results);
+            model.addAttribute("bulkTotalCount", results.size());
+            model.addAttribute("bulkReadyCount", results.stream()
+                    .mapToLong(result -> result.selectable()
+                            ? 1
+                            : result.alternatives().size())
+                    .sum());
+        } catch (Exception e) {
+            model.addAttribute("error", "No se pudo analizar el pedido masivo.");
+            model.addAttribute("bulkResults", List.of());
+            model.addAttribute("bulkTotalCount", 0);
+            model.addAttribute("bulkReadyCount", 0);
+        }
+
+        return "reservations";
+    }
+
     @PostMapping("/reservas")
     public String createReservation(
             @RequestParam(name = "status", required = false) String status,
@@ -2096,7 +2338,8 @@ public class DashboardController {
     ) throws Exception {
         CardReservation reservation = new CardReservation();
         LocalDateTime now = LocalDateTime.now(APP_ZONE);
-        reservation.setId("RSV-" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")));
+        reservation.setId("RSV-" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + Long.toUnsignedString(System.nanoTime(), 36));
         reservation.setStatus(normalizedReservationStatus(status));
         reservation.setName(name.trim());
         reservation.setSetName(blankToEmpty(setName));

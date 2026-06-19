@@ -1310,6 +1310,96 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    document.querySelectorAll("[data-reservation-client-form]").forEach(form => {
+        const clientInput = form.elements.client;
+        const phoneInput = form.elements.phone;
+        const dniInput = form.elements.dni;
+        const clientOptions = form.querySelector("[data-reservation-client-options]");
+        let reservationClients = [];
+        let loaded = false;
+        const normalizeClientValue = value => (value || "").trim().toLowerCase();
+        const digitsOnly = value => (value || "").replace(/\D/g, "");
+
+        const restrictNumericField = (field, maxLength) => {
+            if (!field) {
+                return;
+            }
+
+            field.addEventListener("input", () => {
+                field.value = digitsOnly(field.value).slice(0, maxLength);
+            });
+        };
+
+        const renderReservationClients = () => {
+            if (!clientOptions) {
+                return;
+            }
+
+            clientOptions.replaceChildren();
+            reservationClients.forEach(client => {
+                if (!client.client) {
+                    return;
+                }
+
+                const option = document.createElement("option");
+                option.value = client.client;
+                option.label = client.phone
+                        ? `${client.client} | ${client.phone}`
+                        : client.client;
+                clientOptions.appendChild(option);
+            });
+        };
+
+        const loadReservationClients = async () => {
+            if (loaded) {
+                return;
+            }
+
+            loaded = true;
+
+            try {
+                const response = await fetch("/api/reservas/clientes", {
+                    headers: {"Accept": "application/json"}
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                reservationClients = await response.json();
+                renderReservationClients();
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        const applySelectedReservationClient = () => {
+            const value = normalizeClientValue(clientInput?.value);
+            if (!value) {
+                return;
+            }
+
+            const client = reservationClients.find(item => normalizeClientValue(item.client) === value);
+            if (!client) {
+                return;
+            }
+
+            if (phoneInput) {
+                phoneInput.value = client.phone || "";
+            }
+            if (dniInput) {
+                dniInput.value = client.dni || "";
+            }
+        };
+
+        restrictNumericField(phoneInput, 15);
+        restrictNumericField(dniInput, 15);
+        clientInput?.addEventListener("focus", loadReservationClients);
+        clientInput?.addEventListener("input", applySelectedReservationClient);
+        clientInput?.addEventListener("change", applySelectedReservationClient);
+        loadReservationClients();
+    });
+
     stockFilterButtons.forEach(stockFilterButton => {
         const table = stockFilterButton.closest("table");
         const stockFilterRows = table

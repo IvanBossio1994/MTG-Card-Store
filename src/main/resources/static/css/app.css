@@ -565,9 +565,64 @@ h2 {
     margin-bottom: 18px;
 }
 
+.reservation-bulk-summary {
+    position: relative;
+    display: block;
+    margin: -4px 0 18px;
+    padding-left: 18px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.reservation-bulk-summary::-webkit-details-marker {
+    display: none;
+}
+
+.reservation-bulk-summary::before {
+    content: "";
+    position: absolute;
+    top: 34px;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--blue);
+    border-bottom: 2px solid var(--blue);
+    transform: rotate(-45deg);
+    transition: transform 0.16s ease;
+}
+
+.reservation-bulk-details[open] > .reservation-bulk-summary::before {
+    transform: rotate(45deg);
+}
+
+.reservation-bulk-details:not([open]) > .reservation-bulk-summary {
+    margin-bottom: 0;
+}
+
 .import-form label {
     font-size: 14px;
     font-weight: 600;
+}
+
+.reservation-bulk-form label {
+    display: grid;
+    gap: 8px;
+}
+
+.reservation-bulk-form input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #c8d4ec;
+    border-radius: 8px;
+    color: var(--text);
+    background: #fff;
+    font: inherit;
+}
+
+.reservation-bulk-form input:focus {
+    border-color: var(--blue);
+    outline: 3px solid rgba(23, 105, 224, 0.12);
 }
 
 .import-form textarea {
