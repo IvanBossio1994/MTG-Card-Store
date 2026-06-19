@@ -71,14 +71,15 @@ public class DashboardController {
     private volatile long latestUpdatedCount;
     private volatile SuggestionIndex suggestionIndex = new SuggestionIndex(0, 0, List.of(), Map.of(), new ConcurrentHashMap<>());
     private volatile ReservationsCache reservationsCache = new ReservationsCache(0, List.of());
+    private volatile ReservationClientsCache reservationClientsCache = new ReservationClientsCache(0, List.of());
     private static final Pattern LEADING_QUANTITY_PATTERN =
             Pattern.compile("^\\s*(\\d+)\\s*x?\\s+(.+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TRAILING_QUANTITY_PATTERN =
             Pattern.compile("^\\s*(.+?)\\s+x\\s*(\\d+)\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TRAILING_FOIL_PATTERN =
-            Pattern.compile("(?i)\\s+(F|FOIL)\\s*$");
+            Pattern.compile("(?i)\\s+\\*?(F|FOIL)\\*?\\s*$");
     private static final Pattern TRAILING_NONFOIL_PATTERN =
-            Pattern.compile("(?i)\\s+(NF|NON[- ]?FOIL)\\s*$");
+            Pattern.compile("(?i)\\s+\\*?(NF|NON[- ]?FOIL)\\*?\\s*$");
     private static final Pattern SET_CODE_PATTERN =
             Pattern.compile("[\\[(]([A-Za-z0-9]{2,8})[\\])]");
     private static final Pattern COLLECTOR_PATTERN =
@@ -787,6 +788,23 @@ public class DashboardController {
 
     @GetMapping("/reservas")
     public String reservations(Model model) {
+        populateReservationsModel(model);
+        model.addAttribute("bulkRawList", "");
+        model.addAttribute("bulkClient", "");
+        model.addAttribute("bulkPhone", "");
+        model.addAttribute("bulkDni", "");
+        model.addAttribute("bulkPickupDate", "");
+        model.addAttribute("bulkPickupFlexible", false);
+        model.addAttribute("bulkNotes", "");
+        model.addAttribute("bulkRemoveFromStock", true);
+        model.addAttribute("bulkAnalyzed", false);
+        model.addAttribute("bulkResults", List.of());
+        model.addAttribute("bulkTotalCount", 0);
+        model.addAttribute("bulkReadyCount", 0);
+        return "reservations";
+    }
+
+    private void populateReservationsModel(Model model) {
         addBaseModel(model, "");
         model.addAttribute("reservationStatuses", reservationStatuses());
 
@@ -818,8 +836,6 @@ public class DashboardController {
             model.addAttribute("wantedCount", 0);
             model.addAttribute("error", "No se pudieron cargar las reservas: " + syncErrorMessage(e));
         }
-
-        return "reservations";
     }
 
     private List<ReservationGroupView> reservationGroups(List<CardReservation> reservations) {
@@ -1196,39 +1212,65 @@ public class DashboardController {
             HttpServletRequest request,
             List<InventoryCard> inventoryCards
     ) throws Exception {
-        int quantityToReturn = reservationQuantity(reservation.getQuantity());
-        if (quantityToReturn <= 0) {
+        return returnReservedCardsToStock(List.of(reservation), request, inventoryCards);
+    }
+
+    private int returnReservedCardsToStock(
+            List<CardReservation> reservations,
+            HttpServletRequest request,
+            List<InventoryCard> inventoryCards
+    ) throws Exception {
+        if (reservations == null || reservations.isEmpty()) {
             return 0;
         }
 
-        InventoryCard card = findInventoryCardForReservation(reservation, inventoryCards);
-        int previousQuantity = card == null ? 0 : quantity(card);
+        Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
+        List<InventoryMovement> movements = new ArrayList<>();
+        boolean logMovements = movementsModuleEnabled(request);
+        int returnedToStock = 0;
 
-        if (card == null) {
-            card = inventoryCardFromReservation(reservation, quantityToReturn);
-            int rowIndex = inventoryService.appendInventoryCard(card);
-            card.setRowIndex(rowIndex);
-            inventoryCards.add(card);
-        } else {
-            card.setQuantity(String.valueOf(previousQuantity > 0 ? previousQuantity : quantityToReturn));
-            card.setAction(ACTION_IN_STOCK);
-            inventoryService.updateStockState(card.getRowIndex(), card);
+        for (CardReservation reservation : reservations) {
+            if (!CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
+                continue;
+            }
+
+            int quantityToReturn = reservationQuantity(reservation.getQuantity());
+            if (quantityToReturn <= 0) {
+                continue;
+            }
+
+            InventoryCard card = findInventoryCardForReservation(reservation, inventoryCards);
+            int previousQuantity = card == null ? 0 : quantity(card);
+
+            if (card == null) {
+                card = inventoryCardFromReservation(reservation, quantityToReturn);
+                int rowIndex = inventoryService.appendInventoryCard(card);
+                card.setRowIndex(rowIndex);
+                inventoryCards.add(card);
+            } else {
+                card.setQuantity(String.valueOf(previousQuantity > 0 ? previousQuantity : quantityToReturn));
+                card.setAction(ACTION_IN_STOCK);
+                cardsToWrite.put(card.getRowIndex(), card);
+            }
+            int currentQuantity = quantity(card);
+
+            if (logMovements) {
+                movements.add(createMovement(
+                        "ENTRADA",
+                        quantityToReturn,
+                        card,
+                        previousQuantity,
+                        currentQuantity,
+                        "Reserva cancelada"
+                ));
+            }
+
+            returnedToStock += quantityToReturn;
         }
-        int currentQuantity = quantity(card);
 
-        if (movementsModuleEnabled(request)) {
-            inventoryService.appendMovement(createMovement(
-                    "ENTRADA",
-                    quantityToReturn,
-                    card,
-                    previousQuantity,
-                    currentQuantity,
-                    "Reserva cancelada"
-            ));
-        }
-
-        refreshLatestUpdateForCard(card);
-        return quantityToReturn;
+        inventoryService.updateInventoryRows(cardsToWrite);
+        inventoryService.appendMovements(movements);
+        return returnedToStock;
     }
 
     private InventoryCard findInventoryCardForReservation(CardReservation reservation) throws Exception {
@@ -1311,12 +1353,7 @@ public class DashboardController {
             }
 
             List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
-            int returnedToStock = 0;
-            for (CardReservation reservation : reservations) {
-                if (CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
-                    returnedToStock += returnReservedCardToStock(reservation, request, inventoryCards);
-                }
-            }
+            int returnedToStock = returnReservedCardsToStock(reservations, request, inventoryCards);
 
             inventoryService.deleteReservationRows(reservations.stream()
                     .map(CardReservation::getRowIndex)
@@ -1579,6 +1616,260 @@ public class DashboardController {
                 .stream()
                 .filter(rowIndex -> rowIndex != reservation.getRowIndex())
                 .toList();
+    }
+
+    @PostMapping("/reservas/pedido-masivo/analizar")
+    public String analyzeBulkReservation(
+            @RequestParam(name = "rawList", required = false) String rawList,
+            @RequestParam(name = "client", required = false) String client,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
+            @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
+            Model model
+    ) {
+        if (rawList == null || rawList.isBlank()) {
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    pickupFlexible,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "Agrega al menos una carta para analizar el pedido."
+            );
+        }
+
+        return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, removeFromStock, model, null);
+    }
+
+    @PostMapping("/reservas/pedido-masivo/confirmar")
+    public String confirmBulkReservation(
+            @RequestParam(name = "rawList", required = false) String rawList,
+            @RequestParam(name = "selected", required = false) List<String> selected,
+            @RequestParam(name = "client", required = false) String client,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "pickupDate", required = false) String pickupDate,
+            @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
+            @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
+            RedirectAttributes redirectAttributes,
+            Model model
+    ) {
+        if (selected == null || selected.isEmpty()) {
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    pickupFlexible,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "Selecciona al menos una carta para agregar al pedido."
+            );
+        }
+
+        if (pickupFlexible) {
+            pickupDate = "";
+        }
+
+        if (isBlank(client) || isBlank(phone) || isBlank(dni) || (!pickupFlexible && isBlank(pickupDate))) {
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    pickupFlexible,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "Completa cliente, telefono, DNI y fecha de retiro para guardar el pedido."
+            );
+        }
+
+        String contactError = reservationContactError(phone, dni);
+        if (!isBlank(contactError)) {
+            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, removeFromStock, model, contactError);
+        }
+
+        String pickupDateError = pickupFlexible ? "" : reservationPickupDateError(pickupDate);
+        if (!isBlank(pickupDateError)) {
+            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, removeFromStock, model, pickupDateError);
+        }
+
+        try {
+            var inventoryCards = inventoryService.getInventoryCards();
+            var priceList = cardKingdomApiService.getPriceList();
+            Map<String, CardKingdomProduct> productsBySku = indexProductsBySku(
+                    priceList == null ? List.of() : priceList.getData()
+            );
+            Map<String, InventoryCard> inventoryByProductKey = indexInventoryCardsByProductKey(inventoryCards);
+            Map<String, Integer> availableStockByProductKey = new HashMap<>();
+            Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
+            List<CardReservation> reservationsToAppend = new ArrayList<>();
+            int reserved = 0;
+            int wanted = 0;
+            int saved = 0;
+
+            for (String selection : selected) {
+                String[] parts = selection.split("\\|", -1);
+
+                if (parts.length != 2) {
+                    continue;
+                }
+
+                CardKingdomProduct product = productsBySku.get(parts[0].toLowerCase());
+                int reservationLineQuantity = parsePositiveQuantity(parts[1]);
+
+                if (product == null || reservationLineQuantity <= 0) {
+                    continue;
+                }
+
+                String productKey = productInventoryKey(product);
+                InventoryCard existingCard = inventoryByProductKey.get(productKey);
+                int availableQuantity = availableStockByProductKey.computeIfAbsent(
+                        productKey,
+                        ignored -> existingCard == null ? 0 : quantity(existingCard)
+                );
+                boolean canReserveFromStock = removeFromStock && existingCard != null && availableQuantity >= reservationLineQuantity;
+                String reservationStatus = canReserveFromStock
+                        ? CardReservation.STATUS_RESERVED
+                        : CardReservation.STATUS_WANTED;
+
+                reservationsToAppend.add(createReservation(
+                        reservationStatus,
+                        displayImportName(product, null),
+                        product.getEdition(),
+                        setCode(product.getSku()),
+                        collectorNumberForSheet(product.getSku()),
+                        "true".equalsIgnoreCase(product.getFoil()) ? "Foil" : "No Foil",
+                        String.valueOf(reservationLineQuantity),
+                        client,
+                        phone,
+                        dni,
+                        pickupDate,
+                        notes,
+                        LocalDateTime.now(APP_ZONE)
+                ));
+                saved++;
+
+                if (canReserveFromStock) {
+                    availableStockByProductKey.put(productKey, availableQuantity - reservationLineQuantity);
+                    existingCard.setAction(availableQuantity <= reservationLineQuantity ? ACTION_RESERVED : ACTION_IN_STOCK);
+                    cardsToWrite.put(existingCard.getRowIndex(), existingCard);
+                    reserved += reservationLineQuantity;
+                } else {
+                    wanted += reservationLineQuantity;
+                }
+            }
+
+            if (saved <= 0) {
+                return populateBulkReservationAnalysisModel(
+                        rawList,
+                        client,
+                        phone,
+                        dni,
+                        pickupDate,
+                        pickupFlexible,
+                        notes,
+                        removeFromStock,
+                        model,
+                        "No se pudo identificar ninguna carta seleccionada para guardar el pedido."
+                );
+            }
+
+            reservationsToAppend = consolidateDuplicateReservations(reservationsToAppend);
+            inventoryService.appendReservations(reservationsToAppend);
+            LocalDateTime now = LocalDateTime.now(APP_ZONE);
+            inventoryService.upsertReservationClient(
+                    client.trim(),
+                    digitsOnly(phone),
+                    digitsOnly(dni),
+                    now.format(MOVEMENT_DATE_TIME_FORMAT)
+            );
+            invalidateReservationClientsCache();
+            inventoryService.updateInventoryRows(cardsToWrite);
+            refreshLatestUpdatesFromInventory();
+            invalidateReservationsCache();
+
+            redirectAttributes.addFlashAttribute(
+                    "success",
+                    "Pedido masivo guardado: " + reserved + " carta(s) reservadas y "
+                            + wanted + " carta(s) sin stock."
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo guardar el pedido masivo.", e);
+            return populateBulkReservationAnalysisModel(
+                    rawList,
+                    client,
+                    phone,
+                    dni,
+                    pickupDate,
+                    pickupFlexible,
+                    notes,
+                    removeFromStock,
+                    model,
+                    "No se pudo guardar el pedido masivo: " + syncErrorMessage(e)
+            );
+        }
+
+        return "redirect:/reservas";
+    }
+
+    private String populateBulkReservationAnalysisModel(
+            String rawList,
+            String client,
+            String phone,
+            String dni,
+            String pickupDate,
+            boolean pickupFlexible,
+            String notes,
+            boolean removeFromStock,
+            Model model,
+            String error
+    ) {
+        populateReservationsModel(model);
+        model.addAttribute("bulkRawList", rawList == null ? "" : rawList);
+        model.addAttribute("bulkClient", blankToEmpty(client));
+        model.addAttribute("bulkPhone", blankToEmpty(phone));
+        model.addAttribute("bulkDni", blankToEmpty(dni));
+        model.addAttribute("bulkPickupDate", blankToEmpty(pickupDate));
+        model.addAttribute("bulkPickupFlexible", pickupFlexible);
+        model.addAttribute("bulkNotes", blankToEmpty(notes));
+        model.addAttribute("bulkRemoveFromStock", removeFromStock);
+        model.addAttribute("bulkAnalyzed", true);
+
+        if (error != null && !error.isBlank()) {
+            model.addAttribute("error", error);
+        }
+
+        try {
+            var results = analyzeImportLines(rawList);
+            model.addAttribute("bulkResults", results);
+            model.addAttribute("bulkTotalCount", results.size());
+            model.addAttribute("bulkReadyCount", results.stream()
+                    .mapToLong(result -> result.selectable()
+                            ? 1
+                            : result.alternatives().size())
+                    .sum());
+        } catch (Exception e) {
+            log.warn("No se pudo analizar el pedido masivo.", e);
+            model.addAttribute("error", "No se pudo analizar el pedido masivo: " + syncErrorMessage(e));
+            model.addAttribute("bulkResults", List.of());
+            model.addAttribute("bulkTotalCount", 0);
+            model.addAttribute("bulkReadyCount", 0);
+        }
+
+        return "reservations";
     }
 
     @PostMapping("/reservas")
@@ -1854,12 +2145,7 @@ public class DashboardController {
             }
 
             List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
-            int returnedToStock = 0;
-            for (CardReservation reservation : reservations) {
-                if (CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
-                    returnedToStock += returnReservedCardToStock(reservation, request, inventoryCards);
-                }
-            }
+            int returnedToStock = returnReservedCardsToStock(reservations, request, inventoryCards);
 
             inventoryService.deleteReservationRows(reservations.stream()
                     .map(CardReservation::getRowIndex)
@@ -1934,10 +2220,20 @@ public class DashboardController {
         reservationsCache = new ReservationsCache(0, List.of());
     }
 
+    private void invalidateReservationClientsCache() {
+        reservationClientsCache = new ReservationClientsCache(0, List.of());
+    }
+
     @GetMapping("/api/reservas/clientes")
     @ResponseBody
     public ResponseEntity<List<ReservationClientView>> reservationClients() {
         try {
+            long now = System.currentTimeMillis();
+            ReservationClientsCache cache = reservationClientsCache;
+            if (cache.loadedAtMillis() > 0 && now - cache.loadedAtMillis() < 60_000) {
+                return ResponseEntity.ok(cache.clients());
+            }
+
             Map<String, ReservationClientView> clientsByName = new LinkedHashMap<>();
 
             for (ReservationClient savedClient : inventoryService.getReservationClients()) {
@@ -1954,7 +2250,7 @@ public class DashboardController {
                 ));
             }
 
-            for (CardReservation reservation : inventoryService.getReservations()) {
+            for (CardReservation reservation : cachedReservations()) {
                 String client = reservation.getClient();
                 if (isBlank(client)) {
                     continue;
@@ -1968,7 +2264,9 @@ public class DashboardController {
                 ));
             }
 
-            return ResponseEntity.ok(new ArrayList<>(clientsByName.values()));
+            List<ReservationClientView> clients = new ArrayList<>(clientsByName.values());
+            reservationClientsCache = new ReservationClientsCache(now, clients);
+            return ResponseEntity.ok(clients);
         } catch (Exception e) {
             log.warn("No se pudieron consultar clientes de reservas.", e);
             return ResponseEntity.ok(List.of());
@@ -2094,23 +2392,22 @@ public class DashboardController {
             String pickupDate,
             String notes
     ) throws Exception {
-        CardReservation reservation = new CardReservation();
         LocalDateTime now = LocalDateTime.now(APP_ZONE);
-        reservation.setId("RSV-" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS")));
-        reservation.setStatus(normalizedReservationStatus(status));
-        reservation.setName(name.trim());
-        reservation.setSetName(blankToEmpty(setName));
-        reservation.setSetCode(blankToEmpty(setCode));
-        reservation.setCollectorNumber(blankToEmpty(collectorNumber));
-        reservation.setPrinting(blankToEmpty(printing));
-        reservation.setQuantity(normalizedReservationQuantity(quantity));
-        reservation.setClient(client.trim());
-        reservation.setPhone(digitsOnly(phone));
-        reservation.setDni(digitsOnly(dni));
-        reservation.setReservationDate(now.format(MOVEMENT_DATE_TIME_FORMAT));
-        reservation.setPickupDate(normalizedPickupDate(pickupDate));
-        reservation.setPaymentDate("");
-        reservation.setNotes(blankToEmpty(notes));
+        CardReservation reservation = createReservation(
+                status,
+                name,
+                setName,
+                setCode,
+                collectorNumber,
+                printing,
+                quantity,
+                client,
+                phone,
+                dni,
+                pickupDate,
+                notes,
+                now
+        );
 
         inventoryService.upsertReservationClient(
                 reservation.getClient(),
@@ -2118,6 +2415,7 @@ public class DashboardController {
                 reservation.getDni(),
                 now.format(MOVEMENT_DATE_TIME_FORMAT)
         );
+        invalidateReservationClientsCache();
 
         CardReservation existingReservation = inventoryService.getReservations()
                 .stream()
@@ -2134,6 +2432,41 @@ public class DashboardController {
 
         inventoryService.appendReservation(reservation);
         invalidateReservationsCache();
+    }
+
+    private CardReservation createReservation(
+            String status,
+            String name,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String quantity,
+            String client,
+            String phone,
+            String dni,
+            String pickupDate,
+            String notes,
+            LocalDateTime now
+    ) {
+        CardReservation reservation = new CardReservation();
+        reservation.setId("RSV-" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + Long.toUnsignedString(System.nanoTime(), 36));
+        reservation.setStatus(normalizedReservationStatus(status));
+        reservation.setName(name.trim());
+        reservation.setSetName(blankToEmpty(setName));
+        reservation.setSetCode(blankToEmpty(setCode));
+        reservation.setCollectorNumber(blankToEmpty(collectorNumber));
+        reservation.setPrinting(blankToEmpty(printing));
+        reservation.setQuantity(normalizedReservationQuantity(quantity));
+        reservation.setClient(client.trim());
+        reservation.setPhone(digitsOnly(phone));
+        reservation.setDni(digitsOnly(dni));
+        reservation.setReservationDate(now.format(MOVEMENT_DATE_TIME_FORMAT));
+        reservation.setPickupDate(normalizedPickupDate(pickupDate));
+        reservation.setPaymentDate("");
+        reservation.setNotes(blankToEmpty(notes));
+        return reservation;
     }
 
     private String normalizedReservationStatus(String status) {
@@ -3063,7 +3396,8 @@ public class DashboardController {
                             : result.alternatives().size())
                     .sum());
         } catch (Exception e) {
-            model.addAttribute("error", "No se pudo analizar la lista.");
+            log.warn("No se pudo analizar la lista.", e);
+            model.addAttribute("error", "No se pudo analizar la lista: " + syncErrorMessage(e));
             model.addAttribute("importResults", List.of());
             model.addAttribute("totalCount", 0);
             model.addAttribute("readyCount", 0);
@@ -3133,89 +3467,121 @@ public class DashboardController {
                 indexProductsByNameOrVariation(priceList.getData());
 
         for (ParsedImportLine parsedLine : parseAndMergeImportLines(rawList)) {
-
-            var products = searchImportedProducts(productsByName, parsedLine);
-
-            if (products.isEmpty()) {
-                List<CardKingdomProduct> otherVersions = importNameCandidates(parsedLine.name()).stream()
-                        .flatMap(candidate -> productsByName.getOrDefault(candidate, List.of()).stream())
-                        .distinct()
-                        .toList();
-                List<ImportOption> alternatives = createImportOptions(otherVersions, parsedLine, inventoryIndex);
-
-                if (alternatives.isEmpty()) {
-                    alternatives = createImportOptions(
-                            findPossibleVariantProducts(priceList.getData(), parsedLine),
-                            parsedLine,
-                            inventoryIndex
-                    );
-                }
-
-                String status = parsedLine.duplicateCount() > 0
-                        ? importStatus(parsedLine)
-                        : alternatives.isEmpty() ? "NO ENCONTRADA" : "OTRA VERSION";
-
-                results.add(new ImportResult(
-                        parsedLine.originalLine(),
-                        parsedLine.quantity(),
-                        parsedLine.name(),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        0,
-                        0,
-                        status,
-                        false,
-                        alternatives
-                ));
-                continue;
-            }
-
-            if (shouldGroupImportAlternatives(parsedLine, products)) {
-                results.add(new ImportResult(
-                        parsedLine.originalLine(),
-                        parsedLine.quantity(),
-                        parsedLine.name(),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        0,
-                        0,
-                        parsedLine.duplicateCount() > 0 ? importStatus(parsedLine) : "OTRA VERSION",
-                        false,
-                        createImportOptions(products, parsedLine, inventoryIndex)
-                ));
-                continue;
-            }
-
-            for (CardKingdomProduct product : products) {
-                ImportResult importResult = createImportResult(product, parsedLine, inventoryIndex);
-
-                results.add(new ImportResult(
-                        parsedLine.originalLine(),
-                        parsedLine.quantity(),
-                        displayImportName(product, parsedLine),
-                        importResult.edition(),
-                        importResult.sku(),
-                        importResult.variation(),
-                        importResult.printing(),
-                        importResult.nmPrice(),
-                        importResult.stockQuantity(),
-                        importResult.rowIndex(),
-                        importStatus(parsedLine),
-                        importResult.selectable(),
-                        List.of()
-                ));
+            try {
+                addImportResultsForLine(results, parsedLine, productsByName, priceList.getData(), inventoryIndex);
+            } catch (RuntimeException e) {
+                log.warn("No se pudo analizar la linea de importacion: {}", parsedLine.originalLine(), e);
+                results.add(unresolvedImportResult(parsedLine));
             }
         }
 
         return results.stream()
                 .sorted(Comparator.comparingInt(this::importResultPriority))
                 .toList();
+    }
+
+    private void addImportResultsForLine(
+            List<ImportResult> results,
+            ParsedImportLine parsedLine,
+            Map<String, List<CardKingdomProduct>> productsByName,
+            List<CardKingdomProduct> allProducts,
+            Map<String, int[]> inventoryIndex
+    ) {
+        var products = searchImportedProducts(productsByName, parsedLine);
+
+        if (products.isEmpty()) {
+            List<CardKingdomProduct> otherVersions = importNameCandidates(parsedLine.name()).stream()
+                    .flatMap(candidate -> productsByName.getOrDefault(candidate, List.of()).stream())
+                    .distinct()
+                    .toList();
+            List<ImportOption> alternatives = createImportOptions(otherVersions, parsedLine, inventoryIndex);
+
+            if (alternatives.isEmpty()) {
+                alternatives = createImportOptions(
+                        findPossibleVariantProducts(allProducts, parsedLine),
+                        parsedLine,
+                        inventoryIndex
+                );
+            }
+
+            String status = parsedLine.duplicateCount() > 0
+                    ? importStatus(parsedLine)
+                    : alternatives.isEmpty() ? "NO ENCONTRADA" : "OTRA VERSION";
+
+            results.add(new ImportResult(
+                    parsedLine.originalLine(),
+                    parsedLine.quantity(),
+                    parsedLine.name(),
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    0,
+                    0,
+                    status,
+                    false,
+                    alternatives
+            ));
+            return;
+        }
+
+        if (shouldGroupImportAlternatives(parsedLine, products)) {
+            results.add(new ImportResult(
+                    parsedLine.originalLine(),
+                    parsedLine.quantity(),
+                    parsedLine.name(),
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    0,
+                    0,
+                    parsedLine.duplicateCount() > 0 ? importStatus(parsedLine) : "OTRA VERSION",
+                    false,
+                    createImportOptions(products, parsedLine, inventoryIndex)
+            ));
+            return;
+        }
+
+        for (CardKingdomProduct product : products) {
+            ImportResult importResult = createImportResult(product, parsedLine, inventoryIndex);
+
+            results.add(new ImportResult(
+                    parsedLine.originalLine(),
+                    parsedLine.quantity(),
+                    displayImportName(product, parsedLine),
+                    importResult.edition(),
+                    importResult.sku(),
+                    importResult.variation(),
+                    importResult.printing(),
+                    importResult.nmPrice(),
+                    importResult.stockQuantity(),
+                    importResult.rowIndex(),
+                    importStatus(parsedLine),
+                    importResult.selectable(),
+                    List.of()
+            ));
+        }
+    }
+
+    private ImportResult unresolvedImportResult(ParsedImportLine parsedLine) {
+        return new ImportResult(
+                parsedLine.originalLine(),
+                parsedLine.quantity(),
+                parsedLine.name(),
+                "",
+                "",
+                "",
+                "",
+                "",
+                0,
+                0,
+                "NO ENCONTRADA",
+                false,
+                List.of()
+        );
     }
 
     private boolean shouldGroupImportAlternatives(
@@ -5073,6 +5439,12 @@ public class DashboardController {
     private record ReservationsCache(
             long loadedAtMillis,
             List<CardReservation> reservations
+    ) {
+    }
+
+    private record ReservationClientsCache(
+            long loadedAtMillis,
+            List<ReservationClientView> clients
     ) {
     }
 

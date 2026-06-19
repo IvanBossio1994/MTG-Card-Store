@@ -727,33 +727,50 @@ public class GoogleSheetsService {
     }
 
     public void appendReservation(CardReservation reservation) throws Exception {
+        appendReservations(List.of(reservation));
+    }
+
+    public void appendReservations(List<CardReservation> reservations) throws Exception {
+        if (reservations == null || reservations.isEmpty()) {
+            return;
+        }
+
         Sheets sheetsService = getSheetsService();
         ensureReservationsSheet(sheetsService);
 
+        List<List<Object>> rows = new ArrayList<>();
+        for (CardReservation reservation : reservations) {
+            rows.add(reservationRowValues(reservation));
+        }
+
         var body = new com.google.api.services.sheets.v4.model.ValueRange()
-                .setValues(List.of(List.of(
-                        safe(reservation.getId()),
-                        safe(reservation.getStatus()),
-                        safe(reservation.getName()),
-                        safe(reservation.getSetName()),
-                        safe(reservation.getSetCode()),
-                        safe(reservation.getCollectorNumber()),
-                        safe(reservation.getPrinting()),
-                        safe(reservation.getQuantity()),
-                        safe(reservation.getClient()),
-                        safe(reservation.getPhone()),
-                        safe(reservation.getDni()),
-                        safe(reservation.getReservationDate()),
-                        safe(reservation.getPickupDate()),
-                        safe(reservation.getPaymentDate()),
-                        safe(reservation.getNotes())
-                )));
+                .setValues(rows);
 
         sheetsService.spreadsheets().values()
                 .append(storeSettingsService.getSpreadsheetId(), reservationRange("A:O"), body)
                 .setValueInputOption("RAW")
                 .setInsertDataOption("INSERT_ROWS")
                 .execute();
+    }
+
+    private List<Object> reservationRowValues(CardReservation reservation) {
+        return List.of(
+                safe(reservation.getId()),
+                safe(reservation.getStatus()),
+                safe(reservation.getName()),
+                safe(reservation.getSetName()),
+                safe(reservation.getSetCode()),
+                safe(reservation.getCollectorNumber()),
+                safe(reservation.getPrinting()),
+                safe(reservation.getQuantity()),
+                safe(reservation.getClient()),
+                safe(reservation.getPhone()),
+                safe(reservation.getDni()),
+                safe(reservation.getReservationDate()),
+                safe(reservation.getPickupDate()),
+                safe(reservation.getPaymentDate()),
+                safe(reservation.getNotes())
+        );
     }
 
     public List<ReservationClient> getReservationClients() throws Exception {

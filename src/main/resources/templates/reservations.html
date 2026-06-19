@@ -37,6 +37,185 @@
     <p class="alert error" th:if="${error}" th:text="${error}"></p>
     <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
+    <details class="panel import-panel reservation-bulk-panel reservation-bulk-details">
+        <summary class="reservation-bulk-summary">
+            <div>
+                <p class="eyebrow">Pedido masivo</p>
+                <h2>Cargar reserva por lista</h2>
+                <p class="section-note">Pega la lista, revisa las versiones y guarda todas las cartas seleccionadas en un mismo pedido.</p>
+            </div>
+        </summary>
+
+        <form id="bulk-reservation-analyze-form" class="import-form reservation-bulk-form" method="post"
+              data-reservation-client-form
+              data-loading-button="Analizando..."
+              data-loading-title="Analizando pedido"
+              data-loading-message="Revisando la lista y buscando versiones disponibles..."
+              th:action="@{/reservas/pedido-masivo/analizar}">
+            <div class="reservation-modal-grid">
+                <label>
+                    Cliente
+                    <input name="client" type="text" required autocomplete="off" list="bulk-reservation-client-options" th:value="${bulkClient}">
+                    <datalist id="bulk-reservation-client-options" data-reservation-client-options></datalist>
+                </label>
+                <label>
+                    Telefono
+                    <input name="phone" type="text" required autocomplete="off" inputmode="numeric" maxlength="15" pattern="[0-9]{1,15}" title="Debe tener solo numeros, hasta 15 digitos" th:value="${bulkPhone}">
+                </label>
+                <label>
+                    Fecha de retiro
+                    <span class="pickup-date-choice">
+                        <input class="compact-date-input" name="pickupDate" type="date" data-flexible-date-input
+                               data-open-datepicker th:required="${!bulkPickupFlexible}" th:value="${bulkPickupDate}">
+                        <span class="check-control pickup-flexible-check">
+                            <input name="pickupFlexible" type="checkbox" value="true" data-flexible-date-checkbox
+                                   th:checked="${bulkPickupFlexible}">
+                            <span>A convenir</span>
+                        </span>
+                    </span>
+                </label>
+                <label>
+                    DNI
+                    <input name="dni" type="text" required autocomplete="off" inputmode="numeric" maxlength="15" pattern="[0-9]{1,15}" title="Debe tener solo numeros, hasta 15 digitos" th:value="${bulkDni}">
+                </label>
+                <label class="wide">
+                    Notas
+                    <input name="notes" type="text" autocomplete="off" th:value="${bulkNotes}">
+                </label>
+                <label class="check-control reservation-stock-checkbox">
+                    <input name="removeFromStock" type="checkbox" value="true" th:checked="${bulkRemoveFromStock}">
+                    <span>Retirar del stock</span>
+                </label>
+            </div>
+            <label for="bulkRawList">Lista</label>
+            <textarea id="bulkRawList" name="rawList" rows="8"
+                      placeholder="4 Sol Ring&#10;1 Fell the Profane / Fell Mire (MH3) 244&#10;2x Counterspell [CMM] #81"
+                      th:text="${bulkRawList}"></textarea>
+            <div class="store-actions">
+                <button class="primary-button" type="submit">Analizar pedido</button>
+                <a class="secondary-button link-button" th:href="@{/reservas}">Limpiar</a>
+            </div>
+        </form>
+    </details>
+
+    <section class="panel import-results-panel reservation-bulk-results-panel" th:if="${bulkAnalyzed}">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Resultado</p>
+                <h2 th:text="${bulkReadyCount + ' resultados seleccionables'}">0 resultados seleccionables</h2>
+                <p class="section-note"
+                   th:text="${bulkTotalCount + ' resultados mostrados despues de analizar el pedido'}">
+                    0 resultados mostrados despues de analizar el pedido
+                </p>
+            </div>
+        </div>
+
+        <div class="placeholder" th:if="${#lists.isEmpty(bulkResults)}">
+            <strong>No hay cartas para analizar</strong>
+            <p>Pega una lista con una carta por renglon.</p>
+        </div>
+
+        <form id="bulk-reservation-confirm-form" method="post" th:action="@{/reservas/pedido-masivo/confirmar}"
+              th:unless="${#lists.isEmpty(bulkResults)}"
+              data-loading-button="Guardando..."
+              data-loading-title="Guardando pedido"
+              data-loading-message="Creando las reservas seleccionadas en Google Sheets...">
+            <input type="hidden" name="rawList" th:value="${bulkRawList}">
+            <input type="hidden" name="client" th:value="${bulkClient}">
+            <input type="hidden" name="phone" th:value="${bulkPhone}">
+            <input type="hidden" name="dni" th:value="${bulkDni}">
+            <input type="hidden" name="pickupDate" th:value="${bulkPickupDate}">
+            <input type="hidden" name="pickupFlexible" th:if="${bulkPickupFlexible}" value="true">
+            <input type="hidden" name="notes" th:value="${bulkNotes}">
+            <input type="hidden" name="removeFromStock" th:if="${bulkRemoveFromStock}" value="true">
+            <div class="import-actions" th:if="${bulkReadyCount > 0}">
+                <label class="check-control">
+                    <input id="select-all-import-results" type="checkbox">
+                    <span id="select-all-import-results-label">Seleccionar todas las cartas (0 seleccionadas)</span>
+                </label>
+                <button class="primary-button" type="submit">Guardar pedido</button>
+            </div>
+
+            <div class="table-wrap">
+                <table class="import-results-table">
+                    <thead>
+                    <tr>
+                        <th>Reservar</th>
+                        <th>Cantidad</th>
+                        <th>Stock</th>
+                        <th>Nombre</th>
+                        <th>Set</th>
+                        <th>Codigo/Nro.</th>
+                        <th>Variacion</th>
+                        <th>Printing</th>
+                        <th>NM USD</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <th:block th:each="result, iter : ${bulkResults}">
+                        <tr th:classappend="${result.stockQuantity > 0} ? 'in-stock' : ''">
+                            <td>
+                                <div class="import-select-state">
+                                    <input class="import-result-checkbox" type="checkbox" name="selected"
+                                           th:if="${result.selectable}"
+                                           th:value="${result.sku + '|' + result.quantity}"
+                                           th:attr="data-name=${result.name},data-set-name=${result.edition},data-sku=${result.sku},data-printing=${result.printing}">
+                                    <span class="status carta-duplicada"
+                                          th:if="${result.status == 'CARTA DUPLICADA'}">
+                                        CARTA DUPLICADA
+                                    </span>
+                                    <button class="version-toggle" type="button"
+                                            th:if="${!result.selectable && !#lists.isEmpty(result.alternatives)}"
+                                            th:attr="aria-controls=${'bulk-version-options-' + iter.index}"
+                                            aria-expanded="false">
+                                        <span class="status otra-version">OTRA VERSION</span>
+                                    </button>
+                                    <span class="status no-encontrada"
+                                          th:if="${!result.selectable && #lists.isEmpty(result.alternatives)}">
+                                        NO ENCONTRADA
+                                    </span>
+                                </div>
+                            </td>
+                            <td th:text="${result.quantity > 0 ? result.quantity : '-'}">1</td>
+                            <td th:text="${result.stockQuantity}"
+                                th:title="${result.rowIndex > 0 ? 'Stock leido desde fila ' + result.rowIndex + ' del Sheet' : ''}">0</td>
+                            <td th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</td>
+                            <td th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
+                            <td th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
+                            <td th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
+                            <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
+                            <td th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
+                        </tr>
+                        <tr class="version-options-row" hidden
+                            th:if="${!result.selectable && !#lists.isEmpty(result.alternatives)}"
+                            th:id="${'bulk-version-options-' + iter.index}">
+                            <td colspan="9">
+                                <div class="version-options-header">
+                                    <span>Versiones disponibles</span>
+                                    <strong th:text="${#lists.size(result.alternatives) + ' opciones'}">0 opciones</strong>
+                                </div>
+                                <div class="version-option-grid">
+                                    <label class="version-option" th:each="option : ${result.alternatives}">
+                                        <input class="import-result-checkbox" type="checkbox" name="selected"
+                                               th:value="${option.sku + '|' + option.quantity}"
+                                               th:attr="data-name=${option.name},data-set-name=${option.edition},data-sku=${option.sku},data-printing=${option.printing}">
+                                        <span>
+                                            <strong th:text="${option.name}">Sol Ring</strong>
+                                            <small th:text="${option.edition + ' | ' + option.sku + ' | ' + option.printing + ' | $ ' + option.formattedNmPrice + ' | Stock ' + option.stockQuantity}">
+                                                Set | Codigo | Printing | $ 0,00 | Stock 0
+                                            </small>
+                                        </span>
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                    </th:block>
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </section>
+
     <section class="panel reservation-table-panel">
         <div class="section-head">
             <div>
