@@ -39,6 +39,7 @@ public class StoreSettingsService {
     private volatile String cacheDirectory;
     private volatile String logoFilename = "";
     private volatile boolean tutorialCompleted = false;
+    private volatile boolean modulesTutorialCompleted = false;
 
     public StoreSettingsService(
             @Value("${store.default-spreadsheet-id}") String defaultSpreadsheetId,
@@ -86,6 +87,10 @@ public class StoreSettingsService {
 
     public boolean isTutorialCompleted() {
         return tutorialCompleted;
+    }
+
+    public boolean isModulesTutorialCompleted() {
+        return modulesTutorialCompleted;
     }
 
     public boolean hasLogo() {
@@ -162,8 +167,14 @@ public class StoreSettingsService {
         save();
     }
 
+    public synchronized void completeModulesTutorial() throws IOException {
+        modulesTutorialCompleted = true;
+        save();
+    }
+
     public synchronized void resetTutorial() throws IOException {
         tutorialCompleted = false;
+        modulesTutorialCompleted = false;
         save();
     }
 
@@ -264,6 +275,7 @@ public class StoreSettingsService {
             cacheDirectory = properties.getProperty("store.cache-directory", configDirectory.resolve("cache").toString());
             logoFilename = properties.getProperty("store.logo-filename", "");
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
+            modulesTutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.modules.completed", "false"));
         } catch (IOException e) {
             storeName = "Inventory Manager";
             spreadsheetId = defaultSpreadsheetId;
@@ -271,6 +283,7 @@ public class StoreSettingsService {
             cacheDirectory = configDirectory.resolve("cache").toString();
             logoFilename = "";
             tutorialCompleted = false;
+            modulesTutorialCompleted = false;
         }
     }
 
@@ -285,6 +298,7 @@ public class StoreSettingsService {
         properties.setProperty("store.cache-directory", cacheDirectory);
         properties.setProperty("store.logo-filename", logoFilename);
         properties.setProperty("tutorial.completed", String.valueOf(tutorialCompleted));
+        properties.setProperty("tutorial.modules.completed", String.valueOf(modulesTutorialCompleted));
 
         try (OutputStream output = Files.newOutputStream(configFile)) {
             properties.store(output, "Configuracion local de la tienda");

@@ -187,14 +187,14 @@ public class DashboardController {
 
         addBaseModel(model, query);
         boolean reservationsEnabled = reservationsModuleEnabled(request);
+        boolean showCoreTutorial = !storeSettingsService.isTutorialCompleted();
+        boolean showModuleTutorial = reservationsEnabled && !storeSettingsService.isModulesTutorialCompleted();
         addPickupAlerts(model, reservationsEnabled);
         model.addAttribute("searchSet", setFilter == null ? "" : setFilter);
         model.addAttribute("searchNumber", numberFilter == null ? "" : numberFilter);
-
-        model.addAttribute(
-                "showTutorial",
-                !storeSettingsService.isTutorialCompleted()
-        );
+        model.addAttribute("showCoreTutorial", showCoreTutorial);
+        model.addAttribute("showModuleTutorial", showModuleTutorial);
+        model.addAttribute("showTutorial", showCoreTutorial || showModuleTutorial);
 
         boolean searchRequested = query != null || setFilter != null || numberFilter != null;
 
@@ -6286,11 +6286,14 @@ public class DashboardController {
     }
 
     @PostMapping("/tutorial/completar")
-    public ResponseEntity<Void> completeTutorial() {
+    public ResponseEntity<Void> completeTutorial(HttpServletRequest request) {
 
         try {
 
             storeSettingsService.completeTutorial();
+            if (reservationsModuleEnabled(request)) {
+                storeSettingsService.completeModulesTutorial();
+            }
 
             return ResponseEntity.ok().build();
 

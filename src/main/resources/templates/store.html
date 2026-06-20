@@ -51,7 +51,7 @@
                        placeholder="Ej: Stock MTG, Cartas o Inventario" required>
                 <p id="inventory-sheet-error" class="field-error" th:if="${inventorySheetError}"
                    th:text="${inventorySheetError}"></p>
-                <p class="field-help">Podes indicar una pestana existente con cartas, como Cartas. Si la app reconoce al menos dos nombres, crea una pestana nueva de inventario y deja la original sin tocar.</p>
+                <p class="field-help">Podes indicar una pestana existente con cartas. Si la app reconoce al menos dos nombres, crea una pestana nueva de inventario y deja la original sin tocar.</p>
             </div>
             <div id="google-sheet-source" class="store-field source-fields">
                 <label for="spreadsheetId">Google Sheet del inventario</label>
@@ -83,7 +83,7 @@
                 <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
                 <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
                        placeholder="Ej: D:/TCG-inventory/data/cache o E:/MTG/cache">
-                <p class="field-help">Elegi una carpeta local con espacio disponible, por ejemplo en disco D o E. La app guarda ahi ck-pricelist.json, la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
+                <p class="field-help">Elegi una carpeta local con espacio disponible. La app guarda la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
             </div>
         </section>
 

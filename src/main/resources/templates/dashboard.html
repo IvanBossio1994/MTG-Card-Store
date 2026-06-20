@@ -593,13 +593,13 @@
         <button id="tutorial-prev"
                 class="tutorial-side-button tutorial-side-prev"
                 type="button"
-                aria-label="Paso anterior">‹</button>
+                aria-label="Paso anterior">&lsaquo;</button>
         <button id="tutorial-next"
                 class="tutorial-side-button tutorial-side-next"
                 type="button"
-                aria-label="Paso siguiente">›</button>
+                aria-label="Paso siguiente">&rsaquo;</button>
 
-        <div class="tutorial-step active">
+        <div class="tutorial-step active" th:if="${showCoreTutorial}">
             <img class="tutorial-cat"
                  th:src="@{/images/tutorial-cat-box.png}"
                  alt="Gatito organizando cartas">
@@ -608,22 +608,15 @@
             <h2>Configura tu tienda</h2>
 
             <div class="tutorial-copy">
-                <p>Ya entraste con Google. En "Configuracion" cargas nombre, logo, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
-                <p>Usa el mismo Gmail que tiene acceso al Sheet. No hace falta compartirlo con ningun mail tecnico.</p>
+                <p>En "Configuracion" cargas nombre, logo, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
+                <p>Usa el mismo Gmail que tiene acceso al Sheet.</p>
                 <p>El Sheet puede estar vacio o ya tener cartas. Si tiene una pestana existente, la app busca nombres en cualquier columna y crea una pestana nueva con las columnas del inventario sin pisar la original.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 1 de 6">
-                <span class="active"></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
+            <div class="tutorial-progress" aria-label="Progreso del tutorial"></div>
         </div>
 
-        <div class="tutorial-step">
+        <div class="tutorial-step" th:if="${showCoreTutorial}">
             <img class="tutorial-cat tutorial-cat-teacher"
                  th:src="@{/images/tutorial-cat-teacher.png}"
                  alt="Gatito explicando sincronizacion">
@@ -640,17 +633,10 @@
                 <p>La primera sincronizacion puede tardar porque descarga Card Kingdom. Despues usa el cache local definido en Configuracion.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 2 de 6">
-                <span></span>
-                <span class="active"></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
+            <div class="tutorial-progress" aria-label="Progreso del tutorial"></div>
         </div>
 
-        <div class="tutorial-step">
+        <div class="tutorial-step" th:if="${showCoreTutorial}">
             <img class="tutorial-cat"
                  th:src="@{/images/tutorial-cat-detective.png}"
                  alt="Gatito detective">
@@ -670,21 +656,14 @@
                 </div>
                 <div>
                     <strong>-</strong>
-                    <span>Registra una unidad vendida y actualiza movimientos y caja.</span>
+                    <span>Registra una unidad vendida y actualiza el stock.</span>
                 </div>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 3 de 6">
-                <span></span>
-                <span></span>
-                <span class="active"></span>
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
+            <div class="tutorial-progress" aria-label="Progreso del tutorial"></div>
         </div>
 
-        <div class="tutorial-step">
+        <div class="tutorial-step" th:if="${showCoreTutorial}">
             <img class="tutorial-cat tutorial-cat-teacher"
                  th:src="@{/images/tutorial-cat-teacher.png}"
                  alt="Gatito revisando listas">
@@ -697,17 +676,14 @@
                 <p>La app marca cada resultado como encontrada, otra version o no encontrada. Si hay alternativas, podes desplegarlas y elegir cuales sumar al stock.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 4 de 6">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span class="active"></span>
-                <span></span>
-                <span></span>
+            <div class="tutorial-progress" aria-label="Progreso del tutorial"></div>
+
+            <div class="tutorial-actions tutorial-actions-finish" th:if="${!showModuleTutorial}">
+                <button id="finish-tutorial" class="primary-button" type="button">Empezar</button>
             </div>
         </div>
 
-        <div class="tutorial-step">
+        <div class="tutorial-step" th:if="${showModuleTutorial}" th:classappend="${!showCoreTutorial} ? ' active'">
             <img class="tutorial-cat tutorial-cat-warning"
                  th:src="@{/images/cat-warning.png}"
                  alt="Gatito avisando sobre pedidos">
@@ -720,17 +696,10 @@
                 <p>En "Reservas" ves que cartas estan pendientes, reservadas o listas para entregar, y podes entregar o quitar cartas individuales.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 5 de 6">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span class="active"></span>
-                <span></span>
-            </div>
+            <div class="tutorial-progress" aria-label="Progreso del tutorial"></div>
         </div>
 
-        <div class="tutorial-step">
+        <div class="tutorial-step" th:if="${showModuleTutorial}">
             <img class="tutorial-cat"
                  th:src="@{/images/tutorial-cat-detective.png}"
                  alt="Gatito detective">
@@ -747,14 +716,7 @@
                 <p>Flujo normal: sincronizar al abrir, buscar o importar cartas, usar + y -, y revisar caja al final del dia.</p>
             </div>
 
-            <div class="tutorial-progress" aria-label="Paso 6 de 6">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span class="active"></span>
-            </div>
+            <div class="tutorial-progress" aria-label="Progreso del tutorial"></div>
 
             <div class="tutorial-actions tutorial-actions-finish">
                 <button id="finish-tutorial" class="primary-button" type="button">Empezar</button>

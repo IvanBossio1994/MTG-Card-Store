@@ -1613,6 +1613,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let currentStep = 0;
 
+        const renderProgress = (index) => {
+            document.querySelectorAll(".tutorial-progress").forEach(progress => {
+                progress.replaceChildren();
+
+                steps.forEach((step, stepIndex) => {
+                    const dot = document.createElement("span");
+                    dot.classList.toggle("active", stepIndex === index);
+                    progress.appendChild(dot);
+                });
+            });
+        };
+
         const closeTutorial = async () => {
             try {
                 await fetch("/tutorial/completar", {
@@ -1632,6 +1644,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             steps[index].classList.add("active");
+            renderProgress(index);
 
             if (prevButton) {
                 prevButton.disabled = index === 0;
