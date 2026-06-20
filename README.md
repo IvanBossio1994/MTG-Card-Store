@@ -40,11 +40,14 @@ dist\windows-app\TCG Inventory\TCG Inventory.exe
 ```
 
 La app instalada guarda configuracion y cache en `%APPDATA%\TCG Inventory\data`, asi cada usuario arranca con Configuracion vacia y carga su propio Google Sheet.
+Al abrir, usa el primer navegador disponible entre Edge, Chrome y Firefox. Edge y Chrome se abren en modo app; Firefox se abre en una ventana normal con perfil propio.
 
 Para generar un instalador `.exe` o `.msi` con `jpackage`, primero hay que instalar WiX Toolset y despues ejecutar:
 
 ```powershell
 .\scripts\build-windows-app.ps1 -Type exe
 ```
+
+Si WiX 3.14 esta extraido en `.tools\wix314`, el script lo detecta sin instalarlo globalmente.
 
 Microsoft Store permite dos caminos para Win32: subir un MSIX, o listar un instalador `.exe/.msi` offline firmado y hospedado por nosotros. Para MSIX hace falta Windows SDK (`makeappx`/`signtool`) y la identidad de Partner Center.

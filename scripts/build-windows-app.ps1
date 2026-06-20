@@ -17,6 +17,11 @@ if (-not $env:JAVA_HOME -or -not (Test-Path $jpackage)) {
     $jpackage = "jpackage"
 }
 
+$localWix = Join-Path $root ".tools\wix314"
+if (Test-Path (Join-Path $localWix "candle.exe")) {
+    $env:PATH = "$localWix;$env:PATH"
+}
+
 $dist = Join-Path $root "dist\windows-app"
 $input = Join-Path $root "target\jpackage-input"
 $jar = "tcg-inventory-bot-0.0.1-SNAPSHOT.jar"

@@ -32,21 +32,16 @@ public class DesktopLauncher {
 
     private static void openAppWindow(String url, Path dataDirectory, ConfigurableApplicationContext context) {
         try {
-            String edge = edgePath();
-            if (edge == null) {
+            Browser browser = browser();
+            if (browser == null) {
                 Desktop.getDesktop().browse(URI.create(url));
                 return;
             }
 
-            Path profileDirectory = dataDirectory.resolve("edge-profile");
+            Path profileDirectory = dataDirectory.resolve(browser.profileDirectory());
             Files.createDirectories(profileDirectory);
 
-            Process edgeProcess = new ProcessBuilder(
-                    edge,
-                    "--app=" + url,
-                    "--user-data-dir=" + profileDirectory,
-                    "--no-first-run"
-            ).start();
+            Process edgeProcess = new ProcessBuilder(browser.arguments(url, profileDirectory)).start();
 
             edgeProcess.onExit()
                     .orTimeout(7, java.util.concurrent.TimeUnit.DAYS)
@@ -84,17 +79,53 @@ public class DesktopLauncher {
                 .normalize();
     }
 
-    private static String edgePath() {
+    private static Browser browser() {
         return List.of(
-                        Path.of(System.getenv("ProgramFiles(x86)") == null ? "" : System.getenv("ProgramFiles(x86)"),
-                                "Microsoft", "Edge", "Application", "msedge.exe"),
-                        Path.of(System.getenv("ProgramFiles") == null ? "" : System.getenv("ProgramFiles"),
-                                "Microsoft", "Edge", "Application", "msedge.exe")
+                        new Browser("edge-profile", "--app=", "--user-data-dir=", paths(
+                                "Microsoft\\Edge\\Application\\msedge.exe"
+                        )),
+                        new Browser("chrome-profile", "--app=", "--user-data-dir=", paths(
+                                "Google\\Chrome\\Application\\chrome.exe"
+                        )),
+                        new Browser("firefox-profile", "--new-window", "-profile", paths(
+                                "Mozilla Firefox\\firefox.exe"
+                        ))
                 )
                 .stream()
-                .filter(Files::exists)
-                .map(Path::toString)
+                .filter(Browser::exists)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private static List<Path> paths(String relativePath) {
+        return List.of(
+                Path.of(System.getenv("ProgramFiles") == null ? "" : System.getenv("ProgramFiles"), relativePath),
+                Path.of(System.getenv("ProgramFiles(x86)") == null ? "" : System.getenv("ProgramFiles(x86)"), relativePath),
+                Path.of(System.getenv("LocalAppData") == null ? "" : System.getenv("LocalAppData"), relativePath)
+        );
+    }
+
+    private record Browser(String profileDirectory, String openArgument, String profileArgument, List<Path> paths) {
+
+        boolean exists() {
+            return executable() != null;
+        }
+
+        String executable() {
+            return paths.stream()
+                    .filter(Files::exists)
+                    .map(Path::toString)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        List<String> arguments(String url, Path profileDirectory) {
+            String executable = executable();
+            if ("--new-window".equals(openArgument)) {
+                return List.of(executable, openArgument, url, profileArgument, profileDirectory.toString());
+            }
+
+            return List.of(executable, openArgument + url, profileArgument + profileDirectory, "--no-first-run");
+        }
     }
 }
