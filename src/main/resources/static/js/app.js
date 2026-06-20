@@ -303,8 +303,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const item = document.createElement("article");
             item.className = `pickup-warning-item${alert.overdue ? " overdue" : ""}`;
 
-            const copy = document.createElement("div");
-            copy.className = "pickup-warning-copy";
+            const copy = document.createElement("a");
+            copy.className = "pickup-warning-copy pickup-warning-link";
+            copy.href = `/reservas?openGroup=${encodeURIComponent(alert.groupKey || "")}#${alert.anchorId || ""}`;
             const client = document.createElement("strong");
             client.textContent = alert.client || "Cliente";
             const date = document.createElement("span");
