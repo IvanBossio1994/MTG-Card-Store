@@ -1,6 +1,7 @@
 package com.tcg.bot.controller;
 
 import com.tcg.bot.dto.CardKingdomProduct;
+import com.tcg.bot.model.CashRegisterEntry;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -53,6 +54,41 @@ class DashboardControllerVariantSearchTests {
 
         assertThat((String) method.invoke(controller, "A convenir")).isEqualTo("A convenir");
         assertThat((String) method.invoke(controller, "2026-06-19")).isEqualTo("2026-06-19");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reportIncludesCashSalesWithoutMatchingMovement() throws Exception {
+        Method reportMethod = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class
+        );
+        Method overviewMethod = DashboardController.class.getDeclaredMethod(
+                "cashReportOverview",
+                List.class
+        );
+        reportMethod.setAccessible(true);
+        overviewMethod.setAccessible(true);
+
+        CashRegisterEntry sale = new CashRegisterEntry();
+        sale.setDate("2026-06-19");
+        sale.setType("VENTA");
+        sale.setName("Sol Ring");
+        sale.setSetCode("CMM");
+        sale.setCollectorNumber("410");
+        sale.setPrinting("No Foil");
+        sale.setQuantity("2");
+        sale.setTotal("15000");
+
+        List<?> reports = (List<?>) reportMethod.invoke(controller, List.of(sale), List.of());
+        Object overview = overviewMethod.invoke(controller, reports);
+
+        assertThat(reports).hasSize(1);
+        assertThat((String) reports.get(0).getClass().getMethod("totalSales").invoke(reports.get(0))).isEqualTo("15.000");
+        assertThat((int) reports.get(0).getClass().getMethod("soldQuantity").invoke(reports.get(0))).isEqualTo(2);
+        assertThat((String) overview.getClass().getMethod("totalSales").invoke(overview)).isEqualTo("15.000");
+        assertThat((String) overview.getClass().getMethod("bestMonth").invoke(overview)).isEqualTo("Junio 2026");
     }
 
     @Test

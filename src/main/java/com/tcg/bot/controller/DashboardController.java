@@ -711,6 +711,7 @@ public class DashboardController {
             model.addAttribute("cashTodayTotal", "0");
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
+            model.addAttribute("cashReportOverview", CashReportOverview.empty());
             addMovementLockModel(model, movementsLocked, request);
             return "movements";
         }
@@ -774,6 +775,7 @@ public class DashboardController {
         model.addAttribute("cashTodayTotal", "0");
         model.addAttribute("cashSelectedTotal", "0");
         model.addAttribute("cashReportMonths", List.of());
+        model.addAttribute("cashReportOverview", CashReportOverview.empty());
         addMovementLockModel(model, true, request);
     }
 
@@ -2758,6 +2760,10 @@ public class DashboardController {
         return value == null ? "" : value.trim();
     }
 
+    private static String blankToEmptyStatic(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     private boolean isMovementsUnlocked(HttpSession session) {
         return session != null && Boolean.TRUE.equals(session.getAttribute(MOVEMENTS_ACCESS_SESSION_KEY));
     }
@@ -3017,13 +3023,16 @@ public class DashboardController {
             model.addAttribute("cashGroups", groupCashEntriesByMonth(entries, selectedDate));
             model.addAttribute("cashTodayTotal", formatCashTotal(totalSalesForDate(allEntries, today)));
             model.addAttribute("cashSelectedTotal", formatCashTotal(totalSalesForDate(entries, selectedDate)));
-            model.addAttribute("cashReportMonths", cashReportMonths(allEntries, allMovements));
+            List<CashReportMonth> reportMonths = cashReportMonths(allEntries, allMovements);
+            model.addAttribute("cashReportMonths", reportMonths);
+            model.addAttribute("cashReportOverview", cashReportOverview(reportMonths));
         } catch (Exception e) {
             model.addAttribute("cashEntries", List.of());
             model.addAttribute("cashGroups", List.of());
             model.addAttribute("cashTodayTotal", "0");
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
+            model.addAttribute("cashReportOverview", CashReportOverview.empty());
             model.addAttribute("cashError", "No se pudo cargar la caja.");
         }
     }
@@ -3184,6 +3193,7 @@ public class DashboardController {
             List<InventoryMovement> movements
     ) {
         Map<String, Map<String, CashReportCardAccumulator>> cardsByMonth = new LinkedHashMap<>();
+        Map<String, Map<String, Double>> salesByMonthAndDay = new LinkedHashMap<>();
 
         if (movements != null) {
             for (InventoryMovement movement : movements) {
@@ -3192,7 +3202,7 @@ public class DashboardController {
                     String monthKey = monthKey(movement.getDate());
                     CashReportCardAccumulator cardReport = cardsByMonth
                             .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
-                            .computeIfAbsent(movementReportKey(movement), key -> new CashReportCardAccumulator());
+                            .computeIfAbsent(movementReportKey(movement), key -> CashReportCardAccumulator.fromMovement(movement));
                     cardReport.addReserved(movementQuantity);
                     continue;
                 }
@@ -3206,7 +3216,7 @@ public class DashboardController {
                 String monthKey = monthKey(movement.getDate());
                 CashReportCardAccumulator cardReport = cardsByMonth
                         .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
-                        .computeIfAbsent(movementReportKey(movement), key -> new CashReportCardAccumulator());
+                        .computeIfAbsent(movementReportKey(movement), key -> CashReportCardAccumulator.fromMovement(movement));
 
                 if (quantity > 0) {
                     cardReport.addEntry(quantity);
@@ -3223,15 +3233,16 @@ public class DashboardController {
                 }
 
                 String monthKey = monthKey(entry.getDate());
-                Map<String, CashReportCardAccumulator> monthCards = cardsByMonth.get(monthKey);
-                if (monthCards == null) {
-                    continue;
-                }
+                Map<String, CashReportCardAccumulator> monthCards = cardsByMonth
+                        .computeIfAbsent(monthKey, key -> new LinkedHashMap<>());
 
-                CashReportCardAccumulator cardReport = monthCards.get(cashEntryReportKey(entry));
-                if (cardReport != null) {
-                    cardReport.addSaleTotal(parseCashTotal(entry.getTotal()));
-                }
+                double saleTotal = parseCashTotal(entry.getTotal());
+                CashReportCardAccumulator cardReport = monthCards
+                        .computeIfAbsent(cashEntryReportKey(entry), key -> CashReportCardAccumulator.fromCashEntry(entry));
+                cardReport.addSale(entry, saleTotal);
+                salesByMonthAndDay
+                        .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
+                        .merge(blankToEmpty(entry.getDate()), saleTotal, Double::sum);
             }
         }
 
@@ -3247,6 +3258,8 @@ public class DashboardController {
                 report.addCard(cardReport);
             }
 
+            salesByMonthAndDay.getOrDefault(monthEntry.getKey(), Map.of())
+                    .forEach(report::addDaySale);
             reports.put(monthEntry.getKey(), report);
         }
 
@@ -3263,13 +3276,36 @@ public class DashboardController {
         return reports.entrySet()
                 .stream()
                 .sorted((first, second) -> compareMonthKeys(second.getKey(), first.getKey()))
-                .map(entry -> entry.getValue().toReport(
-                        entry.getKey(),
-                        monthLabel(entry.getKey()),
-                        maxSales,
-                        maxMovementQuantity
-                ))
+                .map(entry -> entry.getValue().toReport(entry.getKey(), monthLabel(entry.getKey()), maxSales, maxMovementQuantity))
                 .toList();
+    }
+
+    private CashReportOverview cashReportOverview(List<CashReportMonth> reports) {
+        if (reports == null || reports.isEmpty()) {
+            return CashReportOverview.empty();
+        }
+
+        double totalSales = reports.stream()
+                .mapToDouble(CashReportMonth::totalSalesValue)
+                .sum();
+        int totalSold = reports.stream()
+                .mapToInt(CashReportMonth::soldQuantity)
+                .sum();
+        int totalEntered = reports.stream()
+                .mapToInt(CashReportMonth::enteredQuantity)
+                .sum();
+        CashReportMonth bestMonth = reports.stream()
+                .max(Comparator.comparingDouble(CashReportMonth::totalSalesValue))
+                .orElse(reports.get(0));
+
+        return new CashReportOverview(
+                formatCashTotal(totalSales),
+                totalSold,
+                totalEntered,
+                formatCashTotal(totalSales / Math.max(reports.size(), 1)),
+                bestMonth.label(),
+                "$ " + bestMonth.totalSales()
+        );
     }
 
     private String cashEntryReportKey(CashRegisterEntry entry) {
@@ -3323,6 +3359,27 @@ public class DashboardController {
             return Math.abs(Integer.parseInt(value.trim()));
         } catch (NumberFormatException e) {
             return 0;
+        }
+    }
+
+    private static int parsePositiveInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Math.max(Integer.parseInt(value.trim()), 0);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private String dayLabel(String date) {
+        try {
+            return LocalDate.parse(date, MOVEMENT_DATE_FORMAT)
+                    .format(DateTimeFormatter.ofPattern("dd/MM"));
+        } catch (RuntimeException e) {
+            return date == null ? "" : date;
         }
     }
 
@@ -5794,14 +5851,57 @@ public class DashboardController {
             String key,
             String label,
             String totalSales,
+            double totalSalesValue,
             int soldQuantity,
             int enteredQuantity,
             int reservedQuantity,
             int balanceQuantity,
+            int activeDays,
+            String averageTicket,
             String salesWidth,
             String soldWidth,
             String enteredWidth,
-            String reservedWidth
+            String reservedWidth,
+            List<CashReportFlowRow> flowRows,
+            List<CashReportDayBar> dayBars,
+            List<CashReportCard> topCards
+    ) {
+    }
+
+    public record CashReportOverview(
+            String totalSales,
+            int soldQuantity,
+            int enteredQuantity,
+            String averageMonthlySales,
+            String bestMonth,
+            String bestMonthSales
+    ) {
+        static CashReportOverview empty() {
+            return new CashReportOverview("0", 0, 0, "0", "-", "$ 0");
+        }
+    }
+
+    public record CashReportFlowRow(
+            String label,
+            int quantity,
+            String width,
+            String type
+    ) {
+    }
+
+    public record CashReportDayBar(
+            String label,
+            String total,
+            String width
+    ) {
+    }
+
+    public record CashReportCard(
+            String name,
+            String detail,
+            int soldQuantity,
+            String totalSales,
+            String width
     ) {
     }
 
@@ -5810,12 +5910,23 @@ public class DashboardController {
         private int soldQuantity;
         private int enteredQuantity;
         private int reservedQuantity;
+        private final Map<String, Double> salesByDay = new LinkedHashMap<>();
+        private final List<CashReportCardAccumulator> cards = new ArrayList<>();
 
         void addCard(CashReportCardAccumulator cardReport) {
             salesTotal += cardReport.salesTotal;
-            soldQuantity += cardReport.soldQuantity;
+            soldQuantity += cardReport.effectiveSoldQuantity();
             enteredQuantity += cardReport.enteredQuantity;
             reservedQuantity += cardReport.reservedQuantity;
+            cards.add(cardReport);
+        }
+
+        void addDaySale(String date, double total) {
+            if (date == null || date.isBlank() || total <= 0) {
+                return;
+            }
+
+            salesByDay.merge(date, total, Double::sum);
         }
 
         CashReportMonth toReport(
@@ -5828,26 +5939,104 @@ public class DashboardController {
                     key,
                     label,
                     formatCashTotal(salesTotal),
+                    salesTotal,
                     soldQuantity,
                     enteredQuantity,
                     reservedQuantity,
                     enteredQuantity - soldQuantity,
+                    salesByDay.size(),
+                    formatCashTotal(salesTotal / Math.max(soldQuantity, 1)),
                     percent(salesTotal, maxSales),
                     percent(soldQuantity, maxMovementQuantity),
                     percent(enteredQuantity, maxMovementQuantity),
-                    percent(reservedQuantity, maxMovementQuantity)
+                    percent(reservedQuantity, maxMovementQuantity),
+                    flowRows(maxMovementQuantity),
+                    dayBars(),
+                    topCards()
             );
+        }
+
+        private List<CashReportFlowRow> flowRows(int maxMovementQuantity) {
+            return List.of(
+                    new CashReportFlowRow("Vendidas", soldQuantity, percent(soldQuantity, maxMovementQuantity), "sold"),
+                    new CashReportFlowRow("Ingresadas", enteredQuantity, percent(enteredQuantity, maxMovementQuantity), "entered"),
+                    new CashReportFlowRow("Reservadas", reservedQuantity, percent(reservedQuantity, maxMovementQuantity), "reserved")
+            );
+        }
+
+        private List<CashReportDayBar> dayBars() {
+            double maxDaySales = salesByDay.values().stream()
+                    .mapToDouble(Double::doubleValue)
+                    .max()
+                    .orElse(0);
+
+            return salesByDay.entrySet()
+                    .stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(entry -> new CashReportDayBar(
+                            dayLabel(entry.getKey()),
+                            formatCashTotal(entry.getValue()),
+                            percent(entry.getValue(), maxDaySales)
+                    ))
+                    .toList();
+        }
+
+        private List<CashReportCard> topCards() {
+            double maxCardSales = cards.stream()
+                    .mapToDouble(card -> card.salesTotal)
+                    .max()
+                    .orElse(0);
+
+            return cards.stream()
+                    .filter(card -> card.salesTotal > 0 || card.effectiveSoldQuantity() > 0)
+                    .sorted(Comparator
+                            .comparingDouble((CashReportCardAccumulator card) -> card.salesTotal).reversed()
+                            .thenComparing(Comparator.comparingInt(CashReportCardAccumulator::effectiveSoldQuantity).reversed())
+                            .thenComparing(card -> card.name))
+                    .limit(5)
+                    .map(card -> new CashReportCard(
+                            blankToDash(card.name),
+                            card.detail(),
+                            card.effectiveSoldQuantity(),
+                            formatCashTotal(card.salesTotal),
+                            percent(card.salesTotal, maxCardSales)
+                    ))
+                    .toList();
         }
     }
 
     private static class CashReportCardAccumulator {
+        private String name = "";
+        private String setCode = "";
+        private String collectorNumber = "";
+        private String printing = "";
         private double salesTotal;
         private int soldQuantity;
+        private int saleQuantity;
         private int enteredQuantity;
         private int reservedQuantity;
 
-        void addSaleTotal(double total) {
+        static CashReportCardAccumulator fromMovement(InventoryMovement movement) {
+            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
+            accumulator.name = blankToEmptyStatic(movement.getName());
+            accumulator.setCode = blankToEmptyStatic(movement.getSetCode());
+            accumulator.collectorNumber = blankToEmptyStatic(movement.getCollectorNumber());
+            accumulator.printing = blankToEmptyStatic(movement.getPrinting());
+            return accumulator;
+        }
+
+        static CashReportCardAccumulator fromCashEntry(CashRegisterEntry entry) {
+            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
+            accumulator.name = blankToEmptyStatic(entry.getName());
+            accumulator.setCode = blankToEmptyStatic(entry.getSetCode());
+            accumulator.collectorNumber = blankToEmptyStatic(entry.getCollectorNumber());
+            accumulator.printing = blankToEmptyStatic(entry.getPrinting());
+            return accumulator;
+        }
+
+        void addSale(CashRegisterEntry entry, double total) {
             salesTotal += total;
+            saleQuantity += parsePositiveInteger(entry.getQuantity());
         }
 
         void addSold(int quantity) {
@@ -5864,6 +6053,17 @@ public class DashboardController {
 
         boolean hasEntryAndSale() {
             return soldQuantity > 0 || enteredQuantity > 0 || reservedQuantity > 0 || salesTotal > 0;
+        }
+
+        int effectiveSoldQuantity() {
+            return Math.max(soldQuantity, saleQuantity);
+        }
+
+        String detail() {
+            String code = setCode.isBlank() ? "-" : setCode;
+            String number = collectorNumber.isBlank() ? "-" : collectorNumber;
+            String print = printing.isBlank() ? "-" : printing;
+            return code + " / " + number + " / " + print;
         }
     }
 
