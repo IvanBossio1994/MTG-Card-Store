@@ -30,13 +30,14 @@
                 <article class="pickup-warning-item"
                          th:each="alert : ${pickupAlerts}"
                          th:classappend="${alert.overdue} ? ' overdue' : ''">
-                    <div class="pickup-warning-copy">
+                    <a class="pickup-warning-copy pickup-warning-link"
+                       th:href="@{/reservas(openGroup=${alert.groupKey})} + '#' + ${alert.anchorId}">
                         <strong th:text="${alert.client}">Cliente</strong>
                         <span th:text="${alert.overdue ? 'Fecha vencida: ' + alert.formattedPickupDate : 'Retira hoy: ' + alert.formattedPickupDate}">Retira hoy</span>
                         <p th:text="${alert.cardSummary + ' | ' + alert.totalQuantity + ' unidad(es)' + (alert.phone != '-' ? ' | Tel. ' + alert.phone : '')}">
                             Pedido
                         </p>
-                    </div>
+                    </a>
 
                     <div class="pickup-warning-actions" th:if="${alert.overdue}">
                         <form method="post" th:action="@{/reservas/retiro/liberar}"

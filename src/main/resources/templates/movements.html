@@ -265,93 +265,103 @@
                 </section>
 
                 <section class="report-month-list">
-                <article class="report-month-card" th:each="report : ${cashReportMonths}">
-                    <div class="report-month-head">
-                        <div>
-                            <p class="eyebrow">Reporte mensual</p>
-                            <h3 th:text="${report.label}">Junio 2026</h3>
-                            <span th:text="${report.activeDays + ' dias con ventas'}">0 dias con ventas</span>
-                        </div>
-                        <strong th:text="${'$ ' + report.totalSales}">$ 0</strong>
-                    </div>
-
-                    <div class="report-kpi-grid">
-                        <div class="report-kpi">
-                            <span>Cartas vendidas</span>
-                            <strong th:text="${report.soldQuantity}">0</strong>
-                        </div>
-                        <div class="report-kpi">
-                            <span>Cartas ingresadas</span>
-                            <strong th:text="${report.enteredQuantity}">0</strong>
-                        </div>
-                        <div class="report-kpi">
-                            <span>Cartas reservadas</span>
-                            <strong th:text="${report.reservedQuantity}">0</strong>
-                        </div>
-                        <div class="report-kpi">
-                            <span>Diferencia stock</span>
-                            <strong th:text="${report.balanceQuantity}">0</strong>
-                        </div>
-                        <div class="report-kpi">
-                            <span>Ticket por carta</span>
-                            <strong th:text="${'$ ' + report.averageTicket}">$ 0</strong>
-                        </div>
-                    </div>
-
-                    <div class="report-month-layout">
-                        <div class="report-panel report-flow-panel">
-                            <div class="report-panel-head">
-                                <span>Flujo de stock</span>
-                                <strong th:text="${report.balanceQuantity >= 0 ? '+' + report.balanceQuantity : report.balanceQuantity}">0</strong>
+                <details class="report-month-card" th:each="report : ${cashReportMonths}" th:open="${report.open}">
+                    <summary class="report-month-summary">
+                        <div class="report-month-summary-title">
+                            <span></span>
+                            <div>
+                                <p class="eyebrow">Reporte mensual</p>
+                                <h3 th:text="${report.label}">Junio 2026</h3>
+                                <small th:text="${report.activeDays + ' dias con ventas'}">0 dias con ventas</small>
                             </div>
-                            <div class="report-bars">
-                                <div class="report-bar-row" th:each="row : ${report.flowRows}">
-                                    <span th:text="${row.label}">Vendidas</span>
-                                    <div class="report-bar">
-                                        <i th:classappend="${row.type}" th:style="${'width:' + row.width}"></i>
+                        </div>
+                        <div class="report-month-summary-kpis">
+                            <span><strong th:text="${report.soldQuantity}">0</strong> vendidas</span>
+                            <span><strong th:text="${report.enteredQuantity}">0</strong> ingresadas</span>
+                            <span><strong th:text="${report.balanceQuantity >= 0 ? '+' + report.balanceQuantity : report.balanceQuantity}">0</strong> stock</span>
+                        </div>
+                        <strong class="report-month-total" th:text="${'$ ' + report.totalSales}">$ 0</strong>
+                    </summary>
+
+                    <div class="report-month-body">
+                        <div class="report-kpi-grid">
+                            <div class="report-kpi">
+                                <span>Cartas vendidas</span>
+                                <strong th:text="${report.soldQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Cartas ingresadas</span>
+                                <strong th:text="${report.enteredQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Cartas reservadas</span>
+                                <strong th:text="${report.reservedQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Diferencia stock</span>
+                                <strong th:text="${report.balanceQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Ticket por carta</span>
+                                <strong th:text="${'$ ' + report.averageTicket}">$ 0</strong>
+                            </div>
+                        </div>
+
+                        <div class="report-month-layout">
+                            <div class="report-panel report-flow-panel">
+                                <div class="report-panel-head">
+                                    <span>Flujo de stock</span>
+                                    <strong th:text="${report.balanceQuantity >= 0 ? '+' + report.balanceQuantity : report.balanceQuantity}">0</strong>
+                                </div>
+                                <div class="report-bars">
+                                    <div class="report-bar-row" th:each="row : ${report.flowRows}">
+                                        <span th:text="${row.label}">Vendidas</span>
+                                        <div class="report-bar">
+                                            <i th:classappend="${row.type}" th:style="${'width:' + row.width}"></i>
+                                        </div>
+                                        <strong th:text="${row.quantity}">0</strong>
                                     </div>
-                                    <strong th:text="${row.quantity}">0</strong>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="report-panel report-days-panel">
-                            <div class="report-panel-head">
-                                <span>Ventas por dia</span>
-                                <strong th:text="${report.activeDays}">0</strong>
-                            </div>
-                            <div class="report-day-chart">
-                                <div class="report-day-bar" th:each="day : ${report.dayBars}">
-                                    <div class="report-day-track">
-                                        <i th:style="${'height:' + day.width}" th:title="${'$ ' + day.total}"></i>
+                            <div class="report-panel report-days-panel">
+                                <div class="report-panel-head">
+                                    <span>Ventas por dia</span>
+                                    <strong th:text="${report.activeDays}">0</strong>
+                                </div>
+                                <div class="report-day-chart">
+                                    <div class="report-day-bar" th:each="day : ${report.dayBars}">
+                                        <div class="report-day-track">
+                                            <i th:style="${'height:' + day.width}" th:title="${'$ ' + day.total}"></i>
+                                        </div>
+                                        <span th:text="${day.label}">01/06</span>
                                     </div>
-                                    <span th:text="${day.label}">01/06</span>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="report-panel report-top-panel">
-                            <div class="report-panel-head">
-                                <span>Cartas destacadas</span>
-                                <strong th:text="${#lists.size(report.topCards)}">0</strong>
-                            </div>
-                            <div class="report-top-list" th:if="${!#lists.isEmpty(report.topCards)}">
-                                <div class="report-top-card" th:each="card : ${report.topCards}">
-                                    <div>
-                                        <strong th:text="${card.name}">Sol Ring</strong>
-                                        <span th:text="${card.detail}">CMM / 410 / No Foil</span>
-                                    </div>
-                                    <div class="report-top-meta">
-                                        <strong th:text="${'$ ' + card.totalSales}">$ 0</strong>
-                                        <span th:text="${card.soldQuantity + ' vendidas'}">0 vendidas</span>
-                                    </div>
-                                    <div class="report-bar report-top-bar"><i th:style="${'width:' + card.width}"></i></div>
+                            <div class="report-panel report-top-panel">
+                                <div class="report-panel-head">
+                                    <span>Cartas destacadas</span>
+                                    <strong th:text="${#lists.size(report.topCards)}">0</strong>
                                 </div>
+                                <div class="report-top-list" th:if="${!#lists.isEmpty(report.topCards)}">
+                                    <div class="report-top-card" th:each="card : ${report.topCards}">
+                                        <div>
+                                            <strong th:text="${card.name}">Sol Ring</strong>
+                                            <span th:text="${card.detail}">CMM / 410 / No Foil</span>
+                                        </div>
+                                        <div class="report-top-meta">
+                                            <strong th:text="${'$ ' + card.totalSales}">$ 0</strong>
+                                            <span th:text="${card.soldQuantity + ' vendidas'}">0 vendidas</span>
+                                        </div>
+                                        <div class="report-bar report-top-bar"><i th:style="${'width:' + card.width}"></i></div>
+                                    </div>
+                                </div>
+                                <p class="report-empty-note" th:if="${#lists.isEmpty(report.topCards)}">Sin ventas de cartas.</p>
                             </div>
-                            <p class="report-empty-note" th:if="${#lists.isEmpty(report.topCards)}">Sin ventas de cartas.</p>
                         </div>
                     </div>
-                </article>
+                </details>
                 </section>
             </div>
         </div>

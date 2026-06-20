@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -109,6 +110,61 @@ class DashboardControllerVariantSearchTests {
         );
 
         assertThat(query).isEqualTo("Centurion of the Marked, set:PIP, num:345");
+    }
+
+    @Test
+    void parsesShortEtchedImportTokenBeforeCollector() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "parseImportLine",
+                String.class
+        );
+        method.setAccessible(true);
+
+        DashboardController.ParsedImportLine line = (DashboardController.ParsedImportLine) method.invoke(
+                controller,
+                "Mikaeus, the Unhallowed 516 *E*"
+        );
+
+        assertThat(line.name()).isEqualTo("Mikaeus, the Unhallowed");
+        assertThat(line.collectorNumber()).isEqualTo("516");
+        assertThat(line.foil()).isTrue();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void findsEtchedImportLineByCollectorNumber() throws Exception {
+        Method parseMethod = DashboardController.class.getDeclaredMethod(
+                "parseImportLine",
+                String.class
+        );
+        Method indexMethod = DashboardController.class.getDeclaredMethod(
+                "indexProductsByNameOrVariation",
+                List.class
+        );
+        Method searchMethod = DashboardController.class.getDeclaredMethod(
+                "searchImportedProducts",
+                Map.class,
+                DashboardController.ParsedImportLine.class
+        );
+        parseMethod.setAccessible(true);
+        indexMethod.setAccessible(true);
+        searchMethod.setAccessible(true);
+
+        CardKingdomProduct product = product("Mikaeus, the Unhallowed", "");
+        product.setSku("SLC-516");
+        product.setFoil("true");
+
+        DashboardController.ParsedImportLine line = (DashboardController.ParsedImportLine) parseMethod.invoke(
+                controller,
+                "Mikaeus, the Unhallowed 516 *E*"
+        );
+        Map<String, List<CardKingdomProduct>> index =
+                (Map<String, List<CardKingdomProduct>>) indexMethod.invoke(controller, List.of(product));
+
+        List<CardKingdomProduct> matches =
+                (List<CardKingdomProduct>) searchMethod.invoke(controller, index, line);
+
+        assertThat(matches).containsExactly(product);
     }
 
     @Test

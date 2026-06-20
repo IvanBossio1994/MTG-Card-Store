@@ -230,7 +230,10 @@
         </div>
 
         <div class="reservation-group-list" th:unless="${#lists.isEmpty(reservationGroups)}">
-            <details class="reservation-group-card" th:each="group : ${reservationGroups}">
+            <details class="reservation-group-card"
+                     th:each="group : ${reservationGroups}"
+                     th:id="${group.anchorId}"
+                     th:open="${group.open}">
                 <summary>
                     <span class="reservation-customer">
                         <strong th:text="${group.client}">Cliente</strong>

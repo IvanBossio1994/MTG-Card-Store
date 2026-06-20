@@ -78,6 +78,8 @@ public class DashboardController {
             Pattern.compile("^\\s*(.+?)\\s+x\\s*(\\d+)\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TRAILING_FOIL_PATTERN =
             Pattern.compile("(?i)\\s+\\*?(F|FOIL)\\*?\\s*$");
+    private static final Pattern TRAILING_ETCHED_PATTERN =
+            Pattern.compile("(?i)\\s+\\*?(E|ETCHED|ETCHED\\s+FOIL|FOIL\\s+ETCHED)\\*?\\s*$");
     private static final Pattern TRAILING_NONFOIL_PATTERN =
             Pattern.compile("(?i)\\s+\\*?(NF|NON[- ]?FOIL)\\*?\\s*$");
     private static final Pattern SET_CODE_PATTERN =
@@ -796,13 +798,17 @@ public class DashboardController {
     }
 
     @GetMapping("/reservas")
-    public String reservations(Model model, HttpServletRequest request) {
+    public String reservations(
+            @RequestParam(name = "openGroup", required = false) String openGroup,
+            Model model,
+            HttpServletRequest request
+    ) {
         if (!isMovementsUnlocked(request.getSession(false))) {
             addLockedReservationsPreviewModel(model, request);
             return "reservations";
         }
 
-        populateReservationsModel(model);
+        populateReservationsModel(model, openGroup);
         model.addAttribute("bulkRawList", "");
         model.addAttribute("bulkClient", "");
         model.addAttribute("bulkPhone", "");
@@ -841,7 +847,7 @@ public class DashboardController {
         model.addAttribute("bulkReadyCount", 0);
     }
 
-    private void populateReservationsModel(Model model) {
+    private void populateReservationsModel(Model model, String openGroup) {
         addBaseModel(model, "");
         model.addAttribute("reservationsLocked", false);
         model.addAttribute("reservationStatuses", reservationStatuses());
@@ -857,7 +863,7 @@ public class DashboardController {
                     priceList == null || priceList.getData() == null ? List.of() : priceList.getData()
             );
             model.addAttribute("reservations", reservations);
-            model.addAttribute("reservationGroups", reservationGroups(reservations));
+            model.addAttribute("reservationGroups", reservationGroups(reservations, openGroup));
             model.addAttribute("reservationCount", reservations.size());
             model.addAttribute("reservedCount", reservations.stream()
                     .filter(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
@@ -876,7 +882,7 @@ public class DashboardController {
         }
     }
 
-    private List<ReservationGroupView> reservationGroups(List<CardReservation> reservations) {
+    private List<ReservationGroupView> reservationGroups(List<CardReservation> reservations, String openGroup) {
         if (reservations == null || reservations.isEmpty()) {
             return List.of();
         }
@@ -910,6 +916,8 @@ public class DashboardController {
 
             groups.add(new ReservationGroupView(
                     entry.getKey(),
+                    reservationGroupAnchor(entry.getKey()),
+                    entry.getKey().equals(openGroup),
                     blankToDash(first.getClient()),
                     blankToDash(first.getPhone()),
                     blankToDash(first.getDni()),
@@ -929,6 +937,13 @@ public class DashboardController {
         }
 
         return groups;
+    }
+
+    private String reservationGroupAnchor(String groupKey) {
+        String safeKey = blankToEmpty(groupKey)
+                .replaceAll("[^A-Za-z0-9_-]", "-")
+                .replaceAll("-+", "-");
+        return "pedido-" + (safeKey.isBlank() ? "sin-cliente" : safeKey);
     }
 
     private List<CardReservation> consolidateDuplicateReservations(List<CardReservation> reservations) {
@@ -1908,7 +1923,7 @@ public class DashboardController {
             Model model,
             String error
     ) {
-        populateReservationsModel(model);
+        populateReservationsModel(model, null);
         model.addAttribute("bulkRawList", rawList == null ? "" : rawList);
         model.addAttribute("bulkClient", blankToEmpty(client));
         model.addAttribute("bulkPhone", blankToEmpty(phone));
@@ -3276,7 +3291,13 @@ public class DashboardController {
         return reports.entrySet()
                 .stream()
                 .sorted((first, second) -> compareMonthKeys(second.getKey(), first.getKey()))
-                .map(entry -> entry.getValue().toReport(entry.getKey(), monthLabel(entry.getKey()), maxSales, maxMovementQuantity))
+                .map(entry -> entry.getValue().toReport(
+                        entry.getKey(),
+                        monthLabel(entry.getKey()),
+                        YearMonth.now(APP_ZONE).toString().equals(entry.getKey()),
+                        maxSales,
+                        maxMovementQuantity
+                ))
                 .toList();
     }
 
@@ -4191,9 +4212,13 @@ public class DashboardController {
         Boolean foil = null;
         Matcher trailingNonfoil = TRAILING_NONFOIL_PATTERN.matcher(namePart);
         Matcher trailingFoil = TRAILING_FOIL_PATTERN.matcher(namePart);
+        Matcher trailingEtched = TRAILING_ETCHED_PATTERN.matcher(namePart);
         if (trailingNonfoil.find()) {
             foil = false;
             namePart = trailingNonfoil.replaceFirst("").trim();
+        } else if (trailingEtched.find()) {
+            foil = true;
+            namePart = trailingEtched.replaceFirst("").trim();
         } else if (trailingFoil.find()) {
             foil = true;
             namePart = trailingFoil.replaceFirst("").trim();
@@ -5156,6 +5181,7 @@ public class DashboardController {
 
             alerts.add(new PickupAlertView(
                     customerReservationKey(first),
+                    reservationGroupAnchor(customerReservationKey(first)),
                     pickupDate.format(MOVEMENT_DATE_FORMAT),
                     pickupDate.format(PICKUP_DISPLAY_DATE_FORMAT),
                     pickupDate.isBefore(today),
@@ -5850,6 +5876,7 @@ public class DashboardController {
     public record CashReportMonth(
             String key,
             String label,
+            boolean open,
             String totalSales,
             double totalSalesValue,
             int soldQuantity,
@@ -5932,12 +5959,14 @@ public class DashboardController {
         CashReportMonth toReport(
                 String key,
                 String label,
+                boolean open,
                 double maxSales,
                 int maxMovementQuantity
         ) {
             return new CashReportMonth(
                     key,
                     label,
+                    open,
                     formatCashTotal(salesTotal),
                     salesTotal,
                     soldQuantity,
@@ -6391,6 +6420,7 @@ public class DashboardController {
 
     public record PickupAlertView(
             String groupKey,
+            String anchorId,
             String pickupDate,
             String formattedPickupDate,
             boolean overdue,
@@ -6421,6 +6451,8 @@ public class DashboardController {
 
     public record ReservationGroupView(
             String key,
+            String anchorId,
+            boolean open,
             String client,
             String phone,
             String dni,
