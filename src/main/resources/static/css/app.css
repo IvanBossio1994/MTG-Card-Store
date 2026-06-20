@@ -4422,8 +4422,15 @@ tr.in-stock {
         height: 190px;
     }
 
+    .tutorial-overlay {
+        padding: 12px;
+        overflow-x: hidden;
+    }
+
     .tutorial-modal {
-        padding: 26px 20px;
+        width: min(100%, 320px);
+        max-width: calc(100vw - 24px);
+        padding: 26px 42px;
     }
 
     .tutorial-cat {

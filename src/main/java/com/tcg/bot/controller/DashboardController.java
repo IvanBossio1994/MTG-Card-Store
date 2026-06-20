@@ -4680,7 +4680,7 @@ public class DashboardController {
 
         if (!inventoryService.hasGoogleConnection()) {
             throw new IllegalStateException(
-                    "Inicia sesion con Google desde Configuracion antes de sincronizar."
+                    "Volve a iniciar sesion con Google antes de sincronizar."
             );
         }
     }
