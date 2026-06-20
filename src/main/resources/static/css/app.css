@@ -582,6 +582,17 @@ body.menu-open {
     line-height: 1.55;
 }
 
+.login-panel .alert {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 0 18px;
+}
+
+.alert.logout {
+    color: var(--red);
+    background: var(--red-soft);
+}
+
 .google-login-button {
     display: inline-flex;
     align-items: center;

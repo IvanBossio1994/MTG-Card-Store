@@ -32,6 +32,7 @@
             </p>
 
             <p class="alert error" th:if="${error}" th:text="${error}"></p>
+            <p class="alert logout" th:if="${logoutMessage}" th:text="${logoutMessage}"></p>
             <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
             <a class="google-login-button link-button"

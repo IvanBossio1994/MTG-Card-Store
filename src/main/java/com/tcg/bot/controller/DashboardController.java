@@ -4514,7 +4514,7 @@ public class DashboardController {
     public String logout(RedirectAttributes redirectAttributes) {
         try {
             googleOAuthService.disconnect();
-            redirectAttributes.addFlashAttribute("success", "Sesion de Google cerrada.");
+            redirectAttributes.addFlashAttribute("logoutMessage", "Sesion de Google cerrada.");
         } catch (Exception e) {
             log.warn("No se pudo cerrar sesion con Google.", e);
             redirectAttributes.addFlashAttribute("error", "No se pudo cerrar sesion: " + syncErrorMessage(e));
