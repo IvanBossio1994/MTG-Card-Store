@@ -31,4 +31,12 @@ class StoreSettingsServiceTests {
         assertThat(reset.isTutorialCompleted()).isFalse();
         assertThat(reset.isModulesTutorialCompleted()).isFalse();
     }
+
+    @Test
+    void startsWithBlankSpreadsheetWhenDefaultIsBlank() {
+        StoreSettingsService service = new StoreSettingsService("", tempDir.toString());
+
+        assertThat(service.getSpreadsheetId()).isBlank();
+        assertThat(service.hasSpreadsheetConfigured()).isFalse();
+    }
 }
