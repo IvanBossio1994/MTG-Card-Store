@@ -3106,13 +3106,16 @@ public class DashboardController {
                     .entrySet()
                     .stream()
                     .sorted((first, second) -> second.getKey().compareTo(first.getKey()))
-                    .map(dayEntry -> new CashDayGroup(
-                            dayEntry.getKey(),
-                            dayEntry.getValue(),
-                            formatCashTotal(totalSalesForEntries(dayEntry.getValue())),
-                            formatCashTotal(totalSalesForEntries(dayEntry.getValue())),
-                            dayEntry.getKey().equals(LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT))
-                    ))
+                    .map(dayEntry -> {
+                        String formattedTotal = formatCashTotal(totalSalesForEntries(dayEntry.getValue()));
+                        return new CashDayGroup(
+                                dayEntry.getKey(),
+                                dayEntry.getValue(),
+                                formattedTotal,
+                                formattedTotal,
+                                dayEntry.getKey().equals(LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT))
+                        );
+                    })
                     .toList();
 
             groups.add(new CashMonthGroup(

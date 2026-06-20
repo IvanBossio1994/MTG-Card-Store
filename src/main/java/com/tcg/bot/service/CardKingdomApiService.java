@@ -474,7 +474,6 @@ public class CardKingdomApiService {
         }
 
         if (normalized.startsWith("edicion:")
-                || normalized.startsWith("edicion:")
                 || normalized.startsWith("edition:")) {
             String setName = value.substring(value.indexOf(":") + 1).trim();
             if (!setName.isBlank()) {
@@ -484,7 +483,6 @@ public class CardKingdomApiService {
         }
 
         if (normalized.startsWith("num:")
-                || normalized.startsWith("numero:")
                 || normalized.startsWith("numero:")
                 || normalized.startsWith("collector:")) {
             String collector = value.substring(value.indexOf(":") + 1).trim();
