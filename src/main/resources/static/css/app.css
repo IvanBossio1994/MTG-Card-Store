@@ -652,7 +652,7 @@ body.menu-open {
 h1 {
     margin: 0 0 8px;
     font-size: 34px;
-    letter-spacing: -0.04em;
+    letter-spacing: 0;
 }
 
 h2 {
