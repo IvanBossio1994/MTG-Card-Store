@@ -28,20 +28,16 @@ public class InventoryService {
         googleSheetsService.prepareInventorySheet(products);
     }
 
-    public String getServiceAccountEmail() {
-        return googleSheetsService.getServiceAccountEmail();
+    public boolean hasOAuthClientConfigured() {
+        return googleSheetsService.hasOAuthClientConfigured();
     }
 
-    public boolean hasCredentialsConfigured() {
-        return googleSheetsService.hasCredentialsConfigured();
+    public boolean hasOAuthToken() {
+        return googleSheetsService.hasOAuthToken();
     }
 
-    public String getConfiguredCredentialsPath() {
-        return googleSheetsService.getConfiguredCredentialsPath();
-    }
-
-    public void clearServiceAccountEmailCache() {
-        googleSheetsService.clearServiceAccountEmailCache();
+    public boolean hasGoogleConnection() {
+        return googleSheetsService.hasOAuthClientConfigured() && googleSheetsService.hasOAuthToken();
     }
 
     public void updateInventoryRow(int rowIndex, InventoryCard card) throws Exception {

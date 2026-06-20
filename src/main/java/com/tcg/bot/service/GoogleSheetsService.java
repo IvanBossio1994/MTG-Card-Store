@@ -1,26 +1,14 @@
 package com.tcg.bot.service;
 
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.SheetsScopes;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CardReservation;
+import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.model.ReservationClient;
-import com.tcg.bot.model.CashRegisterEntry;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GoogleSheetsService {
 
-    private static final String APPLICATION_NAME = "TCG Inventory Bot";
     private static final String DEFAULT_INVENTORY_SHEET_NAME = "Inventario";
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
@@ -44,83 +31,33 @@ public class GoogleSheetsService {
     private static final String CLIENTS_SHEET_NAME = "Clientes";
 
     private final StoreSettingsService storeSettingsService;
-    private final String configuredCredentialsPath;
-    private final String configuredServiceAccountEmail;
-    private volatile String serviceAccountEmail;
+    private final GoogleOAuthService googleOAuthService;
     private final Map<String, SpreadsheetMetadata> spreadsheetMetadataCache = new ConcurrentHashMap<>();
     private final Map<String, SheetColumns> inventoryColumnsCache = new ConcurrentHashMap<>();
     private final Set<String> verifiedReservationHeaders = ConcurrentHashMap.newKeySet();
 
     public GoogleSheetsService(
             StoreSettingsService storeSettingsService,
-            @Value("${google.credentials.path:./data/google-credentials.json}") String configuredCredentialsPath,
-            @Value("${google.service-account-email:tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com}") String configuredServiceAccountEmail
+            GoogleOAuthService googleOAuthService
     ) {
         this.storeSettingsService = storeSettingsService;
-        this.configuredCredentialsPath = configuredCredentialsPath;
-        this.configuredServiceAccountEmail = configuredServiceAccountEmail;
+        this.googleOAuthService = googleOAuthService;
     }
 
     public Sheets getSheetsService() throws Exception {
-        GoogleCredentials credentials;
-
-        try (InputStream credentialsStream = openCredentialsStream()) {
-            credentials = GoogleCredentials
-                    .fromStream(credentialsStream)
-                    .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
+        if (googleOAuthService == null || !googleOAuthService.isReady()) {
+            throw new IllegalStateException("Inicia sesion con Google desde Configuracion antes de sincronizar.");
         }
 
-        return new Sheets.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                new HttpCredentialsAdapter(credentials)
-        )
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+        return googleOAuthService.getSheetsService();
     }
 
-    public String getServiceAccountEmail() {
-        if (serviceAccountEmail != null) {
-            return serviceAccountEmail;
-        }
-
-        try (InputStream credentialsStream = openCredentialsStream()) {
-            JsonObject credentials = JsonParser
-                    .parseString(new String(credentialsStream.readAllBytes(), StandardCharsets.UTF_8))
-                    .getAsJsonObject();
-
-            serviceAccountEmail = credentials.has("client_email")
-                    ? credentials.get("client_email").getAsString()
-                    : configuredServiceAccountEmail;
-            return serviceAccountEmail;
-        } catch (Exception e) {
-            serviceAccountEmail = configuredServiceAccountEmail;
-            return serviceAccountEmail;
-        }
+    public boolean hasOAuthClientConfigured() {
+        return googleOAuthService != null && googleOAuthService.hasOAuthClientConfigured();
     }
 
-    public boolean hasCredentialsConfigured() {
-        String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-
-        if (externalCredentialsExists(environmentCredentialsPath)) {
-            return true;
-        }
-
-        if (externalCredentialsExists(configuredCredentialsPath)) {
-            return true;
-        }
-
-        return getClass()
-                .getClassLoader()
-                .getResource("credentials/google-credentials.json") != null;
-    }
-
-    public String getConfiguredCredentialsPath() {
-        return configuredCredentialsPath;
-    }
-
-    public void clearServiceAccountEmailCache() {
-        serviceAccountEmail = null;
+    public boolean hasOAuthToken() {
+        return googleOAuthService != null && googleOAuthService.hasOAuthToken();
     }
 
     private String cacheKey() {
@@ -181,54 +118,6 @@ public class GoogleSheetsService {
         spreadsheetMetadataCache.remove(cacheKey());
         inventoryColumnsCache.remove(inventoryColumnsCacheKey());
         verifiedReservationHeaders.remove(cacheKey());
-    }
-
-    private InputStream openCredentialsStream() throws Exception {
-        String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-
-        InputStream externalCredentials = openExternalCredentials(environmentCredentialsPath);
-        if (externalCredentials != null) {
-            return externalCredentials;
-        }
-
-        externalCredentials = openExternalCredentials(configuredCredentialsPath);
-        if (externalCredentials != null) {
-            return externalCredentials;
-        }
-
-        InputStream bundledCredentials = getClass()
-                .getClassLoader()
-                .getResourceAsStream("credentials/google-credentials.json");
-
-        if (bundledCredentials != null) {
-            return bundledCredentials;
-        }
-
-        throw new RuntimeException(
-                "No se encontro google-credentials.json. Colocalo en " + configuredCredentialsPath + " o configura GOOGLE_APPLICATION_CREDENTIALS."
-        );
-    }
-
-    private boolean externalCredentialsExists(String credentialsPath) {
-        if (credentialsPath == null || credentialsPath.isBlank()) {
-            return false;
-        }
-
-        return Files.exists(Path.of(credentialsPath.trim()));
-    }
-
-    private InputStream openExternalCredentials(String credentialsPath) throws Exception {
-        if (credentialsPath == null || credentialsPath.isBlank()) {
-            return null;
-        }
-
-        Path path = Path.of(credentialsPath.trim());
-
-        if (!Files.exists(path)) {
-            return null;
-        }
-
-        return Files.newInputStream(path);
     }
 
     public List<InventoryCard> getInventoryCards() throws Exception {
@@ -2053,12 +1942,12 @@ public class GoogleSheetsService {
                         "Cantidad",
                         "Nombre",
                         "Nombre del set",
-                        "Código de set",
-                        "Número de carta",
+                        "Codigo de set",
+                        "Numero de carta",
                         "Printing",
                         "Stock anterior",
                         "Stock nuevo",
-                        "Acción"
+                        "Accion"
                 )));
 
         sheetsService.spreadsheets().values()
@@ -2498,11 +2387,11 @@ public class GoogleSheetsService {
 
             Set<String> expanded = new LinkedHashSet<>(aliases);
             for (String alias : aliases) {
-                expanded.add(alias.replace("Codigo", "Código"));
-                expanded.add(alias.replace("Numero", "Número"));
-                expanded.add(alias.replace("Condicion", "Condición"));
-                expanded.add(alias.replace("Accion", "Acción"));
-                expanded.add(alias.replace("Edicion", "Edición"));
+                expanded.add(alias.replace("Codigo", "Codigo"));
+                expanded.add(alias.replace("Numero", "Numero"));
+                expanded.add(alias.replace("Condicion", "Condicion"));
+                expanded.add(alias.replace("Accion", "Accion"));
+                expanded.add(alias.replace("Edicion", "Edicion"));
             }
 
             return List.copyOf(expanded);

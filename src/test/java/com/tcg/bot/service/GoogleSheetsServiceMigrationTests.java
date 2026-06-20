@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GoogleSheetsServiceMigrationTests {
 
-    private final GoogleSheetsService service = new GoogleSheetsService(null, "", "");
+    private final GoogleSheetsService service = new GoogleSheetsService(null, null);
 
     @Test
     void normalizesImportedConditionToAppCodes() throws Exception {

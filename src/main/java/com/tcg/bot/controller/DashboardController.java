@@ -8,6 +8,7 @@ import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.model.ReservationClient;
 import com.tcg.bot.model.ReservationConditionStock;
 import com.tcg.bot.service.CardKingdomApiService;
+import com.tcg.bot.service.GoogleOAuthService;
 import com.tcg.bot.service.InventoryService;
 import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.PricingSettingsService;
@@ -64,6 +65,7 @@ public class DashboardController {
 
     private final InventoryService inventoryService;
     private final CardKingdomApiService cardKingdomApiService;
+    private final GoogleOAuthService googleOAuthService;
     private final PriceComparisonService priceComparisonService;
     private final PricingSettingsService pricingSettingsService;
     private final StoreSettingsService storeSettingsService;
@@ -113,12 +115,14 @@ public class DashboardController {
     public DashboardController(
             InventoryService inventoryService,
             CardKingdomApiService cardKingdomApiService,
+            GoogleOAuthService googleOAuthService,
             PriceComparisonService priceComparisonService,
             PricingSettingsService pricingSettingsService,
             StoreSettingsService storeSettingsService
     ) {
         this.inventoryService = inventoryService;
         this.cardKingdomApiService = cardKingdomApiService;
+        this.googleOAuthService = googleOAuthService;
         this.priceComparisonService = priceComparisonService;
         this.pricingSettingsService = pricingSettingsService;
         this.storeSettingsService = storeSettingsService;
@@ -153,8 +157,8 @@ public class DashboardController {
 
     @Scheduled(fixedDelayString = "PT1H2M", initialDelayString = "PT1H2M")
     public void synchronizeInventoryAutomatically() {
-        if (!storeSettingsService.hasSpreadsheetConfigured() || !inventoryService.hasCredentialsConfigured()) {
-            log.info("Sincronizacion automatica omitida: faltan configuracion o credenciales.");
+        if (!storeSettingsService.hasSpreadsheetConfigured() || !inventoryService.hasGoogleConnection()) {
+            log.info("Sincronizacion automatica omitida: faltan configuracion o inicio de sesion con Google.");
             return;
         }
 
@@ -177,6 +181,10 @@ public class DashboardController {
             HttpServletRequest request,
             Model model
     ) {
+        if (!inventoryService.hasOAuthToken()) {
+            return "redirect:/login";
+        }
+
         addBaseModel(model, query);
         boolean reservationsEnabled = reservationsModuleEnabled(request);
         addPickupAlerts(model, reservationsEnabled);
@@ -253,6 +261,16 @@ public class DashboardController {
         }
 
         return "dashboard";
+    }
+
+    @GetMapping("/login")
+    public String login(Model model) {
+        if (inventoryService.hasOAuthToken()) {
+            return "redirect:/";
+        }
+
+        addBaseModel(model, "");
+        return "login";
     }
 
     private SearchFields dashboardSearchFields(String query, String setFilter, String numberFilter) {
@@ -793,7 +811,7 @@ public class DashboardController {
             return "redirect:" + safeProtectedAccessReturnPath(returnTo);
         }
 
-        redirectAttributes.addFlashAttribute("accessError", "Contraseña incorrecta.");
+        redirectAttributes.addFlashAttribute("accessError", "Contrasena incorrecta.");
         return "redirect:" + safeProtectedAccessReturnPath(returnTo);
     }
 
@@ -4327,7 +4345,6 @@ public class DashboardController {
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
-            @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
             @RequestHeader(name = "X-Requested-With", required = false) String requestedWith,
             RedirectAttributes redirectAttributes
@@ -4337,7 +4354,6 @@ public class DashboardController {
         try {
             storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
-            storeSettingsService.validateGoogleCredentials(googleCredentials);
             pricingSettingsService.update(ckDollarRate, roundMultiple);
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
 
@@ -4345,8 +4361,6 @@ public class DashboardController {
                 storeSettingsService.removeLogo();
             }
             storeSettingsService.saveLogo(storeLogo);
-            storeSettingsService.saveGoogleCredentials(googleCredentials);
-            inventoryService.clearServiceAccountEmailCache();
 
             try {
                 if (synchronizeInventory(false)) {
@@ -4435,6 +4449,86 @@ public class DashboardController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/configuracion/google/oauth/iniciar")
+    public String startGoogleOAuth(HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        try {
+            if (!googleOAuthService.hasOAuthClientConfigured()) {
+                redirectAttributes.addFlashAttribute(
+                        "error",
+                        "Esta build todavia no tiene configurado el inicio de sesion con Google."
+                );
+                return "redirect:/configuracion";
+            }
+
+            return "redirect:" + googleOAuthService.authorizationUrl(googleOAuthRedirectUri(request));
+        } catch (Exception e) {
+            log.warn("No se pudo iniciar OAuth con Google.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo iniciar la conexion con Google: " + syncErrorMessage(e));
+            return "redirect:/configuracion";
+        }
+    }
+
+    @GetMapping("/configuracion/google/oauth/callback")
+    public String googleOAuthCallback(
+            @RequestParam(name = "code", required = false) String code,
+            @RequestParam(name = "error", required = false) String error,
+            HttpServletRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (error != null && !error.isBlank()) {
+            redirectAttributes.addFlashAttribute("error", "Google no autorizo el acceso: " + error);
+            return "redirect:/configuracion";
+        }
+
+        if (code == null || code.isBlank()) {
+            redirectAttributes.addFlashAttribute("error", "Google no devolvio un codigo de autorizacion.");
+            return "redirect:/configuracion";
+        }
+
+        try {
+            googleOAuthService.exchangeCode(code, googleOAuthRedirectUri(request));
+            redirectAttributes.addFlashAttribute("success", "Google conectado. Ya podes usar la app.");
+        } catch (Exception e) {
+            log.warn("No se pudo completar OAuth con Google.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo completar la conexion con Google: " + syncErrorMessage(e));
+            return "redirect:/login";
+        }
+
+        return "redirect:/";
+    }
+
+    @PostMapping("/configuracion/google/oauth/desconectar")
+    public String disconnectGoogleOAuth(RedirectAttributes redirectAttributes) {
+        try {
+            googleOAuthService.disconnect();
+            redirectAttributes.addFlashAttribute("success", "Google desconectado de esta instalacion.");
+        } catch (Exception e) {
+            log.warn("No se pudo desconectar Google.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo desconectar Google: " + syncErrorMessage(e));
+        }
+
+        return "redirect:/configuracion";
+    }
+
+    @PostMapping("/logout")
+    public String logout(RedirectAttributes redirectAttributes) {
+        try {
+            googleOAuthService.disconnect();
+            redirectAttributes.addFlashAttribute("success", "Sesion de Google cerrada.");
+        } catch (Exception e) {
+            log.warn("No se pudo cerrar sesion con Google.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo cerrar sesion: " + syncErrorMessage(e));
+        }
+
+        return "redirect:/login";
+    }
+
+    private String googleOAuthRedirectUri(HttpServletRequest request) {
+        int port = request.getServerPort();
+        String portPart = port == 80 || port == 443 ? "" : ":" + port;
+        return request.getScheme() + "://" + request.getServerName() + portPart + "/configuracion/google/oauth/callback";
+    }
+
     @PostMapping("/configuracion/precio")
     public String updatePricingRule(
             @RequestParam("ckDollarRate") double ckDollarRate,
@@ -4509,7 +4603,7 @@ public class DashboardController {
             }
 
             if (statusCode == 400 && details != null && details.toLowerCase().contains("unable to parse range")) {
-                return "Google no pudo leer la pestaña configurada. Revisa el nombre de la pestaña en Configuracion.";
+                return "Google no pudo leer la pestana configurada. Revisa el nombre de la pestana en Configuracion.";
             }
 
             if (details != null && !details.isBlank()) {
@@ -4581,10 +4675,9 @@ public class DashboardController {
             );
         }
 
-        if (!inventoryService.hasCredentialsConfigured()) {
+        if (!inventoryService.hasGoogleConnection()) {
             throw new IllegalStateException(
-                    "Falta google-credentials.json. Copialo en " + inventoryService.getConfiguredCredentialsPath()
-                            + " o configura GOOGLE_APPLICATION_CREDENTIALS."
+                    "Inicia sesion con Google desde Configuracion antes de sincronizar."
             );
         }
     }
@@ -5113,11 +5206,9 @@ public class DashboardController {
         model.addAttribute("roundMultiple", pricingSettingsService.getRoundMultiple());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
-        model.addAttribute("sheetEditorEmail", inventoryService.getServiceAccountEmail());
         model.addAttribute("sheetConfigured", storeSettingsService.hasSpreadsheetConfigured());
-        model.addAttribute("credentialsConfigured", inventoryService.hasCredentialsConfigured());
-        model.addAttribute("credentialsPath", inventoryService.getConfiguredCredentialsPath());
-        model.addAttribute("localCredentialsConfigured", storeSettingsService.hasGoogleCredentials());
+        model.addAttribute("googleOAuthClientConfigured", inventoryService.hasOAuthClientConfigured());
+        model.addAttribute("googleOAuthConnected", inventoryService.hasOAuthToken());
         model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
     }
 

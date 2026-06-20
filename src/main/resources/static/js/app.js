@@ -460,8 +460,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (importConfirmForm.dataset.reservationDecision === "done") {
                 showLoadingOverlay(
                     importConfirmForm,
-                    "Añadiendo...",
-                    "Añadiendo al stock",
+                    "Anadiendo...",
+                    "Anadiendo al stock",
                     "Guardando las cartas seleccionadas en Google Sheet..."
                 );
                 return;
@@ -505,7 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const separate = await confirmWithAppDialog({
                     dataset: {
                         confirmTitle: "Reservas pendientes",
-                        confirmMessage: `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. ¿Queres separar esas unidades para reservas antes de sumar stock?`
+                        confirmMessage: `Hay ${pendingCount} reserva(s) pendiente(s) entre las cartas seleccionadas. Queres separar esas unidades para reservas antes de sumar stock?`
                     }
                 });
                 if (honorReservationsInput) {
@@ -518,8 +518,8 @@ document.addEventListener("DOMContentLoaded", () => {
             importConfirmForm.dataset.reservationDecision = "done";
             showLoadingOverlay(
                 importConfirmForm,
-                "Añadiendo...",
-                "Añadiendo al stock",
+                "Anadiendo...",
+                "Anadiendo al stock",
                 "Guardando las cartas seleccionadas en Google Sheet..."
             );
             importConfirmForm.submit();
@@ -1461,18 +1461,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const defaultLogo = "/images/tcg-default-logo.png";
 
-    const credentialsInput = document.getElementById("googleCredentials");
-    const credentialsFileName = document.getElementById("credentials-file-name");
-
-    if (credentialsInput && credentialsFileName) {
-        credentialsInput.addEventListener("change", () => {
-            const file = credentialsInput.files[0];
-            credentialsFileName.textContent = file
-                ? file.name
-                : "Archivo .json privado que te pasan por fuera de GitHub";
-        });
-    }
-
     if (logoInput && logoFileName && logoPreview) {
         logoInput.addEventListener("change", () => {
             const removeLogoInput = document.getElementById("removeLogo");
@@ -2003,7 +1991,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if ((!rowIndex || rowIndex === "0") && !increase) {
                         showToast(
-                            "Primero agregá esta impresión al Sheet",
+                            "Primero agrega esta impresion al Sheet",
                             "error"
                         );
                         return;

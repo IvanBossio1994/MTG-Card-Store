@@ -249,7 +249,7 @@
                           data-loading-title="Eliminando reserva"
                           data-loading-message="Quitando el pedido y devolviendo cartas reservadas al stock..."
                           data-confirm-title="Eliminar reserva"
-                          data-confirm-message="¿Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
+                          data-confirm-message="&iquest;Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
                         <input type="hidden" name="groupKey" th:value="${group.key}">
                         <button class="reservation-delete-button" type="submit" aria-label="Eliminar reserva">&times;</button>
                     </form>
@@ -278,7 +278,7 @@
                                     <input class="reservation-pickup-edit-input" name="pickupDate" type="date"
                                            th:value="${group.pickupDateRaw}" required>
                                     <button class="reservation-pickup-edit-button" type="button"
-                                            aria-label="Editar fecha de retiro" title="Editar fecha de retiro">✎</button>
+                                            aria-label="Editar fecha de retiro" title="Editar fecha de retiro">&#9998;</button>
                                 </form>
                             </div>
                         </div>
@@ -418,7 +418,7 @@
             <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
                   data-loading-button="Desbloqueando..."
                   data-loading-title="Verificando acceso"
-                  data-loading-message="Revisando la contraseña y abriendo reservas...">
+                  data-loading-message="Revisando la contrasena y abriendo reservas...">
                 <input type="hidden" name="returnTo" th:value="${returnTo}">
                 <div class="movement-access-field">
                     <label for="reservation-password">Clave de acceso</label>

@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DashboardControllerVariantSearchTests {
 
     private final DashboardController controller =
-            new DashboardController(null, null, null, null, null);
+            new DashboardController(null, null, null, null, null, null);
 
     @Test
     void allowsReservationsAsProtectedAccessReturnPath() throws Exception {

@@ -35,7 +35,7 @@ public class CardKingdomApiService {
 
     private final StoreSettingsService storeSettingsService;
 
-    // ---- Duración cache ----
+    // ---- Duracion cache ----
     private static final long CACHE_HOURS = 1;
     private volatile CachedPriceList cachedPriceList;
 
@@ -90,7 +90,7 @@ public class CardKingdomApiService {
                                 Instant.now()
                         ).toHours();
 
-                // ---- Cache válida ----
+                // ---- Cache valida ----
                 if (hoursOld < CACHE_HOURS) {
 
                     CachedPriceList memoryCache = cachedPriceList;
@@ -309,7 +309,7 @@ public class CardKingdomApiService {
     }
 
     /**
-     * Busca múltiples coincidencias.
+     * Busca multiples coincidencias.
      */
     public java.util.List<CardKingdomProduct> searchProducts(String input) {
 
@@ -474,7 +474,7 @@ public class CardKingdomApiService {
         }
 
         if (normalized.startsWith("edicion:")
-                || normalized.startsWith("edición:")
+                || normalized.startsWith("edicion:")
                 || normalized.startsWith("edition:")) {
             String setName = value.substring(value.indexOf(":") + 1).trim();
             if (!setName.isBlank()) {
@@ -485,7 +485,7 @@ public class CardKingdomApiService {
 
         if (normalized.startsWith("num:")
                 || normalized.startsWith("numero:")
-                || normalized.startsWith("número:")
+                || normalized.startsWith("numero:")
                 || normalized.startsWith("collector:")) {
             String collector = value.substring(value.indexOf(":") + 1).trim();
             if (!collector.isBlank()) {

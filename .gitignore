@@ -44,7 +44,7 @@ build/
 
 # Datos locales y credenciales
 /data/
-google-credentials.json
+google-oauth-token/
 *credentials*.json
 *service-account*.json
 ck-pricelist.json

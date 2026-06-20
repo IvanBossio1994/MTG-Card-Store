@@ -15,7 +15,7 @@
         <div class="hero-copy">
             <p class="eyebrow">Inventario local</p>
             <h1>Buscar cartas en inventario</h1>
-            <p class="supporting">Consultá Card Kingdom y detectá las impresiones que ya tenés cargadas.</p>
+            <p class="supporting">Consulta Card Kingdom y detecta las impresiones que ya tenes cargadas.</p>
         </div>
     </section>
 
@@ -73,31 +73,31 @@
     <section class="panel search-panel">
         <form class="search-form" method="get" th:action="@{/}">
             <label for="q">Buscar carta</label>
-            <p class="search-help">Busca la carta deseada con "Nombre, Set/Código o Número".</p>
+            <p class="search-help">Busca la carta deseada con "Nombre, Set/Codigo o Numero".</p>
             <div class="search-control" th:classappend="${searchFormatError} ? ' invalid' : ''">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M10.5 3a7.5 7.5 0 1 0 4.75 13.3l4.22 4.23 1.06-1.06-4.23-4.22A7.5 7.5 0 0 0 10.5 3Zm0 1.5a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z"/>
                 </svg>
                 <div class="search-fields">
                     <div class="search-field search-field-name">
-                        <span>Nombre/Variación</span>
+                        <span>Nombre/Variacion</span>
                         <input id="q" name="q" type="text" th:value="${query}"
                                th:attr="aria-invalid=${searchFormatError != null}"
-                               placeholder="Nombre o variación, ej: Sol ring"
+                               placeholder="Nombre o variacion, ej: Sol ring"
                                autocomplete="off"
                                aria-autocomplete="list"
                                aria-controls="card-suggestions">
                         <div id="card-suggestions" class="autocomplete-list" role="listbox" hidden></div>
                     </div>
                     <div class="search-field">
-                        <span>Set/Código</span>
+                        <span>Set/Codigo</span>
                         <input id="set" name="set" type="text" th:value="${searchSet}"
-                               placeholder="Set/Código, ej: Commander Masters o CMM">
+                               placeholder="Set/Codigo, ej: Commander Masters o CMM">
                     </div>
                     <div class="search-field search-field-number">
-                        <span>Número</span>
+                        <span>Numero</span>
                         <input id="number" name="number" type="text" th:value="${searchNumber}"
-                               placeholder="Número, ej: 410">
+                               placeholder="Numero, ej: 410">
                     </div>
                 </div>
                 <button class="primary-button" type="submit">Buscar</button>
@@ -105,8 +105,8 @@
                    th:if="${(query != null && query != '') || (searchSet != null && searchSet != '') || (searchNumber != null && searchNumber != '')}"
                    th:href="@{/}"
                    data-clear-search
-                   aria-label="Borrar búsqueda"
-                   title="Borrar búsqueda">
+                   aria-label="Borrar busqueda"
+                   title="Borrar busqueda">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M14.5 3.5 21 10l-2 2-6.5-6.5 2-2Z"/>
                         <path d="M11.8 6.2 17.8 12.2 10.8 19.2H4.5L3 17.7l8.8-11.5Z"/>
@@ -178,7 +178,7 @@
                                     class="stock-button decrease"
                                     th:attr="data-row=${result.rowIndex}"
                                     th:disabled="${result.rowIndex <= 0}"
-                                    th:title="${result.rowIndex <= 0 ? 'Esta impresión todavía no existe en tu Sheet' : (result.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
+                                    th:title="${result.rowIndex <= 0 ? 'Esta impresion todavia no existe en tu Sheet' : (result.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                 -
                             </button>
                             <span class="stock-value"
@@ -188,7 +188,7 @@
                             <button type="button"
                                     class="stock-button increase"
                                     th:attr="data-row=${result.rowIndex},data-condition=${result.selectedCondition},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
-                                    th:title="${result.rowIndex <= 0 ? 'Agregar esta impresión al Sheet' : 'Agregar una unidad'}">
+                                    th:title="${result.rowIndex <= 0 ? 'Agregar esta impresion al Sheet' : 'Agregar una unidad'}">
                                 +
                             </button>
                         </div>
@@ -230,7 +230,7 @@
                                 class="secondary-button add-reservation-button"
                                 th:if="${#lists.isEmpty(result.conditionStocks)}"
                                 th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${result.rowIndex},data-stock-quantity=${result.stockQuantity}">
-                            Añadir a pedido
+                            Anadir a pedido
                         </button>
                         <span class="muted-cell" th:if="${!#lists.isEmpty(result.conditionStocks)}">Elegir condicion</span>
                     </td>
@@ -242,7 +242,7 @@
                     th:id="${'search-stock-options-' + iter.index}">
                     <td th:colspan="${reservationsUnlocked ? 10 : 9}">
                         <div class="version-options-header">
-                            <span>Stock en Sheet por condición</span>
+                            <span>Stock en Sheet por condicion</span>
                             <strong th:text="${#lists.size(result.conditionStocks) + ' condiciones'}">0 condiciones</strong>
                         </div>
                         <div class="version-option-grid inventory-condition-grid">
@@ -284,7 +284,7 @@
                                         class="secondary-button add-reservation-button condition-reservation-button"
                                         th:if="${reservationsUnlocked}"
                                         th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
-                                    Añadir a pedido
+                                    Anadir a pedido
                                 </button>
                             </div>
                         </div>
@@ -292,7 +292,7 @@
                 </tr>
                 </th:block>
                 <tr th:if="${#lists.isEmpty(results)}">
-                    <td class="empty" th:colspan="${reservationsUnlocked ? 10 : 9}">No se encontraron cartas para esa búsqueda.</td>
+                    <td class="empty" th:colspan="${reservationsUnlocked ? 10 : 9}">No se encontraron cartas para esa busqueda.</td>
                 </tr>
                 </tbody>
             </table>
@@ -303,7 +303,7 @@
         <section class="panel update-panel">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Sincronización con la app</p>
+                    <p class="eyebrow">Sincronizacion con la app</p>
                     <h2>Sheet sincronizado</h2>
                     <p class="section-meta"
                        th:text="${priceListLastUpdated != null && priceListLastUpdated != '' ? 'Lista de precios actualizada: ' + priceListLastUpdated : 'Lista de precios sin actualizar todavia'}">
@@ -317,12 +317,11 @@
             <div class="placeholder" th:unless="${updatePerformed == true}">
                 <strong class="sync-inventory-title">Sincroniza el Sheet con la app</strong>
                 <p class="sync-inventory-description">Lee tu Google Sheet, lo sincroniza con la app, ordena el inventario y recalcula precios con Card Kingdom segun tu regla de negocio. Si el Sheet esta vacio, la app lo inicializa sola.</p>
-                <div class="setup-notice" th:if="${sheetConfigured == false || credentialsConfigured == false}">
+                <div class="setup-notice" th:if="${sheetConfigured == false || googleOAuthConnected == false}">
                     <strong>Configuracion pendiente</strong>
-                <p>Antes de sincronizar, adjunta google-credentials.json y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
+                    <p>Antes de sincronizar, conecta Google desde Configuracion y pega el enlace o ID de tu Sheet.</p>
                     <p th:if="${sheetConfigured == false}">Falta agregar el Google Sheet en Configuracion.</p>
-                    <p th:if="${credentialsConfigured == false}">Falta el archivo de credenciales local: <code th:text="${credentialsPath}">./data/google-credentials.json</code></p>
-                    <p>Compartir el Sheet como <strong>Editor</strong> con: <code class="inline-code" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code></p>
+                    <p th:if="${googleOAuthConnected == false}">Falta iniciar sesion con el Gmail que tiene acceso al Sheet.</p>
                     <a class="secondary-button link-button" th:href="@{/configuracion}">Ir a Configuracion</a>
                 </div>
                 <form id="update-form" class="sync-inventory-form" method="post" th:action="@{/actualizar}">
@@ -357,7 +356,7 @@
                                         class="stock-button decrease"
                                         th:attr="data-row=${update.rowIndex}"
                                         th:disabled="${update.rowIndex <= 0}"
-                                        th:title="${update.rowIndex <= 0 ? 'Esta impresión todavía no existe en tu Sheet' : (update.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
+                                        th:title="${update.rowIndex <= 0 ? 'Esta impresion todavia no existe en tu Sheet' : (update.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                     -
                                 </button>
                             <span class="stock-value"
@@ -368,7 +367,7 @@
                                         class="stock-button increase"
                                         th:attr="data-row=${update.rowIndex},data-condition=${update.condition},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"
                                         th:disabled="${update.rowIndex <= 0}"
-                                        th:title="${update.rowIndex <= 0 ? 'Esta impresión todavía no existe en tu Sheet' : 'Agregar una unidad'}">
+                                        th:title="${update.rowIndex <= 0 ? 'Esta impresion todavia no existe en tu Sheet' : 'Agregar una unidad'}">
                                     +
                                 </button>
                             </div>
@@ -382,7 +381,7 @@
                                         th:if="${!#lists.isEmpty(update.conditionStocks)}"
                                         th:attr="aria-controls=${'synced-stock-options-' + iter.index}"
                                         aria-expanded="false"
-                                        aria-label="Ver stock por condición"></button>
+                                        aria-label="Ver stock por condicion"></button>
                             </div>
                         </td>
                         <td class="set-name-cell" th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
@@ -403,7 +402,7 @@
                                     class="secondary-button add-reservation-button"
                                     th:if="${#lists.isEmpty(update.conditionStocks)}"
                                     th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.displayStockQuantity()}">
-                                Añadir a pedido
+                                Anadir a pedido
                             </button>
                             <span class="muted-cell" th:if="${!#lists.isEmpty(update.conditionStocks)}">Elegir condicion</span>
                         </td>
@@ -413,7 +412,7 @@
                         th:id="${'synced-stock-options-' + iter.index}">
                         <td th:colspan="${reservationsUnlocked ? 9 : 8}">
                             <div class="version-options-header">
-                                <span>Stock en Sheet por condición</span>
+                                <span>Stock en Sheet por condicion</span>
                                 <strong th:text="${#lists.size(update.conditionStocks) + ' condiciones'}">0 condiciones</strong>
                             </div>
                             <div class="version-option-grid inventory-condition-grid">
@@ -455,7 +454,7 @@
                                             class="secondary-button add-reservation-button condition-reservation-button"
                                             th:if="${reservationsUnlocked}"
                                             th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
-                                        Añadir a pedido
+                                        Anadir a pedido
                                     </button>
                                 </div>
                             </div>
@@ -467,9 +466,9 @@
             </div>
             <nav class="table-pagination" data-table-pagination="synced-table"
                  th:if="${updatePerformed == true && updates != null && #lists.size(updates) > 100}"
-                 aria-label="Paginación de tabla sincronizada">
+                 aria-label="Paginacion de tabla sincronizada">
                 <button class="table-pagination-button" type="button" data-page-action="prev">Anterior</button>
-                <span class="table-pagination-status">Página 1</span>
+                <span class="table-pagination-status">Pagina 1</span>
                 <button class="table-pagination-button" type="button" data-page-action="next">Siguiente</button>
             </nav>
         </section>
@@ -482,9 +481,9 @@
         <div class="modal-head">
             <div>
                 <p class="eyebrow">Pedido</p>
-                <h2>Añadir a pedido</h2>
+                <h2>Anadir a pedido</h2>
             </div>
-            <button class="modal-close" type="button" aria-label="Cerrar">×</button>
+            <button class="modal-close" type="button" aria-label="Cerrar">x</button>
         </div>
 
         <p id="reservation-modal-card-name" class="modal-context">Carta seleccionada</p>
@@ -550,7 +549,7 @@
                 <p class="eyebrow">Reserva pendiente</p>
                 <h2>Esta carta estaba pedida</h2>
             </div>
-            <button class="modal-close" type="button" aria-label="Cerrar" data-pending-reservation-cancel>×</button>
+            <button class="modal-close" type="button" aria-label="Cerrar" data-pending-reservation-cancel>x</button>
         </div>
 
         <p id="pending-reservation-card-name" class="modal-context">Carta seleccionada</p>
@@ -573,11 +572,11 @@
         <button class="tutorial-close"
                 type="button"
                 data-stock-delete-cancel
-                aria-label="Cerrar">×</button>
+                aria-label="Cerrar">x</button>
         <p class="eyebrow">Confirmar borrado</p>
         <h2 id="stock-delete-title" data-stock-delete-title>Eliminar carta del Sheet</h2>
         <div class="tutorial-copy">
-            <p>Esta carta ya esta en 0. Si continuas, se va a eliminar tambien de la pestaña Inventario del Google Sheet.</p>
+            <p>Esta carta ya esta en 0. Si continuas, se va a eliminar tambien de la pestana Inventario del Google Sheet.</p>
         </div>
         <div class="tutorial-actions app-confirm-actions">
             <button class="secondary-button" type="button" data-stock-delete-cancel>Cancelar</button>
@@ -590,7 +589,7 @@
      th:if="${showTutorial}">
 
     <div class="tutorial-modal">
-        <button class="tutorial-close" type="button" aria-label="Cerrar tutorial">×</button>
+        <button class="tutorial-close" type="button" aria-label="Cerrar tutorial">x</button>
         <button id="tutorial-prev"
                 class="tutorial-side-button tutorial-side-prev"
                 type="button"
@@ -609,10 +608,9 @@
             <h2>Conecta tu tienda</h2>
 
             <div class="tutorial-copy">
-                <p>En "Configuracion" cargas nombre, logo, credenciales privadas de Google, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
-                <p>El Sheet puede estar vacio o ya tener cartas. Si tiene una pestaña existente, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas del inventario sin pisar la original.</p>
-                <p>Antes de sincronizar, adjunta el google-credentials.json de esta instalacion y comparti tu Google Sheet como <strong>Editor</strong> con este mail:</p>
-                <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
+                <p>En "Configuracion" cargas nombre, logo, conectas Google, elegis carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
+                <p>El Sheet puede estar vacio o ya tener cartas. Si tiene una pestana existente, la app busca nombres en cualquier columna y crea una pestana nueva con las columnas del inventario sin pisar la original.</p>
+                <p>Antes de sincronizar, inicia sesion con el Gmail que tiene acceso al Sheet.</p>
             </div>
 
             <div class="tutorial-progress" aria-label="Paso 1 de 6">
@@ -628,14 +626,14 @@
         <div class="tutorial-step">
             <img class="tutorial-cat tutorial-cat-teacher"
                  th:src="@{/images/tutorial-cat-teacher.png}"
-                 alt="Gatito explicando sincronización">
+                 alt="Gatito explicando sincronizacion">
 
             <p class="eyebrow">Paso 2</p>
             <h2>Sincroniza una vez al abrir</h2>
 
             <div class="tutorial-copy">
-                <p>Sincronizar inventario lee el Sheet, prepara la pestaña de la app, ordena el inventario y recalcula precios con Card Kingdom.</p>
-                <p>Después de sincronizar, el botón desaparece durante esa sesión y queda la tabla lista para trabajar.</p>
+                <p>Sincronizar inventario lee el Sheet, prepara la pestana de la app, ordena el inventario y recalcula precios con Card Kingdom.</p>
+                <p>Despues de sincronizar, el boton desaparece durante esa sesion y queda la tabla lista para trabajar.</p>
             </div>
 
             <div class="tutorial-note">
@@ -661,7 +659,7 @@
             <h2>Busca y mueve stock</h2>
 
             <div class="tutorial-copy">
-                <p>En Inicio podés buscar por nombre, variación, set, código o número. Desde 3 letras aparecen sugerencias para autocompletar.</p>
+                <p>En Inicio podes buscar por nombre, variacion, set, codigo o numero. Desde 3 letras aparecen sugerencias para autocompletar.</p>
                 <p>Las cartas duales funcionan con barra, por ejemplo Fell the Profane / Fell Mire.</p>
             </div>
 
@@ -695,8 +693,8 @@
             <h2>Importa listas grandes</h2>
 
             <div class="tutorial-copy">
-                <p>En "Importar lista" podés pegar exports de "Moxfield" o listas de escaneo masivo en texto plano.</p>
-                <p>La app marca cada resultado como encontrada, otra versión o no encontrada. Si hay alternativas, podés desplegarlas y elegir cuáles sumar al stock.</p>
+                <p>En "Importar lista" podes pegar exports de "Moxfield" o listas de escaneo masivo en texto plano.</p>
+                <p>La app marca cada resultado como encontrada, otra version o no encontrada. Si hay alternativas, podes desplegarlas y elegir cuales sumar al stock.</p>
             </div>
 
             <div class="tutorial-progress" aria-label="Paso 4 de 6">
@@ -718,8 +716,8 @@
             <h2>Gestiona reservas</h2>
 
             <div class="tutorial-copy">
-                <p>Desde Inicio podés añadir una carta a pedido y guardar cliente, teléfono y DNI para reutilizarlos al instante.</p>
-                <p>En "Reservas" ves qué cartas están pendientes, reservadas o listas para entregar, y podés entregar o quitar cartas individuales.</p>
+                <p>Desde Inicio podes anadir una carta a pedido y guardar cliente, telefono y DNI para reutilizarlos al instante.</p>
+                <p>En "Reservas" ves que cartas estan pendientes, reservadas o listas para entregar, y podes entregar o quitar cartas individuales.</p>
             </div>
 
             <div class="tutorial-progress" aria-label="Paso 5 de 6">
@@ -738,15 +736,15 @@
                  alt="Gatito detective">
 
             <p class="eyebrow">Paso 6</p>
-            <h2>Revisá movimientos y caja</h2>
+            <h2>Revisa movimientos y caja</h2>
 
             <div class="tutorial-copy">
-                <p>"Movimientos" guarda entradas y unidades vendidas por fecha. "Caja" suma las ventas del día con el precio local de cada carta.</p>
-                <p>"Reporte" resume por mes cuántas cartas se vendieron y cuántas entraron.</p>
+                <p>"Movimientos" guarda entradas y unidades vendidas por fecha. "Caja" suma las ventas del dia con el precio local de cada carta.</p>
+                <p>"Reporte" resume por mes cuantas cartas se vendieron y cuantas entraron.</p>
             </div>
 
             <div class="tutorial-note">
-                <p>Flujo normal: sincronizar al abrir, buscar o importar cartas, usar + y -, y revisar caja al final del día.</p>
+                <p>Flujo normal: sincronizar al abrir, buscar o importar cartas, usar + y -, y revisar caja al final del dia.</p>
             </div>
 
             <div class="tutorial-progress" aria-label="Paso 6 de 6">
