@@ -995,6 +995,60 @@ document.addEventListener("DOMContentLoaded", () => {
     const removeFromStockControl = document.getElementById("remove-from-stock-control");
     const addReservationButtons = document.querySelectorAll(".add-reservation-button");
     const conditionPriceSelects = document.querySelectorAll(".condition-price-select");
+    const displayedStockValue = valueElement => {
+        const rawValue = valueElement?.matches?.("input")
+                ? valueElement.value
+                : valueElement?.textContent;
+        const value = parseInt(rawValue, 10);
+        return Number.isNaN(value) ? 0 : Math.max(value, 0);
+    };
+
+    const stockChangeQuantity = valueElement => {
+        if (!valueElement || !valueElement.matches?.("input")) {
+            return 1;
+        }
+
+        const displayedValue = displayedStockValue(valueElement);
+        if (valueElement.value.trim() === ""
+                || valueElement.dataset.stockEdited !== "true") {
+            return 1;
+        }
+
+        return Math.max(displayedValue, 1);
+    };
+
+    const setStockValue = (valueElement, value) => {
+        if (!valueElement) {
+            return;
+        }
+
+        const normalizedValue = String(Math.max(Number(value) || 0, 0));
+        if (valueElement.matches?.("input")) {
+            valueElement.value = normalizedValue;
+            valueElement.dataset.stockValue = normalizedValue;
+            valueElement.dataset.stockEdited = "false";
+            return;
+        }
+
+        valueElement.textContent = normalizedValue;
+    };
+
+    const stockChangeMessage = (increase, quantity) => {
+        const normalizedQuantity = Math.max(Number(quantity) || 1, 1);
+        if (normalizedQuantity === 1) {
+            return increase ? "Unidad agregada" : "Unidad vendida";
+        }
+
+        return increase
+                ? `Unidades ${normalizedQuantity} agregadas`
+                : `Unidades ${normalizedQuantity} vendidas`;
+    };
+
+    document.querySelectorAll("input.stock-value").forEach(input => {
+        input.addEventListener("input", () => {
+            input.dataset.stockEdited = "true";
+        });
+    });
 
     conditionPriceSelects.forEach(select => {
         const row = select.closest(".search-result-row");
@@ -1016,6 +1070,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const increaseButton = row.querySelector(".stock-button.increase");
             const decreaseButton = row.querySelector(".stock-button.decrease");
             const reservationButton = row.querySelector(".add-reservation-button");
+            const parentStockControls = row.querySelector(".parent-condition-stock-controls");
+            const stockTotalDisplay = row.querySelector(".stock-total-display");
+            const hasConditionDropdown = row.nextElementSibling?.classList.contains("inventory-stock-options-row");
 
             if (ckCell) {
                 ckCell.textContent = ckPrice ? `$ ${ckPrice}` : "-";
@@ -1026,7 +1083,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (stockValue) {
-                stockValue.textContent = String(stockQuantity);
+                setStockValue(stockValue, stockQuantity);
             }
 
             if (increaseButton) {
@@ -1044,6 +1101,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 reservationButton.dataset.row = rowIndex;
                 reservationButton.dataset.condition = condition;
                 reservationButton.dataset.stockQuantity = String(stockQuantity);
+            }
+
+            if (parentStockControls && stockTotalDisplay) {
+                const selectedConditionExists = rowIndex !== "0";
+                parentStockControls.hidden = hasConditionDropdown && selectedConditionExists;
+                stockTotalDisplay.hidden = !hasConditionDropdown || !selectedConditionExists;
             }
 
             const hasAnyStock = ["nm", "ex", "vg", "g"].some(item => Number(row.dataset[`stock${item[0].toUpperCase()}${item.slice(1)}`]) > 0);
@@ -1973,16 +2036,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     const increase =
                         button.classList.contains("increase");
 
-                    const change = increase ? 1 : -1;
-
                     const valueElement =
                         button.parentElement.querySelector(".stock-value");
+                    const changeQuantity = stockChangeQuantity(valueElement);
+                    const change = increase ? changeQuantity : -changeQuantity;
 
                     let currentValue =
-                        parseInt(valueElement.textContent, 10);
+                        parseInt(valueElement?.dataset?.stockValue || "", 10);
 
                     if (Number.isNaN(currentValue)) {
-                        currentValue = 0;
+                        currentValue = displayedStockValue(valueElement);
                     }
 
                     if (increase) {
@@ -2042,7 +2105,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 body:
                                     new URLSearchParams({
                                         sku,
-                                        condition: button.dataset.condition || "NM"
+                                        condition: button.dataset.condition || "NM",
+                                        quantity: changeQuantity
                                     })
                             }
                         );
@@ -2076,11 +2140,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             const row = button.closest(".search-result-row");
                             if (row) {
                                 row.dataset[`row${conditionKey}`] = newRowIndex;
-                                row.dataset[`stock${conditionKey}`] = "1";
+                                row.dataset[`stock${conditionKey}`] = String(changeQuantity);
                             }
                         }
 
-                        valueElement.textContent = "1";
+                        setStockValue(valueElement, changeQuantity);
 
                         const row = button.closest(".search-result-row");
 
@@ -2091,7 +2155,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             const reservationButton = row.querySelector(".add-reservation-button");
                             if (reservationButton) {
                                 reservationButton.dataset.row = newRowIndex;
-                                reservationButton.dataset.stockQuantity = "1";
+                                reservationButton.dataset.stockQuantity = String(changeQuantity);
                             }
                         }
 
@@ -2099,7 +2163,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         button.title = "Agregar una unidad";
 
                         showToast(
-                            "Carta agregada al Sheet",
+                            stockChangeMessage(true, changeQuantity),
                             "success"
                         );
 
@@ -2174,7 +2238,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (groupedRow?.querySelector(".inventory-stock-toggle")
                             && !button.closest(".inventory-condition-option")) {
                         const groupedQuantity = Math.max(currentValue + change, 0);
-                        valueElement.textContent = String(groupedQuantity);
+                        setStockValue(valueElement, groupedQuantity);
                         groupedRow?.querySelector(".add-reservation-button")
                                 ?.setAttribute("data-stock-quantity", String(groupedQuantity));
                         groupedRow?.classList.toggle("in-stock", groupedQuantity > 0);
@@ -2189,11 +2253,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
                     showToast(
-                        result.message || (
-                            increase
-                                ? "Unidad agregada"
-                                : "Unidad vendida"
-                        ),
+                        stockChangeMessage(increase, changeQuantity),
                         "success"
                     );
 
@@ -2222,7 +2282,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const total = Array.from(document.querySelectorAll(".stock-value"))
                 .reduce((sum, element) => {
-                    const value = parseInt(element.textContent, 10);
+                    const value = displayedStockValue(element);
                     return sum + (Number.isNaN(value) ? 0 : value);
                 }, 0);
 
@@ -2268,7 +2328,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const value = control.querySelector(".stock-value");
 
             if (value) {
-                value.textContent = String(normalizedQuantity);
+                setStockValue(value, normalizedQuantity);
             }
 
             if (control.closest(".inventory-condition-option")) {
@@ -2333,7 +2393,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const stockValue = option.querySelector(".stock-value");
             if (stockValue) {
-                stockValue.textContent = String(quantity);
+                setStockValue(stockValue, quantity);
             }
 
             const status = option.querySelector(".stock-action-status");
@@ -2356,7 +2416,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         .reduce((sum, item) => sum + (Number(item.dataset.stockQuantity) || 0), 0);
                 const stockTotal = primaryRow.querySelector(".stock-total-display, .stock-value");
                 if (stockTotal) {
-                    stockTotal.textContent = String(total);
+                    setStockValue(stockTotal, total);
                 }
                 const primaryStatus = primaryRow.querySelector(".stock-action-status");
                 if (primaryStatus && total > 0 && primaryStatus.textContent.trim() === "Sin Stock") {
@@ -2398,7 +2458,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const stockValue = row.querySelector(".stock-value");
                     const reservationButton = row.querySelector(".add-reservation-button");
                     if (select?.value === condition && stockValue) {
-                        stockValue.textContent = "0";
+                        setStockValue(stockValue, 0);
                     }
 
                     if (select?.value === condition && reservationButton) {

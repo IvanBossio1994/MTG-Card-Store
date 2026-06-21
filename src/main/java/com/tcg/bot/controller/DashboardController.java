@@ -88,6 +88,9 @@ public class DashboardController {
             Pattern.compile("[\\[(]([A-Za-z0-9]{2,8})[\\])]");
     private static final Pattern COLLECTOR_PATTERN =
             Pattern.compile("(?:#|\\s)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\\s*$");
+    // ponytail: Moxfield currently appends visual badges at line end; add new trailing badges here if they appear.
+    private static final Pattern TRAILING_MOXFIELD_BADGE_PATTERN =
+            Pattern.compile("\\s*[\\u2605\\u2606]+\\s*$");
     private static final Pattern VARIATION_STYLE_PREFIX_PATTERN =
             Pattern.compile("(?i)^(?:\\d+\\s*-\\s*)?(?:(?:surge\\s+foil|etched\\s+foil|foil\\s+etched|foil|nonfoil|non-foil|borderless|extended\\s+art|showcase|retro\\s+frame|alternate\\s+art|alt\\s+art|full\\s+art|textured\\s+foil|promo\\s+pack|prerelease\\s+foil|prerelease|release\\s+foil|fnm\\s+foil|judge\\s+foil|ripple\\s+foil|galaxy\\s+foil|halo\\s+foil|ampersand\\s+foil|bundle\\s+foil|resale\\s+foil|arena\\s+foil|store\\s+championship\\s+foil|buy-a-box\\s+foil|buy-a-box|b?a?b\\s+promo|prerelease\\s+promo|not\\s+tournament\\s+legal|pw\\s+symbol|no\\s+pw\\s+symbol|plane\\s+oversized|scheme\\s+oversized|oversized\\s+foil|oversized|planeswalker\\s+deck|commander\\s+deck|starter\\s+kit|theme\\s+booster|schematic\\s+art|textless|display\\s+commander|intro\\s+pack\\s+rare\\s+foil|eternal\\s+night|gilded\\s+foil|dossier|magnified|commandfest\\s+foil|commandfest\\s+non-foil|magicfest\\s+foil|magicfest\\s+non-foil|festival\\s+foil|festival\\s+non-foil)\\s*-\\s*)+");
     private static final Pattern VARIATION_STYLE_SUFFIX_PATTERN =
@@ -4252,6 +4255,8 @@ public class DashboardController {
             namePart = setCodeMatcher.replaceAll("").trim();
         }
 
+        namePart = TRAILING_MOXFIELD_BADGE_PATTERN.matcher(namePart).replaceFirst("").trim();
+
         String collector = "";
         Matcher collectorMatcher = COLLECTOR_PATTERN.matcher(namePart);
         if (collectorMatcher.find() && isCollectorToken(namePart, collectorMatcher)) {
@@ -6397,6 +6402,7 @@ public class DashboardController {
     public ResponseEntity<?> addInventoryCard(
             @RequestParam String sku,
             @RequestParam(name = "condition", required = false, defaultValue = "NM") String condition,
+            @RequestParam(name = "quantity", required = false, defaultValue = "1") int quantity,
             HttpServletRequest request
     ) {
         try {
@@ -6408,10 +6414,11 @@ public class DashboardController {
             }
 
             InventoryCard card = createInventoryCard(product, condition);
+            card.setQuantity(String.valueOf(Math.max(quantity, 1)));
             int rowIndex = inventoryService.appendInventoryCard(card);
             card.setRowIndex(rowIndex);
             if (movementsModuleEnabled(request)) {
-                inventoryService.appendMovement(createMovement("ENTRADA", 1, card, 0, 1, "Busqueda"));
+                inventoryService.appendMovement(createMovement("ENTRADA", quantity(card), card, 0, quantity(card), "Busqueda"));
             }
             refreshLatestUpdateForCard(card);
 
