@@ -1518,6 +1518,11 @@ tr.in-stock {
     gap: 8px;
 }
 
+.stock-controls[hidden],
+.stock-total-display[hidden] {
+    display: none !important;
+}
+
 .stock-summary-controls {
     display: inline-flex;
     align-items: center;
@@ -1527,10 +1532,23 @@ tr.in-stock {
 .stock-value {
     min-width: 30px;
     padding: 5px 8px;
+    border: 0;
     border-radius: 8px;
     background: #f8f9fb;
+    color: var(--text);
     text-align: center;
     font-weight: 700;
+    font: inherit;
+}
+
+input.stock-value {
+    appearance: textfield;
+}
+
+input.stock-value::-webkit-outer-spin-button,
+input.stock-value::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
 }
 
 .stock-button {
@@ -1569,15 +1587,15 @@ tr.in-stock {
 
 #search-results-table .stock-controls {
     display: grid;
-    grid-template-columns: 32px 30px 32px;
+    grid-template-columns: 32px 42px 32px;
     justify-content: center;
     gap: 6px;
 }
 
 #search-results-table .stock-value {
     box-sizing: border-box;
-    width: 30px;
-    min-width: 30px;
+    width: 42px;
+    min-width: 42px;
     padding-right: 6px;
     padding-left: 6px;
 }
@@ -3280,7 +3298,8 @@ tr.in-stock {
 }
 
 .updates .stock-value {
-    min-width: 28px;
+    width: 42px;
+    min-width: 42px;
     padding-right: 6px;
     padding-left: 6px;
 }

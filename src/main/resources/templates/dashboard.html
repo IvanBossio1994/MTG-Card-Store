@@ -173,7 +173,8 @@
                              data-row-g=${result.gRowIndex}"
                     th:classappend="${result.stockQuantity > 0} ? 'in-stock' : ''">
                     <td>
-                        <div class="stock-controls" th:if="${#lists.isEmpty(result.conditionStocks)}">
+                        <div class="stock-controls parent-condition-stock-controls"
+                             th:hidden="${!#lists.isEmpty(result.conditionStocks) && result.rowIndex > 0}">
                             <button type="button"
                                     class="stock-button decrease"
                                     th:attr="data-row=${result.rowIndex}"
@@ -181,10 +182,10 @@
                                     th:title="${result.rowIndex <= 0 ? 'Esta impresion todavia no existe en tu Sheet' : (result.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                 -
                             </button>
-                            <span class="stock-value"
-                                  th:text="${result.displayStockQuantity}">
-                                0
-                            </span>
+                            <input class="stock-value" type="number" min="0" inputmode="numeric"
+                                   th:value="${result.displayStockQuantity}"
+                                   th:attr="data-stock-value=${result.displayStockQuantity}"
+                                   aria-label="Cantidad para modificar stock">
                             <button type="button"
                                     class="stock-button increase"
                                     th:attr="data-row=${result.rowIndex},data-condition=${result.selectedCondition},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
@@ -192,7 +193,9 @@
                                 +
                             </button>
                         </div>
-                        <span class="stock-total-display" th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                        <span class="stock-total-display"
+                              th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                              th:hidden="${result.rowIndex <= 0}"
                               th:text="${result.displayStockQuantity}">0</span>
                     </td>
                     <td class="card-name-cell">
@@ -256,7 +259,10 @@
                                             th:title="${stock.rowIndex <= 0 ? 'Esta condicion todavia no existe en tu Sheet' : (stock.quantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                         -
                                     </button>
-                                    <span class="stock-value" th:text="${stock.quantity}">0</span>
+                                    <input class="stock-value" type="number" min="0" inputmode="numeric"
+                                           th:value="${stock.quantity}"
+                                           th:attr="data-stock-value=${stock.quantity}"
+                                           aria-label="Cantidad para modificar stock">
                                     <button type="button"
                                             class="stock-button increase"
                                             th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-sku=${result.sku},data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing}"
@@ -359,10 +365,10 @@
                                         th:title="${update.rowIndex <= 0 ? 'Esta impresion todavia no existe en tu Sheet' : (update.stockQuantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                     -
                                 </button>
-                            <span class="stock-value"
-                                      th:text="${update.displayStockQuantity}">
-                                    0
-                                </span>
+                                <input class="stock-value" type="number" min="0" inputmode="numeric"
+                                       th:value="${update.displayStockQuantity}"
+                                       th:attr="data-stock-value=${update.displayStockQuantity}"
+                                       aria-label="Cantidad para modificar stock">
                                 <button type="button"
                                         class="stock-button increase"
                                         th:attr="data-row=${update.rowIndex},data-condition=${update.condition},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"
@@ -426,7 +432,10 @@
                                                 th:title="${stock.rowIndex <= 0 ? 'Esta condicion todavia no existe en tu Sheet' : (stock.quantity <= 0 ? 'Eliminar carta del Sheet' : 'Registrar unidad vendida')}">
                                             -
                                         </button>
-                                        <span class="stock-value" th:text="${stock.quantity}">0</span>
+                                        <input class="stock-value" type="number" min="0" inputmode="numeric"
+                                               th:value="${stock.quantity}"
+                                               th:attr="data-stock-value=${stock.quantity}"
+                                               aria-label="Cantidad para modificar stock">
                                         <button type="button"
                                                 class="stock-button increase"
                                                 th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing}"

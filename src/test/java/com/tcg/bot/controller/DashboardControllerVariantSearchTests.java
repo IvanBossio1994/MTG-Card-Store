@@ -131,6 +131,24 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void ignoresTrailingMoxfieldStarBeforeCollector() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "parseImportLine",
+                String.class
+        );
+        method.setAccessible(true);
+
+        DashboardController.ParsedImportLine line = (DashboardController.ParsedImportLine) method.invoke(
+                controller,
+                "1 Gravecrawler (INR) 64\u2605"
+        );
+
+        assertThat(line.name()).isEqualTo("Gravecrawler");
+        assertThat(line.setCode()).isEqualTo("INR");
+        assertThat(line.collectorNumber()).isEqualTo("64");
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void findsEtchedImportLineByCollectorNumber() throws Exception {
         Method parseMethod = DashboardController.class.getDeclaredMethod(
