@@ -1104,9 +1104,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (parentStockControls && stockTotalDisplay) {
-                const selectedConditionExists = rowIndex !== "0";
-                parentStockControls.hidden = hasConditionDropdown && selectedConditionExists;
-                stockTotalDisplay.hidden = !hasConditionDropdown || !selectedConditionExists;
+                const selectedConditionHasStock = rowIndex !== "0" && stockQuantity > 0;
+                parentStockControls.hidden = hasConditionDropdown && selectedConditionHasStock;
+                stockTotalDisplay.hidden = !hasConditionDropdown || !selectedConditionHasStock;
             }
 
             const hasAnyStock = ["nm", "ex", "vg", "g"].some(item => Number(row.dataset[`stock${item[0].toUpperCase()}${item.slice(1)}`]) > 0);

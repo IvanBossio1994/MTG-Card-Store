@@ -174,7 +174,7 @@
                     th:classappend="${result.stockQuantity > 0} ? 'in-stock' : ''">
                     <td>
                         <div class="stock-controls parent-condition-stock-controls"
-                             th:hidden="${!#lists.isEmpty(result.conditionStocks) && result.rowIndex > 0}">
+                             th:hidden="${!result.showParentStockControls()}">
                             <button type="button"
                                     class="stock-button decrease"
                                     th:attr="data-row=${result.rowIndex}"
@@ -183,8 +183,8 @@
                                 -
                             </button>
                             <input class="stock-value" type="number" min="0" inputmode="numeric"
-                                   th:value="${result.displayStockQuantity}"
-                                   th:attr="data-stock-value=${result.displayStockQuantity}"
+                                   th:value="${result.stockQuantity}"
+                                   th:attr="data-stock-value=${result.stockQuantity}"
                                    aria-label="Cantidad para modificar stock">
                             <button type="button"
                                     class="stock-button increase"
@@ -195,7 +195,7 @@
                         </div>
                         <span class="stock-total-display"
                               th:if="${!#lists.isEmpty(result.conditionStocks)}"
-                              th:hidden="${result.rowIndex <= 0}"
+                              th:hidden="${result.showParentStockControls()}"
                               th:text="${result.displayStockQuantity}">0</span>
                     </td>
                     <td class="card-name-cell">
@@ -289,7 +289,7 @@
                                 <button type="button"
                                         class="secondary-button add-reservation-button condition-reservation-button"
                                         th:if="${reservationsUnlocked}"
-                                        th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                        th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.availableQuantity}">
                                     Anadir a pedido
                                 </button>
                             </div>
@@ -462,7 +462,7 @@
                                     <button type="button"
                                             class="secondary-button add-reservation-button condition-reservation-button"
                                             th:if="${reservationsUnlocked}"
-                                            th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                            th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.availableQuantity}">
                                         Anadir a pedido
                                     </button>
                                 </div>
