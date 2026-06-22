@@ -1,6 +1,7 @@
 package com.tcg.bot.controller;
 
 import com.tcg.bot.dto.CardKingdomProduct;
+import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.CashRegisterEntry;
 import org.junit.jupiter.api.Test;
 
@@ -55,6 +56,29 @@ class DashboardControllerVariantSearchTests {
 
         assertThat((String) method.invoke(controller, "A convenir")).isEqualTo("A convenir");
         assertThat((String) method.invoke(controller, "2026-06-19")).isEqualTo("2026-06-19");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void pickupAlertShowsFlexibleEditionAndConditionRequest() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("pickupAlerts", List.class);
+        method.setAccessible(true);
+
+        CardReservation reservation = new CardReservation();
+        reservation.setStatus(CardReservation.STATUS_WANTED);
+        reservation.setName("Sol Ring");
+        reservation.setQuantity("1");
+        reservation.setClient("Sofi");
+        reservation.setPhone("111");
+        reservation.setDni("222");
+        reservation.setPickupDate("2026-06-19");
+        reservation.setNotes("[Cualquier edicion/condicion]");
+
+        List<DashboardController.PickupAlertView> alerts =
+                (List<DashboardController.PickupAlertView>) method.invoke(controller, List.of(reservation));
+
+        assertThat(alerts).hasSize(1);
+        assertThat(alerts.get(0).cardSummary()).isEqualTo("Sol Ring (cualquier edicion/condicion)");
     }
 
     @Test

@@ -3839,6 +3839,27 @@ input.stock-value::-webkit-inner-spin-button {
     color: var(--text);
 }
 
+.reservation-options-row {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 22px;
+    min-height: 34px;
+}
+
+.reservation-options-row .check-control {
+    grid-column: auto;
+    display: inline-flex;
+    min-height: 28px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.reservation-bulk-form .reservation-options-row .check-control {
+    width: auto;
+}
+
 .reservation-modal-grid .check-control[hidden] {
     display: none;
 }

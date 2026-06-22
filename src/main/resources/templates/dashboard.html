@@ -539,10 +539,16 @@
                 Notas
                 <input name="notes" type="text" autocomplete="off">
             </label>
-            <label id="remove-from-stock-control" class="check-control reservation-stock-checkbox" hidden>
-                <input name="removeFromStock" type="checkbox" value="true">
-                <span>Retirar del stock</span>
-            </label>
+            <div class="reservation-options-row">
+                <label class="check-control reservation-flexible-checkbox">
+                    <input name="flexibleMatch" type="checkbox" value="true">
+                    <span>Cualquier edicion/condicion</span>
+                </label>
+                <label id="remove-from-stock-control" class="check-control reservation-stock-checkbox" hidden>
+                    <input name="removeFromStock" type="checkbox" value="true">
+                    <span>Retirar del stock</span>
+                </label>
+            </div>
         </div>
 
         <div class="modal-actions">
@@ -656,6 +662,7 @@
             <div class="tutorial-copy">
                 <p>En Inicio podes buscar por nombre, variacion, set, codigo o numero. Desde 3 letras aparecen sugerencias para autocompletar.</p>
                 <p>Las cartas duales funcionan con barra, por ejemplo Fell the Profane / Fell Mire.</p>
+                <p>El boton Stock en la cabecera filtra la tabla para mostrar solo las cartas que ya tenes cargadas en el Sheet.</p>
             </div>
 
             <div class="tutorial-flow-grid">
