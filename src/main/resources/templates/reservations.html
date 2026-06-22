@@ -82,10 +82,16 @@
                     Notas
                     <input name="notes" type="text" autocomplete="off" th:value="${bulkNotes}">
                 </label>
-                <label class="check-control reservation-stock-checkbox">
-                    <input name="removeFromStock" type="checkbox" value="true" th:checked="${bulkRemoveFromStock}">
-                    <span>Retirar del stock</span>
-                </label>
+                <div class="reservation-options-row">
+                    <label class="check-control reservation-flexible-checkbox">
+                        <input name="flexibleMatch" type="checkbox" value="true" th:checked="${bulkFlexibleMatch}">
+                        <span>Cualquier edicion/condicion</span>
+                    </label>
+                    <label class="check-control reservation-stock-checkbox">
+                        <input name="removeFromStock" type="checkbox" value="true" th:checked="${bulkRemoveFromStock}">
+                        <span>Retirar del stock</span>
+                    </label>
+                </div>
             </div>
             <label for="bulkRawList">Lista</label>
             <textarea id="bulkRawList" name="rawList" rows="8"
@@ -127,6 +133,7 @@
             <input type="hidden" name="pickupDate" th:value="${bulkPickupDate}">
             <input type="hidden" name="pickupFlexible" th:if="${bulkPickupFlexible}" value="true">
             <input type="hidden" name="notes" th:value="${bulkNotes}">
+            <input type="hidden" name="flexibleMatch" th:if="${bulkFlexibleMatch}" value="true">
             <input type="hidden" name="removeFromStock" th:if="${bulkRemoveFromStock}" value="true">
             <div class="import-actions" th:if="${bulkReadyCount > 0}">
                 <label class="check-control">

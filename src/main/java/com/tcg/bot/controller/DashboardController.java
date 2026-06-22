@@ -100,6 +100,8 @@ public class DashboardController {
     private static final String ACTION_IN_STOCK = "En Stock";
     private static final String ACTION_RESERVED = "Reservada";
     private static final String ACTION_OUT_OF_STOCK = "Sin Stock";
+    private static final String FLEXIBLE_MATCH_NOTE = "[Cualquier edicion/condicion]";
+    private static final String FLEXIBLE_MATCH_ALERT_SUFFIX = " (cualquier edicion/condicion)";
     private static final Locale ARGENTINA_LOCALE = new Locale("es", "AR");
     private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
     private static final DateTimeFormatter MOVEMENT_DATE_TIME_FORMAT =
@@ -837,6 +839,7 @@ public class DashboardController {
         model.addAttribute("bulkPickupDate", "");
         model.addAttribute("bulkPickupFlexible", false);
         model.addAttribute("bulkNotes", "");
+        model.addAttribute("bulkFlexibleMatch", false);
         model.addAttribute("bulkRemoveFromStock", true);
         model.addAttribute("bulkAnalyzed", false);
         model.addAttribute("bulkResults", List.of());
@@ -861,6 +864,7 @@ public class DashboardController {
         model.addAttribute("bulkPickupDate", "");
         model.addAttribute("bulkPickupFlexible", false);
         model.addAttribute("bulkNotes", "");
+        model.addAttribute("bulkFlexibleMatch", false);
         model.addAttribute("bulkRemoveFromStock", true);
         model.addAttribute("bulkAnalyzed", false);
         model.addAttribute("bulkResults", List.of());
@@ -1721,6 +1725,7 @@ public class DashboardController {
             @RequestParam(name = "pickupDate", required = false) String pickupDate,
             @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "flexibleMatch", required = false, defaultValue = "false") boolean flexibleMatch,
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
             HttpServletRequest request,
             Model model
@@ -1740,13 +1745,14 @@ public class DashboardController {
                     pickupDate,
                     pickupFlexible,
                     notes,
+                    flexibleMatch,
                     removeFromStock,
                     model,
                     "Agrega al menos una carta para analizar el pedido."
             );
         }
 
-        return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, removeFromStock, model, null);
+        return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, flexibleMatch, removeFromStock, model, null);
     }
 
     @PostMapping("/reservas/pedido-masivo/confirmar")
@@ -1759,6 +1765,7 @@ public class DashboardController {
             @RequestParam(name = "pickupDate", required = false) String pickupDate,
             @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "flexibleMatch", required = false, defaultValue = "false") boolean flexibleMatch,
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
             HttpServletRequest request,
             RedirectAttributes redirectAttributes,
@@ -1778,6 +1785,7 @@ public class DashboardController {
                     pickupDate,
                     pickupFlexible,
                     notes,
+                    flexibleMatch,
                     removeFromStock,
                     model,
                     "Selecciona al menos una carta para agregar al pedido."
@@ -1797,6 +1805,7 @@ public class DashboardController {
                     pickupDate,
                     pickupFlexible,
                     notes,
+                    flexibleMatch,
                     removeFromStock,
                     model,
                     "Completa cliente, telefono, DNI y fecha de retiro para guardar el pedido."
@@ -1805,12 +1814,12 @@ public class DashboardController {
 
         String contactError = reservationContactError(phone, dni);
         if (!isBlank(contactError)) {
-            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, removeFromStock, model, contactError);
+            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, flexibleMatch, removeFromStock, model, contactError);
         }
 
         String pickupDateError = pickupFlexible ? "" : reservationPickupDateError(pickupDate);
         if (!isBlank(pickupDateError)) {
-            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, removeFromStock, model, pickupDateError);
+            return populateBulkReservationAnalysisModel(rawList, client, phone, dni, pickupDate, pickupFlexible, notes, flexibleMatch, removeFromStock, model, pickupDateError);
         }
 
         try {
@@ -1864,7 +1873,7 @@ public class DashboardController {
                         phone,
                         dni,
                         pickupDate,
-                        notes,
+                        reservationNotes(notes, flexibleMatch),
                         LocalDateTime.now(APP_ZONE)
                 ));
                 saved++;
@@ -1888,6 +1897,7 @@ public class DashboardController {
                         pickupDate,
                         pickupFlexible,
                         notes,
+                        flexibleMatch,
                         removeFromStock,
                         model,
                         "No se pudo identificar ninguna carta seleccionada para guardar el pedido."
@@ -1923,6 +1933,7 @@ public class DashboardController {
                     pickupDate,
                     pickupFlexible,
                     notes,
+                    flexibleMatch,
                     removeFromStock,
                     model,
                     "No se pudo guardar el pedido masivo: " + syncErrorMessage(e)
@@ -1940,6 +1951,7 @@ public class DashboardController {
             String pickupDate,
             boolean pickupFlexible,
             String notes,
+            boolean flexibleMatch,
             boolean removeFromStock,
             Model model,
             String error
@@ -1952,6 +1964,7 @@ public class DashboardController {
         model.addAttribute("bulkPickupDate", blankToEmpty(pickupDate));
         model.addAttribute("bulkPickupFlexible", pickupFlexible);
         model.addAttribute("bulkNotes", blankToEmpty(notes));
+        model.addAttribute("bulkFlexibleMatch", flexibleMatch);
         model.addAttribute("bulkRemoveFromStock", removeFromStock);
         model.addAttribute("bulkAnalyzed", true);
 
@@ -1994,6 +2007,7 @@ public class DashboardController {
             @RequestParam(name = "pickupDate", required = false) String pickupDate,
             @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "flexibleMatch", required = false, defaultValue = "false") boolean flexibleMatch,
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
@@ -2027,7 +2041,7 @@ public class DashboardController {
         }
 
         try {
-            saveReservation(status, name, setName, setCode, collectorNumber, printing, quantity, client, phone, dni, pickupDate, notes);
+            saveReservation(status, name, setName, setCode, collectorNumber, printing, quantity, client, phone, dni, pickupDate, reservationNotes(notes, flexibleMatch));
             redirectAttributes.addFlashAttribute("success", "Reserva guardada en el Sheet.");
         } catch (Exception e) {
             log.warn("No se pudo guardar la reserva.", e);
@@ -2053,6 +2067,7 @@ public class DashboardController {
             @RequestParam(name = "pickupDate", required = false) String pickupDate,
             @RequestParam(name = "pickupFlexible", required = false, defaultValue = "false") boolean pickupFlexible,
             @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "flexibleMatch", required = false, defaultValue = "false") boolean flexibleMatch,
             @RequestParam(name = "rowIndex", required = false, defaultValue = "0") int rowIndex,
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
             HttpServletRequest request
@@ -2109,7 +2124,7 @@ public class DashboardController {
                 }
             }
 
-            saveReservation(reservationStatus, name, setName, setCode, collectorNumber, printing, String.valueOf(reservationQuantity), client, phone, dni, pickupDate, notes);
+            saveReservation(reservationStatus, name, setName, setCode, collectorNumber, printing, String.valueOf(reservationQuantity), client, phone, dni, pickupDate, reservationNotes(notes, flexibleMatch));
 
             if (removeFromStock && reservedCard != null) {
                 updatedQuantity = previousQuantity;
@@ -2628,6 +2643,29 @@ public class DashboardController {
         reservation.setPaymentDate("");
         reservation.setNotes(blankToEmpty(notes));
         return reservation;
+    }
+
+    private String reservationNotes(String notes, boolean flexibleMatch) {
+        String cleanNotes = stripFlexibleMatchNote(notes);
+        if (!flexibleMatch) {
+            return cleanNotes;
+        }
+
+        return cleanNotes.isBlank() ? FLEXIBLE_MATCH_NOTE : FLEXIBLE_MATCH_NOTE + " " + cleanNotes;
+    }
+
+    private String stripFlexibleMatchNote(String notes) {
+        if (notes == null || notes.isBlank()) {
+            return "";
+        }
+
+        return notes.replace(FLEXIBLE_MATCH_NOTE, "").replaceAll("\\s+", " ").trim();
+    }
+
+    private boolean flexibleMatch(CardReservation reservation) {
+        return reservation != null
+                && reservation.getNotes() != null
+                && reservation.getNotes().contains(FLEXIBLE_MATCH_NOTE);
     }
 
     private String normalizedReservationStatus(String status) {
@@ -5268,7 +5306,7 @@ public class DashboardController {
                     .mapToInt(reservation -> reservationQuantity(reservation.getQuantity()))
                     .sum();
             String cardSummary = groupReservations.stream()
-                    .map(CardReservation::getName)
+                    .map(this::pickupAlertCardName)
                     .filter(name -> !isBlank(name))
                     .distinct()
                     .limit(3)
@@ -5296,6 +5334,14 @@ public class DashboardController {
                 .comparing(PickupAlertView::overdue).reversed()
                 .thenComparing(PickupAlertView::pickupDate));
         return alerts;
+    }
+
+    private String pickupAlertCardName(CardReservation reservation) {
+        if (reservation == null || isBlank(reservation.getName())) {
+            return "";
+        }
+
+        return reservation.getName() + (flexibleMatch(reservation) ? FLEXIBLE_MATCH_ALERT_SUFFIX : "");
     }
 
     private LocalDate parsePickupDate(String pickupDate) {
