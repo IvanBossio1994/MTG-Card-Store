@@ -1264,6 +1264,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 setReservationValue("setCode", button.dataset.setCode);
                 setReservationValue("collectorNumber", button.dataset.collectorNumber);
                 setReservationValue("printing", button.dataset.printing);
+                setReservationValue("condition", button.dataset.condition);
                 setReservationValue("rowIndex", button.dataset.row);
                 setReservationValue("quantity", "1");
                 setReservationValue("pickupDate", "");

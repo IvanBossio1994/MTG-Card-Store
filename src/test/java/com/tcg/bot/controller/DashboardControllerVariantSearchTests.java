@@ -142,6 +142,22 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void committedReservationsReduceAvailableStockWithoutChangingTotalQuantity() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("availableInventoryQuantity", InventoryCard.class, List.class);
+        method.setAccessible(true);
+
+        InventoryCard stock = inventoryCard("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0305", "nonfoil", "5", "En Stock", 10);
+        stock.setCondition("NM");
+
+        List<CardReservation> fourReservations = reservedReservations("Arcane Signet", 4);
+        List<CardReservation> fiveReservations = reservedReservations("Arcane Signet", 5);
+
+        assertThat((int) method.invoke(controller, stock, fourReservations)).isEqualTo(1);
+        assertThat((int) method.invoke(controller, stock, fiveReservations)).isZero();
+        assertThat(stock.getQuantity()).isEqualTo("5");
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void reportIncludesCashSalesWithoutMatchingMovement() throws Exception {
         Method reportMethod = DashboardController.class.getDeclaredMethod(
@@ -720,6 +736,23 @@ class DashboardControllerVariantSearchTests {
         card.setAction(action);
         card.setRowIndex(rowIndex);
         return card;
+    }
+
+    private List<CardReservation> reservedReservations(String name, int quantity) {
+        List<CardReservation> reservations = new ArrayList<>();
+        for (int index = 0; index < quantity; index++) {
+            CardReservation reservation = new CardReservation();
+            reservation.setStatus(CardReservation.STATUS_RESERVED);
+            reservation.setName(name);
+            reservation.setSetName("Bloomburrow Commander Decks");
+            reservation.setSetCode("BLC");
+            reservation.setCollectorNumber("0305");
+            reservation.setPrinting("nonfoil");
+            reservation.setCondition("NM");
+            reservation.setQuantity("1");
+            reservations.add(reservation);
+        }
+        return reservations;
     }
 
     private DashboardController.SearchResult searchResult(

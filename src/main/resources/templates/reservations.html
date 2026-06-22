@@ -304,6 +304,7 @@
                                 <th>Set</th>
                                 <th>Codigo</th>
                                 <th>Printing</th>
+                                <th>Cond.</th>
                                 <th>Precio local</th>
                                 <th>Cant.</th>
                                 <th>Stock Local</th>
@@ -323,11 +324,12 @@
                                 <td th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</td>
                                 <td th:text="${(reservation.setCode != null && reservation.setCode != '' ? reservation.setCode : '-') + ' / ' + (reservation.collectorNumber != null && reservation.collectorNumber != '' ? reservation.collectorNumber : '-')}">CMM / 410</td>
                                 <td th:text="${reservation.printing != null && reservation.printing != '' ? reservation.printing : '-'}">nonfoil</td>
+                                <td th:text="${reservation.condition != null && reservation.condition != '' ? reservation.condition : '-'}">NM</td>
                                 <td class="price-cell"
                                     th:text="${reservation.formattedLocalPrice != null && reservation.formattedLocalPrice != '' ? '$ ' + reservation.formattedLocalPrice : '-'}">-</td>
                                 <td th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</td>
                                 <td class="reservation-local-stock"
-                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock : '-'}">0</td>
+                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock + ' total / ' + reservation.availableStock + ' disp.' : '-'}">0</td>
                                 <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
                                 <td th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</td>
                                 <td class="reservation-action-cell">
@@ -364,7 +366,7 @@
                             </tbody>
                             <tfoot>
                             <tr class="reservation-total-row">
-                                <td colspan="5">
+                                <td colspan="6">
                                     <span class="reservation-total-label">Total</span>
                                 </td>
                                 <td class="price-cell"

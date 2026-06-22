@@ -232,7 +232,7 @@
                         <button type="button"
                                 class="secondary-button add-reservation-button"
                                 th:if="${#lists.isEmpty(result.conditionStocks)}"
-                                th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${result.rowIndex},data-stock-quantity=${result.stockQuantity}">
+                                th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-condition=${result.selectedCondition},data-row=${result.rowIndex},data-stock-quantity=${result.stockQuantity}">
                             Anadir a pedido
                         </button>
                         <span class="muted-cell" th:if="${!#lists.isEmpty(result.conditionStocks)}">Elegir condicion</span>
@@ -354,8 +354,8 @@
                     <th:block th:each="update, iter : ${updates}">
                     <tr class="synced-table-row"
                         th:with="pendingInfo=${pendingReservationQuantities != null ? pendingReservationQuantities[update.reservationKey()] : null}"
-                        th:attr="data-in-stock=${update.displayStockQuantity() > 0}"
-                        th:classappend="${update.displayStockQuantity() > 0} ? 'in-stock' : ''">
+                        th:attr="data-in-stock=${update.displayAvailableQuantity() > 0}"
+                        th:classappend="${update.displayAvailableQuantity() > 0} ? 'in-stock' : ''">
                         <td>
                             <div class="stock-controls" th:if="${#lists.isEmpty(update.conditionStocks)}">
                                 <button type="button"
@@ -407,7 +407,7 @@
                             <button type="button"
                                     class="secondary-button add-reservation-button"
                                     th:if="${#lists.isEmpty(update.conditionStocks)}"
-                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.displayStockQuantity()}">
+                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-condition=${update.condition},data-row=${update.rowIndex},data-stock-quantity=${update.displayAvailableQuantity()}">
                                 Anadir a pedido
                             </button>
                             <span class="muted-cell" th:if="${!#lists.isEmpty(update.conditionStocks)}">Elegir condicion</span>
@@ -504,6 +504,7 @@
         <input type="hidden" name="setCode">
         <input type="hidden" name="collectorNumber">
         <input type="hidden" name="printing">
+        <input type="hidden" name="condition">
         <input type="hidden" name="rowIndex">
 
         <div class="reservation-modal-grid">

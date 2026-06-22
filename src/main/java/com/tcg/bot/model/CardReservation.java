@@ -33,6 +33,7 @@ public class CardReservation {
     private String setCode;
     private String collectorNumber;
     private String printing;
+    private String condition;
     private String quantity;
     private String client;
     private String phone;

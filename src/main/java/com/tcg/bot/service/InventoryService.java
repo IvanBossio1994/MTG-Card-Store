@@ -124,6 +124,10 @@ public class InventoryService {
         googleSheetsService.updateReservationPickupDate(reservationId, pickupDate);
     }
 
+    public void updateReservationCondition(String reservationId, String condition) throws Exception {
+        googleSheetsService.updateReservationCondition(reservationId, condition);
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         googleSheetsService.deleteReservationRows(rowIndexes);
     }
