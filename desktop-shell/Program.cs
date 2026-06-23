@@ -41,7 +41,7 @@ namespace TCGInventoryShell
                 });
                 if (javaPath == null)
                 {
-                    Fail("No encontre Java 17 en esta PC.");
+                    Fail("No encontre Java 21 en esta PC.");
                     return;
                 }
 
