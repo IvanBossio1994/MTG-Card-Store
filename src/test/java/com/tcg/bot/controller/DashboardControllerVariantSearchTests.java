@@ -85,6 +85,61 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void pickupAlertKeepsFlexibleIntentEvenWhenReservedRequestWasAssigned() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("pickupAlerts", List.class);
+        method.setAccessible(true);
+
+        CardReservation reservation = new CardReservation();
+        reservation.setStatus(CardReservation.STATUS_RESERVED);
+        reservation.setName("Arcane Signet");
+        reservation.setSetName("Commander Legends");
+        reservation.setSetCode("CMR");
+        reservation.setCollectorNumber("334");
+        reservation.setPrinting("Foil");
+        reservation.setCondition("NM");
+        reservation.setQuantity("1");
+        reservation.setClient("Sofi");
+        reservation.setPhone("111");
+        reservation.setDni("222");
+        reservation.setPickupDate("2026-06-19");
+        reservation.setNotes("[Cualquier edicion/condicion]");
+
+        List<DashboardController.PickupAlertView> alerts =
+                (List<DashboardController.PickupAlertView>) method.invoke(controller, List.of(reservation));
+
+        assertThat(alerts).hasSize(1);
+        assertThat(alerts.get(0).cardSummary()).isEqualTo("Arcane Signet (cualquier edicion/condicion)");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void pickupAlertShowsSetCodeAndNumberForSpecificRequest() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("pickupAlerts", List.class);
+        method.setAccessible(true);
+
+        CardReservation reservation = new CardReservation();
+        reservation.setStatus(CardReservation.STATUS_RESERVED);
+        reservation.setName("Arcane Signet");
+        reservation.setSetName("Commander Legends");
+        reservation.setSetCode("CMR");
+        reservation.setCollectorNumber("334");
+        reservation.setPrinting("Foil");
+        reservation.setCondition("NM");
+        reservation.setQuantity("1");
+        reservation.setClient("Sofi");
+        reservation.setPhone("111");
+        reservation.setDni("222");
+        reservation.setPickupDate("2026-06-19");
+
+        List<DashboardController.PickupAlertView> alerts =
+                (List<DashboardController.PickupAlertView>) method.invoke(controller, List.of(reservation));
+
+        assertThat(alerts).hasSize(1);
+        assertThat(alerts.get(0).cardSummary()).isEqualTo("Arcane Signet - CMR/334");
+    }
+
+    @Test
     void searchResultShowsParentControlsWhenSelectedConditionHasNoStock() {
         List<ReservationConditionStock> conditionStocks = List.of(
                 new ReservationConditionStock("NM", 1, 1, 0, "En Stock", 10, "129.99", "214500"),
@@ -128,7 +183,7 @@ class DashboardControllerVariantSearchTests {
 
     @Test
     @SuppressWarnings("unchecked")
-    void reservedInventoryRowsDoNotCountAsAvailableImportStock() throws Exception {
+    void reservedInventoryRowsStillCountAsAvailableImportStockWithoutLedgerReservations() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod("indexInventoryForImport", List.class);
         method.setAccessible(true);
 
@@ -138,7 +193,7 @@ class DashboardControllerVariantSearchTests {
         ));
 
         int[] stockData = stock.get("academy manufactor|bloomburrow commander decks|blc|264|false");
-        assertThat(stockData).containsExactly(2, 11);
+        assertThat(stockData).containsExactly(3, 10);
     }
 
     @Test
@@ -155,6 +210,241 @@ class DashboardControllerVariantSearchTests {
         assertThat((int) method.invoke(controller, stock, fourReservations)).isEqualTo(1);
         assertThat((int) method.invoke(controller, stock, fiveReservations)).isZero();
         assertThat(stock.getQuantity()).isEqualTo("5");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void conditionStocksShowLedgerReservationsAbovePhysicalStock() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("conditionStocksForInventoryCards", List.class, List.class);
+        method.setAccessible(true);
+
+        InventoryCard stock = inventoryCard("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0305", "nonfoil", "1", "Reservada", 10);
+        stock.setCondition("NM");
+
+        List<ReservationConditionStock> conditionStocks = (List<ReservationConditionStock>) method.invoke(
+                controller,
+                List.of(stock),
+                reservedReservations("Arcane Signet", 2)
+        );
+
+        assertThat(conditionStocks).hasSize(1);
+        assertThat(conditionStocks.get(0).quantity()).isEqualTo(1);
+        assertThat(conditionStocks.get(0).reservedQuantity()).isEqualTo(2);
+        assertThat(conditionStocks.get(0).availableQuantity()).isZero();
+
+        DashboardController.UpdateResult updateResult = new DashboardController.UpdateResult(
+                "Arcane Signet",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0305",
+                "nonfoil",
+                "4100",
+                "2.49",
+                "Reservada",
+                "NM",
+                conditionStocks,
+                10,
+                1,
+                false
+        );
+
+        assertThat(updateResult.displayStockBreakdown()).isEqualTo("1 total | 2 reservadas | 0 disponibles");
+        assertThat(updateResult.displayAction()).isEqualTo("Reservada");
+    }
+
+    @Test
+    void familySnapshotAggregatesConditionsAndAssignsFlexibleReservationsOnce() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("stockSnapshot", InventoryCard.class, List.class, List.class);
+        method.setAccessible(true);
+
+        InventoryCard nm = inventoryCard("Arcane Signet", "Commander Legends", "CMR", "334", "nonfoil", "2", "En Stock", 10);
+        nm.setCondition("NM");
+        InventoryCard ex = inventoryCard("Arcane Signet", "Commander Legends", "CMR", "334", "nonfoil", "1", "En Stock", 11);
+        ex.setCondition("EX");
+
+        CardReservation flexible = reservedReservation("Arcane Signet", "Commander Legends", "CMR", "334", "", "[Cualquier edicion/condicion]");
+        CardReservation exReservation = reservedReservation("Arcane Signet", "Commander Legends", "CMR", "334", "EX", "");
+
+        DashboardController.StockSnapshot snapshot = (DashboardController.StockSnapshot) method.invoke(
+                controller,
+                nm,
+                List.of(nm, ex),
+                List.of(flexible, exReservation)
+        );
+
+        assertThat(snapshot.stockTotal()).isEqualTo(3);
+        assertThat(snapshot.reservedQuantity()).isEqualTo(2);
+        assertThat(snapshot.availableQuantity()).isEqualTo(1);
+        assertThat(snapshot.summary()).isEqualTo("3 total | 2 reservadas | 1 disponible");
+        assertThat(snapshot.conditionStocks()).extracting(ReservationConditionStock::reservedQuantity)
+                .containsExactly(1, 1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assignedFlexibleReservationDoesNotCountInOtherEditionFamily() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("conditionStocksForInventoryCards", List.class, List.class);
+        method.setAccessible(true);
+
+        InventoryCard commanderLegends = inventoryCard("Arcane Signet", "Commander Legends", "CMR", "334", "nonfoil", "2", "En Stock", 10);
+        commanderLegends.setCondition("NM");
+        CardReservation assignedElsewhere = reservedReservation(
+                "Arcane Signet",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0305",
+                "NM",
+                "[Cualquier edicion/condicion]"
+        );
+
+        List<ReservationConditionStock> conditionStocks = (List<ReservationConditionStock>) method.invoke(
+                controller,
+                List.of(commanderLegends),
+                List.of(assignedElsewhere)
+        );
+
+        assertThat(conditionStocks).isEmpty();
+    }
+
+    @Test
+    void singleConditionReservationKeepsAvailabilityWithoutShowingDropdown() {
+        List<ReservationConditionStock> conditionStocks = List.of(
+                new ReservationConditionStock("NM", 5, 1, 4, "En Stock", 10, "2.49", "4100")
+        );
+
+        DashboardController.SearchResult searchResult = searchResult("NM", conditionStocks, 5, 10);
+        DashboardController.UpdateResult updateResult = new DashboardController.UpdateResult(
+                "Arcane Signet",
+                "Commander 2020",
+                "C20",
+                "237",
+                "nonfoil",
+                "4100",
+                "2.49",
+                "En Stock",
+                "NM",
+                conditionStocks,
+                10,
+                5,
+                false
+        );
+
+        assertThat(searchResult.showConditionStockOptions()).isFalse();
+        assertThat(searchResult.displayAvailableQuantity()).isEqualTo(1);
+        assertThat(searchResult.displayStockBreakdown()).isEqualTo("5 total | 4 reservadas | 1 disponible");
+        assertThat(searchResult.availableStockQuantityForCondition("NM")).isEqualTo(1);
+        assertThat(updateResult.showConditionStockOptions()).isFalse();
+        assertThat(updateResult.displayAvailableQuantity()).isEqualTo(1);
+        assertThat(updateResult.displayStockBreakdown()).isEqualTo("5 total | 4 reservadas | 1 disponible");
+    }
+
+    @Test
+    void reservedActionWithoutLedgerReservationsDoesNotReduceAvailableStockInProductFamily() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("availableInventoryQuantity", List.class, List.class);
+        method.setAccessible(true);
+
+        InventoryCard reserved = inventoryCard("Arcane Signet", "Commander 2020", "C20", "237", "nonfoil", "2", "Reservada", 10);
+        reserved.setCondition("NM");
+        InventoryCard available = inventoryCard("Arcane Signet", "Commander 2020", "C20", "237", "nonfoil", "3", "En Stock", 11);
+        available.setCondition("EX");
+        InventoryCard unrelated = inventoryCard("Sol Ring", "Commander 2020", "C20", "238", "nonfoil", "7", "Reservada", 12);
+        unrelated.setCondition("NM");
+
+        assertThat((int) method.invoke(controller, List.of(reserved, available), List.of())).isEqualTo(5);
+
+        Method cardMethod = DashboardController.class.getDeclaredMethod("availableInventoryQuantity", InventoryCard.class, List.class, List.class);
+        cardMethod.setAccessible(true);
+        assertThat((int) cardMethod.invoke(controller, available, List.of(), List.of(reserved, available, unrelated))).isEqualTo(3);
+    }
+
+    @Test
+    void reservedActionWithoutConditionStocksDisplaysPhysicalStockOnly() {
+        DashboardController.UpdateResult updateResult = update(
+                "Arcane Signet",
+                "Throne of Eldraine",
+                "ELD",
+                "331",
+                "Reservada",
+                2,
+                15
+        );
+
+        assertThat(updateResult.displayReservedQuantity()).isZero();
+        assertThat(updateResult.displayAvailableQuantity()).isEqualTo(2);
+        assertThat(updateResult.displayStockBreakdown()).isEmpty();
+        assertThat(updateResult.displayAction()).isEqualTo("En Stock");
+    }
+
+    @Test
+    void flexibleReservationMatchesAnyEditionForSharedPendingRule() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "matchesReservation",
+                CardReservation.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class
+        );
+        method.setAccessible(true);
+
+        CardReservation flexible = new CardReservation();
+        flexible.setName("Arcane Signet");
+        flexible.setSetName("Throne of Eldraine");
+        flexible.setSetCode("ELD");
+        flexible.setCollectorNumber("331");
+        flexible.setPrinting("nonfoil");
+        flexible.setNotes("[Cualquier edicion/condicion]");
+
+        assertThat((boolean) method.invoke(
+                controller,
+                flexible,
+                "Arcane Signet",
+                "Commander 2020",
+                "C20",
+                "237",
+                "foil"
+        )).isTrue();
+        assertThat((boolean) method.invoke(
+                controller,
+                flexible,
+                "Sol Ring",
+                "Commander 2020",
+                "C20",
+                "238",
+                "nonfoil"
+        )).isFalse();
+    }
+
+    @Test
+    void exactReservationStillRequiresExactEditionWhenNotFlexible() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "matchesReservation",
+                CardReservation.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class
+        );
+        method.setAccessible(true);
+
+        CardReservation exact = new CardReservation();
+        exact.setName("Arcane Signet");
+        exact.setSetName("Throne of Eldraine");
+        exact.setSetCode("ELD");
+        exact.setCollectorNumber("331");
+        exact.setPrinting("nonfoil");
+
+        assertThat((boolean) method.invoke(
+                controller,
+                exact,
+                "Arcane Signet",
+                "Commander 2020",
+                "C20",
+                "237",
+                "nonfoil"
+        )).isFalse();
     }
 
     @Test
@@ -753,6 +1043,27 @@ class DashboardControllerVariantSearchTests {
             reservations.add(reservation);
         }
         return reservations;
+    }
+
+    private CardReservation reservedReservation(
+            String name,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String condition,
+            String notes
+    ) {
+        CardReservation reservation = new CardReservation();
+        reservation.setStatus(CardReservation.STATUS_RESERVED);
+        reservation.setName(name);
+        reservation.setSetName(setName);
+        reservation.setSetCode(setCode);
+        reservation.setCollectorNumber(collectorNumber);
+        reservation.setPrinting("nonfoil");
+        reservation.setCondition(condition);
+        reservation.setQuantity("1");
+        reservation.setNotes(notes);
+        return reservation;
     }
 
     private DashboardController.SearchResult searchResult(

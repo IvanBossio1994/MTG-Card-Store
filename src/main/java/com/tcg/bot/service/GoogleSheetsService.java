@@ -822,6 +822,46 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public void updateReservationInventoryMatch(
+            String reservationId,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var matchBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(
+                        safe(setName),
+                        safe(setCode),
+                        safe(collectorNumber),
+                        safe(printing)
+                )));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("D" + rowIndex + ":G" + rowIndex), matchBody)
+                .setValueInputOption("RAW")
+                .execute();
+
+        var conditionBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(condition))));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("P" + rowIndex), conditionBody)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         if (rowIndexes == null || rowIndexes.isEmpty()) {
             return;
