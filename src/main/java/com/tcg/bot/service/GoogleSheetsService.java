@@ -579,7 +579,7 @@ public class GoogleSheetsService {
         ensureReservationsSheet(sheetsService);
 
         var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A2:O"))
+                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A2:P"))
                 .execute();
 
         var values = response.getValues();
@@ -608,6 +608,7 @@ public class GoogleSheetsService {
             reservation.setPickupDate(getColumnValue(row, 12));
             reservation.setPaymentDate(getColumnValue(row, 13));
             reservation.setNotes(getColumnValue(row, 14));
+            reservation.setCondition(getColumnValue(row, 15));
             reservations.add(reservation);
         }
 
@@ -636,7 +637,7 @@ public class GoogleSheetsService {
                 .setValues(rows);
 
         sheetsService.spreadsheets().values()
-                .append(storeSettingsService.getSpreadsheetId(), reservationRange("A:O"), body)
+                .append(storeSettingsService.getSpreadsheetId(), reservationRange("A:P"), body)
                 .setValueInputOption("RAW")
                 .setInsertDataOption("INSERT_ROWS")
                 .execute();
@@ -658,7 +659,8 @@ public class GoogleSheetsService {
                 safe(reservation.getReservationDate()),
                 safe(reservation.getPickupDate()),
                 safe(reservation.getPaymentDate()),
-                safe(reservation.getNotes())
+                safe(reservation.getNotes()),
+                safe(reservation.getCondition())
         );
     }
 
@@ -794,6 +796,68 @@ public class GoogleSheetsService {
 
         sheetsService.spreadsheets().values()
                 .update(storeSettingsService.getSpreadsheetId(), reservationRange("M" + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateReservationCondition(String reservationId, String condition) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(condition))));
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("P" + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateReservationInventoryMatch(
+            String reservationId,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var matchBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(
+                        safe(setName),
+                        safe(setCode),
+                        safe(collectorNumber),
+                        safe(printing)
+                )));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("D" + rowIndex + ":G" + rowIndex), matchBody)
+                .setValueInputOption("RAW")
+                .execute();
+
+        var conditionBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(condition))));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("P" + rowIndex), conditionBody)
                 .setValueInputOption("RAW")
                 .execute();
     }
@@ -2061,11 +2125,12 @@ public class GoogleSheetsService {
                 "Fecha de reserva",
                 "Fecha de retiro",
                 "Fecha de pago",
-                "Notas"
+                "Notas",
+                "Condicion"
         );
 
         var headerResponse = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A1:O1"))
+                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A1:P1"))
                 .execute();
 
         if (headerResponse.getValues() != null
@@ -2079,7 +2144,7 @@ public class GoogleSheetsService {
                 .setValues(List.of(new ArrayList<>(reservationHeader)));
 
         sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), reservationRange("A1:O1"), headerBody)
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("A1:P1"), headerBody)
                 .setValueInputOption("RAW")
                 .execute();
         verifiedReservationHeaders.add(headerCacheKey);

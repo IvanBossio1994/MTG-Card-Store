@@ -154,7 +154,7 @@
                 <tbody>
                 <th:block th:each="result, iter : ${results}">
                 <tr class="search-result-row"
-                    th:attr="data-in-stock=${result.stockQuantity > 0},
+                    th:attr="data-in-stock=${result.displayAvailableQuantity() > 0},
                              data-ck-nm=${result.formattedNmPrice},
                              data-ck-ex=${result.formattedExPrice},
                              data-ck-vg=${result.formattedVgPrice},
@@ -167,14 +167,18 @@
                              data-stock-ex=${result.exStockQuantity},
                              data-stock-vg=${result.vgStockQuantity},
                              data-stock-g=${result.gStockQuantity},
+                             data-available-nm=${result.availableStockQuantityForCondition('NM')},
+                             data-available-ex=${result.availableStockQuantityForCondition('EX')},
+                             data-available-vg=${result.availableStockQuantityForCondition('VG')},
+                             data-available-g=${result.availableStockQuantityForCondition('G')},
                              data-row-nm=${result.nmRowIndex},
                              data-row-ex=${result.exRowIndex},
                              data-row-vg=${result.vgRowIndex},
                              data-row-g=${result.gRowIndex}"
-                    th:classappend="${result.stockQuantity > 0} ? 'in-stock' : ''">
+                    th:classappend="${result.displayAvailableQuantity() > 0} ? 'in-stock' : ''">
                     <td>
                         <div class="stock-controls parent-condition-stock-controls"
-                             th:hidden="${!#lists.isEmpty(result.conditionStocks) && result.rowIndex > 0}">
+                             th:hidden="${!result.showParentStockControls()}">
                             <button type="button"
                                     class="stock-button decrease"
                                     th:attr="data-row=${result.rowIndex}"
@@ -183,8 +187,8 @@
                                 -
                             </button>
                             <input class="stock-value" type="number" min="0" inputmode="numeric"
-                                   th:value="${result.displayStockQuantity}"
-                                   th:attr="data-stock-value=${result.displayStockQuantity}"
+                                   th:value="${result.stockQuantity}"
+                                   th:attr="data-stock-value=${result.stockQuantity}"
                                    aria-label="Cantidad para modificar stock">
                             <button type="button"
                                     class="stock-button increase"
@@ -194,15 +198,18 @@
                             </button>
                         </div>
                         <span class="stock-total-display"
-                              th:if="${!#lists.isEmpty(result.conditionStocks)}"
-                              th:hidden="${result.rowIndex <= 0}"
+                              th:if="${result.showConditionStockOptions()}"
+                              th:hidden="${result.showParentStockControls()}"
                               th:text="${result.displayStockQuantity}">0</span>
+                        <small class="stock-inline-breakdown"
+                               th:if="${!result.showConditionStockOptions() && result.displayReservedQuantity() > 0}"
+                               th:text="${result.displayStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
                     </td>
                     <td class="card-name-cell">
                         <div class="inventory-card-name">
                             <span th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
                             <button class="version-toggle inventory-stock-toggle" type="button"
-                                    th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                                    th:if="${result.showConditionStockOptions()}"
                                     th:attr="aria-controls=${'search-stock-options-' + iter.index}"
                                     aria-expanded="false"
                                     aria-label="Ver stock por condicion"></button>
@@ -231,17 +238,17 @@
                     <td th:if="${reservationsUnlocked}">
                         <button type="button"
                                 class="secondary-button add-reservation-button"
-                                th:if="${#lists.isEmpty(result.conditionStocks)}"
-                                th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${result.rowIndex},data-stock-quantity=${result.stockQuantity}">
+                                th:if="${!result.showConditionStockOptions()}"
+                                th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-condition=${result.selectedCondition},data-row=${result.rowIndex},data-stock-quantity=${result.displayAvailableQuantity()}">
                             Anadir a pedido
                         </button>
-                        <span class="muted-cell" th:if="${!#lists.isEmpty(result.conditionStocks)}">Elegir condicion</span>
+                        <span class="muted-cell" th:if="${result.showConditionStockOptions()}">Elegir condicion</span>
                     </td>
                     <td class="price-cell ck-price-cell" th:text="${result.formattedSelectedCkPrice != null && result.formattedSelectedCkPrice != '' ? '$ ' + result.formattedSelectedCkPrice : '-'}">$ 2,49</td>
                     <td class="price-cell local-price-cell" th:text="${result.localPrice != null && result.localPrice != '' ? '$ ' + result.formattedLocalPrice : '-'}">$ 0</td>
                 </tr>
                 <tr class="version-options-row inventory-stock-options-row" hidden
-                    th:if="${!#lists.isEmpty(result.conditionStocks)}"
+                    th:if="${result.showConditionStockOptions()}"
                     th:id="${'search-stock-options-' + iter.index}">
                     <td th:colspan="${reservationsUnlocked ? 10 : 9}">
                         <div class="version-options-header">
@@ -250,7 +257,7 @@
                         </div>
                         <div class="version-option-grid inventory-condition-grid">
                             <div class="version-option inventory-condition-option" th:each="stock : ${result.conditionStocks}"
-                                 th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                 th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity},data-available-quantity=${stock.availableQuantity}">
                                 <div class="stock-controls condition-stock-controls">
                                     <button type="button"
                                             class="stock-button decrease"
@@ -273,7 +280,7 @@
                                 </div>
                                 <span class="condition-cell">
                                     <strong th:text="${stock.condition}">NM</strong>
-                                    <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                    <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas | ' : '') + stock.availableQuantity + ' disponibles'}">0 total</small>
                                 </span>
                                 <span class="condition-meta-cell">
                                     <small>CK USD</small>
@@ -289,7 +296,7 @@
                                 <button type="button"
                                         class="secondary-button add-reservation-button condition-reservation-button"
                                         th:if="${reservationsUnlocked}"
-                                        th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                        th:attr="data-name=${result.name},data-set-name=${result.edition},data-set-code=${result.setCode},data-collector-number=${result.collectorNumber},data-printing=${result.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.availableQuantity}">
                                     Anadir a pedido
                                 </button>
                             </div>
@@ -353,11 +360,10 @@
                     <tbody>
                     <th:block th:each="update, iter : ${updates}">
                     <tr class="synced-table-row"
-                        th:with="pendingInfo=${pendingReservationQuantities != null ? pendingReservationQuantities[update.reservationKey()] : null}"
-                        th:attr="data-in-stock=${update.displayStockQuantity() > 0}"
-                        th:classappend="${update.displayStockQuantity() > 0} ? 'in-stock' : ''">
+                        th:attr="data-in-stock=${update.displayAvailableQuantity() > 0}"
+                        th:classappend="${update.displayAvailableQuantity() > 0} ? 'in-stock' : ''">
                         <td>
-                            <div class="stock-controls" th:if="${#lists.isEmpty(update.conditionStocks)}">
+                            <div class="stock-controls" th:if="${!update.showConditionStockOptions()}">
                                 <button type="button"
                                         class="stock-button decrease"
                                         th:attr="data-row=${update.rowIndex}"
@@ -377,14 +383,17 @@
                                     +
                                 </button>
                             </div>
-                            <span class="stock-total-display" th:if="${!#lists.isEmpty(update.conditionStocks)}"
+                            <span class="stock-total-display" th:if="${update.showConditionStockOptions()}"
                                   th:text="${update.displayStockQuantity()}">0</span>
+                            <small class="stock-inline-breakdown"
+                                   th:if="${!update.showConditionStockOptions() && update.displayReservedQuantity() > 0}"
+                                   th:text="${update.displayStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
                         </td>
                         <td class="card-name-cell">
                             <div class="inventory-card-name">
                                 <span th:text="${update.name != null && update.name != '' ? update.name : '-'}">Sol Ring</span>
                                 <button class="version-toggle inventory-stock-toggle" type="button"
-                                        th:if="${!#lists.isEmpty(update.conditionStocks)}"
+                                        th:if="${update.showConditionStockOptions()}"
                                         th:attr="aria-controls=${'synced-stock-options-' + iter.index}"
                                         aria-expanded="false"
                                         aria-label="Ver stock por condicion"></button>
@@ -398,23 +407,19 @@
                         <td>
                             <span class="status stock-action-status" th:classappend="${update.displayActionClass()}"
                                   th:text="${update.displayAction()}">En Stock</span>
-                            <span class="pending-stock-info"
-                                  th:if="${pendingInfo != null}"
-                                  th:title="${pendingInfo.tooltip}"
-                                  aria-label="Carta pedida">i</span>
                         </td>
                         <td th:if="${reservationsUnlocked}">
                             <button type="button"
                                     class="secondary-button add-reservation-button"
-                                    th:if="${#lists.isEmpty(update.conditionStocks)}"
-                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${update.rowIndex},data-stock-quantity=${update.displayStockQuantity()}">
+                                    th:if="${!update.showConditionStockOptions()}"
+                                    th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-condition=${update.condition},data-row=${update.rowIndex},data-stock-quantity=${update.displayAvailableQuantity()}">
                                 Anadir a pedido
                             </button>
-                            <span class="muted-cell" th:if="${!#lists.isEmpty(update.conditionStocks)}">Elegir condicion</span>
+                            <span class="muted-cell" th:if="${update.showConditionStockOptions()}">Elegir condicion</span>
                         </td>
                     </tr>
                     <tr class="version-options-row inventory-stock-options-row" hidden
-                        th:if="${!#lists.isEmpty(update.conditionStocks)}"
+                        th:if="${update.showConditionStockOptions()}"
                         th:id="${'synced-stock-options-' + iter.index}">
                         <td th:colspan="${reservationsUnlocked ? 9 : 8}">
                             <div class="version-options-header">
@@ -423,7 +428,7 @@
                             </div>
                             <div class="version-option-grid inventory-condition-grid">
                                 <div class="version-option inventory-condition-option" th:each="stock : ${update.conditionStocks}"
-                                     th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                     th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity},data-available-quantity=${stock.availableQuantity}">
                                     <div class="stock-controls condition-stock-controls">
                                         <button type="button"
                                                 class="stock-button decrease"
@@ -446,7 +451,7 @@
                                     </div>
                                     <span class="condition-cell">
                                         <strong th:text="${stock.condition}">NM</strong>
-                                        <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas' : stock.availableQuantity + ' disponibles')}">0 total</small>
+                                        <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas | ' : '') + stock.availableQuantity + ' disponibles'}">0 total</small>
                                     </span>
                                     <span class="condition-meta-cell">
                                         <small>CK USD</small>
@@ -462,7 +467,7 @@
                                     <button type="button"
                                             class="secondary-button add-reservation-button condition-reservation-button"
                                             th:if="${reservationsUnlocked}"
-                                            th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity}">
+                                            th:attr="data-name=${update.name},data-set-name=${update.edition},data-set-code=${update.setCode},data-collector-number=${update.collectorNumber},data-printing=${update.printing},data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.availableQuantity}">
                                         Anadir a pedido
                                     </button>
                                 </div>
@@ -504,6 +509,7 @@
         <input type="hidden" name="setCode">
         <input type="hidden" name="collectorNumber">
         <input type="hidden" name="printing">
+        <input type="hidden" name="condition">
         <input type="hidden" name="rowIndex">
 
         <div class="reservation-modal-grid">

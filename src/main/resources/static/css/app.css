@@ -2579,6 +2579,16 @@ input.stock-value::-webkit-inner-spin-button {
     font-variant-numeric: tabular-nums;
 }
 
+.stock-inline-breakdown {
+    display: block;
+    max-width: 132px;
+    margin: 4px auto 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.25;
+    text-align: center;
+}
+
 .inventory-condition-option .status {
     flex: 0 0 auto;
     justify-self: center;
@@ -3375,24 +3385,6 @@ input.stock-value::-webkit-inner-spin-button {
 .status.sin-stock {
     color: var(--red);
     background: var(--red-soft);
-}
-
-.pending-stock-info {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    margin-left: 8px;
-    padding: 0;
-    border-radius: 999px;
-    border: 1px solid rgba(23, 105, 224, 0.22);
-    color: var(--blue);
-    background: var(--blue-soft);
-    font-size: 12px;
-    font-weight: 800;
-    white-space: nowrap;
-    cursor: help;
 }
 
 .status.con-stock,
