@@ -1333,7 +1333,50 @@ h2 {
 .variation-cell {
     white-space: normal;
     line-height: 1.35;
+}
+
+.card-name-cell,
+.variation-cell {
     overflow-wrap: anywhere;
+}
+
+.set-name-cell {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.product-aggregate-cell {
+    background: var(--blue-soft);
+}
+
+.product-aggregate-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.product-stock-summary,
+.family-label,
+.family-stock-breakdown {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.product-stock-summary {
+    font-weight: 700;
+}
+
+.family-label {
+    margin-top: 2px;
+    font-weight: 700;
+}
+
+.card-name-cell .family-stock-breakdown {
+    max-width: none;
+    margin: 2px 0 0;
+    text-align: left;
 }
 
 .compact-cell {
@@ -1376,27 +1419,27 @@ h2 {
 
 #search-results-table th:nth-child(3),
 #search-results-table td:nth-child(3) {
-    width: 14%;
+    width: 82px;
 }
 
 #search-results-table th:nth-child(4),
 #search-results-table td:nth-child(4) {
-    width: 9%;
+    width: 14%;
 }
 
 #search-results-table th:nth-child(5),
 #search-results-table td:nth-child(5) {
-    width: 12%;
+    width: 9%;
 }
 
 #search-results-table th:nth-child(6),
 #search-results-table td:nth-child(6) {
-    width: 7%;
+    width: 12%;
 }
 
 #search-results-table th:nth-child(7),
 #search-results-table td:nth-child(7) {
-    width: 72px;
+    width: 7%;
 }
 
 #search-results-table th:nth-child(8),
@@ -1426,6 +1469,16 @@ h2 {
     color: var(--text);
     background: #fff;
     font-weight: 700;
+}
+
+.condition-inline-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    min-height: 30px;
+    color: var(--text);
+    font-weight: 800;
 }
 
 .add-reservation-button {
@@ -3247,7 +3300,7 @@ input.stock-value::-webkit-inner-spin-button {
 
 .updates table {
     table-layout: fixed;
-    min-width: 1120px;
+    min-width: 1180px;
 }
 
 .updates th,
@@ -3272,28 +3325,33 @@ input.stock-value::-webkit-inner-spin-button {
 
 .updates th:nth-child(3),
 .updates td:nth-child(3) {
-    width: 17%;
-    min-width: 145px;
-    text-align: left;
-    white-space: normal;
+    width: 110px;
 }
 
 .updates th:nth-child(4),
-.updates td:nth-child(4),
+.updates td:nth-child(4) {
+    width: 20%;
+    min-width: 220px;
+    text-align: center;
+    white-space: normal;
+}
+
 .updates th:nth-child(5),
-.updates td:nth-child(5) {
+.updates td:nth-child(5),
+.updates th:nth-child(6),
+.updates td:nth-child(6) {
     width: 86px;
 }
 
-.updates th:nth-child(6),
-.updates td:nth-child(6),
 .updates th:nth-child(7),
-.updates td:nth-child(7) {
+.updates td:nth-child(7),
+.updates th:nth-child(8),
+.updates td:nth-child(8) {
     width: 118px;
 }
 
-.updates th:nth-child(8),
-.updates td:nth-child(8) {
+.updates th:nth-child(9),
+.updates td:nth-child(9) {
     width: 118px;
 }
 
@@ -3602,12 +3660,12 @@ input.stock-value::-webkit-inner-spin-button {
         padding-left: 8px;
     }
 
-    .updates th:nth-child(6),
-    .updates td:nth-child(6),
     .updates th:nth-child(7),
     .updates td:nth-child(7),
     .updates th:nth-child(8),
-    .updates td:nth-child(8) {
+    .updates td:nth-child(8),
+    .updates th:nth-child(9),
+    .updates td:nth-child(9) {
         width: 108px;
     }
 }

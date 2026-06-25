@@ -254,14 +254,16 @@ public class DashboardController {
             var results = products.stream()
                     .map(product -> createSearchResult(product, inventoryCards))
                     .toList();
+            var productGroups = groupedSearchResults(results, reservationsForLedgerSafely());
             var pendingReservationQuantities = reservationsEnabled
                     ? pendingReservationQuantitiesForSearchResults(results)
                     : Map.<String, PendingReservationInfo>of();
 
             model.addAttribute("pendingReservationQuantities", pendingReservationQuantities);
             model.addAttribute("results", results);
-            model.addAttribute("totalStockQuantity", results.stream()
-                    .mapToInt(SearchResult::stockQuantity)
+            model.addAttribute("searchProductGroups", productGroups);
+            model.addAttribute("totalStockQuantity", productGroups.stream()
+                    .mapToInt(SearchProductGroup::stockQuantity)
                     .sum());
         } catch (Exception e) {
             model.addAttribute("error", "No se pudo consultar Card Kingdom o el inventario configurado.");
@@ -4149,15 +4151,26 @@ public class DashboardController {
             return "";
         }
 
+        return stockBreakdownText(stockTotal, reservedQuantity, availableQuantity);
+    }
+
+    private static String stockBreakdownText(int stockTotal, int reservedQuantity, int availableQuantity) {
         return stockTotal
                 + " total | "
                 + reservedQuantity
-                + " reservada"
-                + (reservedQuantity == 1 ? "" : "s")
+                + " reservadas"
                 + " | "
                 + availableQuantity
-                + " disponible"
-                + (availableQuantity == 1 ? "" : "s");
+                + " disponibles";
+    }
+
+    private static String familyDisplayLabel(String setCode, String collectorNumber, String printing) {
+        String set = blankToEmptyStatic(setCode);
+        String number = blankToEmptyStatic(collectorNumber);
+        String setNumber = set.isBlank() && number.isBlank()
+                ? "-"
+                : set + (set.isBlank() || number.isBlank() ? "" : "/") + number;
+        return "foil".equals(lookupPrinting(printing)) ? setNumber + " foil" : setNumber;
     }
 
     private PendingStockSnapshot pendingStockSnapshot(InventoryCard card, List<CardReservation> reservations) {
@@ -5472,6 +5485,370 @@ public class DashboardController {
         );
     }
 
+    private List<SearchProductGroup> groupedSearchResults(List<SearchResult> results, List<CardReservation> reservations) {
+        if (results == null || results.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, List<SearchResult>> grouped = new LinkedHashMap<>();
+        for (SearchResult result : results) {
+            grouped.computeIfAbsent(productAggregationKey(result.name()), unused -> new ArrayList<>()).add(result);
+        }
+
+        List<SearchProductGroup> groups = new ArrayList<>();
+        for (List<SearchResult> families : grouped.values()) {
+            List<SearchResult> decoratedFamilies = decoratedSearchFamilies(families, reservations);
+            decoratedFamilies = sortedSearchFamiliesForDisplay(decoratedFamilies);
+            SearchResult first = decoratedFamilies.get(0);
+            groups.add(new SearchProductGroup(
+                    first.name(),
+                    productAggregationKey(first.name()),
+                    decoratedFamilies,
+                    decoratedFamilies.stream().mapToInt(SearchResult::displayStockQuantity).sum(),
+                    decoratedFamilies.stream().mapToInt(SearchResult::displayReservedQuantity).sum(),
+                    decoratedFamilies.stream().mapToInt(SearchResult::displayAvailableQuantity).sum()
+            ));
+        }
+
+        return groups.stream()
+                .sorted(searchProductGroupComparator())
+                .toList();
+    }
+
+    private List<SearchResult> sortedSearchFamiliesForDisplay(List<SearchResult> families) {
+        return families.stream()
+                .sorted(searchResultDisplayComparator())
+                .toList();
+    }
+
+    private Comparator<SearchProductGroup> searchProductGroupComparator() {
+        return Comparator
+                .comparingInt((SearchProductGroup group) -> group.availableQuantity() > 0 ? 0 : group.hasLocalInventory() ? 1 : 2)
+                .thenComparing(group -> normalizedCardText(group.name()));
+    }
+
+    private Comparator<SearchResult> searchResultDisplayComparator() {
+        return Comparator
+                .comparingInt((SearchResult result) -> result.displayAvailableQuantity() > 0 ? 0 : result.hasLocalInventory() ? 1 : 2)
+                .thenComparing(result -> normalizedCardText(result.edition()))
+                .thenComparing(result -> normalizedCardText(result.setCode()))
+                .thenComparing(result -> normalizedCardText(result.collectorNumber()))
+                .thenComparing(result -> normalizedCardText(result.variation()))
+                .thenComparing(result -> normalizedCardText(result.printing()));
+    }
+
+    private List<UpdateProductGroup> groupedUpdateResults(List<UpdateResult> updates, List<CardReservation> reservations) {
+        if (updates == null || updates.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, List<UpdateResult>> grouped = new LinkedHashMap<>();
+        for (UpdateResult update : updates) {
+            grouped.computeIfAbsent(productAggregationKey(update.name()), unused -> new ArrayList<>()).add(update);
+        }
+
+        List<UpdateProductGroup> groups = new ArrayList<>();
+        for (List<UpdateResult> families : grouped.values()) {
+            List<UpdateResult> decoratedFamilies = decoratedUpdateFamilies(families, reservations);
+            UpdateResult first = decoratedFamilies.get(0);
+            groups.add(new UpdateProductGroup(
+                    first.name(),
+                    productAggregationKey(first.name()),
+                    decoratedFamilies,
+                    decoratedFamilies.stream().mapToInt(UpdateResult::displayStockQuantity).sum(),
+                    decoratedFamilies.stream().mapToInt(UpdateResult::displayReservedQuantity).sum(),
+                    decoratedFamilies.stream().mapToInt(UpdateResult::displayAvailableQuantity).sum()
+            ));
+        }
+
+        return groups;
+    }
+
+    private String productAggregationKey(String name) {
+        return lookupText(name);
+    }
+
+    private List<SearchResult> decoratedSearchFamilies(List<SearchResult> families, List<CardReservation> reservations) {
+        List<InventoryCard> productCards = families.stream()
+                .flatMap(result -> inventoryCardsFromSearchResult(result).stream())
+                .toList();
+        Map<String, Integer> reservedByStockKey = reservedQuantitiesByVisualStockKeyForProduct(productCards, reservations);
+
+        return families.stream()
+                .map(result -> withProductReservedConditionStocks(result, reservedByStockKey))
+                .toList();
+    }
+
+    private List<UpdateResult> decoratedUpdateFamilies(List<UpdateResult> families, List<CardReservation> reservations) {
+        List<InventoryCard> productCards = families.stream()
+                .flatMap(update -> inventoryCardsFromUpdateResult(update).stream())
+                .toList();
+        Map<String, Integer> reservedByStockKey = reservedQuantitiesByVisualStockKeyForProduct(productCards, reservations);
+
+        return families.stream()
+                .map(update -> withProductReservedConditionStocks(update, reservedByStockKey))
+                .toList();
+    }
+
+    private SearchResult withProductReservedConditionStocks(SearchResult result, Map<String, Integer> reservedByStockKey) {
+        List<ReservationConditionStock> conditionStocks = conditionStocksForVisualFamily(
+                inventoryCardsFromSearchResult(result),
+                reservedByStockKey
+        );
+        conditionStocks = withConditionPrices(
+                conditionStocks,
+                result.nmPrice(),
+                result.exPrice(),
+                result.vgPrice(),
+                result.gPrice(),
+                result.nmLocalPrice(),
+                result.exLocalPrice(),
+                result.vgLocalPrice(),
+                result.gLocalPrice()
+        );
+
+        return new SearchResult(
+                result.name(),
+                result.edition(),
+                result.sku(),
+                result.setCode(),
+                result.collectorNumber(),
+                result.variation(),
+                result.printing(),
+                result.selectedCondition(),
+                result.nmPrice(),
+                result.exPrice(),
+                result.vgPrice(),
+                result.gPrice(),
+                result.nmLocalPrice(),
+                result.exLocalPrice(),
+                result.vgLocalPrice(),
+                result.gLocalPrice(),
+                result.nmStockQuantity(),
+                result.exStockQuantity(),
+                result.vgStockQuantity(),
+                result.gStockQuantity(),
+                result.nmRowIndex(),
+                result.exRowIndex(),
+                result.vgRowIndex(),
+                result.gRowIndex(),
+                conditionStocks,
+                result.localPrice(),
+                result.stockQuantity(),
+                result.rowIndex()
+        );
+    }
+
+    private UpdateResult withProductReservedConditionStocks(UpdateResult update, Map<String, Integer> reservedByStockKey) {
+        List<ReservationConditionStock> conditionStocks = conditionStocksForVisualFamily(
+                inventoryCardsFromUpdateResult(update),
+                reservedByStockKey
+        );
+
+        return new UpdateResult(
+                update.name(),
+                update.edition(),
+                update.setCode(),
+                update.collectorNumber(),
+                update.printing(),
+                update.localPrice(),
+                update.ckPriceUsd(),
+                update.action(),
+                update.condition(),
+                conditionStocks,
+                update.rowIndex(),
+                update.stockQuantity(),
+                update.writeRequired()
+        );
+    }
+
+    private List<InventoryCard> inventoryCardsFromSearchResult(SearchResult result) {
+        if (result == null) {
+            return List.of();
+        }
+
+        List<InventoryCard> cards = new ArrayList<>();
+        addVisualInventoryCard(cards, result.name(), result.edition(), result.setCode(), result.collectorNumber(),
+                result.printing(), "NM", result.nmStockQuantity(), result.nmRowIndex(), result.nmPrice(), result.nmLocalPrice());
+        addVisualInventoryCard(cards, result.name(), result.edition(), result.setCode(), result.collectorNumber(),
+                result.printing(), "EX", result.exStockQuantity(), result.exRowIndex(), result.exPrice(), result.exLocalPrice());
+        addVisualInventoryCard(cards, result.name(), result.edition(), result.setCode(), result.collectorNumber(),
+                result.printing(), "VG", result.vgStockQuantity(), result.vgRowIndex(), result.vgPrice(), result.vgLocalPrice());
+        addVisualInventoryCard(cards, result.name(), result.edition(), result.setCode(), result.collectorNumber(),
+                result.printing(), "G", result.gStockQuantity(), result.gRowIndex(), result.gPrice(), result.gLocalPrice());
+        return cards;
+    }
+
+    private List<InventoryCard> inventoryCardsFromUpdateResult(UpdateResult update) {
+        if (update == null) {
+            return List.of();
+        }
+
+        if (update.conditionStocks() != null && !update.conditionStocks().isEmpty()) {
+            List<InventoryCard> cards = new ArrayList<>();
+            for (ReservationConditionStock stock : update.conditionStocks()) {
+                addVisualInventoryCard(cards, update.name(), update.edition(), update.setCode(), update.collectorNumber(),
+                        update.printing(), stock.condition(), stock.quantity(), stock.rowIndex(), stock.ckPriceUsd(), stock.localPrice());
+            }
+            return cards;
+        }
+
+        List<InventoryCard> cards = new ArrayList<>();
+        addVisualInventoryCard(cards, update.name(), update.edition(), update.setCode(), update.collectorNumber(),
+                update.printing(), update.condition(), update.stockQuantity(), update.rowIndex(), update.ckPriceUsd(), update.localPrice());
+        return cards;
+    }
+
+    private void addVisualInventoryCard(
+            List<InventoryCard> cards,
+            String name,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition,
+            int quantity,
+            int rowIndex,
+            String ckPriceUsd,
+            String localPrice
+    ) {
+        if (quantity <= 0 && rowIndex <= 0) {
+            return;
+        }
+
+        InventoryCard card = new InventoryCard();
+        card.setName(name);
+        card.setSetName(setName);
+        card.setSetCode(setCode);
+        card.setCollectorNumber(collectorNumber);
+        card.setPrinting(printing);
+        card.setCondition(displayCondition(condition));
+        card.setQuantity(String.valueOf(Math.max(quantity, 0)));
+        card.setRowIndex(rowIndex);
+        card.setCkPriceUsd(blankToEmpty(ckPriceUsd));
+        card.setLocalPrice(blankToEmpty(localPrice));
+        card.setAction(stockActionForQuantity(quantity));
+        cards.add(card);
+    }
+
+    private List<ReservationConditionStock> conditionStocksForVisualFamily(
+            List<InventoryCard> familyCards,
+            Map<String, Integer> reservedByStockKey
+    ) {
+        if (familyCards == null || familyCards.isEmpty()) {
+            return List.of();
+        }
+
+        List<ReservationConditionStock> stocks = new ArrayList<>();
+        for (String condition : List.of("NM", "EX", "VG", "G")) {
+            List<InventoryCard> matches = familyCards.stream()
+                    .filter(card -> displayCondition(card.getCondition()).equals(condition))
+                    .toList();
+            int quantity = matches.stream().mapToInt(this::quantity).sum();
+            int reservedQuantity = matches.stream()
+                    .mapToInt(card -> reservedByStockKey.getOrDefault(inventoryReservationStockKey(card), 0))
+                    .sum();
+
+            if (quantity <= 0 && reservedQuantity <= 0) {
+                continue;
+            }
+
+            stocks.add(new ReservationConditionStock(
+                    condition,
+                    quantity,
+                    Math.max(quantity - reservedQuantity, 0),
+                    reservedQuantity,
+                    stockActionForReservedState(quantity, reservedQuantity),
+                    rowIndexForCondition(matches, condition),
+                    firstNonBlankInventoryValue(matches, InventoryCard::getCkPriceUsd),
+                    firstNonBlankInventoryValue(matches, InventoryCard::getLocalPrice)
+            ));
+        }
+
+        long stockedConditionCount = stocks.stream()
+                .filter(stock -> stock.quantity() > 0)
+                .map(ReservationConditionStock::condition)
+                .distinct()
+                .count();
+        boolean hasReservedStock = stocks.stream().anyMatch(stock -> stock.reservedQuantity() > 0);
+        return stockedConditionCount > 1 || hasReservedStock ? stocks : List.of();
+    }
+
+    private Map<String, Integer> reservedQuantitiesByVisualStockKeyForProduct(
+            List<InventoryCard> productCards,
+            List<CardReservation> reservations
+    ) {
+        Map<String, Integer> reservedByStockKey = new LinkedHashMap<>();
+        Map<String, Integer> availableByStockKey = new LinkedHashMap<>();
+        if (productCards == null || productCards.isEmpty()) {
+            return reservedByStockKey;
+        }
+
+        for (InventoryCard card : productCards) {
+            String stockKey = inventoryReservationStockKey(card);
+            reservedByStockKey.putIfAbsent(stockKey, 0);
+            availableByStockKey.merge(stockKey, quantity(card), Integer::sum);
+        }
+
+        if (reservations == null || reservations.isEmpty()) {
+            return reservedByStockKey;
+        }
+
+        String productName = normalizedCardText(productCards.get(0).getName());
+        for (CardReservation reservation : reservations) {
+            if (!CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())
+                    || !productName.equals(normalizedCardText(reservation.getName()))) {
+                continue;
+            }
+
+            int quantity = reservationQuantity(reservation.getQuantity());
+            if (quantity <= 0) {
+                continue;
+            }
+
+            if (flexibleMatch(reservation)) {
+                assignFlexibleVisualReservation(productCards, reservation, quantity, reservedByStockKey, availableByStockKey);
+                continue;
+            }
+
+            String stockKey = reservationStockKey(reservation);
+            if (reservedByStockKey.containsKey(stockKey)) {
+                reservedByStockKey.merge(stockKey, quantity, Integer::sum);
+                availableByStockKey.put(stockKey, Math.max(availableByStockKey.getOrDefault(stockKey, 0) - quantity, 0));
+            }
+        }
+
+        return reservedByStockKey;
+    }
+
+    private void assignFlexibleVisualReservation(
+            List<InventoryCard> productCards,
+            CardReservation reservation,
+            int quantity,
+            Map<String, Integer> reservedByStockKey,
+            Map<String, Integer> availableByStockKey
+    ) {
+        List<InventoryCard> matchingCandidates = productCards.stream()
+                .filter(card -> matchesReservationFamilyForLedger(reservation, card))
+                .toList();
+        List<InventoryCard> candidates = matchingCandidates.isEmpty() ? productCards : matchingCandidates;
+
+        for (int index = 0; index < quantity; index++) {
+            InventoryCard selected = candidates.stream()
+                    .filter(card -> availableByStockKey.getOrDefault(inventoryReservationStockKey(card), 0) > 0)
+                    .max(Comparator
+                            .comparingInt((InventoryCard card) -> availableByStockKey.getOrDefault(inventoryReservationStockKey(card), 0))
+                            .thenComparingInt(card -> -card.getRowIndex()))
+                    .orElseGet(() -> candidates.stream()
+                            .filter(card -> displayCondition(card.getCondition()).equals(displayCondition(reservation.getCondition())))
+                            .findFirst()
+                            .orElse(candidates.get(0)));
+            String stockKey = inventoryReservationStockKey(selected);
+            reservedByStockKey.merge(stockKey, 1, Integer::sum);
+            availableByStockKey.put(stockKey, Math.max(availableByStockKey.getOrDefault(stockKey, 0) - 1, 0));
+        }
+    }
+
     private int stockQuantityForCondition(List<InventoryCard> cards, String condition) {
         return cards.stream()
                 .filter(card -> displayCondition(card.getCondition()).equals(condition))
@@ -5873,6 +6250,8 @@ public class DashboardController {
     private void addBaseModel(Model model, String query) {
         model.addAttribute("query", query == null ? "" : query);
         model.addAttribute("updates", List.of());
+        model.addAttribute("updateProductGroups", List.of());
+        model.addAttribute("searchProductGroups", List.of());
         model.addAttribute("updatePerformed", false);
         model.addAttribute("updatedCount", 0);
         model.addAttribute("ckDollarRate", pricingSettingsService.getCkDollarRate());
@@ -6004,7 +6383,9 @@ public class DashboardController {
 
     private void addLatestUpdates(Model model, boolean reservationsEnabled) {
         List<UpdateResult> updates = groupedLatestUpdates();
+        List<UpdateProductGroup> updateProductGroups = groupedUpdateResults(updates, reservationsForLedgerSafely());
         model.addAttribute("updates", updates);
+        model.addAttribute("updateProductGroups", updateProductGroups);
         model.addAttribute("updatePerformed", !latestUpdates.isEmpty());
         model.addAttribute("updatedCount", latestUpdatedCount);
         model.addAttribute("priceListLastUpdated", formattedPriceListLastUpdated());
@@ -6406,6 +6787,23 @@ public class DashboardController {
                 .count();
     }
 
+    public record SearchProductGroup(
+            String name,
+            String productKey,
+            List<SearchResult> families,
+            int stockQuantity,
+            int reservedQuantity,
+            int availableQuantity
+    ) {
+        public String displayStockBreakdown() {
+            return stockBreakdownText(stockQuantity, reservedQuantity, availableQuantity);
+        }
+
+        public boolean hasLocalInventory() {
+            return families != null && families.stream().anyMatch(SearchResult::hasLocalInventory);
+        }
+    }
+
     public record SearchResult(
             String name,
             String edition,
@@ -6517,15 +6915,11 @@ public class DashboardController {
                 return "";
             }
 
-            return displayStockQuantity()
-                    + " total | "
-                    + reserved
-                    + " reservada"
-                    + (reserved == 1 ? "" : "s")
-                    + " | "
-                    + displayAvailableQuantity()
-                    + " disponible"
-                    + (displayAvailableQuantity() == 1 ? "" : "s");
+            return stockBreakdownText(displayStockQuantity(), reserved, displayAvailableQuantity());
+        }
+
+        public String displayFullStockBreakdown() {
+            return stockBreakdownText(displayStockQuantity(), displayReservedQuantity(), displayAvailableQuantity());
         }
 
         public boolean showConditionStockOptions() {
@@ -6554,8 +6948,25 @@ public class DashboardController {
             return !showConditionStockOptions() || rowIndex <= 0 || availableStockQuantityForCondition(selectedCondition) <= 0;
         }
 
+        public boolean hasLocalInventory() {
+            if (rowIndex > 0 || nmRowIndex > 0 || exRowIndex > 0 || vgRowIndex > 0 || gRowIndex > 0) {
+                return true;
+            }
+
+            return conditionStocks != null && conditionStocks.stream()
+                    .anyMatch(stock -> stock.rowIndex() > 0);
+        }
+
         public String reservationKey() {
             return reservationLookupKey(name, edition, setCode, collectorNumber, printing);
+        }
+
+        public String productKey() {
+            return lookupText(name);
+        }
+
+        public String familyLabel() {
+            return familyDisplayLabel(setCode, collectorNumber, printing);
         }
     }
 
@@ -6695,6 +7106,19 @@ public class DashboardController {
         }
     }
 
+    public record UpdateProductGroup(
+            String name,
+            String productKey,
+            List<UpdateResult> families,
+            int stockQuantity,
+            int reservedQuantity,
+            int availableQuantity
+    ) {
+        public String displayStockBreakdown() {
+            return stockBreakdownText(stockQuantity, reservedQuantity, availableQuantity);
+        }
+    }
+
     public record UpdateResult(
             String name,
             String edition,
@@ -6754,15 +7178,11 @@ public class DashboardController {
                 return "";
             }
 
-            return displayStockQuantity()
-                    + " total | "
-                    + reserved
-                    + " reservada"
-                    + (reserved == 1 ? "" : "s")
-                    + " | "
-                    + displayAvailableQuantity()
-                    + " disponible"
-                    + (displayAvailableQuantity() == 1 ? "" : "s");
+            return stockBreakdownText(displayStockQuantity(), reserved, displayAvailableQuantity());
+        }
+
+        public String displayFullStockBreakdown() {
+            return stockBreakdownText(displayStockQuantity(), displayReservedQuantity(), displayAvailableQuantity());
         }
 
         public boolean showConditionStockOptions() {
@@ -6805,6 +7225,14 @@ public class DashboardController {
 
         public String reservationKey() {
             return reservationLookupKey(name, edition, setCode, collectorNumber, printing);
+        }
+
+        public String productKey() {
+            return lookupText(name);
+        }
+
+        public String familyLabel() {
+            return familyDisplayLabel(setCode, collectorNumber, printing);
         }
     }
 

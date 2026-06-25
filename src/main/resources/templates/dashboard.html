@@ -141,23 +141,39 @@
                         </button>
                     </th>
                     <th>Nombre de la carta</th>
+                    <th>Condicion</th>
                     <th>Set</th>
                     <th>Codigo</th>
                     <th>Variacion</th>
                     <th>Printing</th>
-                    <th>Estado</th>
                     <th th:if="${reservationsUnlocked}">Pedido</th>
                     <th>Precio Card Kingdom</th>
                     <th>Precio local</th>
                 </tr>
                 </thead>
                 <tbody>
-                <th:block th:each="result, iter : ${results}">
-                <tr class="search-result-row"
-                    th:attr="data-in-stock=${result.displayAvailableQuantity() > 0},
-                             data-ck-nm=${result.formattedNmPrice},
-                             data-ck-ex=${result.formattedExPrice},
-                             data-ck-vg=${result.formattedVgPrice},
+                <th:block th:each="productGroup, groupIter : ${searchProductGroups}">
+                <tr class="product-aggregate-row search-product-aggregate-row"
+                    th:attr="data-in-stock=${productGroup.availableQuantity > 0},data-product-key=${productGroup.productKey},data-stock-total=${productGroup.stockQuantity},data-reserved-total=${productGroup.reservedQuantity},data-available-total=${productGroup.availableQuantity}"
+                    th:classappend="${productGroup.availableQuantity > 0} ? 'in-stock' : ''">
+                    <td class="product-aggregate-cell" th:colspan="${reservationsUnlocked ? 10 : 9}">
+                        <div class="product-aggregate-content">
+                            <strong th:text="${productGroup.name != null && productGroup.name != '' ? productGroup.name : '-'}">Arcane Signet</strong>
+                            <small class="product-stock-summary"
+                                   th:text="${productGroup.displayStockBreakdown()}">11 total | 5 reservadas | 6 disponibles</small>
+                        </div>
+                    </td>
+                </tr>
+                <th:block th:each="result, iter : ${productGroup.families}">
+                <tr class="search-result-row product-family-row"
+                     th:attr="data-in-stock=${result.displayAvailableQuantity() > 0},
+                              data-product-key=${result.productKey},
+                              data-stock-total=${result.displayStockQuantity()},
+                              data-reserved-total=${result.displayReservedQuantity()},
+                              data-available-total=${result.displayAvailableQuantity()},
+                              data-ck-nm=${result.formattedNmPrice},
+                              data-ck-ex=${result.formattedExPrice},
+                              data-ck-vg=${result.formattedVgPrice},
                              data-ck-g=${result.formattedGPrice},
                              data-local-nm=${result.formattedNmLocalPrice},
                              data-local-ex=${result.formattedExLocalPrice},
@@ -201,26 +217,21 @@
                               th:if="${result.showConditionStockOptions()}"
                               th:hidden="${result.showParentStockControls()}"
                               th:text="${result.displayStockQuantity}">0</span>
-                        <small class="stock-inline-breakdown"
-                               th:if="${!result.showConditionStockOptions() && result.displayReservedQuantity() > 0}"
-                               th:text="${result.displayStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
                     </td>
                     <td class="card-name-cell">
                         <div class="inventory-card-name">
                             <span th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
                             <button class="version-toggle inventory-stock-toggle" type="button"
                                     th:if="${result.showConditionStockOptions()}"
-                                    th:attr="aria-controls=${'search-stock-options-' + iter.index}"
+                                    th:attr="aria-controls=${'search-stock-options-' + groupIter.index + '-' + iter.index}"
                                     aria-expanded="false"
                                     aria-label="Ver stock por condicion"></button>
                         </div>
+                        <small class="stock-inline-breakdown family-stock-breakdown"
+                               th:text="${result.displayFullStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
                     </td>
-                    <td class="set-name-cell" th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
-                    <td class="compact-cell" th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
-                    <td class="variation-cell" th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
-                    <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
                     <td>
-                        <select class="condition-price-select" aria-label="Estado de la carta">
+                        <select class="condition-price-select" aria-label="Condicion de la carta">
                             <option value="NM"
                                     th:selected="${result.selectedCondition == 'NM'}"
                                     th:disabled="${result.nmPrice == null || result.nmPrice == ''}">NM</option>
@@ -235,6 +246,10 @@
                                     th:disabled="${result.gPrice == null || result.gPrice == ''}">G</option>
                         </select>
                     </td>
+                    <td class="set-name-cell" th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
+                    <td class="compact-cell" th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
+                    <td class="variation-cell" th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
+                    <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
                     <td th:if="${reservationsUnlocked}">
                         <button type="button"
                                 class="secondary-button add-reservation-button"
@@ -249,7 +264,7 @@
                 </tr>
                 <tr class="version-options-row inventory-stock-options-row" hidden
                     th:if="${result.showConditionStockOptions()}"
-                    th:id="${'search-stock-options-' + iter.index}">
+                    th:id="${'search-stock-options-' + groupIter.index + '-' + iter.index}">
                     <td th:colspan="${reservationsUnlocked ? 10 : 9}">
                         <div class="version-options-header">
                             <span>Stock en Sheet por condicion</span>
@@ -257,7 +272,7 @@
                         </div>
                         <div class="version-option-grid inventory-condition-grid">
                             <div class="version-option inventory-condition-option" th:each="stock : ${result.conditionStocks}"
-                                 th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity},data-available-quantity=${stock.availableQuantity}">
+                                 th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity},data-reserved-quantity=${stock.reservedQuantity},data-available-quantity=${stock.availableQuantity}">
                                 <div class="stock-controls condition-stock-controls">
                                     <button type="button"
                                             class="stock-button decrease"
@@ -280,7 +295,7 @@
                                 </div>
                                 <span class="condition-cell">
                                     <strong th:text="${stock.condition}">NM</strong>
-                                    <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas | ' : '') + stock.availableQuantity + ' disponibles'}">0 total</small>
+                                    <small class="condition-stock-summary" th:text="${stock.displayStockBreakdown()}">0 total | 0 reservadas | 0 disponibles</small>
                                 </span>
                                 <span class="condition-meta-cell">
                                     <small>CK USD</small>
@@ -303,6 +318,7 @@
                         </div>
                     </td>
                 </tr>
+                </th:block>
                 </th:block>
                 <tr th:if="${#lists.isEmpty(results)}">
                     <td class="empty" th:colspan="${reservationsUnlocked ? 10 : 9}">No se encontraron cartas para esa busqueda.</td>
@@ -348,6 +364,7 @@
                     <tr>
                         <th>Stock</th>
                         <th>Carta</th>
+                        <th>Condicion</th>
                         <th>Set</th>
                         <th>Codigo</th>
                         <th>Numero</th>
@@ -358,9 +375,25 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <th:block th:each="update, iter : ${updates}">
-                    <tr class="synced-table-row"
-                        th:attr="data-in-stock=${update.displayAvailableQuantity() > 0}"
+                    <th:block th:each="productGroup, groupIter : ${updateProductGroups}">
+                    <tr class="product-aggregate-row synced-product-aggregate-row"
+                        th:attr="data-in-stock=${productGroup.availableQuantity > 0},data-product-key=${productGroup.productKey},data-stock-total=${productGroup.stockQuantity},data-reserved-total=${productGroup.reservedQuantity},data-available-total=${productGroup.availableQuantity}"
+                        th:classappend="${productGroup.availableQuantity > 0} ? 'in-stock' : ''">
+                        <td class="product-aggregate-cell" th:colspan="${reservationsUnlocked ? 10 : 9}">
+                            <div class="product-aggregate-content">
+                                <strong th:text="${productGroup.name != null && productGroup.name != '' ? productGroup.name : '-'}">Arcane Signet</strong>
+                                <small class="product-stock-summary"
+                                       th:text="${productGroup.displayStockBreakdown()}">11 total | 5 reservadas | 6 disponibles</small>
+                            </div>
+                        </td>
+                    </tr>
+                    <th:block th:each="update, iter : ${productGroup.families}">
+                    <tr class="synced-table-row product-family-row"
+                        th:attr="data-in-stock=${update.displayAvailableQuantity() > 0},
+                                 data-product-key=${update.productKey},
+                                 data-stock-total=${update.displayStockQuantity()},
+                                 data-reserved-total=${update.displayReservedQuantity()},
+                                 data-available-total=${update.displayAvailableQuantity()}"
                         th:classappend="${update.displayAvailableQuantity() > 0} ? 'in-stock' : ''">
                         <td>
                             <div class="stock-controls" th:if="${!update.showConditionStockOptions()}">
@@ -385,19 +418,25 @@
                             </div>
                             <span class="stock-total-display" th:if="${update.showConditionStockOptions()}"
                                   th:text="${update.displayStockQuantity()}">0</span>
-                            <small class="stock-inline-breakdown"
-                                   th:if="${!update.showConditionStockOptions() && update.displayReservedQuantity() > 0}"
-                                   th:text="${update.displayStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
                         </td>
                         <td class="card-name-cell">
                             <div class="inventory-card-name">
                                 <span th:text="${update.name != null && update.name != '' ? update.name : '-'}">Sol Ring</span>
                                 <button class="version-toggle inventory-stock-toggle" type="button"
                                         th:if="${update.showConditionStockOptions()}"
-                                        th:attr="aria-controls=${'synced-stock-options-' + iter.index}"
+                                        th:attr="aria-controls=${'synced-stock-options-' + groupIter.index + '-' + iter.index}"
                                         aria-expanded="false"
                                         aria-label="Ver stock por condicion"></button>
                             </div>
+                            <small class="stock-inline-breakdown family-stock-breakdown"
+                                   th:text="${update.displayFullStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
+                        </td>
+                        <td>
+                            <span class="condition-inline-value"
+                                  th:if="${!update.showConditionStockOptions()}"
+                                  th:text="${update.condition != null && update.condition != '' ? update.condition : '-'}">NM</span>
+                            <span class="condition-inline-value"
+                                  th:if="${update.showConditionStockOptions()}">-</span>
                         </td>
                         <td class="set-name-cell" th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
                         <td class="compact-cell" th:text="${update.setCode != null && update.setCode != '' ? update.setCode : '-'}">CMM</td>
@@ -420,15 +459,15 @@
                     </tr>
                     <tr class="version-options-row inventory-stock-options-row" hidden
                         th:if="${update.showConditionStockOptions()}"
-                        th:id="${'synced-stock-options-' + iter.index}">
-                        <td th:colspan="${reservationsUnlocked ? 9 : 8}">
+                        th:id="${'synced-stock-options-' + groupIter.index + '-' + iter.index}">
+                        <td th:colspan="${reservationsUnlocked ? 10 : 9}">
                             <div class="version-options-header">
                                 <span>Stock en Sheet por condicion</span>
                                 <strong th:text="${#lists.size(update.conditionStocks) + ' condiciones'}">0 condiciones</strong>
                             </div>
-                            <div class="version-option-grid inventory-condition-grid">
-                                <div class="version-option inventory-condition-option" th:each="stock : ${update.conditionStocks}"
-                                     th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity},data-available-quantity=${stock.availableQuantity}">
+                                <div class="version-option-grid inventory-condition-grid">
+                                    <div class="version-option inventory-condition-option" th:each="stock : ${update.conditionStocks}"
+                                     th:attr="data-row=${stock.rowIndex},data-condition=${stock.condition},data-stock-quantity=${stock.quantity},data-reserved-quantity=${stock.reservedQuantity},data-available-quantity=${stock.availableQuantity}">
                                     <div class="stock-controls condition-stock-controls">
                                         <button type="button"
                                                 class="stock-button decrease"
@@ -451,7 +490,7 @@
                                     </div>
                                     <span class="condition-cell">
                                         <strong th:text="${stock.condition}">NM</strong>
-                                        <small class="condition-stock-summary" th:text="${stock.quantity + ' total | ' + (stock.reservedQuantity > 0 ? stock.reservedQuantity + ' reservadas | ' : '') + stock.availableQuantity + ' disponibles'}">0 total</small>
+                                        <small class="condition-stock-summary" th:text="${stock.displayStockBreakdown()}">0 total | 0 reservadas | 0 disponibles</small>
                                     </span>
                                     <span class="condition-meta-cell">
                                         <small>CK USD</small>
@@ -474,6 +513,7 @@
                             </div>
                         </td>
                     </tr>
+                    </th:block>
                     </th:block>
                     </tbody>
                 </table>

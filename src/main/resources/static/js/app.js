@@ -1051,10 +1051,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 : `Unidades ${normalizedQuantity} vendidas`;
     };
 
-    document.querySelectorAll("input.stock-value").forEach(input => {
-        input.addEventListener("input", () => {
-            input.dataset.stockEdited = "true";
-        });
+    document.addEventListener("input", event => {
+        if (event.target?.matches?.("input.stock-value")) {
+            event.target.dataset.stockEdited = "true";
+        }
     });
 
     conditionPriceSelects.forEach(select => {
@@ -1261,8 +1261,13 @@ document.addEventListener("DOMContentLoaded", () => {
         restrictNumericField(reservationModalForm.elements.phone, 15);
         restrictNumericField(reservationModalForm.elements.dni, 15);
 
-        addReservationButtons.forEach(button => {
-            button.addEventListener("click", async () => {
+        document.addEventListener("click", async event => {
+            const button = event.target.closest(".add-reservation-button");
+            if (!button) {
+                return;
+            }
+
+            event.preventDefault();
                 activeReservationButton = button;
                 const stockQuantity = Number(button.dataset.stockQuantity || 0);
                 await loadReservationClients();
@@ -1306,7 +1311,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 reservationModal.hidden = false;
                 reservationModal.setAttribute("aria-hidden", "false");
                 reservationModalForm.elements.client?.focus();
-            });
         });
 
         reservationModalForm.elements.client?.addEventListener("input", applySelectedReservationClient);
@@ -1375,10 +1379,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             result.action || "",
                             Number(result.availableQuantity),
                             Number(result.reservedQuantity),
-                            result.snapshot
+                            result.snapshot,
+                            activeReservationButton
                     );
                 } else if (activeReservationButton) {
-                    applyStockSnapshot(result.snapshot);
+                    applyStockSnapshot(result.snapshot, activeReservationButton);
                 }
 
                 upsertReservationClientOption({
@@ -1498,7 +1503,7 @@ document.addEventListener("DOMContentLoaded", () => {
     stockFilterButtons.forEach(stockFilterButton => {
         const table = stockFilterButton.closest("table");
         const stockFilterRows = table
-                ? table.querySelectorAll(".search-result-row, .stock-filter-row")
+                ? table.querySelectorAll(".search-product-aggregate-row, .search-result-row, .stock-filter-row")
                 : [];
 
         if (stockFilterRows.length <= 0) {
@@ -1638,19 +1643,22 @@ document.addEventListener("DOMContentLoaded", () => {
         button.setAttribute("aria-expanded", "false");
     });
 
-    document.querySelectorAll(".version-toggle").forEach(button => {
-        button.addEventListener("click", () => {
-            const optionsRow = document.getElementById(button.getAttribute("aria-controls"));
+    document.addEventListener("click", event => {
+        const button = event.target.closest(".version-toggle");
+        if (!button) {
+            return;
+        }
 
-            if (!optionsRow) {
-                return;
-            }
+        const optionsRow = document.getElementById(button.getAttribute("aria-controls"));
 
-            const shouldOpen = optionsRow.hidden;
-            optionsRow.hidden = !shouldOpen;
-            button.setAttribute("aria-expanded", String(shouldOpen));
-            updateImportSelectionState();
-        });
+        if (!optionsRow) {
+            return;
+        }
+
+        const shouldOpen = optionsRow.hidden;
+        optionsRow.hidden = !shouldOpen;
+        button.setAttribute("aria-expanded", String(shouldOpen));
+        updateImportSelectionState();
     });
 
     document.addEventListener("keydown", event => {
@@ -1795,12 +1803,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const stockCell = row.querySelector("td");
-        if (!stockCell) {
+        const targetCell = row.querySelector(".card-name-cell") || row.querySelector("td");
+        if (!targetCell) {
             return;
         }
 
-        let breakdown = stockCell.querySelector(".stock-inline-breakdown");
+        let breakdown = row.querySelector(".stock-inline-breakdown");
         if (!summary) {
             breakdown?.remove();
             return;
@@ -1808,8 +1816,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!breakdown) {
             breakdown = document.createElement("small");
-            breakdown.className = "stock-inline-breakdown";
-            stockCell.appendChild(breakdown);
+            breakdown.className = "stock-inline-breakdown family-stock-breakdown";
+            targetCell.appendChild(breakdown);
         }
 
         breakdown.textContent = summary;
@@ -1819,11 +1827,547 @@ document.addEventListener("DOMContentLoaded", () => {
         const total = Math.max(Number(quantity) || 0, 0);
         const reserved = Math.max(Number(reservedQuantity) || 0, 0);
         const available = Math.max(Number(availableQuantity) || 0, 0);
-        if (reserved <= 0) {
-            return `${total} total | ${available} disponibles`;
-        }
 
         return `${total} total | ${reserved} reservadas | ${available} disponibles`;
+    }
+
+    function conditionDataKey(condition) {
+        const normalized = (condition || "").toLowerCase();
+        return normalized ? `${normalized[0].toUpperCase()}${normalized.slice(1)}` : "";
+    }
+
+    function normalizedStockSnapshot(snapshot) {
+        const total = Math.max(Number(snapshot?.stockTotal) || 0, 0);
+        const reserved = Math.max(Number(snapshot?.reservedQuantity) || 0, 0);
+        const available = Math.max(Number(snapshot?.availableQuantity) || 0, 0);
+        return {
+            rowIndex: String(snapshot?.rowIndex || "0"),
+            stockTotal: total,
+            reservedQuantity: reserved,
+            availableQuantity: available,
+            action: snapshot?.action || (available > 0 ? "En Stock" : "Sin Stock"),
+            summary: snapshot?.summary || stockBreakdownText(total, reserved, available),
+            conditionStocks: Array.isArray(snapshot?.conditionStocks)
+                    ? snapshot.conditionStocks
+                            .filter(stock => String(stock.rowIndex || "0") !== "0")
+                            .map(stock => ({
+                                condition: stock.condition || "",
+                                quantity: Math.max(Number(stock.quantity) || 0, 0),
+                                availableQuantity: Math.max(Number(stock.availableQuantity) || 0, 0),
+                                reservedQuantity: Math.max(Number(stock.reservedQuantity) || 0, 0),
+                                action: stock.action || (Number(stock.availableQuantity) > 0 ? "En Stock" : "Sin Stock"),
+                                rowIndex: String(stock.rowIndex || "0"),
+                                ckPriceUsd: stock.ckPriceUsd || "",
+                                localPrice: stock.localPrice || ""
+                            }))
+                    : []
+        };
+    }
+
+    function applyStatus(status, action) {
+        if (!status) {
+            return;
+        }
+
+        const normalizedAction = action || "Sin Stock";
+        status.textContent = normalizedAction;
+        status.classList.remove("con-stock", "en-stock", "sin-stock", "reservada");
+        status.classList.add(normalizedAction.toLowerCase().replace(/\s+/g, "-"));
+    }
+
+    function stockFromConditionOption(option) {
+        if (!option) {
+            return null;
+        }
+
+        return {
+            condition: option.dataset.condition || "",
+            quantity: Math.max(Number(option.dataset.stockQuantity) || 0, 0),
+            reservedQuantity: Math.max(Number(option.dataset.reservedQuantity) || 0, 0),
+            availableQuantity: Math.max(Number(option.dataset.availableQuantity ?? option.dataset.stockQuantity) || 0, 0),
+            action: option.querySelector(".stock-action-status")?.textContent?.trim() || "",
+            rowIndex: String(option.dataset.row || "0"),
+            ckPriceUsd: option.querySelectorAll(".condition-meta-cell strong")[0]?.textContent?.replace(/^\$\s*/, "") || "",
+            localPrice: option.querySelectorAll(".condition-meta-cell strong")[1]?.textContent?.replace(/^\$\s*/, "") || ""
+        };
+    }
+
+    function baseCardDataset(primaryRow) {
+        const source = primaryRow?.querySelector(".stock-button.increase")
+                || primaryRow?.querySelector(".add-reservation-button");
+        return source?.dataset || {};
+    }
+
+    function conditionPriceFromRow(primaryRow, stock, priceType) {
+        const key = conditionDataKey(stock.condition);
+        const datasetValue = key ? primaryRow.dataset[`${priceType}${key}`] : "";
+        const stockValue = priceType === "ck" ? stock.ckPriceUsd : stock.localPrice;
+        return stockValue || datasetValue || "";
+    }
+
+    function setPrimaryReservationMode(primaryRow, expanded, stock = null) {
+        const reservationCell = primaryRow?.children[primaryRow.children.length - 1];
+        if (!reservationCell || !reservationCell.querySelector(".add-reservation-button, .muted-cell")) {
+            return;
+        }
+
+        if (expanded) {
+            const muted = document.createElement("span");
+            muted.className = "muted-cell";
+            muted.textContent = "Elegir condicion";
+            reservationCell.replaceChildren(muted);
+            return;
+        }
+
+        if (!stock) {
+            return;
+        }
+
+        const cardData = baseCardDataset(primaryRow);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "secondary-button add-reservation-button";
+        button.textContent = "Anadir a pedido";
+        button.dataset.name = cardData.name || "";
+        button.dataset.setName = cardData.setName || "";
+        button.dataset.setCode = cardData.setCode || "";
+        button.dataset.collectorNumber = cardData.collectorNumber || "";
+        button.dataset.printing = cardData.printing || "";
+        button.dataset.condition = stock.condition || cardData.condition || "NM";
+        button.dataset.row = stock.rowIndex || "0";
+        button.dataset.stockQuantity = String(stock.availableQuantity || 0);
+        reservationCell.replaceChildren(button);
+    }
+
+    function ensureStockTotalDisplay(primaryRow, total) {
+        const stockCell = primaryRow?.children[0];
+        if (!stockCell) {
+            return null;
+        }
+
+        let display = stockCell.querySelector(".stock-total-display");
+        if (!display) {
+            display = document.createElement("span");
+            display.className = "stock-total-display";
+            stockCell.appendChild(display);
+        }
+
+        setStockValue(display, total);
+        display.hidden = false;
+        return display;
+    }
+
+    function ensureConditionToggle(primaryRow, optionsRow) {
+        const nameContainer = primaryRow?.querySelector(".inventory-card-name");
+        if (!nameContainer || !optionsRow) {
+            return null;
+        }
+
+        let toggle = nameContainer.querySelector(".inventory-stock-toggle");
+        if (!toggle) {
+            toggle = document.createElement("button");
+            toggle.className = "version-toggle inventory-stock-toggle";
+            toggle.type = "button";
+            toggle.setAttribute("aria-label", "Ver stock por condicion");
+            nameContainer.appendChild(toggle);
+        }
+
+        if (!optionsRow.id) {
+            optionsRow.id = `ajax-stock-options-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+
+        toggle.setAttribute("aria-controls", optionsRow.id);
+        toggle.setAttribute("aria-expanded", String(!optionsRow.hidden));
+        return toggle;
+    }
+
+    function ensureConditionOptionsRow(primaryRow) {
+        let optionsRow = primaryRow?.nextElementSibling?.classList?.contains("inventory-stock-options-row")
+                ? primaryRow.nextElementSibling
+                : null;
+        if (optionsRow) {
+            return optionsRow;
+        }
+
+        optionsRow = document.createElement("tr");
+        optionsRow.className = "version-options-row inventory-stock-options-row";
+        optionsRow.hidden = true;
+
+        const cell = document.createElement("td");
+        cell.colSpan = primaryRow?.children?.length || 1;
+
+        const header = document.createElement("div");
+        header.className = "version-options-header";
+        const label = document.createElement("span");
+        label.textContent = "Stock en Sheet por condicion";
+        const count = document.createElement("strong");
+        header.append(label, count);
+
+        const grid = document.createElement("div");
+        grid.className = "version-option-grid inventory-condition-grid";
+        cell.append(header, grid);
+        optionsRow.appendChild(cell);
+        primaryRow?.after(optionsRow);
+        ensureConditionToggle(primaryRow, optionsRow);
+        return optionsRow;
+    }
+
+    function renderConditionOption(primaryRow, stock) {
+        const cardData = baseCardDataset(primaryRow);
+        const option = document.createElement("div");
+        option.className = "version-option inventory-condition-option";
+        option.dataset.row = stock.rowIndex || "0";
+        option.dataset.condition = stock.condition || "";
+        option.dataset.stockQuantity = String(stock.quantity || 0);
+        option.dataset.reservedQuantity = String(stock.reservedQuantity || 0);
+        option.dataset.availableQuantity = String(stock.availableQuantity || 0);
+
+        const controls = document.createElement("div");
+        controls.className = "stock-controls condition-stock-controls";
+
+        const decrease = document.createElement("button");
+        decrease.type = "button";
+        decrease.className = "stock-button decrease";
+        decrease.textContent = "-";
+        decrease.dataset.row = stock.rowIndex || "0";
+        decrease.dataset.condition = stock.condition || "";
+        decrease.disabled = !stock.rowIndex || stock.rowIndex === "0";
+        decrease.title = decrease.disabled
+                ? "Esta condicion todavia no existe en tu Sheet"
+                : (stock.quantity <= 0 ? "Eliminar carta del Sheet" : "Registrar unidad vendida");
+
+        const input = document.createElement("input");
+        input.className = "stock-value";
+        input.type = "number";
+        input.min = "0";
+        input.inputMode = "numeric";
+        input.value = String(stock.quantity || 0);
+        input.dataset.stockValue = String(stock.quantity || 0);
+        input.dataset.stockEdited = "false";
+        input.setAttribute("aria-label", "Cantidad para modificar stock");
+
+        const increase = document.createElement("button");
+        increase.type = "button";
+        increase.className = "stock-button increase";
+        increase.textContent = "+";
+        increase.dataset.row = stock.rowIndex || "0";
+        increase.dataset.condition = stock.condition || "";
+        increase.dataset.sku = cardData.sku || "";
+        increase.dataset.name = cardData.name || "";
+        increase.dataset.setName = cardData.setName || "";
+        increase.dataset.setCode = cardData.setCode || "";
+        increase.dataset.collectorNumber = cardData.collectorNumber || "";
+        increase.dataset.printing = cardData.printing || "";
+        increase.disabled = !stock.rowIndex || stock.rowIndex === "0";
+        increase.title = increase.disabled ? "Esta condicion todavia no existe en tu Sheet" : "Agregar una unidad";
+        controls.append(decrease, input, increase);
+
+        const conditionCell = document.createElement("span");
+        conditionCell.className = "condition-cell";
+        const conditionLabel = document.createElement("strong");
+        conditionLabel.textContent = stock.condition || "-";
+        const summary = document.createElement("small");
+        summary.className = "condition-stock-summary";
+        summary.textContent = stockBreakdownText(stock.quantity, stock.reservedQuantity, stock.availableQuantity);
+        conditionCell.append(conditionLabel, summary);
+
+        const ckCell = document.createElement("span");
+        ckCell.className = "condition-meta-cell";
+        const ckLabel = document.createElement("small");
+        ckLabel.textContent = "CK USD";
+        const ckValue = document.createElement("strong");
+        const ckPrice = conditionPriceFromRow(primaryRow, stock, "ck");
+        ckValue.textContent = ckPrice ? `$ ${ckPrice}` : "-";
+        ckCell.append(ckLabel, ckValue);
+
+        const localCell = document.createElement("span");
+        localCell.className = "condition-meta-cell";
+        const localLabel = document.createElement("small");
+        localLabel.textContent = "Precio local";
+        const localValue = document.createElement("strong");
+        const localPrice = conditionPriceFromRow(primaryRow, stock, "local");
+        localValue.textContent = localPrice ? `$ ${localPrice}` : "-";
+        localCell.append(localLabel, localValue);
+
+        const status = document.createElement("span");
+        status.className = "status stock-action-status";
+        applyStatus(status, stock.action);
+
+        option.append(controls, conditionCell, ckCell, localCell, status);
+
+        if (primaryRow?.querySelector(".add-reservation-button, .muted-cell")) {
+            const reservation = document.createElement("button");
+            reservation.type = "button";
+            reservation.className = "secondary-button add-reservation-button condition-reservation-button";
+            reservation.textContent = "Anadir a pedido";
+            reservation.dataset.name = cardData.name || "";
+            reservation.dataset.setName = cardData.setName || "";
+            reservation.dataset.setCode = cardData.setCode || "";
+            reservation.dataset.collectorNumber = cardData.collectorNumber || "";
+            reservation.dataset.printing = cardData.printing || "";
+            reservation.dataset.row = stock.rowIndex || "0";
+            reservation.dataset.condition = stock.condition || "";
+            reservation.dataset.stockQuantity = String(stock.availableQuantity || 0);
+            option.appendChild(reservation);
+        }
+
+        return option;
+    }
+
+    function applyPrimarySnapshot(primaryRow, state) {
+        primaryRow.dataset.stockTotal = String(state.stockTotal);
+        primaryRow.dataset.reservedTotal = String(state.reservedQuantity);
+        primaryRow.dataset.availableTotal = String(state.availableQuantity);
+        primaryRow.dataset.inStock = String(state.availableQuantity > 0);
+        primaryRow.classList.toggle("in-stock", state.availableQuantity > 0);
+        applyStatus(primaryRow.querySelector(".stock-action-status"), state.action);
+        applyStockBreakdown(primaryRow, state.summary);
+        updateProductAggregate(primaryRow.dataset.productKey);
+    }
+
+    function applyConditionDataset(primaryRow, stock) {
+        const key = conditionDataKey(stock.condition);
+        if (!key) {
+            return;
+        }
+
+        primaryRow.dataset[`stock${key}`] = String(stock.quantity || 0);
+        primaryRow.dataset[`available${key}`] = String(stock.availableQuantity || 0);
+        primaryRow.dataset[`row${key}`] = stock.rowIndex || "0";
+    }
+
+    function renderExpandedConditionStock(primaryRow, state) {
+        const optionsRow = ensureConditionOptionsRow(primaryRow);
+        const grid = optionsRow.querySelector(".inventory-condition-grid");
+        const stockCell = primaryRow.children[0];
+        const parentControls = stockCell?.querySelector(".parent-condition-stock-controls, .stock-controls:not(.condition-stock-controls)");
+        if (parentControls) {
+            parentControls.hidden = true;
+        }
+        ensureStockTotalDisplay(primaryRow, state.stockTotal);
+
+        state.conditionStocks.forEach(stock => applyConditionDataset(primaryRow, stock));
+        applyPrimarySnapshot(primaryRow, state);
+
+        const conditionCell = primaryRow.children[2];
+        if (conditionCell && !conditionCell.querySelector(".condition-price-select")) {
+            conditionCell.replaceChildren();
+            const value = document.createElement("span");
+            value.className = "condition-inline-value";
+            value.textContent = "-";
+            conditionCell.appendChild(value);
+        }
+
+        setPrimaryReservationMode(primaryRow, true);
+        if (grid) {
+            grid.replaceChildren(...state.conditionStocks.map(stock => renderConditionOption(primaryRow, stock)));
+        }
+
+        const countLabel = optionsRow.querySelector(".version-options-header strong");
+        if (countLabel) {
+            countLabel.textContent = `${state.conditionStocks.length} condiciones`;
+        }
+        ensureConditionToggle(primaryRow, optionsRow);
+    }
+
+    function collapseToSimpleConditionStock(primaryRow, optionsRow, stock, state) {
+        if (!primaryRow || !stock) {
+            return;
+        }
+
+        applyConditionDataset(primaryRow, stock);
+        applyPrimarySnapshot(primaryRow, state);
+        optionsRow?.remove();
+
+        const stockCell = primaryRow.children[0];
+        const parentControls = stockCell?.querySelector(".parent-condition-stock-controls");
+        const totalDisplay = stockCell?.querySelector(".stock-total-display");
+        if (parentControls) {
+            parentControls.hidden = false;
+            setStockValue(parentControls.querySelector(".stock-value"), stock.quantity);
+            parentControls.querySelectorAll(".stock-button").forEach(button => {
+                button.dataset.row = stock.rowIndex || "0";
+                button.dataset.condition = stock.condition || "";
+                button.disabled = button.classList.contains("decrease") && (!stock.rowIndex || stock.rowIndex === "0");
+                button.title = button.classList.contains("increase")
+                        ? "Agregar una unidad"
+                        : (stock.quantity <= 0 ? "Eliminar carta del Sheet" : "Registrar unidad vendida");
+            });
+        } else if (stockCell) {
+            const controls = renderConditionOption(primaryRow, stock).querySelector(".stock-controls");
+            controls.classList.remove("condition-stock-controls");
+            stockCell.replaceChildren(controls);
+        }
+        if (totalDisplay) {
+            totalDisplay.hidden = true;
+        }
+
+        const toggle = primaryRow.querySelector(".inventory-stock-toggle");
+        toggle?.remove();
+
+        const conditionCell = primaryRow.children[2];
+        if (conditionCell) {
+            const select = conditionCell.querySelector(".condition-price-select");
+            if (select && stock.condition) {
+                select.value = stock.condition;
+                select.dispatchEvent(new Event("change"));
+            } else {
+                conditionCell.replaceChildren();
+                const value = document.createElement("span");
+                value.className = "condition-inline-value";
+                value.textContent = stock.condition || "-";
+                conditionCell.appendChild(value);
+            }
+        }
+
+        const priceCells = primaryRow.querySelectorAll(".price-cell");
+        const ckPrice = conditionPriceFromRow(primaryRow, stock, "ck");
+        const localPrice = conditionPriceFromRow(primaryRow, stock, "local");
+        if (priceCells[0]) {
+            priceCells[0].textContent = ckPrice ? `$ ${ckPrice}` : "-";
+        }
+        if (priceCells[1]) {
+            priceCells[1].textContent = localPrice ? `$ ${localPrice}` : "-";
+        }
+
+        setPrimaryReservationMode(primaryRow, false, stock);
+    }
+
+    function renderSimpleSnapshot(primaryRow, state, sourceButton = null) {
+        const condition = sourceButton?.dataset?.condition
+                || primaryRow.querySelector(".condition-price-select")?.value
+                || primaryRow.querySelector(".condition-inline-value")?.textContent?.trim()
+                || "NM";
+        const stock = state.conditionStocks[0] || {
+            condition,
+            quantity: state.stockTotal,
+            reservedQuantity: state.reservedQuantity,
+            availableQuantity: state.availableQuantity,
+            action: state.action,
+            rowIndex: state.rowIndex,
+            ckPriceUsd: "",
+            localPrice: ""
+        };
+        collapseToSimpleConditionStock(primaryRow, null, stock, state);
+    }
+
+    function renderStockSnapshotForRow(primaryRow, snapshot, sourceButton = null) {
+        if (!primaryRow || !snapshot) {
+            return;
+        }
+
+        const state = normalizedStockSnapshot(snapshot);
+        const optionsRow = primaryRow.nextElementSibling?.classList?.contains("inventory-stock-options-row")
+                ? primaryRow.nextElementSibling
+                : null;
+
+        if (state.conditionStocks.length >= 2) {
+            renderExpandedConditionStock(primaryRow, state);
+            return;
+        }
+
+        if (optionsRow) {
+            const snapshotRows = new Set(state.conditionStocks.map(stock => stock.rowIndex));
+            const changedRow = state.rowIndex;
+            let remainingStocks = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
+                    .map(option => {
+                        const replacement = state.conditionStocks.find(stock => stock.rowIndex === String(option.dataset.row || "0"));
+                        return replacement || stockFromConditionOption(option);
+                    })
+                    .filter(Boolean)
+                    .filter(stock => {
+                        if (snapshotRows.size > 0) {
+                            return snapshotRows.has(stock.rowIndex);
+                        }
+
+                        const keep = stock.rowIndex !== changedRow;
+                        if (!keep) {
+                            const key = conditionDataKey(stock.condition);
+                            if (key) {
+                                primaryRow.dataset[`stock${key}`] = "0";
+                                primaryRow.dataset[`available${key}`] = "0";
+                                primaryRow.dataset[`row${key}`] = "0";
+                            }
+                        }
+                        return keep;
+                    });
+
+            if (state.conditionStocks.length === 1 && !remainingStocks.some(stock => stock.rowIndex === state.conditionStocks[0].rowIndex)) {
+                remainingStocks = state.conditionStocks;
+            }
+
+            if (remainingStocks.length >= 2) {
+                renderExpandedConditionStock(primaryRow, {...state, conditionStocks: remainingStocks});
+                return;
+            }
+
+            if (remainingStocks.length === 1) {
+                collapseToSimpleConditionStock(primaryRow, optionsRow, remainingStocks[0], state);
+                return;
+            }
+
+            optionsRow.remove();
+        }
+
+        renderSimpleSnapshot(primaryRow, state, sourceButton);
+    }
+
+    function applyStockSnapshotToRows(snapshot, sourceButton = null) {
+        if (!snapshot || !snapshot.rowIndex || String(snapshot.rowIndex) === "0") {
+            return;
+        }
+
+        const state = normalizedStockSnapshot(snapshot);
+        const rows = new Set();
+        const sourceRow = primaryInventoryRowFromButton(sourceButton);
+        if (sourceRow) {
+            rows.add(sourceRow);
+        }
+
+        [state.rowIndex, ...state.conditionStocks.map(stock => stock.rowIndex)].forEach(rowIndex => {
+            document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`).forEach(button => {
+                const row = primaryInventoryRowFromButton(button);
+                if (row) {
+                    rows.add(row);
+                }
+            });
+        });
+
+        rows.forEach(row => renderStockSnapshotForRow(row, snapshot, sourceButton));
+        updateStockSummary();
+    }
+
+    function updateProductAggregate(productKey) {
+        if (!productKey) {
+            return;
+        }
+
+        const familyRows = Array.from(document.querySelectorAll(".product-family-row"))
+                .filter(row => row.dataset.productKey === productKey);
+        if (familyRows.length === 0) {
+            return;
+        }
+
+        const total = familyRows.reduce((sum, row) => sum + (Number(row.dataset.stockTotal) || 0), 0);
+        const reserved = familyRows.reduce((sum, row) => sum + (Number(row.dataset.reservedTotal) || 0), 0);
+        const available = familyRows.reduce((sum, row) => sum + (Number(row.dataset.availableTotal) || 0), 0);
+
+        document.querySelectorAll(".product-aggregate-row").forEach(row => {
+            if (row.dataset.productKey !== productKey) {
+                return;
+            }
+
+            row.dataset.stockTotal = String(total);
+            row.dataset.reservedTotal = String(reserved);
+            row.dataset.availableTotal = String(available);
+            row.dataset.inStock = String(available > 0);
+            row.classList.toggle("in-stock", available > 0);
+
+            const summary = row.querySelector(".product-stock-summary");
+            if (summary) {
+                summary.textContent = stockBreakdownText(total, reserved, available);
+            }
+        });
     }
 
     function updateConditionStockOption(option, stock) {
@@ -1836,6 +2380,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const reservedQuantity = Math.max(Number(stock.reservedQuantity) || 0, 0);
         const action = stock.action || (quantity > 0 ? "En Stock" : "Sin Stock");
         option.dataset.stockQuantity = String(quantity);
+        option.dataset.reservedQuantity = String(reservedQuantity);
         option.dataset.availableQuantity = String(availableQuantity);
 
         const summary = option.querySelector(".condition-stock-summary");
@@ -1862,60 +2407,155 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function applyStockSnapshot(snapshot) {
+    function applyStockSnapshot(snapshot, sourceButton = null) {
         if (!snapshot || !snapshot.rowIndex || String(snapshot.rowIndex) === "0") {
             return;
         }
 
-        const rowIndex = String(snapshot.rowIndex);
-        const stockTotal = Math.max(Number(snapshot.stockTotal) || 0, 0);
-        const availableQuantity = Math.max(Number(snapshot.availableQuantity) || 0, 0);
-        const action = snapshot.action || (stockTotal > 0 ? "En Stock" : "Sin Stock");
-        const conditionStocks = Array.isArray(snapshot.conditionStocks) ? snapshot.conditionStocks : [];
-        const parentRows = new Set();
+        applyStockSnapshotToRows(snapshot, sourceButton);
+    }
 
-        document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`).forEach(button => {
-            const row = primaryInventoryRowFromButton(button);
-            if (row) {
-                parentRows.add(row);
-            }
-        });
+    function reconcileConditionOptionsFromSnapshot(snapshot, sourceButton = null) {
+        if (!snapshot || !Array.isArray(snapshot.conditionStocks)) {
+            return false;
+        }
 
-        parentRows.forEach(row => {
-            row.dataset.inStock = String(availableQuantity > 0);
-            row.classList.toggle("in-stock", availableQuantity > 0);
+        const triggerButton = sourceButton || document.querySelector(`.stock-button[data-row="${snapshot.rowIndex}"]`);
+        const primaryRow = primaryInventoryRowFromButton(triggerButton);
+        const optionsRow = primaryRow?.nextElementSibling?.classList?.contains("inventory-stock-options-row")
+                ? primaryRow.nextElementSibling
+                : triggerButton?.closest(".inventory-stock-options-row");
+        if (!optionsRow) {
+            return false;
+        }
 
-            const stockValue = row.querySelector(".stock-total-display, .parent-condition-stock-controls .stock-value, .stock-controls:not(.condition-stock-controls) .stock-value");
-            if (stockValue) {
-                setStockValue(stockValue, stockTotal);
-            }
+        const activeRows = new Set(
+                snapshot.conditionStocks
+                        .map(stock => String(stock.rowIndex || "0"))
+                        .filter(rowIndex => rowIndex !== "0")
+        );
 
-            const status = row.querySelector(".stock-action-status");
-            if (status) {
-                status.textContent = action;
-                status.classList.remove("con-stock", "en-stock", "sin-stock", "reservada");
-                status.classList.add(action.toLowerCase().replace(/\s+/g, "-"));
-            }
-
-            const reservationButton = row.querySelector(".add-reservation-button");
-            if (reservationButton) {
-                reservationButton.dataset.stockQuantity = String(availableQuantity);
-                reservationButton.dataset.row = rowIndex;
-            }
-
-            applyStockBreakdown(row, snapshot.summary || "");
-        });
-
-        conditionStocks.forEach(stock => {
-            const stockRowIndex = String(stock.rowIndex || "0");
-            if (stockRowIndex === "0") {
+        optionsRow.querySelectorAll(".inventory-condition-option").forEach(option => {
+            const rowIndex = String(option.dataset.row || "0");
+            if (activeRows.size > 0 && activeRows.has(rowIndex)) {
                 return;
             }
 
-            document.querySelectorAll(`.inventory-condition-option[data-row="${stockRowIndex}"]`).forEach(option => {
-                updateConditionStockOption(option, stock);
-            });
+            if (activeRows.size === 0 && rowIndex !== String(snapshot.rowIndex)) {
+                return;
+            }
+
+            const removedCondition = option.dataset.condition || "";
+            if (primaryRow && removedCondition) {
+                const conditionKey = `${removedCondition.toLowerCase()[0].toUpperCase()}${removedCondition.toLowerCase().slice(1)}`;
+                primaryRow.dataset[`stock${conditionKey}`] = "0";
+                primaryRow.dataset[`available${conditionKey}`] = "0";
+                primaryRow.dataset[`row${conditionKey}`] = "0";
+            }
+            option.remove();
         });
+
+        const options = optionsRow.querySelectorAll(".inventory-condition-option");
+        const count = options.length;
+        const countLabel = optionsRow.querySelector(".version-options-header strong");
+        if (countLabel) {
+            countLabel.textContent = `${count} condicion${count === 1 ? "" : "es"}`;
+        }
+
+        if (count === 0) {
+            optionsRow.remove();
+            return true;
+        }
+
+        if (count === 1) {
+            collapseConditionOptionsToPrimaryRow(primaryRow, optionsRow, options[0], snapshot);
+            return true;
+        }
+
+        return true;
+    }
+
+    function collapseConditionOptionsToPrimaryRow(primaryRow, optionsRow, option, snapshot) {
+        if (!primaryRow || !optionsRow || !option) {
+            return;
+        }
+
+        const condition = option.dataset.condition || "";
+        const quantity = Math.max(Number(option.dataset.stockQuantity) || 0, 0);
+        const reserved = Math.max(Number(option.dataset.reservedQuantity) || 0, 0);
+        const available = Math.max(Number(option.dataset.availableQuantity ?? option.dataset.stockQuantity) || 0, 0);
+        const conditionKey = condition
+                ? `${condition.toLowerCase()[0].toUpperCase()}${condition.toLowerCase().slice(1)}`
+                : "";
+        if (conditionKey) {
+            primaryRow.dataset[`stock${conditionKey}`] = String(quantity);
+            primaryRow.dataset[`available${conditionKey}`] = String(available);
+            primaryRow.dataset[`row${conditionKey}`] = String(option.dataset.row || "0");
+        }
+        primaryRow.dataset.stockTotal = String(Math.max(Number(snapshot.stockTotal) || quantity, 0));
+        primaryRow.dataset.reservedTotal = String(Math.max(Number(snapshot.reservedQuantity) || reserved, 0));
+        primaryRow.dataset.availableTotal = String(Math.max(Number(snapshot.availableQuantity) || available, 0));
+        primaryRow.dataset.inStock = String(available > 0);
+        primaryRow.classList.toggle("in-stock", available > 0);
+
+        const stockCell = primaryRow.children[0];
+        const optionControls = option.querySelector(".stock-controls");
+        if (stockCell && optionControls) {
+            optionControls.classList.remove("condition-stock-controls");
+            stockCell.replaceChildren(optionControls);
+        }
+
+        const toggle = primaryRow.querySelector(".inventory-stock-toggle");
+        toggle?.remove();
+
+        const conditionCell = primaryRow.children[2];
+        if (conditionCell) {
+            const select = conditionCell.querySelector(".condition-price-select");
+            if (select && condition) {
+                select.value = condition;
+                select.dispatchEvent(new Event("change"));
+            } else {
+                conditionCell.replaceChildren();
+                const value = document.createElement("span");
+                value.className = "condition-inline-value";
+                value.textContent = condition || "-";
+                conditionCell.appendChild(value);
+            }
+        }
+
+        const metaCells = option.querySelectorAll(".condition-meta-cell strong");
+        const primaryPriceCells = primaryRow.querySelectorAll(".price-cell");
+        if (metaCells[0] && primaryPriceCells[0]) {
+            primaryPriceCells[0].textContent = metaCells[0].textContent || "-";
+        }
+        if (metaCells[1] && primaryPriceCells[1]) {
+            primaryPriceCells[1].textContent = metaCells[1].textContent || "-";
+        }
+
+        const primaryStatus = primaryRow.querySelector(".stock-action-status");
+        const optionStatus = option.querySelector(".stock-action-status");
+        if (primaryStatus && optionStatus) {
+            primaryStatus.textContent = optionStatus.textContent;
+            primaryStatus.className = optionStatus.className;
+        }
+
+        const reservationCell = primaryRow.querySelector("td:last-child");
+        const optionReservationButton = option.querySelector(".add-reservation-button");
+        if (reservationCell && optionReservationButton && reservationCell.querySelector(".muted-cell")) {
+            optionReservationButton.classList.remove("condition-reservation-button");
+            reservationCell.replaceChildren(optionReservationButton);
+        }
+
+        applyStockBreakdown(
+                primaryRow,
+                stockBreakdownText(
+                        Math.max(Number(snapshot.stockTotal) || quantity, 0),
+                        Math.max(Number(snapshot.reservedQuantity) || reserved, 0),
+                        Math.max(Number(snapshot.availableQuantity) || available, 0)
+                )
+        );
+        updateProductAggregate(primaryRow.dataset.productKey);
+        optionsRow.remove();
     }
 
     const pendingReservationDecision = (button) => new Promise(async resolve => {
@@ -2081,7 +2721,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         result.action || "Reservada",
                         Number(result.availableQuantity),
                         Number(result.reservedQuantity),
-                        result.snapshot
+                        result.snapshot,
+                        button
                 );
             }
 
@@ -2093,13 +2734,11 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // ---- Actualiza stock ----
-    const stockButtons = document.querySelectorAll(".stock-button");
-
-    if (stockButtons.length > 0) {
-
-        stockButtons.forEach(button => {
-
-            button.addEventListener("click", async () => {
+    document.addEventListener("click", async event => {
+        const button = event.target.closest(".stock-button");
+        if (!button) {
+            return;
+        }
 
                 if (button.disabled) {
                     return;
@@ -2173,7 +2812,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     button.parentElement
                                             .querySelector(".stock-button.decrease")
                                             ?.setAttribute("data-row", reservationRowIndex);
-                                    applyStockSnapshot(createResult.snapshot);
+                                    applyStockSnapshot(createResult.snapshot, button);
                                 }
                             } else {
                                 const updateResponse = await fetch(
@@ -2208,7 +2847,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                         updateResult.action || "",
                                         Number(updateResult.snapshot?.availableQuantity),
                                         Number(updateResult.snapshot?.reservedQuantity),
-                                        updateResult.snapshot
+                                        updateResult.snapshot,
+                                        button
                                 );
                             }
 
@@ -2315,7 +2955,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 reservationButton.dataset.stockQuantity = String(result.snapshot?.availableQuantity ?? changeQuantity);
                             }
                         }
-                        applyStockSnapshot(result.snapshot);
+                        applyStockSnapshot(result.snapshot, button);
 
                         updateStockSummary();
                         button.title = "Agregar una unidad";
@@ -2397,7 +3037,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             updatedAction,
                             Number(result.snapshot?.availableQuantity),
                             Number(result.snapshot?.reservedQuantity),
-                            result.snapshot
+                            result.snapshot,
+                            button
                     );
                     const groupedRow = button.closest("tr");
                     if (!result.snapshot
@@ -2437,9 +3078,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     button.disabled = button.classList.contains("decrease")
                             && (!button.dataset.row || button.dataset.row === "0");
                 }
-            });
-        });
-    }
+    });
 
     function updateStockSummary() {
         if (!stockSummary) {
@@ -2456,7 +3095,7 @@ document.addEventListener("DOMContentLoaded", () => {
         stockSummary.textContent = `STOCK LOCAL (${total})`;
     }
 
-    function syncStockRows(rowIndex, quantity, action, availableQuantity, reservedQuantity, snapshot) {
+    function syncStockRows(rowIndex, quantity, action, availableQuantity, reservedQuantity, snapshot, sourceButton = null) {
         if (!rowIndex || rowIndex === "0") {
             return;
         }
@@ -2476,9 +3115,61 @@ document.addEventListener("DOMContentLoaded", () => {
         const normalizedAction = backendSnapshot?.action || action || (
             normalizedAvailable > 0 ? "En Stock" : "Sin Stock"
         );
+
+        if (backendSnapshot) {
+            applyStockSnapshot(backendSnapshot, sourceButton);
+            return;
+        }
+
+        const conditionSnapshot = Array.isArray(backendSnapshot?.conditionStocks)
+                ? backendSnapshot.conditionStocks.find(stock => String(stock.rowIndex || "0") === rowIndex)
+                : null;
+        const conditionWasRemoved = Array.isArray(backendSnapshot?.conditionStocks)
+                && backendSnapshot.conditionStocks.length > 0
+                && !conditionSnapshot;
+        const rowQuantity = conditionSnapshot
+                ? Math.max(Number(conditionSnapshot.quantity) || 0, 0)
+                : conditionWasRemoved
+                ? 0
+                : normalizedQuantity;
+        const rowReserved = conditionSnapshot
+                ? Math.max(Number(conditionSnapshot.reservedQuantity) || 0, 0)
+                : conditionWasRemoved
+                ? 0
+                : normalizedReserved;
+        const rowAvailable = conditionSnapshot
+                ? Math.max(Number(conditionSnapshot.availableQuantity) || 0, 0)
+                : conditionWasRemoved
+                ? 0
+                : normalizedAvailable;
+        const rowAction = conditionSnapshot?.action || normalizedAction;
+        let reconciledConditionOptions = false;
+
+        if (Array.isArray(backendSnapshot?.conditionStocks)) {
+            reconciledConditionOptions = reconcileConditionOptionsFromSnapshot(backendSnapshot, sourceButton);
+        }
+
         const relatedButtons = document.querySelectorAll(`.stock-button[data-row="${rowIndex}"]`);
         const relatedControls = new Set();
-        syncConditionStockOptions(rowIndex, normalizedQuantity, normalizedAction, normalizedAvailable, normalizedReserved);
+
+        if (Array.isArray(backendSnapshot?.conditionStocks) && backendSnapshot.conditionStocks.length > 0) {
+            backendSnapshot.conditionStocks.forEach(stock => {
+                const stockRowIndex = String(stock.rowIndex || "0");
+                if (stockRowIndex === "0") {
+                    return;
+                }
+
+                syncConditionStockOptions(
+                        stockRowIndex,
+                        Math.max(Number(stock.quantity) || 0, 0),
+                        stock.action || (Number(stock.availableQuantity) > 0 ? "En Stock" : "Sin Stock"),
+                        Math.max(Number(stock.availableQuantity) || 0, 0),
+                        Math.max(Number(stock.reservedQuantity) || 0, 0)
+                );
+            });
+        } else if (!reconciledConditionOptions) {
+            syncConditionStockOptions(rowIndex, rowQuantity, rowAction, rowAvailable, rowReserved);
+        }
 
         relatedButtons.forEach(relatedButton => {
             relatedControls.add(relatedButton.closest(".stock-controls"));
@@ -2486,7 +3177,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (relatedButton.classList.contains("decrease")) {
                 relatedButton.disabled = false;
-                relatedButton.title = normalizedQuantity <= 0
+                relatedButton.title = rowQuantity <= 0
                         ? "Eliminar carta del Sheet"
                         : "Registrar unidad vendida";
             }
@@ -2505,7 +3196,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const value = control.querySelector(".stock-value");
 
             if (value) {
-                setStockValue(value, normalizedQuantity);
+                setStockValue(value, rowQuantity);
             }
 
             if (control.closest(".inventory-condition-option")) {
@@ -2517,9 +3208,12 @@ document.addEventListener("DOMContentLoaded", () => {
             if (row) {
                 const condition = control.querySelector(".stock-button.increase")?.dataset.condition || "NM";
                 const conditionKey = `${condition.toLowerCase()[0].toUpperCase()}${condition.toLowerCase().slice(1)}`;
-                row.dataset[`stock${conditionKey}`] = String(normalizedQuantity);
-                row.dataset[`available${conditionKey}`] = String(normalizedAvailable);
+                row.dataset[`stock${conditionKey}`] = String(rowQuantity);
+                row.dataset[`available${conditionKey}`] = String(rowAvailable);
                 row.dataset[`row${conditionKey}`] = rowIndex;
+                row.dataset.stockTotal = String(normalizedQuantity);
+                row.dataset.reservedTotal = String(normalizedReserved);
+                row.dataset.availableTotal = String(normalizedAvailable);
                 const inStock = ["nm", "ex", "vg", "g"]
                         .some(item => Number(row.dataset[`available${item[0].toUpperCase()}${item.slice(1)}`] ?? row.dataset[`stock${item[0].toUpperCase()}${item.slice(1)}`]) > 0);
                 row.dataset.inStock = String(inStock);
@@ -2537,7 +3231,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const reservationButton = row.querySelector(".add-reservation-button");
                 if (reservationButton) {
-                    reservationButton.dataset.stockQuantity = String(normalizedAvailable);
+                    reservationButton.dataset.stockQuantity = String(rowAvailable);
                 }
 
                 if (!inStock) {
@@ -2552,18 +3246,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     row.hidden = false;
                 }
+
+                updateProductAggregate(row.dataset.productKey);
             }
         });
 
         updateStockSummary();
-        if (backendSnapshot) {
-            applyStockSnapshot(backendSnapshot);
-        }
     }
 
     function syncConditionStockOptions(rowIndex, quantity, action, availableQuantity, reservedQuantity) {
         document.querySelectorAll(`.inventory-condition-option[data-row="${rowIndex}"]`).forEach(option => {
             option.dataset.stockQuantity = String(quantity);
+            option.dataset.reservedQuantity = String(reservedQuantity);
             option.dataset.availableQuantity = String(availableQuantity);
 
             const summary = option.querySelector(".condition-stock-summary");
@@ -2596,6 +3290,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         .reduce((sum, item) => sum + (Number(item.dataset.stockQuantity) || 0), 0);
                 const availableTotal = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
                         .reduce((sum, item) => sum + (Number(item.dataset.availableQuantity ?? item.dataset.stockQuantity) || 0), 0);
+                const reservedTotal = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
+                        .reduce((sum, item) => sum + (Number(item.dataset.reservedQuantity) || 0), 0);
                 const stockTotal = primaryRow.querySelector(".stock-total-display, .stock-value");
                 if (stockTotal) {
                     setStockValue(stockTotal, total);
@@ -2607,7 +3303,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     primaryStatus.classList.add("en-stock");
                 }
                 primaryRow.dataset.inStock = String(availableTotal > 0);
+                primaryRow.dataset.stockTotal = String(total);
+                primaryRow.dataset.reservedTotal = String(reservedTotal);
+                primaryRow.dataset.availableTotal = String(availableTotal);
                 primaryRow.classList.toggle("in-stock", availableTotal > 0);
+                updateProductAggregate(primaryRow.dataset.productKey);
             }
         });
     }
@@ -2639,11 +3339,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     const select = row.querySelector(".condition-price-select");
                     const stockValue = row.querySelector(".stock-value");
                     const reservationButton = row.querySelector(".add-reservation-button");
-                    if (select?.value === condition && stockValue) {
+                    const rowCondition = select?.value || row.querySelector(".condition-inline-value")?.textContent?.trim() || button.dataset.condition || "NM";
+                    const matchesDisplayedCondition = rowCondition === condition;
+                    if (matchesDisplayedCondition && stockValue) {
                         setStockValue(stockValue, 0);
                     }
 
-                    if (select?.value === condition && reservationButton) {
+                    if (matchesDisplayedCondition && reservationButton) {
                         reservationButton.dataset.row = "0";
                         reservationButton.dataset.stockQuantity = "0";
                     }

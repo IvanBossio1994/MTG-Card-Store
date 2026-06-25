@@ -275,7 +275,7 @@ class DashboardControllerVariantSearchTests {
         assertThat(snapshot.stockTotal()).isEqualTo(3);
         assertThat(snapshot.reservedQuantity()).isEqualTo(2);
         assertThat(snapshot.availableQuantity()).isEqualTo(1);
-        assertThat(snapshot.summary()).isEqualTo("3 total | 2 reservadas | 1 disponible");
+        assertThat(snapshot.summary()).isEqualTo("3 total | 2 reservadas | 1 disponibles");
         assertThat(snapshot.conditionStocks()).extracting(ReservationConditionStock::reservedQuantity)
                 .containsExactly(1, 1);
     }
@@ -331,11 +331,11 @@ class DashboardControllerVariantSearchTests {
 
         assertThat(searchResult.showConditionStockOptions()).isFalse();
         assertThat(searchResult.displayAvailableQuantity()).isEqualTo(1);
-        assertThat(searchResult.displayStockBreakdown()).isEqualTo("5 total | 4 reservadas | 1 disponible");
+        assertThat(searchResult.displayStockBreakdown()).isEqualTo("5 total | 4 reservadas | 1 disponibles");
         assertThat(searchResult.availableStockQuantityForCondition("NM")).isEqualTo(1);
         assertThat(updateResult.showConditionStockOptions()).isFalse();
         assertThat(updateResult.displayAvailableQuantity()).isEqualTo(1);
-        assertThat(updateResult.displayStockBreakdown()).isEqualTo("5 total | 4 reservadas | 1 disponible");
+        assertThat(updateResult.displayStockBreakdown()).isEqualTo("5 total | 4 reservadas | 1 disponibles");
     }
 
     @Test
@@ -373,6 +373,73 @@ class DashboardControllerVariantSearchTests {
         assertThat(updateResult.displayAvailableQuantity()).isEqualTo(2);
         assertThat(updateResult.displayStockBreakdown()).isEmpty();
         assertThat(updateResult.displayAction()).isEqualTo("En Stock");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void groupsSearchResultsByProductAndKeepsFamiliesAsRows() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        List<DashboardController.SearchResult> results = List.of(
+                searchFamily("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0127", 3, 0, 1, 0),
+                searchFamily("Arcane Signet", "Commander Legends", "CMR", "297", 1, 0, 2, 0),
+                searchFamily("Arcane Signet", "Commander Fest", "FCMR", "297", 2, 1, 3, 4),
+                searchFamily("Arcane Signet", "Throne of Eldraine", "ELD", "331", 3, 0, 5, 0)
+        );
+        List<CardReservation> reservations = List.of(
+                reservedReservation("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0127", "NM", ""),
+                reservedReservation("Arcane Signet", "Commander Legends", "CMR", "297", "NM", ""),
+                reservedReservation("Arcane Signet", "Commander Fest", "FCMR", "297", "NM", ""),
+                reservedReservation("Arcane Signet", "Commander Fest", "FCMR", "297", "EX", ""),
+                reservedReservation("Arcane Signet", "Throne of Eldraine", "ELD", "331", "NM", "")
+        );
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, results, reservations);
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.name()).isEqualTo("Arcane Signet");
+        assertThat(group.stockQuantity()).isEqualTo(10);
+        assertThat(group.reservedQuantity()).isEqualTo(5);
+        assertThat(group.availableQuantity()).isEqualTo(5);
+        assertThat(group.families())
+                .extracting(DashboardController.SearchResult::familyLabel)
+                .containsExactly("BLC/0127", "FCMR/297", "ELD/331", "CMR/297");
+        assertThat(group.families().get(1).showConditionStockOptions()).isTrue();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void productAggregationDoesNotDuplicateFlexibleReservationsAcrossFamilies() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        List<DashboardController.SearchResult> results = List.of(
+                searchFamily("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0127", 3, 0, 1, 0),
+                searchFamily("Arcane Signet", "Commander Legends", "CMR", "297", 3, 0, 2, 0)
+        );
+        CardReservation flexible = reservedReservation(
+                "Arcane Signet",
+                "",
+                "",
+                "",
+                "NM",
+                "[Cualquier edicion/condicion]"
+        );
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, results, List.of(flexible));
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.stockQuantity()).isEqualTo(6);
+        assertThat(group.reservedQuantity()).isEqualTo(1);
+        assertThat(group.availableQuantity()).isEqualTo(5);
+        assertThat(group.families().stream()
+                .mapToInt(DashboardController.SearchResult::displayReservedQuantity)
+                .sum()).isEqualTo(1);
     }
 
     @Test
@@ -1064,6 +1131,53 @@ class DashboardControllerVariantSearchTests {
         reservation.setQuantity("1");
         reservation.setNotes(notes);
         return reservation;
+    }
+
+    private DashboardController.SearchResult searchFamily(
+            String name,
+            String edition,
+            String setCode,
+            String collectorNumber,
+            int nmQuantity,
+            int exQuantity,
+            int nmRowIndex,
+            int exRowIndex
+    ) {
+        String sku = setCode + "-" + collectorNumber;
+        String selectedCondition = nmQuantity > 0 ? "NM" : "EX";
+        int stockQuantity = nmQuantity > 0 ? nmQuantity : exQuantity;
+        int rowIndex = nmQuantity > 0 ? nmRowIndex : exRowIndex;
+
+        return new DashboardController.SearchResult(
+                name,
+                edition,
+                sku,
+                setCode,
+                collectorNumber,
+                "-",
+                "No Foil",
+                selectedCondition,
+                "1.00",
+                "0.80",
+                "",
+                "",
+                "1000",
+                "800",
+                "",
+                "",
+                nmQuantity,
+                exQuantity,
+                0,
+                0,
+                nmRowIndex,
+                exRowIndex,
+                0,
+                0,
+                List.of(),
+                selectedCondition.equals("NM") ? "1000" : "800",
+                stockQuantity,
+                rowIndex
+        );
     }
 
     private DashboardController.SearchResult searchResult(
