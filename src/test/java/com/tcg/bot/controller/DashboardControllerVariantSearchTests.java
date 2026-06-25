@@ -281,6 +281,59 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void reservationStockSelectionUsesReservedConditionStocksForFlexibleDelivery() throws Exception {
+        InventoryCard nm = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 10);
+        nm.setCondition("NM");
+        InventoryCard g = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 11);
+        g.setCondition("G");
+
+        List<CardReservation> reservations = List.of(
+                reservedReservation("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "", "[Cualquier edicion/condicion]"),
+                reservedReservation("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "", "[Cualquier edicion/condicion]")
+        );
+
+        Object selection = reservationStockSelection(reservations.get(0), List.of(nm, g), reservations, true, 1);
+        InventoryCard selected = selectedReservationCard(selection);
+
+        assertThat(selected).isNotNull();
+        assertThat(selected.getRowIndex()).isIn(10, 11);
+        assertThat(selectedReservationQuantity(selection)).isEqualTo(1);
+    }
+
+    @Test
+    void reservationStockSelectionUsesAvailableConditionStocksForFlexibleReassignment() throws Exception {
+        InventoryCard nm = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 10);
+        nm.setCondition("NM");
+        InventoryCard g = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 11);
+        g.setCondition("G");
+
+        CardReservation alreadyReserved = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        CardReservation wanted = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        wanted.setStatus(CardReservation.STATUS_WANTED);
+
+        Object selection = reservationStockSelection(wanted, List.of(nm, g), List.of(alreadyReserved, wanted), false, 1);
+        InventoryCard selected = selectedReservationCard(selection);
+
+        assertThat(selected).isNotNull();
+        assertThat(selected.getRowIndex()).isEqualTo(11);
+        assertThat(selectedReservationQuantity(selection)).isEqualTo(1);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void assignedFlexibleReservationDoesNotCountInOtherEditionFamily() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod("conditionStocksForInventoryCards", List.class, List.class);
@@ -440,6 +493,108 @@ class DashboardControllerVariantSearchTests {
         assertThat(group.families().stream()
                 .mapToInt(DashboardController.SearchResult::displayReservedQuantity)
                 .sum()).isEqualTo(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void searchProductAggregationKeepsPrecomputedConditionStocks() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        List<ReservationConditionStock> conditionStocks = List.of(
+                new ReservationConditionStock("NM", 1, 0, 1, "Reservada", 10, "8.49", "14500"),
+                new ReservationConditionStock("G", 1, 0, 1, "Reservada", 11, "4.25", "7500")
+        );
+        DashboardController.SearchResult result = searchResult("NM", conditionStocks, 1, 10);
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, List.of(result), List.of());
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.stockQuantity()).isEqualTo(2);
+        assertThat(group.reservedQuantity()).isEqualTo(2);
+        assertThat(group.availableQuantity()).isZero();
+        assertThat(group.families().get(0).conditionStocks()).isSameAs(conditionStocks);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateProductAggregationKeepsPrecomputedConditionStocks() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedUpdateResults", List.class, List.class);
+        method.setAccessible(true);
+
+        List<ReservationConditionStock> conditionStocks = List.of(
+                new ReservationConditionStock("NM", 1, 0, 1, "Reservada", 10, "8.49", "14500"),
+                new ReservationConditionStock("G", 1, 0, 1, "Reservada", 11, "4.25", "7500")
+        );
+        DashboardController.UpdateResult update = new DashboardController.UpdateResult(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "14500",
+                "8.49",
+                "En Stock",
+                "NM",
+                conditionStocks,
+                10,
+                1,
+                false
+        );
+
+        List<DashboardController.UpdateProductGroup> groups =
+                (List<DashboardController.UpdateProductGroup>) method.invoke(controller, List.of(update), List.of());
+
+        assertThat(groups).hasSize(1);
+        DashboardController.UpdateProductGroup group = groups.get(0);
+        assertThat(group.stockQuantity()).isEqualTo(2);
+        assertThat(group.reservedQuantity()).isEqualTo(2);
+        assertThat(group.availableQuantity()).isZero();
+        assertThat(group.families().get(0).conditionStocks()).isSameAs(conditionStocks);
+    }
+
+    @Test
+    void reservationsUseConditionStockBreakdownForFlexibleReservations() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "decorateReservationsWithStock",
+                List.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        InventoryCard nm = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 10);
+        nm.setCondition("NM");
+        InventoryCard g = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 11);
+        g.setCondition("G");
+
+        CardReservation first = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        CardReservation second = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+
+        method.invoke(controller, List.of(first, second), List.of(nm, g), List.of());
+
+        assertThat(first.getConditionStocks()).hasSize(2);
+        assertThat(first.getConditionStocks())
+                .extracting(ReservationConditionStock::reservedQuantity)
+                .containsExactly(1, 1);
+        assertThat(first.getCurrentStock()).isEqualTo(2);
+        assertThat(first.getAvailableStock()).isZero();
     }
 
     @Test
@@ -1028,6 +1183,37 @@ class DashboardControllerVariantSearchTests {
         );
 
         assertThat(results).containsExactly(centurion);
+    }
+
+    private Object reservationStockSelection(
+            CardReservation reservation,
+            List<InventoryCard> inventoryCards,
+            List<CardReservation> reservations,
+            boolean reservedStock,
+            int requiredQuantity
+    ) throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "reservationStockSelection",
+                CardReservation.class,
+                List.class,
+                List.class,
+                boolean.class,
+                int.class
+        );
+        method.setAccessible(true);
+        return method.invoke(controller, reservation, inventoryCards, reservations, reservedStock, requiredQuantity);
+    }
+
+    private InventoryCard selectedReservationCard(Object selection) throws Exception {
+        Method method = selection.getClass().getDeclaredMethod("card");
+        method.setAccessible(true);
+        return (InventoryCard) method.invoke(selection);
+    }
+
+    private int selectedReservationQuantity(Object selection) throws Exception {
+        Method method = selection.getClass().getDeclaredMethod("availableQuantity");
+        method.setAccessible(true);
+        return (int) method.invoke(selection);
     }
 
     private CardKingdomProduct product(String name, String variation) {
