@@ -164,6 +164,63 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void searchResultSelectsStockedConditionWhenEarlierSheetConditionIsEmpty() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "createSearchResult",
+                CardKingdomProduct.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        CardKingdomProduct product = product("Academy Manufactor", "Bloomburrow Commander Decks", "BLC-0264");
+
+        InventoryCard nm = inventoryCard(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "nonfoil",
+                "0",
+                "Sin Stock",
+                3
+        );
+        nm.setCondition("NM");
+        InventoryCard vg = inventoryCard(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "nonfoil",
+                "0",
+                "Sin Stock",
+                4
+        );
+        vg.setCondition("VG");
+        InventoryCard g = inventoryCard(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "nonfoil",
+                "1",
+                "En Stock",
+                5
+        );
+        g.setCondition("G");
+
+        DashboardController.SearchResult result = (DashboardController.SearchResult) method.invoke(
+                controller,
+                product,
+                List.of(nm, vg, g)
+        );
+
+        assertThat(result.selectedCondition()).isEqualTo("G");
+        assertThat(result.rowIndex()).isEqualTo(5);
+        assertThat(result.stockQuantity()).isEqualTo(1);
+        assertThat(result.displayAvailableQuantity()).isEqualTo(1);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void latestUpdatesStayAlphabeticalWhenReservedCardWasAppended() throws Exception {
         Method method = DashboardController.class.getDeclaredMethod("sortedLatestUpdates", List.class);

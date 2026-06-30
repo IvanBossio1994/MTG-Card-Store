@@ -5607,12 +5607,22 @@ public class DashboardController {
         String gPrice = product.getConditionValues() == null
                 ? ""
                 : product.getConditionValues().getGPrice();
-        String selectedCondition = matches.stream()
+        String firstMatchedCondition = matches.stream()
                 .map(InventoryCard::getCondition)
                 .filter(condition -> condition != null && !condition.isBlank())
                 .findFirst()
                 .map(DashboardController::displayCondition)
                 .orElse("NM");
+        String selectedCondition = List.of("NM", "EX", "VG", "G").stream()
+                .filter(condition -> conditionStockQuantity(
+                        condition,
+                        nmStockQuantity,
+                        exStockQuantity,
+                        vgStockQuantity,
+                        gStockQuantity
+                ) > 0)
+                .findFirst()
+                .orElse(firstMatchedCondition);
         int stockQuantity = conditionStockQuantity(
                 selectedCondition,
                 nmStockQuantity,
