@@ -146,6 +146,26 @@ public class InventoryService {
         );
     }
 
+    public void updateReservationAssignment(
+            int rowIndex,
+            String status,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        googleSheetsService.updateReservationAssignment(
+                rowIndex,
+                status,
+                setName,
+                setCode,
+                collectorNumber,
+                printing,
+                condition
+        );
+    }
+
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
         googleSheetsService.deleteReservationRows(rowIndexes);
     }

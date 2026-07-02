@@ -591,6 +591,10 @@ public class GoogleSheetsService {
 
         for (int index = 0; index < values.size(); index++) {
             var row = values.get(index);
+            if (isInvalidReservationRow(row)) {
+                continue;
+            }
+
             CardReservation reservation = new CardReservation();
             reservation.setRowIndex(index + 2);
             reservation.setId(getColumnValue(row, 0));
@@ -614,6 +618,29 @@ public class GoogleSheetsService {
 
         Collections.reverse(reservations);
         return reservations;
+    }
+
+    private boolean isInvalidReservationRow(List<Object> row) {
+        if (row == null || row.isEmpty()) {
+            return true;
+        }
+
+        boolean hasAnyValue = false;
+        for (int index = 0; index < 16; index++) {
+            if (!getColumnValue(row, index).isBlank()) {
+                hasAnyValue = true;
+                break;
+            }
+        }
+
+        if (!hasAnyValue) {
+            return true;
+        }
+
+        return getColumnValue(row, 0).isBlank()
+                || getColumnValue(row, 2).isBlank()
+                || getColumnValue(row, 7).isBlank()
+                || getColumnValue(row, 8).isBlank();
     }
 
     public void appendReservation(CardReservation reservation) throws Exception {
@@ -860,6 +887,39 @@ public class GoogleSheetsService {
                 .update(storeSettingsService.getSpreadsheetId(), reservationRange("P" + rowIndex), conditionBody)
                 .setValueInputOption("RAW")
                 .execute();
+    }
+
+    public void updateReservationAssignment(
+            int rowIndex,
+            String status,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        if (rowIndex <= 1) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        batchUpdate(sheetsService, List.of(
+                new com.google.api.services.sheets.v4.model.ValueRange()
+                        .setRange(reservationRange("B" + rowIndex))
+                        .setValues(List.of(List.of(safe(status)))),
+                new com.google.api.services.sheets.v4.model.ValueRange()
+                        .setRange(reservationRange("D" + rowIndex + ":G" + rowIndex))
+                        .setValues(List.of(List.of(
+                                safe(setName),
+                                safe(setCode),
+                                safe(collectorNumber),
+                                safe(printing)
+                        ))),
+                new com.google.api.services.sheets.v4.model.ValueRange()
+                        .setRange(reservationRange("P" + rowIndex))
+                        .setValues(List.of(List.of(safe(condition))))
+        ));
     }
 
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
