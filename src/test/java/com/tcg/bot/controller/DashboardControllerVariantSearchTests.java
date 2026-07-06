@@ -23,6 +23,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -805,12 +806,345 @@ class DashboardControllerVariantSearchTests {
                         "0346",
                         "nonfoil",
                         "G",
+                        0,
                         request
                 );
 
         assertThat(response.getBody())
                 .extracting(DashboardController.PendingReservationView::id)
                 .containsExactly("any-condition");
+    }
+
+    @Test
+    void pendingReservationPopupReturnsReservedExactConditionMatch() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        CardReservation reservedVg = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "VG",
+                ""
+        );
+        reservedVg.setId("reserved-vg");
+        CardReservation wantedNm = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "NM",
+                ""
+        );
+        wantedNm.setId("wanted-nm");
+        wantedNm.setStatus(CardReservation.STATUS_WANTED);
+        when(inventoryService.getReservations()).thenReturn(List.of(reservedVg, wantedNm));
+
+        ResponseEntity<List<DashboardController.PendingReservationView>> response =
+                controller.pendingReservationsForCard(
+                        "Academy Manufactor",
+                        "March of the Machine Commander Decks",
+                        "MOC",
+                        "0346",
+                        "nonfoil",
+                        "VG",
+                        0,
+                        request
+                );
+
+        assertThat(response.getBody())
+                .extracting(DashboardController.PendingReservationView::id)
+                .containsExactly("reserved-vg");
+    }
+
+    @Test
+    void pendingReservationPopupUsesRowIndexFallbackWhenExactFieldsMiss() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard vgStock = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "0",
+                "Reservada",
+                9
+        );
+        vgStock.setCondition("VG");
+        CardReservation rowMatchedVg = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "VG",
+                ""
+        );
+        rowMatchedVg.setId("row-matched-vg");
+        CardReservation staleEx = reservedReservation(
+                "Academy Manufactor",
+                "Legacy Metadata",
+                "OLD",
+                "999",
+                "EX",
+                ""
+        );
+        staleEx.setId("stale-ex");
+        CardReservation otherCard = reservedReservation(
+                "Sol Ring",
+                "Legacy Metadata",
+                "OLD",
+                "999",
+                "VG",
+                ""
+        );
+        otherCard.setId("other-card");
+        when(inventoryService.getReservations()).thenReturn(List.of(staleEx, rowMatchedVg, otherCard));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(vgStock));
+
+        ResponseEntity<List<DashboardController.PendingReservationView>> response =
+                controller.pendingReservationsForCard(
+                        "Academy Manufactor",
+                        "Wrong Metadata",
+                        "WRG",
+                        "999",
+                        "nonfoil",
+                        "VG",
+                        9,
+                        request
+                );
+
+        assertThat(response.getBody())
+                .extracting(DashboardController.PendingReservationView::id)
+                .containsExactly("row-matched-vg");
+    }
+
+    @Test
+    void pendingReservationPopupRowIndexFallbackRejectsSameNameConditionDifferentProduct() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard vgStock = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "0",
+                "Reservada",
+                9
+        );
+        vgStock.setCondition("VG");
+        CardReservation otherProduct = reservedReservation(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "VG",
+                ""
+        );
+        otherProduct.setId("other-product");
+        when(inventoryService.getReservations()).thenReturn(List.of(otherProduct));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(vgStock));
+
+        ResponseEntity<List<DashboardController.PendingReservationView>> response =
+                controller.pendingReservationsForCard(
+                        "Academy Manufactor",
+                        "Wrong Metadata",
+                        "WRG",
+                        "999",
+                        "nonfoil",
+                        "VG",
+                        9,
+                        request
+                );
+
+        assertThat(response.getBody()).isEmpty();
+    }
+
+    @Test
+    void reservePendingReservationAcceptsAlreadyReservedSelection() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard vgStock = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "1",
+                "Reservada",
+                9
+        );
+        vgStock.setCondition("VG");
+        CardReservation reserved = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "VG",
+                ""
+        );
+        reserved.setId("reserved-vg");
+        reserved.setClient("Sofi");
+        when(inventoryService.getReservations()).thenReturn(List.of(reserved));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(vgStock));
+
+        ResponseEntity<?> response = controller.reservePendingReservation("reserved-vg", "", "VG", 9, 1, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationStockResponse body =
+                (DashboardController.ReservationStockResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.rowIndex()).isEqualTo(9);
+        assertThat(body.stockQuantity()).isEqualTo(1);
+        assertThat(body.reservedQuantity()).isEqualTo(1);
+        assertThat(body.availableQuantity()).isZero();
+        verify(inventoryService).updateStockState(eq(9), same(vgStock));
+    }
+
+    @Test
+    void reservePendingReservationRejectsInactiveStatus() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        CardReservation inactive = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "VG",
+                ""
+        );
+        inactive.setId("inactive");
+        inactive.setStatus(CardReservation.STATUS_IN_STOCK);
+        when(inventoryService.getReservations()).thenReturn(List.of(inactive));
+
+        ResponseEntity<?> response = controller.reservePendingReservation("inactive", "", "VG", 9, 1, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
+    }
+
+    @Test
+    void stockSnapshotUsesGroupedTotalMinusReservedAfterReservedConditionSale() throws Exception {
+        InventoryCard ex = inventoryCard("Academy Manufactor", "Bloomburrow Commander Decks", "BLC", "0264", "nonfoil", "0", "Reservada", 6);
+        ex.setCondition("EX");
+        InventoryCard g = inventoryCard("Academy Manufactor", "Bloomburrow Commander Decks", "BLC", "0264", "nonfoil", "3", "En Stock", 5);
+        g.setCondition("G");
+        CardReservation carlito = reservedReservation(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "EX",
+                ""
+        );
+        carlito.setId("carlito-blc-ex");
+        carlito.setClient("Carlito");
+
+        DashboardController.StockSnapshot snapshot = stockSnapshot(ex, List.of(ex, g), List.of(carlito));
+
+        assertThat(snapshot.stockTotal()).isEqualTo(3);
+        assertThat(snapshot.reservedQuantity()).isEqualTo(1);
+        assertThat(snapshot.availableQuantity()).isEqualTo(2);
+        assertThat(snapshot.summary()).isEqualTo("3 total | 1 reservadas | 2 disponibles");
+        assertThat(snapshot.conditionStocks())
+                .filteredOn(stock -> stock.condition().equals("EX"))
+                .singleElement()
+                .satisfies(stock -> {
+                    assertThat(stock.quantity()).isZero();
+                    assertThat(stock.reservedQuantity()).isEqualTo(1);
+                    assertThat(stock.availableQuantity()).isZero();
+                    assertThat(stock.action()).isEqualTo("Reservada");
+                    assertThat(stock.rowIndex()).isEqualTo(6);
+                });
+    }
+
+    @Test
+    void pendingReservationLookupFindsReservationResponsibleForReservedConditionRow() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard ex = inventoryCard("Academy Manufactor", "Bloomburrow Commander Decks", "BLC", "0264", "nonfoil", "0", "Reservada", 6);
+        ex.setCondition("EX");
+        InventoryCard g = inventoryCard("Academy Manufactor", "Bloomburrow Commander Decks", "BLC", "0264", "nonfoil", "3", "En Stock", 5);
+        g.setCondition("G");
+        CardReservation carlito = reservedReservation(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "EX",
+                ""
+        );
+        carlito.setId("carlito-blc-ex");
+        carlito.setClient("Carlito");
+        when(inventoryService.getReservations()).thenReturn(List.of(carlito));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(ex, g));
+
+        ResponseEntity<List<DashboardController.PendingReservationView>> response =
+                controller.pendingReservationsForCard(
+                        "Academy Manufactor",
+                        "Bloomburrow Commander Decks",
+                        "BLC",
+                        "0264",
+                        "nonfoil",
+                        "EX",
+                        6,
+                        request
+                );
+
+        assertThat(response.getBody())
+                .extracting(DashboardController.PendingReservationView::id)
+                .containsExactly("carlito-blc-ex");
+    }
+
+    @Test
+    void everyReservedConditionStockCanResolvePendingReservationLookup() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard ex = inventoryCard("Academy Manufactor", "Bloomburrow Commander Decks", "BLC", "0264", "nonfoil", "0", "Reservada", 6);
+        ex.setCondition("EX");
+        InventoryCard g = inventoryCard("Academy Manufactor", "Bloomburrow Commander Decks", "BLC", "0264", "nonfoil", "3", "En Stock", 5);
+        g.setCondition("G");
+        CardReservation carlito = reservedReservation(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "EX",
+                ""
+        );
+        carlito.setId("carlito-blc-ex");
+        when(inventoryService.getReservations()).thenReturn(List.of(carlito));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(ex, g));
+
+        DashboardController.StockSnapshot snapshot = stockSnapshot(ex, List.of(ex, g), List.of(carlito));
+
+        for (ReservationConditionStock stock : snapshot.conditionStocks()) {
+            if (stock.reservedQuantity() <= 0) {
+                continue;
+            }
+
+            ResponseEntity<List<DashboardController.PendingReservationView>> response =
+                    controller.pendingReservationsForCard(
+                            "Academy Manufactor",
+                            "Bloomburrow Commander Decks",
+                            "BLC",
+                            "0264",
+                            "nonfoil",
+                            stock.condition(),
+                            stock.rowIndex(),
+                            request
+                    );
+            assertThat(response.getBody()).isNotEmpty();
+        }
     }
 
     @Test
@@ -866,6 +1200,429 @@ class DashboardControllerVariantSearchTests {
         assertThat(body.snapshot().stockTotal()).isEqualTo(2);
         assertThat(body.snapshot().reservedQuantity()).isEqualTo(1);
         assertThat(body.snapshot().availableQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    void createReservationFromSearchWithoutRemoveFromStockDoesNotReserveStock() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        List<CardReservation> savedReservations = new ArrayList<>();
+
+        InventoryCard vg = inventoryCard("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "nonfoil", "1", "En Stock", 9);
+        vg.setCondition("VG");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(vg));
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                CardReservation.STATUS_WANTED,
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "VG",
+                "1",
+                "Sofi",
+                "111",
+                "222",
+                "2026-06-30",
+                false,
+                "",
+                false,
+                9,
+                false,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(savedReservations).hasSize(1);
+        assertThat(savedReservations.get(0).getStatus()).isEqualTo(CardReservation.STATUS_WANTED);
+        DashboardController.ReservationCreateResponse body =
+                (DashboardController.ReservationCreateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.snapshot().stockTotal()).isEqualTo(1);
+        assertThat(body.snapshot().reservedQuantity()).isZero();
+        assertThat(body.snapshot().availableQuantity()).isEqualTo(1);
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
+    }
+
+    @Test
+    void createReservationFromSearchAcceptsCompleteCardIdentityPayload() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        List<CardReservation> savedReservations = new ArrayList<>();
+
+        InventoryCard ex = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "1",
+                "En Stock",
+                8
+        );
+        ex.setCondition("EX");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(ex));
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "EX",
+                "1",
+                "Raul",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                true,
+                8,
+                false,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isInstanceOf(DashboardController.ReservationCreateResponse.class);
+        assertThat(((DashboardController.ReservationCreateResponse) response.getBody()).message())
+                .doesNotContain("Completa carta");
+        assertThat(savedReservations).hasSize(1);
+        assertThat(savedReservations.get(0).getName()).isEqualTo("Academy Manufactor");
+    }
+
+    @Test
+    void createFlexibleReservationWithRemoveFromStockHonorsSelectedRow() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        List<CardReservation> savedReservations = new ArrayList<>();
+
+        InventoryCard mocEx = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "2",
+                "En Stock",
+                8
+        );
+        mocEx.setCondition("EX");
+        InventoryCard blcG = inventoryCard(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "nonfoil",
+                "2",
+                "En Stock",
+                9
+        );
+        blcG.setCondition("G");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(mocEx, blcG));
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "EX",
+                "1",
+                "Codex Live",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                true,
+                8,
+                true,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(savedReservations).hasSize(1);
+        CardReservation saved = savedReservations.get(0);
+        assertThat(saved.getStatus()).isEqualTo(CardReservation.STATUS_RESERVED);
+        assertThat(saved.getNotes()).contains("[Cualquier edicion/condicion]");
+        assertThat(saved.getSetCode()).isEqualTo("MOC");
+        assertThat(saved.getCollectorNumber()).isEqualTo("0346");
+        assertThat(saved.getCondition()).isEqualTo("EX");
+        DashboardController.ReservationCreateResponse body =
+                (DashboardController.ReservationCreateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.reservedQuantity()).isEqualTo(1);
+        assertThat(body.availableQuantity()).isEqualTo(1);
+        assertThat(body.rowIndex()).isEqualTo(8);
+        assertThat(body.snapshot().reservedQuantity()).isEqualTo(1);
+        assertThat(body.snapshot().availableQuantity()).isEqualTo(1);
+        verify(inventoryService).updateStockState(eq(8), same(mocEx));
+        verify(inventoryService, never()).updateStockState(eq(9), any());
+    }
+
+    @Test
+    void createFlexibleReservationWithRemoveFromStockHonorsSelectedCondition() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        InventoryCard mocNm = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "2",
+                "En Stock",
+                7
+        );
+        mocNm.setCondition("NM");
+        InventoryCard mocEx = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "2",
+                "Reservada",
+                8
+        );
+        mocEx.setCondition("EX");
+        InventoryCard mocVg = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "1",
+                "En Stock",
+                9
+        );
+        mocVg.setCondition("VG");
+
+        CardReservation firstEx = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "EX",
+                ""
+        );
+        CardReservation secondEx = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "EX",
+                ""
+        );
+        List<CardReservation> savedReservations = new ArrayList<>(List.of(firstEx, secondEx));
+
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(mocNm, mocEx, mocVg));
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "VG",
+                "1",
+                "Codex Test",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                true,
+                9,
+                true,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationCreateResponse body =
+                (DashboardController.ReservationCreateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.rowIndex()).isEqualTo(9);
+        assertThat(body.reservedQuantity()).isEqualTo(1);
+        assertThat(body.availableQuantity()).isZero();
+        assertThat(body.snapshot().stockTotal()).isEqualTo(5);
+        assertThat(body.snapshot().reservedQuantity()).isEqualTo(3);
+        assertThat(body.snapshot().availableQuantity()).isEqualTo(2);
+
+        ReservationConditionStock nmStock = body.snapshot().conditionStocks().stream()
+                .filter(stock -> stock.condition().equals("NM"))
+                .findFirst()
+                .orElseThrow();
+        ReservationConditionStock exStock = body.snapshot().conditionStocks().stream()
+                .filter(stock -> stock.condition().equals("EX"))
+                .findFirst()
+                .orElseThrow();
+        ReservationConditionStock vgStock = body.snapshot().conditionStocks().stream()
+                .filter(stock -> stock.condition().equals("VG"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(nmStock.reservedQuantity()).isZero();
+        assertThat(nmStock.availableQuantity()).isEqualTo(2);
+        assertThat(exStock.reservedQuantity()).isEqualTo(2);
+        assertThat(exStock.availableQuantity()).isZero();
+        assertThat(vgStock.reservedQuantity()).isEqualTo(1);
+        assertThat(vgStock.availableQuantity()).isZero();
+        assertThat(vgStock.action()).isEqualTo("Reservada");
+
+        verify(inventoryService).updateStockState(eq(9), same(mocVg));
+        verify(inventoryService, never()).updateStockState(eq(7), any());
+    }
+
+    @Test
+    void createFlexibleReservationWithRemoveFromStockRejectsWhenSelectedRowHasNoAvailableStock() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        InventoryCard mocEx = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "0",
+                "Sin Stock",
+                8
+        );
+        mocEx.setCondition("EX");
+        InventoryCard blcG = inventoryCard(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                "nonfoil",
+                "2",
+                "En Stock",
+                9
+        );
+        blcG.setCondition("G");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(mocEx, blcG));
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "EX",
+                "1",
+                "Codex Live",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                true,
+                8,
+                true,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isInstanceOf(DashboardController.ApiMessage.class);
+        assertThat(((DashboardController.ApiMessage) response.getBody()).message())
+                .contains("No hay stock suficiente");
+        verify(inventoryService, never()).appendReservation(any(CardReservation.class));
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
+    }
+
+    @Test
+    void createFlexibleReservationWithoutRemoveFromStockStaysPendingAndDoesNotReserveStock() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        List<CardReservation> savedReservations = new ArrayList<>();
+
+        InventoryCard mocEx = inventoryCard(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "1",
+                "En Stock",
+                8
+        );
+        mocEx.setCondition("EX");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(mocEx));
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "nonfoil",
+                "EX",
+                "1",
+                "Codex Pending",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                true,
+                8,
+                false,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(savedReservations).hasSize(1);
+        assertThat(savedReservations.get(0).getStatus()).isEqualTo(CardReservation.STATUS_WANTED);
+        DashboardController.ReservationCreateResponse body =
+                (DashboardController.ReservationCreateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.reservedQuantity()).isZero();
+        assertThat(body.snapshot().reservedQuantity()).isZero();
+        assertThat(body.snapshot().availableQuantity()).isEqualTo(1);
+        assertThat(body.pendingInfo().pending()).isTrue();
+        assertThat(body.pendingInfo().quantity()).isEqualTo(1);
+        assertThat(body.pendingInfo().clientsLabel()).contains("Codex Pending");
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
     }
 
     @Test
@@ -1104,6 +1861,222 @@ class DashboardControllerVariantSearchTests {
         assertThat(group.families().stream()
                 .mapToInt(DashboardController.SearchResult::displayReservedQuantity)
                 .sum()).isEqualTo(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void productAggregationCountsFlexibleReservedStockAtGlobalLevel() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        DashboardController.SearchResult moc = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                List.of(
+                        new ReservationConditionStock("NM", 3, 1, 2, "Reservada", 10, "1.00", "1000"),
+                        new ReservationConditionStock("EX", 2, 2, 0, "En Stock", 11, "0.80", "800")
+                )
+        );
+        DashboardController.SearchResult blc = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                List.of(new ReservationConditionStock("G", 6, 6, 0, "En Stock", 12, "0.70", "700"))
+        );
+        List<CardReservation> reservations = List.of(
+                reservedReservation("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "NM", ""),
+                reservedReservation("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "NM", ""),
+                reservedReservation("Academy Manufactor", "", "", "", "", "[Cualquier edicion/condicion]")
+        );
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, List.of(moc, blc), reservations);
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.stockQuantity()).isEqualTo(11);
+        assertThat(group.reservedQuantity()).isEqualTo(3);
+        assertThat(group.availableQuantity()).isEqualTo(8);
+        DashboardController.SearchResult mocRow = group.families().stream()
+                .filter(family -> family.setCode().equals("MOC"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(mocRow.displayStockQuantity()).isEqualTo(5);
+        assertThat(mocRow.displayReservedQuantity()).isEqualTo(2);
+        assertThat(mocRow.displayAvailableQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void productAggregationShowsFlexibleWantedReservationAsPendingWithoutReservedStock() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        DashboardController.SearchResult moc = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                List.of(new ReservationConditionStock("NM", 5, 3, 2, "Reservada", 10, "1.00", "1000"))
+        );
+        DashboardController.SearchResult blc = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "Bloomburrow Commander Decks",
+                "BLC",
+                "0264",
+                List.of(new ReservationConditionStock("G", 6, 6, 0, "En Stock", 12, "0.70", "700"))
+        );
+        CardReservation wantedFlexible = reservedReservation(
+                "Academy Manufactor",
+                "",
+                "",
+                "",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        wantedFlexible.setStatus(CardReservation.STATUS_WANTED);
+        wantedFlexible.setClient("Pepito");
+        List<CardReservation> reservations = List.of(
+                reservedReservation("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "NM", ""),
+                reservedReservation("Academy Manufactor", "March of the Machine Commander Decks", "MOC", "0346", "NM", ""),
+                wantedFlexible
+        );
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, List.of(moc, blc), reservations);
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.stockQuantity()).isEqualTo(11);
+        assertThat(group.reservedQuantity()).isEqualTo(2);
+        assertThat(group.availableQuantity()).isEqualTo(9);
+        assertThat(group.pendingInfo().getQuantity()).isEqualTo(1);
+        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedido pendiente: 1");
+        assertThat(group.pendingInfo().getClientsLabel()).contains("Pepito");
+        assertThat(group.pendingInfo().getTooltip()).contains("Pepito - cualquier edicion/condicion");
+        assertThat(group.families())
+                .allSatisfy(family -> assertThat(family.displayReservedQuantity()).isLessThanOrEqualTo(2));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void productAggregationShowsExactWantedReservationAsPendingWithoutReservedStock() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        DashboardController.SearchResult fmh2 = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "Modern Horizons 2 Promos",
+                "FMH2",
+                "469",
+                List.of(new ReservationConditionStock("NM", 0, 0, 0, "Sin Stock", 20, "1.00", "1000"))
+        );
+        CardReservation exactWanted = reservedReservation(
+                "Academy Manufactor",
+                "Modern Horizons 2 Promos",
+                "FMH2",
+                "469",
+                "NM",
+                ""
+        );
+        exactWanted.setStatus(CardReservation.STATUS_WANTED);
+        exactWanted.setClient("Soky");
+        exactWanted.setPrinting("foil");
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, List.of(fmh2), List.of(exactWanted));
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.stockQuantity()).isZero();
+        assertThat(group.reservedQuantity()).isZero();
+        assertThat(group.availableQuantity()).isZero();
+        assertThat(group.pendingInfo().getQuantity()).isEqualTo(1);
+        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedido pendiente: 1");
+        assertThat(group.pendingInfo().getClientsLabel()).contains("Soky");
+        assertThat(group.pendingInfo().getTooltip()).contains("Soky - FMH2-469 NM Foil");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void productAggregationCombinesFlexibleAndExactWantedReservationsAsPending() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        DashboardController.SearchResult moc = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                List.of(new ReservationConditionStock("EX", 5, 5, 0, "En Stock", 10, "1.00", "1000"))
+        );
+        DashboardController.SearchResult fmh2 = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "Modern Horizons 2 Promos",
+                "FMH2",
+                "469",
+                List.of(new ReservationConditionStock("NM", 0, 0, 0, "Sin Stock", 20, "1.00", "1000"))
+        );
+        CardReservation flexibleWanted = reservedReservation("Academy Manufactor", "", "", "", "", "[Cualquier edicion/condicion]");
+        flexibleWanted.setStatus(CardReservation.STATUS_WANTED);
+        flexibleWanted.setClient("Pepito");
+        CardReservation exactWanted = reservedReservation("Academy Manufactor", "Modern Horizons 2 Promos", "FMH2", "469", "NM", "");
+        exactWanted.setStatus(CardReservation.STATUS_WANTED);
+        exactWanted.setClient("Soky");
+        exactWanted.setPrinting("foil");
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(
+                        controller,
+                        List.of(moc, fmh2),
+                        List.of(flexibleWanted, exactWanted)
+                );
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.reservedQuantity()).isZero();
+        assertThat(group.availableQuantity()).isEqualTo(5);
+        assertThat(group.pendingInfo().getQuantity()).isEqualTo(2);
+        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedidos pendientes: 2");
+        assertThat(group.pendingInfo().getTooltip())
+                .contains("Pepito - cualquier edicion/condicion")
+                .contains("Soky - FMH2-469 NM Foil");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void productAggregationDoesNotShowReservedStockAsPending() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupedSearchResults", List.class, List.class);
+        method.setAccessible(true);
+
+        DashboardController.SearchResult moc = searchFamilyWithConditionStocks(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                List.of(new ReservationConditionStock("EX", 5, 4, 1, "Reservada", 10, "1.00", "1000"))
+        );
+        CardReservation reserved = reservedReservation(
+                "Academy Manufactor",
+                "March of the Machine Commander Decks",
+                "MOC",
+                "0346",
+                "EX",
+                ""
+        );
+        reserved.setClient("Raul");
+
+        List<DashboardController.SearchProductGroup> groups =
+                (List<DashboardController.SearchProductGroup>) method.invoke(controller, List.of(moc), List.of(reserved));
+
+        assertThat(groups).hasSize(1);
+        DashboardController.SearchProductGroup group = groups.get(0);
+        assertThat(group.reservedQuantity()).isEqualTo(1);
+        assertThat(group.availableQuantity()).isEqualTo(4);
+        assertThat(group.pendingInfo().getQuantity()).isZero();
     }
 
     @Test
@@ -1873,6 +2846,21 @@ class DashboardControllerVariantSearchTests {
         return method.invoke(controller, reservation, inventoryCards, reservations, reservedStock, requiredQuantity);
     }
 
+    private DashboardController.StockSnapshot stockSnapshot(
+            InventoryCard card,
+            List<InventoryCard> inventoryCards,
+            List<CardReservation> reservations
+    ) throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "stockSnapshot",
+                InventoryCard.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+        return (DashboardController.StockSnapshot) method.invoke(controller, card, inventoryCards, reservations);
+    }
+
     private HttpServletRequest unlockedRequest() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpSession session = mock(HttpSession.class);
@@ -2039,6 +3027,71 @@ class DashboardControllerVariantSearchTests {
                 List.of(),
                 selectedCondition.equals("NM") ? "1000" : "800",
                 stockQuantity,
+                rowIndex
+        );
+    }
+
+    private DashboardController.SearchResult searchFamilyWithConditionStocks(
+            String name,
+            String edition,
+            String setCode,
+            String collectorNumber,
+            List<ReservationConditionStock> conditionStocks
+    ) {
+        int nmQuantity = conditionStocks.stream()
+                .filter(stock -> stock.condition().equals("NM"))
+                .mapToInt(ReservationConditionStock::quantity)
+                .findFirst()
+                .orElse(0);
+        int exQuantity = conditionStocks.stream()
+                .filter(stock -> stock.condition().equals("EX"))
+                .mapToInt(ReservationConditionStock::quantity)
+                .findFirst()
+                .orElse(0);
+        int vgQuantity = conditionStocks.stream()
+                .filter(stock -> stock.condition().equals("VG"))
+                .mapToInt(ReservationConditionStock::quantity)
+                .findFirst()
+                .orElse(0);
+        int gQuantity = conditionStocks.stream()
+                .filter(stock -> stock.condition().equals("G"))
+                .mapToInt(ReservationConditionStock::quantity)
+                .findFirst()
+                .orElse(0);
+        int rowIndex = conditionStocks.stream()
+                .mapToInt(ReservationConditionStock::rowIndex)
+                .filter(index -> index > 0)
+                .findFirst()
+                .orElse(0);
+
+        return new DashboardController.SearchResult(
+                name,
+                edition,
+                setCode + "-" + collectorNumber,
+                setCode,
+                collectorNumber,
+                "-",
+                "No Foil",
+                "NM",
+                "1.00",
+                "0.80",
+                "0.70",
+                "0.60",
+                "1000",
+                "800",
+                "700",
+                "600",
+                nmQuantity,
+                exQuantity,
+                vgQuantity,
+                gQuantity,
+                rowIndex,
+                rowIndex,
+                rowIndex,
+                rowIndex,
+                conditionStocks,
+                "1000",
+                conditionStocks.stream().mapToInt(ReservationConditionStock::quantity).sum(),
                 rowIndex
         );
     }

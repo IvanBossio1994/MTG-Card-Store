@@ -1125,16 +1125,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const selectedConditionHasStock = rowIndex !== "0" && availableQuantity > 0;
                 parentStockControls.hidden = hasConditionDropdown && selectedConditionHasStock;
                 stockTotalDisplay.hidden = !hasConditionDropdown || !selectedConditionHasStock;
-                setStockValue(stockTotalDisplay, stockQuantity);
+                setStockValue(stockTotalDisplay, groupedStockFromConditionDatasets(row).total);
             }
 
-            row.dataset.stockTotal = String(stockQuantity);
-            row.dataset.reservedTotal = String(reservedQuantity);
-            row.dataset.availableTotal = String(availableQuantity);
-            row.dataset.inStock = String(availableQuantity > 0);
-            row.classList.toggle("in-stock", availableQuantity > 0);
+            applyGroupedStockToFamilyRow(row);
             applyStatus(row.querySelector(".stock-action-status"), selectedConditionStock.action);
-            applyStockBreakdown(row, selectedConditionStock.summary);
             setPrimaryReservationMode(row, false, selectedConditionStock);
         };
 
@@ -1274,6 +1269,23 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
+        const syncRemoveFromStockControl = () => {
+            if (!removeFromStockControl || !activeReservationButton) {
+                return;
+            }
+
+            const checkbox = removeFromStockControl.querySelector("input[type='checkbox']");
+            const stockQuantity = Number(activeReservationButton.dataset.stockQuantity || 0);
+            const canReserveFromStock = stockQuantity > 0
+                    && activeReservationButton.dataset.row
+                    && activeReservationButton.dataset.row !== "0";
+            removeFromStockControl.hidden = !canReserveFromStock;
+            if (checkbox) {
+                checkbox.disabled = !canReserveFromStock;
+                checkbox.checked = canReserveFromStock;
+            }
+        };
+
         restrictNumericField(reservationModalForm.elements.phone, 15);
         restrictNumericField(reservationModalForm.elements.dni, 15);
 
@@ -1285,7 +1297,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             event.preventDefault();
                 activeReservationButton = button;
-                const stockQuantity = Number(button.dataset.stockQuantity || 0);
                 await loadReservationClients();
                 setReservationValue("status", "Sin Stock");
                 setReservationValue("name", button.dataset.name);
@@ -1303,15 +1314,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     pickupFlexibleCheckbox.dispatchEvent(new Event("change"));
                 }
 
-                if (removeFromStockControl) {
-                    const checkbox = removeFromStockControl.querySelector("input[type='checkbox']");
-                    const canReserveFromStock = stockQuantity > 0 && button.dataset.row && button.dataset.row !== "0";
-                    removeFromStockControl.hidden = !canReserveFromStock;
-                    if (checkbox) {
-                        checkbox.checked = canReserveFromStock;
-                        checkbox.disabled = !canReserveFromStock;
-                    }
-                }
+                syncRemoveFromStockControl();
 
                 if (reservationModalCardName) {
                     const parts = [
@@ -1332,6 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         reservationModalForm.elements.client?.addEventListener("input", applySelectedReservationClient);
         reservationModalForm.elements.client?.addEventListener("change", applySelectedReservationClient);
+        reservationModalForm.elements.flexibleMatch?.addEventListener("change", syncRemoveFromStockControl);
 
         reservationModal.querySelectorAll(".modal-close, .modal-cancel").forEach(button => {
             button.addEventListener("click", closeReservationModal);
@@ -1375,6 +1379,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     removeFromStockCheckbox.checked = false;
                     removeFromStockCheckbox.disabled = true;
                 }
+                const reserveSelectedStock = Boolean(removeFromStockCheckbox?.checked && !removeFromStockCheckbox.disabled);
 
                 const response = await fetch(reservationModalForm.action, {
                     method: "POST",
@@ -1407,6 +1412,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
                 } else if (activeReservationButton) {
                     applyStockSnapshot(result.snapshot, activeReservationButton);
+                }
+                if (!reserveSelectedStock && activeReservationButton) {
+                    updateProductPendingIndicator(activeReservationButton, result.pendingInfo || result.snapshot?.pendingInfo);
                 }
 
                 upsertReservationClientOption({
@@ -1871,6 +1879,74 @@ document.addEventListener("DOMContentLoaded", () => {
         return normalized ? `${normalized[0].toUpperCase()}${normalized.slice(1)}` : "";
     }
 
+    function groupedStockFromConditionDatasets(row) {
+        const conditionKeys = ["Nm", "Ex", "Vg", "G"];
+        let total = 0;
+        let reserved = 0;
+        let hasConditionData = false;
+
+        conditionKeys.forEach(key => {
+            const stockValue = row?.dataset?.[`stock${key}`];
+            const reservedValue = row?.dataset?.[`reserved${key}`];
+            if (stockValue != null || reservedValue != null) {
+                hasConditionData = true;
+            }
+            total += Math.max(Number(stockValue) || 0, 0);
+            reserved += Math.max(Number(reservedValue) || 0, 0);
+        });
+
+        if (!hasConditionData) {
+            total = Math.max(Number(row?.dataset?.stockTotal) || 0, 0);
+            reserved = Math.max(Number(row?.dataset?.reservedTotal) || 0, 0);
+        }
+
+        return {
+            total,
+            reserved,
+            available: Math.max(total - reserved, 0)
+        };
+    }
+
+    function applyGroupedStockToFamilyRow(row) {
+        if (!row) {
+            return null;
+        }
+
+        const grouped = groupedStockFromConditionDatasets(row);
+        row.dataset.stockTotal = String(grouped.total);
+        row.dataset.reservedTotal = String(grouped.reserved);
+        row.dataset.availableTotal = String(grouped.available);
+        row.dataset.inStock = String(grouped.available > 0);
+        row.classList.toggle("in-stock", grouped.available > 0);
+        applyStockBreakdown(row, stockBreakdownText(grouped.total, grouped.reserved, grouped.available));
+        return grouped;
+    }
+
+    function selectedConditionStockState(button) {
+        const condition = button?.dataset?.condition || "NM";
+        const option = button?.closest?.(".inventory-condition-option");
+        if (option) {
+            return {
+                reserved: Math.max(Number(option.dataset.reservedQuantity) || 0, 0),
+                available: Math.max(Number(option.dataset.availableQuantity ?? option.dataset.stockQuantity) || 0, 0)
+            };
+        }
+
+        const row = primaryInventoryRowFromButton(button) || button?.closest?.(".search-result-row");
+        const key = conditionDataKey(condition);
+        if (!row || !key) {
+            return {
+                reserved: 0,
+                available: 0
+            };
+        }
+
+        return {
+            reserved: Math.max(Number(row.dataset[`reserved${key}`] ?? row.dataset.reservedTotal) || 0, 0),
+            available: Math.max(Number(row.dataset[`available${key}`] ?? row.dataset.availableTotal) || 0, 0)
+        };
+    }
+
     function normalizedStockSnapshot(snapshot) {
         const total = Math.max(Number(snapshot?.stockTotal) || 0, 0);
         const reserved = Math.max(Number(snapshot?.reservedQuantity) || 0, 0);
@@ -1928,9 +2004,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function baseCardDataset(primaryRow) {
-        const source = primaryRow?.querySelector(".stock-button.increase")
-                || primaryRow?.querySelector(".add-reservation-button");
-        return source?.dataset || {};
+        const source = primaryRow?.querySelector(".add-reservation-button")
+                || primaryRow?.querySelector(".stock-button.increase");
+        const sourceData = source?.dataset || {};
+        const rowData = primaryRow?.dataset || {};
+
+        return {
+            sku: sourceData.sku || rowData.sku || "",
+            name: sourceData.name || rowData.name || "",
+            setName: sourceData.setName || rowData.setName || "",
+            setCode: sourceData.setCode || rowData.setCode || "",
+            collectorNumber: sourceData.collectorNumber || rowData.collectorNumber || "",
+            printing: sourceData.printing || rowData.printing || "",
+            condition: sourceData.condition || rowData.condition || ""
+        };
     }
 
     function conditionPriceFromRow(primaryRow, stock, priceType) {
@@ -2356,7 +2443,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const state = normalizedStockSnapshot(snapshot);
         const rows = new Set();
         const sourceRow = primaryInventoryRowFromButton(sourceButton);
-        if (sourceRow) {
+        if (sourceRow && sourceRow.querySelector(`.stock-button[data-row="${state.rowIndex}"]`)) {
             rows.add(sourceRow);
         }
 
@@ -2386,7 +2473,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const total = familyRows.reduce((sum, row) => sum + (Number(row.dataset.stockTotal) || 0), 0);
         const reserved = familyRows.reduce((sum, row) => sum + (Number(row.dataset.reservedTotal) || 0), 0);
-        const available = familyRows.reduce((sum, row) => sum + (Number(row.dataset.availableTotal) || 0), 0);
+        const available = Math.max(total - reserved, 0);
 
         document.querySelectorAll(".product-aggregate-row").forEach(row => {
             if (row.dataset.productKey !== productKey) {
@@ -2403,6 +2490,37 @@ document.addEventListener("DOMContentLoaded", () => {
             if (summary) {
                 summary.textContent = stockBreakdownText(total, reserved, available);
             }
+        });
+    }
+
+    function updateProductPendingIndicator(sourceButton, pendingInfo) {
+        const primaryRow = primaryInventoryRowFromButton(sourceButton) || sourceButton?.closest?.(".product-family-row");
+        const productKey = primaryRow?.dataset?.productKey || "";
+        if (!productKey || !pendingInfo || Number(pendingInfo.quantity) <= 0) {
+            return;
+        }
+
+        document.querySelectorAll(".product-aggregate-row").forEach(row => {
+            if (row.dataset.productKey !== productKey) {
+                return;
+            }
+
+            const content = row.querySelector(".product-aggregate-content");
+            if (!content) {
+                return;
+            }
+
+            let pending = content.querySelector(".product-pending-summary");
+            if (!pending) {
+                pending = document.createElement("small");
+                pending.className = "product-pending-summary";
+                content.appendChild(pending);
+            }
+
+            const quantity = Math.max(Number(pendingInfo.quantity) || 0, 0);
+            const clients = pendingInfo.clientsLabel || "cliente sin nombre";
+            pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido pendiente: 1" : `Pedidos pendientes: ${quantity}`);
+            pending.title = pendingInfo.tooltip || `Carta pedida para ${clients}.`;
         });
     }
 
@@ -2601,25 +2719,37 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
+            const selectedStock = selectedConditionStockState(button);
             const params = new URLSearchParams({
                 name: button.dataset.name || "",
                 setName: button.dataset.setName || "",
                 setCode: button.dataset.setCode || "",
                 collectorNumber: button.dataset.collectorNumber || "",
                 printing: button.dataset.printing || "",
-                condition: button.dataset.condition || "NM"
+                condition: button.dataset.condition || "NM",
+                rowIndex: button.dataset.row || "0"
             });
             const response = await fetch(`/api/reservas/pendientes?${params.toString()}`, {
                 headers: {"Accept": "application/json"}
             });
 
             if (!response.ok) {
+                if (selectedStock.reserved > 0 && selectedStock.available <= 0) {
+                    showToast("No se pudo verificar la reserva activa para esta condicion", "error");
+                    resolve({action: "cancel"});
+                    return;
+                }
                 resolve({action: "stock"});
                 return;
             }
 
             const reservations = await response.json();
             if (!reservations || reservations.length === 0) {
+                if (selectedStock.reserved > 0 && selectedStock.available <= 0) {
+                    showToast("Hay una reserva activa para esta condicion, pero no se pudo identificar el pedido", "error");
+                    resolve({action: "cancel"});
+                    return;
+                }
                 resolve({action: "stock"});
                 return;
             }
@@ -3335,10 +3465,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const total = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
                         .reduce((sum, item) => sum + (Number(item.dataset.stockQuantity) || 0), 0);
-                const availableTotal = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
-                        .reduce((sum, item) => sum + (Number(item.dataset.availableQuantity ?? item.dataset.stockQuantity) || 0), 0);
                 const reservedTotal = Array.from(optionsRow.querySelectorAll(".inventory-condition-option"))
                         .reduce((sum, item) => sum + (Number(item.dataset.reservedQuantity) || 0), 0);
+                const availableTotal = Math.max(total - reservedTotal, 0);
                 const stockTotal = primaryRow.querySelector(".stock-total-display, .stock-value");
                 if (stockTotal) {
                     setStockValue(stockTotal, total);

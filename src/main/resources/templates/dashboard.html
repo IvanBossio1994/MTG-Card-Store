@@ -162,12 +162,25 @@
                             <strong th:text="${productGroup.name != null && productGroup.name != '' ? productGroup.name : '-'}">Arcane Signet</strong>
                             <small class="product-stock-summary"
                                    th:text="${productGroup.displayStockBreakdown()}">11 total | 5 reservadas | 6 disponibles</small>
+                            <small class="product-pending-summary"
+                                   th:if="${productGroup.pendingInfo != null && productGroup.pendingInfo.quantity > 0}"
+                                   th:title="${productGroup.pendingInfo.tooltip}"
+                                   th:text="${productGroup.pendingInfo.summaryLabel}">
+                                Pedido pendiente: 1
+                            </small>
                         </div>
                     </td>
                 </tr>
                 <th:block th:each="result, iter : ${productGroup.families}">
                 <tr class="search-result-row product-family-row"
                      th:attr="data-in-stock=${result.displayAvailableQuantity() > 0},
+                              data-sku=${result.sku},
+                              data-name=${result.name},
+                              data-set-name=${result.edition},
+                              data-set-code=${result.setCode},
+                              data-collector-number=${result.collectorNumber},
+                              data-printing=${result.printing},
+                              data-condition=${result.selectedCondition},
                               data-product-key=${result.productKey},
                               data-stock-total=${result.displayStockQuantity()},
                               data-reserved-total=${result.displayReservedQuantity()},
@@ -399,6 +412,12 @@
                     <th:block th:each="update, iter : ${productGroup.families}">
                     <tr class="synced-table-row product-family-row"
                         th:attr="data-in-stock=${update.displayAvailableQuantity() > 0},
+                                 data-name=${update.name},
+                                 data-set-name=${update.edition},
+                                 data-set-code=${update.setCode},
+                                 data-collector-number=${update.collectorNumber},
+                                 data-printing=${update.printing},
+                                 data-condition=${update.condition},
                                  data-product-key=${update.productKey},
                                  data-stock-total=${update.displayStockQuantity()},
                                  data-reserved-total=${update.displayReservedQuantity()},

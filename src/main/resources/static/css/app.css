@@ -1356,6 +1356,7 @@ h2 {
 }
 
 .product-stock-summary,
+.product-pending-summary,
 .family-label,
 .family-stock-breakdown {
     display: block;
