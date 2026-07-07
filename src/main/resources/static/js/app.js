@@ -2982,6 +2982,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             showToast(result.message || "Carta separada para reserva", "success");
+            await refreshPickupAlerts();
             return true;
         } finally {
             hideLoadingOverlay(null, "");
