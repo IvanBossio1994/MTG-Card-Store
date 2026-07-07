@@ -247,6 +247,13 @@
                         </div>
                         <small class="stock-inline-breakdown family-stock-breakdown"
                                th:text="${result.displayFullStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
+                        <small class="product-pending-summary"
+                               th:with="pendingInfo=${pendingReservationQuantities != null ? pendingReservationQuantities[result.reservationKey()] : null}"
+                               th:if="${pendingInfo != null && pendingInfo.quantity > 0}"
+                               th:title="${pendingInfo.tooltip}"
+                               th:text="${pendingInfo.summaryLabel}">
+                            Pedido pendiente: 1
+                        </small>
                     </td>
                     <td>
                         <select class="condition-price-select" aria-label="Condicion de la carta">
@@ -458,6 +465,13 @@
                             </div>
                             <small class="stock-inline-breakdown family-stock-breakdown"
                                    th:text="${update.displayFullStockBreakdown()}">2 total | 1 reservada | 1 disponible</small>
+                            <small class="product-pending-summary"
+                                   th:with="pendingInfo=${pendingReservationQuantities != null ? pendingReservationQuantities[update.reservationKey()] : null}"
+                                   th:if="${pendingInfo != null && pendingInfo.quantity > 0}"
+                                   th:title="${pendingInfo.tooltip}"
+                                   th:text="${pendingInfo.summaryLabel}">
+                                Pedido pendiente: 1
+                            </small>
                         </td>
                         <td>
                             <span class="condition-inline-value"

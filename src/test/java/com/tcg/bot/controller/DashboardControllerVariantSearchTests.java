@@ -1,10 +1,12 @@
 package com.tcg.bot.controller;
 
 import com.tcg.bot.dto.CardKingdomProduct;
+import com.tcg.bot.dto.CardKingdomPriceListResponse;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.ReservationConditionStock;
+import com.tcg.bot.service.CardKingdomApiService;
 import com.tcg.bot.service.InventoryService;
 import com.tcg.bot.service.PriceComparisonService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -768,6 +771,187 @@ class DashboardControllerVariantSearchTests {
         verify(inventoryService).updateStockState(eq(212), cardCaptor.capture());
         assertThat(cardCaptor.getValue().getQuantity()).isEqualTo("1");
         assertThat(cardCaptor.getValue().getAction()).isEqualTo("Reservada");
+    }
+
+    @Test
+    void reservePendingReservationUsesIncomingPlusUnitForExactNoStockPedido() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        InventoryCard noStockRow = inventoryCard(
+                "Academy Manufactor",
+                "Modern Horizons 2 Variants",
+                "FMH2",
+                "469",
+                "foil",
+                "0",
+                "Sin Stock",
+                469
+        );
+        noStockRow.setCondition("NM");
+        CardReservation wanted = reservedReservation(
+                "Academy Manufactor",
+                "Modern Horizons 2 Variants",
+                "FMH2",
+                "469",
+                "NM",
+                ""
+        );
+        wanted.setId("wanted-fmh2");
+        wanted.setStatus(CardReservation.STATUS_WANTED);
+        wanted.setClient("Soky");
+        wanted.setPrinting("foil");
+
+        when(inventoryService.getReservations()).thenReturn(List.of(wanted));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(noStockRow));
+
+        ResponseEntity<?> response = controller.reservePendingReservation("wanted-fmh2", "", "NM", 469, 1, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationStockResponse body =
+                (DashboardController.ReservationStockResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.rowIndex()).isEqualTo(469);
+        assertThat(body.stockQuantity()).isEqualTo(1);
+        assertThat(body.reservedQuantity()).isEqualTo(1);
+        assertThat(body.availableQuantity()).isZero();
+        assertThat(body.action()).isEqualTo("Reservada");
+        assertThat(body.snapshot().pendingInfo().quantity()).isZero();
+
+        ArgumentCaptor<InventoryCard> cardCaptor = ArgumentCaptor.forClass(InventoryCard.class);
+        verify(inventoryService).updateStockState(eq(469), cardCaptor.capture());
+        assertThat(cardCaptor.getValue().getQuantity()).isEqualTo("1");
+        assertThat(cardCaptor.getValue().getAction()).isEqualTo("Reservada");
+        verify(inventoryService).updateReservationInventoryMatch(
+                eq("wanted-fmh2"),
+                eq("Modern Horizons 2 Variants"),
+                eq("FMH2"),
+                eq("469"),
+                eq("foil"),
+                eq("NM")
+        );
+    }
+
+    @Test
+    void reservePendingReservationCreatesReservedRowForExactNoStockPedidoWhenRowIndexIsMissing() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
+        PriceComparisonService priceComparisonService = mock(PriceComparisonService.class);
+        DashboardController controller = new DashboardController(
+                inventoryService,
+                cardKingdomApiService,
+                null,
+                priceComparisonService,
+                null,
+                null
+        );
+        HttpServletRequest request = unlockedRequest();
+
+        CardReservation wanted = reservedReservation(
+                "Academy Manufactor",
+                "Modern Horizons 2 Variants",
+                "MH2",
+                "469",
+                "NM",
+                ""
+        );
+        wanted.setId("wanted-mh2");
+        wanted.setStatus(CardReservation.STATUS_WANTED);
+        wanted.setClient("Raul");
+        wanted.setPrinting("nonfoil");
+
+        CardKingdomProduct product = product("Academy Manufactor", "Modern Horizons 2 Variants", "MH2-469");
+        product.setFoil("false");
+        CardKingdomPriceListResponse priceList = new CardKingdomPriceListResponse();
+        priceList.setData(List.of(product));
+
+        when(inventoryService.getReservations()).thenReturn(List.of(wanted));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of());
+        when(inventoryService.appendInventoryCard(any(InventoryCard.class))).thenReturn(469);
+        when(cardKingdomApiService.getPriceList()).thenReturn(priceList);
+        when(priceComparisonService.getBestConditionPrice(eq(product), any(InventoryCard.class))).thenReturn(1.0);
+        when(priceComparisonService.calculateLocalPrice(1.0)).thenReturn(1000.0);
+
+        ResponseEntity<?> response = controller.reservePendingReservation("wanted-mh2", "MH2-469", "NM", 0, -1, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationStockResponse body =
+                (DashboardController.ReservationStockResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.rowIndex()).isEqualTo(469);
+        assertThat(body.stockQuantity()).isEqualTo(1);
+        assertThat(body.reservedQuantity()).isEqualTo(1);
+        assertThat(body.availableQuantity()).isZero();
+        assertThat(body.action()).isEqualTo("Reservada");
+        assertThat(body.pendingInfo().quantity()).isZero();
+        assertThat(body.snapshot().stockTotal()).isEqualTo(1);
+        assertThat(body.snapshot().reservedQuantity()).isEqualTo(1);
+        assertThat(body.snapshot().availableQuantity()).isZero();
+        assertThat(body.snapshot().pendingInfo().quantity()).isZero();
+
+        ArgumentCaptor<InventoryCard> cardCaptor = ArgumentCaptor.forClass(InventoryCard.class);
+        verify(inventoryService).appendInventoryCard(cardCaptor.capture());
+        assertThat(cardCaptor.getValue().getName()).isEqualTo("Academy Manufactor");
+        assertThat(cardCaptor.getValue().getSetCode()).isEqualTo("MH2");
+        assertThat(cardCaptor.getValue().getCollectorNumber()).isEqualTo("469");
+        assertThat(cardCaptor.getValue().getPrinting()).isEqualTo("nonfoil");
+        assertThat(cardCaptor.getValue().getCondition()).isEqualTo("NM");
+        assertThat(cardCaptor.getValue().getQuantity()).isEqualTo("1");
+        assertThat(cardCaptor.getValue().getAction()).isEqualTo("Reservada");
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
+        verify(inventoryService).updateReservationStatus("wanted-mh2", CardReservation.STATUS_RESERVED);
+        verify(inventoryService).updateReservationInventoryMatch(
+                eq("wanted-mh2"),
+                eq("Modern Horizons 2 Variants"),
+                eq("MH2"),
+                eq("469"),
+                eq("nonfoil"),
+                eq("NM")
+        );
+    }
+
+    @Test
+    void reservePendingReservationRejectsExactNoStockPedidoWithoutIncomingStock() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        InventoryCard noStockRow = inventoryCard(
+                "Academy Manufactor",
+                "Modern Horizons 2 Variants",
+                "FMH2",
+                "469",
+                "foil",
+                "0",
+                "Sin Stock",
+                469
+        );
+        noStockRow.setCondition("NM");
+        CardReservation wanted = reservedReservation(
+                "Academy Manufactor",
+                "Modern Horizons 2 Variants",
+                "FMH2",
+                "469",
+                "NM",
+                ""
+        );
+        wanted.setId("wanted-fmh2");
+        wanted.setStatus(CardReservation.STATUS_WANTED);
+        wanted.setClient("Soky");
+        wanted.setPrinting("foil");
+
+        when(inventoryService.getReservations()).thenReturn(List.of(wanted));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(noStockRow));
+
+        ResponseEntity<?> response = controller.reservePendingReservation("wanted-fmh2", "", "NM", 469, -1, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isInstanceOf(DashboardController.ApiMessage.class);
+        assertThat(((DashboardController.ApiMessage) response.getBody()).message())
+                .contains("No hay stock disponible");
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
+        verify(inventoryService, never()).updateReservationInventoryMatch(anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test

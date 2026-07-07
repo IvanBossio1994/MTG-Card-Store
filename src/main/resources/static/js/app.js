@@ -2496,7 +2496,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateProductPendingIndicator(sourceButton, pendingInfo) {
         const primaryRow = primaryInventoryRowFromButton(sourceButton) || sourceButton?.closest?.(".product-family-row");
         const productKey = primaryRow?.dataset?.productKey || "";
-        if (!productKey || !pendingInfo || Number(pendingInfo.quantity) <= 0) {
+        if (!productKey || !pendingInfo) {
             return;
         }
 
@@ -2510,18 +2510,37 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            let pending = content.querySelector(".product-pending-summary");
-            if (!pending) {
-                pending = document.createElement("small");
-                pending.className = "product-pending-summary";
-                content.appendChild(pending);
-            }
-
-            const quantity = Math.max(Number(pendingInfo.quantity) || 0, 0);
-            const clients = pendingInfo.clientsLabel || "cliente sin nombre";
-            pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido pendiente: 1" : `Pedidos pendientes: ${quantity}`);
-            pending.title = pendingInfo.tooltip || `Carta pedida para ${clients}.`;
+            renderPendingSummary(content, pendingInfo);
         });
+    }
+
+    function renderPendingSummary(container, pendingInfo) {
+        if (!container || !pendingInfo) {
+            return;
+        }
+
+        const quantity = Math.max(Number(pendingInfo.quantity) || 0, 0);
+        if (quantity <= 0) {
+            container.querySelector(".product-pending-summary")?.remove();
+            return;
+        }
+
+        let pending = container.querySelector(".product-pending-summary");
+        if (!pending) {
+            pending = document.createElement("small");
+            pending.className = "product-pending-summary";
+            container.appendChild(pending);
+        }
+
+        const clients = pendingInfo.clientsLabel || "cliente sin nombre";
+        pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido pendiente: 1" : `Pedidos pendientes: ${quantity}`);
+        pending.title = pendingInfo.tooltip || `Carta pedida para ${clients}.`;
+    }
+
+    function updateFamilyPendingIndicator(sourceButton, pendingInfo) {
+        const primaryRow = primaryInventoryRowFromButton(sourceButton) || sourceButton?.closest?.(".product-family-row");
+        const cell = primaryRow?.querySelector(".card-name-cell");
+        renderPendingSummary(cell, pendingInfo);
     }
 
     function updateConditionStockOption(option, stock) {
@@ -2892,6 +2911,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         result.snapshot,
                         button
                 );
+                updateProductPendingIndicator(button, result.pendingInfo || result.snapshot?.pendingInfo);
+                updateFamilyPendingIndicator(button, result.snapshot?.pendingInfo);
             }
 
             showToast(result.message || "Carta separada para reserva", "success");
@@ -2948,41 +2969,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                     showToast("No se pudo identificar la carta", "error");
                                     return;
                                 }
-
-                                const createResponse = await fetch(
-                                        "/inventory/cards",
-                                        {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type": "application/x-www-form-urlencoded",
-                                                "Accept": "application/json"
-                                            },
-                                            body: new URLSearchParams({
-                                                sku,
-                                                condition: button.dataset.condition || "NM",
-                                                quantity: changeQuantity,
-                                                reassignPending: false
-                                            })
-                                        }
+                                await separatePendingReservation(
+                                        button,
+                                        pendingDecision.reservationId,
+                                        pendingDecision.remainingClients || []
                                 );
-
-                                if (!createResponse.ok) {
-                                    showToast(
-                                            await responseMessage(createResponse, "Error agregando carta al Sheet"),
-                                            "error"
-                                    );
-                                    return;
-                                }
-
-                                const createResult = await createResponse.json();
-                                reservationRowIndex = String(createResult.rowIndex || "");
-                                if (reservationRowIndex) {
-                                    button.dataset.row = reservationRowIndex;
-                                    button.parentElement
-                                            .querySelector(".stock-button.decrease")
-                                            ?.setAttribute("data-row", reservationRowIndex);
-                                    applyStockSnapshot(createResult.snapshot, button);
-                                }
+                                return;
                             } else {
                                 const updateResponse = await fetch(
                                         "/inventory/quantity",
@@ -3010,6 +3002,10 @@ document.addEventListener("DOMContentLoaded", () => {
                                 }
 
                                 const updateResult = await updateResponse.json();
+                                reservationStockQuantity = Math.max(
+                                        Number(updateResult.snapshot?.stockTotal ?? updateResult.stockQuantity) || reservationStockQuantity,
+                                        reservationStockQuantity
+                                );
                                 syncStockRows(
                                         String(updateResult.rowIndex || reservationRowIndex),
                                         Number(updateResult.stockQuantity) || 0,

@@ -3229,7 +3229,8 @@ public class DashboardController {
                     snapshot.reservedQuantity(),
                     snapshot.action(),
                     reservation.getClient(),
-                    snapshot
+                    snapshot,
+                    productPendingStockSnapshot(productAggregationKey(reservation.getName()), ledgerReservations)
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -4700,6 +4701,9 @@ public class DashboardController {
         List<InventoryCard> familyCards = inventoryCards.stream()
                 .filter(candidate -> sameInventoryCardFamily(card, candidate))
                 .toList();
+        if (familyCards.isEmpty()) {
+            familyCards = List.of(card);
+        }
         ReservationStockLedger ledger = reservationStockLedger(familyCards, reservations);
         List<ReservationConditionStock> conditionStocks = ledger.conditionStocks(false);
         int stockTotal = ledger.stockTotal();
@@ -9155,7 +9159,8 @@ public class DashboardController {
             int reservedQuantity,
             String action,
             String client,
-            StockSnapshot snapshot
+            StockSnapshot snapshot,
+            PendingStockSnapshot pendingInfo
     ) {
     }
 
