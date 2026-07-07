@@ -28,7 +28,6 @@ public class StoreSettingsService {
             Pattern.compile("[A-Za-z0-9_-]+");
 
     private static final long MAX_LOGO_BYTES = 2L * 1024L * 1024L;
-    private static final long MAX_CREDENTIALS_BYTES = 32L * 1024L;
 
     private final String defaultSpreadsheetId;
     private final Path configDirectory;
@@ -40,6 +39,7 @@ public class StoreSettingsService {
     private volatile String cacheDirectory;
     private volatile String logoFilename = "";
     private volatile boolean tutorialCompleted = false;
+    private volatile boolean modulesTutorialCompleted = false;
 
     public StoreSettingsService(
             @Value("${store.default-spreadsheet-id}") String defaultSpreadsheetId,
@@ -81,16 +81,16 @@ public class StoreSettingsService {
         return Paths.get(cacheDirectory).resolve("ck-pricelist.json");
     }
 
-    public Path getGoogleCredentialsPath() {
-        return configDirectory.resolve("google-credentials.json");
-    }
-
-    public boolean hasGoogleCredentials() {
-        return Files.exists(getGoogleCredentialsPath());
+    public Path getGoogleOAuthTokenDirectory() {
+        return configDirectory.resolve("google-oauth-token");
     }
 
     public boolean isTutorialCompleted() {
         return tutorialCompleted;
+    }
+
+    public boolean isModulesTutorialCompleted() {
+        return modulesTutorialCompleted;
     }
 
     public boolean hasLogo() {
@@ -143,24 +143,6 @@ public class StoreSettingsService {
         extensionFor(logo.getContentType());
     }
 
-    public void validateGoogleCredentials(MultipartFile credentialsFile) {
-        if (credentialsFile == null || credentialsFile.isEmpty()) {
-            return;
-        }
-
-        if (credentialsFile.getSize() > MAX_CREDENTIALS_BYTES) {
-            throw new IllegalArgumentException("El archivo de credenciales no puede superar los 32 KB.");
-        }
-
-        String filename = credentialsFile.getOriginalFilename() == null
-                ? ""
-                : credentialsFile.getOriginalFilename().toLowerCase();
-
-        if (!filename.endsWith(".json")) {
-            throw new IllegalArgumentException("Las credenciales deben ser un archivo .json.");
-        }
-    }
-
     public synchronized void update(
             String name,
             String sheetReference,
@@ -185,8 +167,14 @@ public class StoreSettingsService {
         save();
     }
 
+    public synchronized void completeModulesTutorial() throws IOException {
+        modulesTutorialCompleted = true;
+        save();
+    }
+
     public synchronized void resetTutorial() throws IOException {
         tutorialCompleted = false;
+        modulesTutorialCompleted = false;
         save();
     }
 
@@ -209,19 +197,6 @@ public class StoreSettingsService {
 
         logoFilename = filename;
         save();
-    }
-
-    public synchronized void saveGoogleCredentials(MultipartFile credentialsFile) throws IOException {
-        if (credentialsFile == null || credentialsFile.isEmpty()) {
-            return;
-        }
-
-        validateGoogleCredentials(credentialsFile);
-        Files.createDirectories(configDirectory);
-
-        try (InputStream input = credentialsFile.getInputStream()) {
-            Files.copy(input, getGoogleCredentialsPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 
     public synchronized void removeLogo() throws IOException {
@@ -300,6 +275,7 @@ public class StoreSettingsService {
             cacheDirectory = properties.getProperty("store.cache-directory", configDirectory.resolve("cache").toString());
             logoFilename = properties.getProperty("store.logo-filename", "");
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
+            modulesTutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.modules.completed", "false"));
         } catch (IOException e) {
             storeName = "Inventory Manager";
             spreadsheetId = defaultSpreadsheetId;
@@ -307,6 +283,7 @@ public class StoreSettingsService {
             cacheDirectory = configDirectory.resolve("cache").toString();
             logoFilename = "";
             tutorialCompleted = false;
+            modulesTutorialCompleted = false;
         }
     }
 
@@ -321,6 +298,7 @@ public class StoreSettingsService {
         properties.setProperty("store.cache-directory", cacheDirectory);
         properties.setProperty("store.logo-filename", logoFilename);
         properties.setProperty("tutorial.completed", String.valueOf(tutorialCompleted));
+        properties.setProperty("tutorial.modules.completed", String.valueOf(modulesTutorialCompleted));
 
         try (OutputStream output = Files.newOutputStream(configFile)) {
             properties.store(output, "Configuracion local de la tienda");

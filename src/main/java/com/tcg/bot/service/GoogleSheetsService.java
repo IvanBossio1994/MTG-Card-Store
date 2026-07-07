@@ -1,26 +1,14 @@
 package com.tcg.bot.service;
 
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.SheetsScopes;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CardReservation;
+import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.model.ReservationClient;
-import com.tcg.bot.model.CashRegisterEntry;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GoogleSheetsService {
 
-    private static final String APPLICATION_NAME = "TCG Inventory Bot";
     private static final String DEFAULT_INVENTORY_SHEET_NAME = "Inventario";
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
@@ -44,83 +31,33 @@ public class GoogleSheetsService {
     private static final String CLIENTS_SHEET_NAME = "Clientes";
 
     private final StoreSettingsService storeSettingsService;
-    private final String configuredCredentialsPath;
-    private final String configuredServiceAccountEmail;
-    private volatile String serviceAccountEmail;
+    private final GoogleOAuthService googleOAuthService;
     private final Map<String, SpreadsheetMetadata> spreadsheetMetadataCache = new ConcurrentHashMap<>();
     private final Map<String, SheetColumns> inventoryColumnsCache = new ConcurrentHashMap<>();
     private final Set<String> verifiedReservationHeaders = ConcurrentHashMap.newKeySet();
 
     public GoogleSheetsService(
             StoreSettingsService storeSettingsService,
-            @Value("${google.credentials.path:./data/google-credentials.json}") String configuredCredentialsPath,
-            @Value("${google.service-account-email:tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com}") String configuredServiceAccountEmail
+            GoogleOAuthService googleOAuthService
     ) {
         this.storeSettingsService = storeSettingsService;
-        this.configuredCredentialsPath = configuredCredentialsPath;
-        this.configuredServiceAccountEmail = configuredServiceAccountEmail;
+        this.googleOAuthService = googleOAuthService;
     }
 
     public Sheets getSheetsService() throws Exception {
-        GoogleCredentials credentials;
-
-        try (InputStream credentialsStream = openCredentialsStream()) {
-            credentials = GoogleCredentials
-                    .fromStream(credentialsStream)
-                    .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
+        if (googleOAuthService == null || !googleOAuthService.isReady()) {
+            throw new IllegalStateException("Inicia sesion con Google desde Configuracion antes de sincronizar.");
         }
 
-        return new Sheets.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                new HttpCredentialsAdapter(credentials)
-        )
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+        return googleOAuthService.getSheetsService();
     }
 
-    public String getServiceAccountEmail() {
-        if (serviceAccountEmail != null) {
-            return serviceAccountEmail;
-        }
-
-        try (InputStream credentialsStream = openCredentialsStream()) {
-            JsonObject credentials = JsonParser
-                    .parseString(new String(credentialsStream.readAllBytes(), StandardCharsets.UTF_8))
-                    .getAsJsonObject();
-
-            serviceAccountEmail = credentials.has("client_email")
-                    ? credentials.get("client_email").getAsString()
-                    : configuredServiceAccountEmail;
-            return serviceAccountEmail;
-        } catch (Exception e) {
-            serviceAccountEmail = configuredServiceAccountEmail;
-            return serviceAccountEmail;
-        }
+    public boolean hasOAuthClientConfigured() {
+        return googleOAuthService != null && googleOAuthService.hasOAuthClientConfigured();
     }
 
-    public boolean hasCredentialsConfigured() {
-        String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-
-        if (externalCredentialsExists(environmentCredentialsPath)) {
-            return true;
-        }
-
-        if (externalCredentialsExists(configuredCredentialsPath)) {
-            return true;
-        }
-
-        return getClass()
-                .getClassLoader()
-                .getResource("credentials/google-credentials.json") != null;
-    }
-
-    public String getConfiguredCredentialsPath() {
-        return configuredCredentialsPath;
-    }
-
-    public void clearServiceAccountEmailCache() {
-        serviceAccountEmail = null;
+    public boolean hasOAuthToken() {
+        return googleOAuthService != null && googleOAuthService.hasOAuthToken();
     }
 
     private String cacheKey() {
@@ -181,54 +118,6 @@ public class GoogleSheetsService {
         spreadsheetMetadataCache.remove(cacheKey());
         inventoryColumnsCache.remove(inventoryColumnsCacheKey());
         verifiedReservationHeaders.remove(cacheKey());
-    }
-
-    private InputStream openCredentialsStream() throws Exception {
-        String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-
-        InputStream externalCredentials = openExternalCredentials(environmentCredentialsPath);
-        if (externalCredentials != null) {
-            return externalCredentials;
-        }
-
-        externalCredentials = openExternalCredentials(configuredCredentialsPath);
-        if (externalCredentials != null) {
-            return externalCredentials;
-        }
-
-        InputStream bundledCredentials = getClass()
-                .getClassLoader()
-                .getResourceAsStream("credentials/google-credentials.json");
-
-        if (bundledCredentials != null) {
-            return bundledCredentials;
-        }
-
-        throw new RuntimeException(
-                "No se encontro google-credentials.json. Colocalo en " + configuredCredentialsPath + " o configura GOOGLE_APPLICATION_CREDENTIALS."
-        );
-    }
-
-    private boolean externalCredentialsExists(String credentialsPath) {
-        if (credentialsPath == null || credentialsPath.isBlank()) {
-            return false;
-        }
-
-        return Files.exists(Path.of(credentialsPath.trim()));
-    }
-
-    private InputStream openExternalCredentials(String credentialsPath) throws Exception {
-        if (credentialsPath == null || credentialsPath.isBlank()) {
-            return null;
-        }
-
-        Path path = Path.of(credentialsPath.trim());
-
-        if (!Files.exists(path)) {
-            return null;
-        }
-
-        return Files.newInputStream(path);
     }
 
     public List<InventoryCard> getInventoryCards() throws Exception {
@@ -690,7 +579,7 @@ public class GoogleSheetsService {
         ensureReservationsSheet(sheetsService);
 
         var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A2:O"))
+                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A2:P"))
                 .execute();
 
         var values = response.getValues();
@@ -702,6 +591,10 @@ public class GoogleSheetsService {
 
         for (int index = 0; index < values.size(); index++) {
             var row = values.get(index);
+            if (isInvalidReservationRow(row)) {
+                continue;
+            }
+
             CardReservation reservation = new CardReservation();
             reservation.setRowIndex(index + 2);
             reservation.setId(getColumnValue(row, 0));
@@ -719,11 +612,35 @@ public class GoogleSheetsService {
             reservation.setPickupDate(getColumnValue(row, 12));
             reservation.setPaymentDate(getColumnValue(row, 13));
             reservation.setNotes(getColumnValue(row, 14));
+            reservation.setCondition(getColumnValue(row, 15));
             reservations.add(reservation);
         }
 
         Collections.reverse(reservations);
         return reservations;
+    }
+
+    private boolean isInvalidReservationRow(List<Object> row) {
+        if (row == null || row.isEmpty()) {
+            return true;
+        }
+
+        boolean hasAnyValue = false;
+        for (int index = 0; index < 16; index++) {
+            if (!getColumnValue(row, index).isBlank()) {
+                hasAnyValue = true;
+                break;
+            }
+        }
+
+        if (!hasAnyValue) {
+            return true;
+        }
+
+        return getColumnValue(row, 0).isBlank()
+                || getColumnValue(row, 2).isBlank()
+                || getColumnValue(row, 7).isBlank()
+                || getColumnValue(row, 8).isBlank();
     }
 
     public void appendReservation(CardReservation reservation) throws Exception {
@@ -747,7 +664,7 @@ public class GoogleSheetsService {
                 .setValues(rows);
 
         sheetsService.spreadsheets().values()
-                .append(storeSettingsService.getSpreadsheetId(), reservationRange("A:O"), body)
+                .append(storeSettingsService.getSpreadsheetId(), reservationRange("A:P"), body)
                 .setValueInputOption("RAW")
                 .setInsertDataOption("INSERT_ROWS")
                 .execute();
@@ -769,7 +686,8 @@ public class GoogleSheetsService {
                 safe(reservation.getReservationDate()),
                 safe(reservation.getPickupDate()),
                 safe(reservation.getPaymentDate()),
-                safe(reservation.getNotes())
+                safe(reservation.getNotes()),
+                safe(reservation.getCondition())
         );
     }
 
@@ -907,6 +825,101 @@ public class GoogleSheetsService {
                 .update(storeSettingsService.getSpreadsheetId(), reservationRange("M" + rowIndex), body)
                 .setValueInputOption("RAW")
                 .execute();
+    }
+
+    public void updateReservationCondition(String reservationId, String condition) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(condition))));
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("P" + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateReservationInventoryMatch(
+            String reservationId,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        int rowIndex = reservationRowIndex(sheetsService, reservationId);
+
+        if (rowIndex <= 0) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        var matchBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(
+                        safe(setName),
+                        safe(setCode),
+                        safe(collectorNumber),
+                        safe(printing)
+                )));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("D" + rowIndex + ":G" + rowIndex), matchBody)
+                .setValueInputOption("RAW")
+                .execute();
+
+        var conditionBody = new com.google.api.services.sheets.v4.model.ValueRange()
+                .setValues(List.of(List.of(safe(condition))));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("P" + rowIndex), conditionBody)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
+    public void updateReservationAssignment(
+            int rowIndex,
+            String status,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        if (rowIndex <= 1) {
+            throw new IllegalArgumentException("No se encontro la reserva seleccionada.");
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureReservationsSheet(sheetsService);
+        batchUpdate(sheetsService, List.of(
+                new com.google.api.services.sheets.v4.model.ValueRange()
+                        .setRange(reservationRange("B" + rowIndex))
+                        .setValues(List.of(List.of(safe(status)))),
+                new com.google.api.services.sheets.v4.model.ValueRange()
+                        .setRange(reservationRange("D" + rowIndex + ":G" + rowIndex))
+                        .setValues(List.of(List.of(
+                                safe(setName),
+                                safe(setCode),
+                                safe(collectorNumber),
+                                safe(printing)
+                        ))),
+                new com.google.api.services.sheets.v4.model.ValueRange()
+                        .setRange(reservationRange("P" + rowIndex))
+                        .setValues(List.of(List.of(safe(condition))))
+        ));
     }
 
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {
@@ -2053,12 +2066,12 @@ public class GoogleSheetsService {
                         "Cantidad",
                         "Nombre",
                         "Nombre del set",
-                        "Código de set",
-                        "Número de carta",
+                        "Codigo de set",
+                        "Numero de carta",
                         "Printing",
                         "Stock anterior",
                         "Stock nuevo",
-                        "Acción"
+                        "Accion"
                 )));
 
         sheetsService.spreadsheets().values()
@@ -2172,11 +2185,12 @@ public class GoogleSheetsService {
                 "Fecha de reserva",
                 "Fecha de retiro",
                 "Fecha de pago",
-                "Notas"
+                "Notas",
+                "Condicion"
         );
 
         var headerResponse = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A1:O1"))
+                .get(storeSettingsService.getSpreadsheetId(), reservationRange("A1:P1"))
                 .execute();
 
         if (headerResponse.getValues() != null
@@ -2190,7 +2204,7 @@ public class GoogleSheetsService {
                 .setValues(List.of(new ArrayList<>(reservationHeader)));
 
         sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), reservationRange("A1:O1"), headerBody)
+                .update(storeSettingsService.getSpreadsheetId(), reservationRange("A1:P1"), headerBody)
                 .setValueInputOption("RAW")
                 .execute();
         verifiedReservationHeaders.add(headerCacheKey);
@@ -2498,11 +2512,11 @@ public class GoogleSheetsService {
 
             Set<String> expanded = new LinkedHashSet<>(aliases);
             for (String alias : aliases) {
-                expanded.add(alias.replace("Codigo", "Código"));
-                expanded.add(alias.replace("Numero", "Número"));
-                expanded.add(alias.replace("Condicion", "Condición"));
-                expanded.add(alias.replace("Accion", "Acción"));
-                expanded.add(alias.replace("Edicion", "Edición"));
+                expanded.add(alias.replace("Codigo", "Codigo"));
+                expanded.add(alias.replace("Numero", "Numero"));
+                expanded.add(alias.replace("Condicion", "Condicion"));
+                expanded.add(alias.replace("Accion", "Accion"));
+                expanded.add(alias.replace("Edicion", "Edicion"));
             }
 
             return List.copyOf(expanded);

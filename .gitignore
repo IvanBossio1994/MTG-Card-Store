@@ -32,6 +32,8 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+/desktop-shell/bin/
+/desktop-shell/obj/
 
 ### VS Code ###
 .vscode/
@@ -44,7 +46,7 @@ build/
 
 # Datos locales y credenciales
 /data/
-google-credentials.json
+google-oauth-token/
 *credentials*.json
 *service-account*.json
 ck-pricelist.json

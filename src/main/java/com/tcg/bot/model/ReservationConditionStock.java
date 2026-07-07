@@ -10,4 +10,13 @@ public record ReservationConditionStock(
         String ckPriceUsd,
         String localPrice
 ) {
+    public String displayStockBreakdown() {
+        return quantity
+                + " total | "
+                + reservedQuantity
+                + " reservadas"
+                + " | "
+                + availableQuantity
+                + " disponibles";
+    }
 }

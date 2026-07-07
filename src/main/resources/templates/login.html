@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iniciar sesion | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="login-body">
+<main class="login-page">
+    <section class="login-shell" aria-labelledby="login-title">
+        <div class="login-visual">
+            <div class="login-brand-badge">TCG</div>
+            <div class="login-visual-copy">
+                <p>Bienvenido a</p>
+                <h2>TCG Inventory</h2>
+                <span>Tu tienda, tus cartas y tu stock en un solo lugar.</span>
+            </div>
+            <img class="login-store-cat" th:src="@{/images/cat-store-login.png}" alt="">
+        </div>
+
+        <div class="login-panel">
+            <p class="eyebrow">TCG Inventory</p>
+            <h1 id="login-title">Iniciar sesion</h1>
+            <p class="login-copy">
+                Inicia sesion con el Gmail que tiene acceso al Google Sheet de tu tienda.
+            </p>
+
+            <p class="alert error" th:if="${error}" th:text="${error}"></p>
+            <p class="alert logout" th:if="${logoutMessage}" th:text="${logoutMessage}"></p>
+            <p class="alert success" th:if="${success}" th:text="${success}"></p>
+
+            <a class="google-login-button link-button"
+               th:if="${googleOAuthClientConfigured}"
+               th:href="@{/configuracion/google/oauth/iniciar}">
+                <span class="google-login-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.6-.2-2.3H12v4.4h5.9c-.3 1.4-1 2.5-2.1 3.2v2.7h3.4c2-1.9 3.4-4.6 3.4-8z"/>
+                        <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.8l-3.4-2.7c-.9.6-2.1 1-3.8 1-2.9 0-5.4-2-6.3-4.7H2.2v2.8C4 20.4 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.7 13.8c-.2-.6-.4-1.2-.4-1.9s.1-1.3.4-1.9V7.2H2.2C1.5 8.6 1 10.2 1 12s.5 3.4 1.2 4.8l3.5-3z"/>
+                        <path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1C17.5 2.2 15 1.1 12 1.1 7.7 1.1 4 3.6 2.2 7.2l3.5 2.8C6.6 7.3 9.1 5.4 12 5.4z"/>
+                    </svg>
+                </span>
+                <span>Iniciar sesion con Google</span>
+            </a>
+            <span class="google-login-button link-button disabled-link"
+                  th:unless="${googleOAuthClientConfigured}"
+                  aria-disabled="true">
+                <span class="google-login-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.6-.2-2.3H12v4.4h5.9c-.3 1.4-1 2.5-2.1 3.2v2.7h3.4c2-1.9 3.4-4.6 3.4-8z"/>
+                        <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.8l-3.4-2.7c-.9.6-2.1 1-3.8 1-2.9 0-5.4-2-6.3-4.7H2.2v2.8C4 20.4 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.7 13.8c-.2-.6-.4-1.2-.4-1.9s.1-1.3.4-1.9V7.2H2.2C1.5 8.6 1 10.2 1 12s.5 3.4 1.2 4.8l3.5-3z"/>
+                        <path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1C17.5 2.2 15 1.1 12 1.1 7.7 1.1 4 3.6 2.2 7.2l3.5 2.8C6.6 7.3 9.1 5.4 12 5.4z"/>
+                    </svg>
+                </span>
+                <span>Iniciar sesion con Google</span>
+            </span>
+
+            <p class="field-help" th:if="${!googleOAuthClientConfigured}">
+                Esta build no tiene configurado Google OAuth. Falta definir GOOGLE_OAUTH_CLIENT_ID y GOOGLE_OAUTH_CLIENT_SECRET antes de poder iniciar sesion.
+            </p>
+        </div>
+    </section>
+</main>
+</body>
+</html>

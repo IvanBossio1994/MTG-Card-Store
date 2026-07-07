@@ -28,20 +28,16 @@ public class InventoryService {
         googleSheetsService.prepareInventorySheet(products);
     }
 
-    public String getServiceAccountEmail() {
-        return googleSheetsService.getServiceAccountEmail();
+    public boolean hasOAuthClientConfigured() {
+        return googleSheetsService.hasOAuthClientConfigured();
     }
 
-    public boolean hasCredentialsConfigured() {
-        return googleSheetsService.hasCredentialsConfigured();
+    public boolean hasOAuthToken() {
+        return googleSheetsService.hasOAuthToken();
     }
 
-    public String getConfiguredCredentialsPath() {
-        return googleSheetsService.getConfiguredCredentialsPath();
-    }
-
-    public void clearServiceAccountEmailCache() {
-        googleSheetsService.clearServiceAccountEmailCache();
+    public boolean hasGoogleConnection() {
+        return googleSheetsService.hasOAuthClientConfigured() && googleSheetsService.hasOAuthToken();
     }
 
     public void updateInventoryRow(int rowIndex, InventoryCard card) throws Exception {
@@ -126,6 +122,48 @@ public class InventoryService {
 
     public void updateReservationPickupDate(String reservationId, String pickupDate) throws Exception {
         googleSheetsService.updateReservationPickupDate(reservationId, pickupDate);
+    }
+
+    public void updateReservationCondition(String reservationId, String condition) throws Exception {
+        googleSheetsService.updateReservationCondition(reservationId, condition);
+    }
+
+    public void updateReservationInventoryMatch(
+            String reservationId,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        googleSheetsService.updateReservationInventoryMatch(
+                reservationId,
+                setName,
+                setCode,
+                collectorNumber,
+                printing,
+                condition
+        );
+    }
+
+    public void updateReservationAssignment(
+            int rowIndex,
+            String status,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String condition
+    ) throws Exception {
+        googleSheetsService.updateReservationAssignment(
+                rowIndex,
+                status,
+                setName,
+                setCode,
+                collectorNumber,
+                printing,
+                condition
+        );
     }
 
     public void deleteReservationRows(List<Integer> rowIndexes) throws Exception {

@@ -82,10 +82,16 @@
                     Notas
                     <input name="notes" type="text" autocomplete="off" th:value="${bulkNotes}">
                 </label>
-                <label class="check-control reservation-stock-checkbox">
-                    <input name="removeFromStock" type="checkbox" value="true" th:checked="${bulkRemoveFromStock}">
-                    <span>Retirar del stock</span>
-                </label>
+                <div class="reservation-options-row">
+                    <label class="check-control reservation-flexible-checkbox">
+                        <input name="flexibleMatch" type="checkbox" value="true" th:checked="${bulkFlexibleMatch}">
+                        <span>Cualquier edicion/condicion</span>
+                    </label>
+                    <label class="check-control reservation-stock-checkbox">
+                        <input name="removeFromStock" type="checkbox" value="true" th:checked="${bulkRemoveFromStock}">
+                        <span>Retirar del stock</span>
+                    </label>
+                </div>
             </div>
             <label for="bulkRawList">Lista</label>
             <textarea id="bulkRawList" name="rawList" rows="8"
@@ -127,6 +133,7 @@
             <input type="hidden" name="pickupDate" th:value="${bulkPickupDate}">
             <input type="hidden" name="pickupFlexible" th:if="${bulkPickupFlexible}" value="true">
             <input type="hidden" name="notes" th:value="${bulkNotes}">
+            <input type="hidden" name="flexibleMatch" th:if="${bulkFlexibleMatch}" value="true">
             <input type="hidden" name="removeFromStock" th:if="${bulkRemoveFromStock}" value="true">
             <div class="import-actions" th:if="${bulkReadyCount > 0}">
                 <label class="check-control">
@@ -249,7 +256,7 @@
                           data-loading-title="Eliminando reserva"
                           data-loading-message="Quitando el pedido y devolviendo cartas reservadas al stock..."
                           data-confirm-title="Eliminar reserva"
-                          data-confirm-message="¿Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
+                          data-confirm-message="&iquest;Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
                         <input type="hidden" name="groupKey" th:value="${group.key}">
                         <button class="reservation-delete-button" type="submit" aria-label="Eliminar reserva">&times;</button>
                     </form>
@@ -278,7 +285,7 @@
                                     <input class="reservation-pickup-edit-input" name="pickupDate" type="date"
                                            th:value="${group.pickupDateRaw}" required>
                                     <button class="reservation-pickup-edit-button" type="button"
-                                            aria-label="Editar fecha de retiro" title="Editar fecha de retiro">✎</button>
+                                            aria-label="Editar fecha de retiro" title="Editar fecha de retiro">&#9998;</button>
                                 </form>
                             </div>
                         </div>
@@ -297,6 +304,7 @@
                                 <th>Set</th>
                                 <th>Codigo</th>
                                 <th>Printing</th>
+                                <th>Cond.</th>
                                 <th>Precio local</th>
                                 <th>Cant.</th>
                                 <th>Stock Local</th>
@@ -316,11 +324,12 @@
                                 <td th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</td>
                                 <td th:text="${(reservation.setCode != null && reservation.setCode != '' ? reservation.setCode : '-') + ' / ' + (reservation.collectorNumber != null && reservation.collectorNumber != '' ? reservation.collectorNumber : '-')}">CMM / 410</td>
                                 <td th:text="${reservation.printing != null && reservation.printing != '' ? reservation.printing : '-'}">nonfoil</td>
+                                <td th:text="${reservation.condition != null && reservation.condition != '' ? reservation.condition : '-'}">NM</td>
                                 <td class="price-cell"
                                     th:text="${reservation.formattedLocalPrice != null && reservation.formattedLocalPrice != '' ? '$ ' + reservation.formattedLocalPrice : '-'}">-</td>
                                 <td th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</td>
                                 <td class="reservation-local-stock"
-                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock : '-'}">0</td>
+                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock + ' total / ' + reservation.availableStock + ' disp.' : '-'}">0</td>
                                 <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
                                 <td th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</td>
                                 <td class="reservation-action-cell">
@@ -357,7 +366,7 @@
                             </tbody>
                             <tfoot>
                             <tr class="reservation-total-row">
-                                <td colspan="5">
+                                <td colspan="6">
                                     <span class="reservation-total-label">Total</span>
                                 </td>
                                 <td class="price-cell"
@@ -418,7 +427,7 @@
             <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
                   data-loading-button="Desbloqueando..."
                   data-loading-title="Verificando acceso"
-                  data-loading-message="Revisando la contraseña y abriendo reservas...">
+                  data-loading-message="Revisando la contrasena y abriendo reservas...">
                 <input type="hidden" name="returnTo" th:value="${returnTo}">
                 <div class="movement-access-field">
                     <label for="reservation-password">Clave de acceso</label>

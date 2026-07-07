@@ -13,16 +13,16 @@ public class InventoryCard {
     // ---- Nombre carta ----
     private String name;
 
-    // ---- Código set ----
+    // ---- Codigo set ----
     private String setCode;
 
     // ---- Nombre set ----
     private String setName;
 
-    // ---- Número carta ----
+    // ---- Numero carta ----
     private String collectorNumber;
 
-    // ---- Condición ----
+    // ---- Condicion ----
     private String condition;
 
     // ---- Foil / Non Foil ----
@@ -37,7 +37,7 @@ public class InventoryCard {
     // ---- Precio CK USD ----
     private String ckPriceUsd;
 
-    // ---- Acción ----
+    // ---- Accion ----
     private String action;
 
     // ---- Guarda el indice real de la fila en Google Sheet ----

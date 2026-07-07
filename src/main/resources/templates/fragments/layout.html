@@ -70,6 +70,9 @@
             <form th:action="@{/tutorial/reset}" method="post">
                 <button type="submit" class="menu-link-button">Tutorial</button>
             </form>
+            <form th:if="${googleOAuthConnected}" th:action="@{/logout}" method="post">
+                <button type="submit" class="menu-link-button danger">Cerrar sesion</button>
+            </form>
         </nav>
     </aside>
 </div>
