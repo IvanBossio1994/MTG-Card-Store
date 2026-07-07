@@ -295,107 +295,106 @@
                         </div>
                     </div>
 
-                    <div class="table-wrap reservation-items-wrap">
-                        <table class="reservation-items-table">
-                            <thead>
-                            <tr>
-                                <th>Estado</th>
-                                <th>Carta</th>
-                                <th>Set</th>
-                                <th>Codigo</th>
-                                <th>Printing</th>
-                                <th>Cond.</th>
-                                <th>Precio local</th>
-                                <th>Cant.</th>
-                                <th>Stock Local</th>
-                                <th>Retiro</th>
-                                <th>Notas</th>
-                                <th>Acciones</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="reservation : ${group.items}">
-                                <td>
-                                    <span class="status"
-                                          th:classappend="${reservation.displayStatus == null ? '' : #strings.toLowerCase(reservation.displayStatus).replace(' ', '-')}"
-                                          th:text="${reservation.displayStatus != null && reservation.displayStatus != '' ? reservation.displayStatus : '-'}">Sin Stock</span>
-                                </td>
-                                <td th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</td>
-                                <td th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</td>
-                                <td th:text="${(reservation.setCode != null && reservation.setCode != '' ? reservation.setCode : '-') + ' / ' + (reservation.collectorNumber != null && reservation.collectorNumber != '' ? reservation.collectorNumber : '-')}">CMM / 410</td>
-                                <td th:text="${reservation.printing != null && reservation.printing != '' ? reservation.printing : '-'}">nonfoil</td>
-                                <td th:text="${reservation.condition != null && reservation.condition != '' ? reservation.condition : '-'}">NM</td>
-                                <td class="price-cell"
-                                    th:text="${reservation.formattedLocalPrice != null && reservation.formattedLocalPrice != '' ? '$ ' + reservation.formattedLocalPrice : '-'}">-</td>
-                                <td th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</td>
-                                <td class="reservation-local-stock"
-                                    th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock + ' total / ' + reservation.availableStock + ' disp.' : '-'}">0</td>
-                                <td th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</td>
-                                <td th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</td>
-                                <td class="reservation-action-cell">
-                                    <form method="post" th:action="@{/reservas/entregar}"
-                                          th:if="${reservation.deliverable}"
-                                          data-app-confirm
-                                          data-loading-button="Entregando..."
-                                          data-loading-title="Entregando pedido"
-                                          data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
-                                          th:attr="data-confirm-title=${reservation.partialDelivery ? 'Entrega parcial' : 'Entregar reserva'},
-                                                   data-confirm-message=${reservation.partialDelivery ? 'Se va a entregar solo el stock disponible y quedara el resto reservado.' : 'Se va a entregar esta reserva y descontar stock.'},
-                                                   data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'}">
-                                        <input type="hidden" name="reservationId" th:value="${reservation.id}">
-                                        <button class="reservation-deliver-button"
-                                                th:classappend="${reservation.partialDelivery} ? ' partial'"
-                                                type="submit"
-                                                th:text="${reservation.deliveryButtonLabel}">Entregar</button>
-                                    </form>
-                                    <span class="reservation-deliver-unavailable"
-                                          th:unless="${reservation.deliverable}"
-                                          th:title="${reservation.currentStock > 0 ? 'Stock local: ' + reservation.currentStock + '. Ya esta asignado a pedidos anteriores.' : 'Sin stock compatible'}">-</span>
-                                    <form method="post" th:action="@{/reservas/eliminar}"
-                                          data-app-confirm
-                                          data-loading-button="&times;"
-                                          data-loading-title="Quitando carta"
-                                          data-loading-message="Actualizando Reservas y devolviendo stock si corresponde..."
-                                          data-confirm-title="Quitar carta"
-                                          th:attr="data-confirm-message=${'Quitar ' + (reservation.name != null && reservation.name != '' ? reservation.name : 'esta carta') + ' del pedido? Si estaba reservada, vuelve al stock.'}">
-                                        <input type="hidden" name="reservationId" th:value="${reservation.id}">
-                                        <button class="reservation-line-delete-button" type="submit" aria-label="Quitar carta">&times;</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            </tbody>
-                            <tfoot>
-                            <tr class="reservation-total-row">
-                                <td colspan="6">
-                                    <span class="reservation-total-label">Total</span>
-                                </td>
-                                <td class="price-cell"
-                                    th:text="${group.formattedTotalPrice != null && group.formattedTotalPrice != '' ? '$ ' + group.formattedTotalPrice : '-'}">$ 0</td>
-                                <td>
-                                    <span class="reservation-total-count" th:text="${group.totalQuantity}">0</span>
-                                </td>
-                                <td colspan="3"></td>
-                                <td class="reservation-action-cell reservation-total-actions">
-                                    <form method="post" th:action="@{/reservas/entregar-grupo}"
-                                          th:if="${group.availableQuantity > 0}"
-                                          data-app-confirm
-                                          data-loading-button="Entregando..."
-                                          data-loading-title="Entregando disponibles"
-                                          data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
-                                          th:attr="data-confirm-title=${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'},
-                                                   data-confirm-message=${group.availableQuantity < group.totalQuantity ? 'Se van a entregar solo las cartas disponibles y quedara el resto reservado.' : 'Se van a entregar todas las cartas disponibles de esta reserva.'},
-                                                   data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'}">
-                                        <input type="hidden" name="groupKey" th:value="${group.key}">
-                                        <button class="reservation-deliver-button"
-                                                th:classappend="${group.availableQuantity < group.totalQuantity} ? ' partial'"
-                                                type="submit"
-                                                th:text="${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'}">Entregar todo</button>
-                                    </form>
-                                    <span class="reservation-deliver-unavailable" th:unless="${group.availableQuantity > 0}">-</span>
-                                </td>
-                            </tr>
-                            </tfoot>
-                        </table>
+                    <div class="reservation-items-list">
+                        <article class="reservation-item-card" th:each="reservation : ${group.items}">
+                            <div class="reservation-item-main">
+                                <span class="status reservation-item-status"
+                                      th:classappend="${reservation.displayStatus == null ? '' : #strings.toLowerCase(reservation.displayStatus).replace(' ', '-')}"
+                                      th:text="${reservation.displayStatus != null && reservation.displayStatus != '' ? reservation.displayStatus : '-'}">Sin Stock</span>
+                                <strong th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</strong>
+                                <span th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</span>
+                            </div>
+                            <div class="reservation-item-details">
+                                <span>
+                                    <small>Codigo</small>
+                                    <strong th:text="${(reservation.setCode != null && reservation.setCode != '' ? reservation.setCode : '-') + ' / ' + (reservation.collectorNumber != null && reservation.collectorNumber != '' ? reservation.collectorNumber : '-')}">CMM / 410</strong>
+                                </span>
+                                <span>
+                                    <small>Printing</small>
+                                    <strong th:text="${reservation.printing != null && reservation.printing != '' ? reservation.printing : '-'}">nonfoil</strong>
+                                </span>
+                                <span>
+                                    <small>Cond.</small>
+                                    <strong th:text="${reservation.condition != null && reservation.condition != '' ? reservation.condition : '-'}">NM</strong>
+                                </span>
+                                <span>
+                                    <small>Precio local</small>
+                                    <strong th:text="${reservation.formattedLocalPrice != null && reservation.formattedLocalPrice != '' ? '$ ' + reservation.formattedLocalPrice : '-'}">-</strong>
+                                </span>
+                                <span>
+                                    <small>Cant.</small>
+                                    <strong th:text="${reservation.quantity != null && reservation.quantity != '' ? reservation.quantity : '-'}">1</strong>
+                                </span>
+                                <span>
+                                    <small>Stock local</small>
+                                    <strong class="reservation-local-stock"
+                                            th:text="${reservation.inventoryRowIndex > 0 ? reservation.currentStock + ' total / ' + reservation.availableStock + ' disp.' : '-'}">0</strong>
+                                </span>
+                                <span>
+                                    <small>Retiro</small>
+                                    <strong th:text="${reservation.formattedPickupDate != null && reservation.formattedPickupDate != '' ? reservation.formattedPickupDate : '-'}">A convenir</strong>
+                                </span>
+                            </div>
+                            <div class="reservation-item-notes">
+                                <small>Notas</small>
+                                <strong th:text="${reservation.notes != null && reservation.notes != '' ? reservation.notes : '-'}">-</strong>
+                            </div>
+                            <div class="reservation-action-cell reservation-item-actions">
+                                <form method="post" th:action="@{/reservas/entregar}"
+                                      th:if="${reservation.deliverable}"
+                                      data-app-confirm
+                                      data-loading-button="Entregando..."
+                                      data-loading-title="Entregando pedido"
+                                      data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
+                                      th:attr="data-confirm-title=${reservation.partialDelivery ? 'Entrega parcial' : 'Entregar reserva'},
+                                               data-confirm-message=${reservation.partialDelivery ? 'Se va a entregar solo el stock disponible y quedara el resto reservado.' : 'Se va a entregar esta reserva y descontar stock.'},
+                                               data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'}">
+                                    <input type="hidden" name="reservationId" th:value="${reservation.id}">
+                                    <button class="reservation-deliver-button"
+                                            th:classappend="${reservation.partialDelivery} ? ' partial'"
+                                            type="submit"
+                                            th:text="${reservation.deliveryButtonLabel}">Entregar</button>
+                                </form>
+                                <span class="reservation-deliver-unavailable"
+                                      th:unless="${reservation.deliverable}"
+                                      th:title="${reservation.currentStock > 0 ? 'Stock local: ' + reservation.currentStock + '. Ya esta asignado a pedidos anteriores.' : 'Sin stock compatible'}">-</span>
+                                <form method="post" th:action="@{/reservas/eliminar}"
+                                      data-app-confirm
+                                      data-loading-button="&times;"
+                                      data-loading-title="Quitando carta"
+                                      data-loading-message="Actualizando Reservas y devolviendo stock si corresponde..."
+                                      data-confirm-title="Quitar carta"
+                                      th:attr="data-confirm-message=${'Quitar ' + (reservation.name != null && reservation.name != '' ? reservation.name : 'esta carta') + ' del pedido? Si estaba reservada, vuelve al stock.'}">
+                                    <input type="hidden" name="reservationId" th:value="${reservation.id}">
+                                    <button class="reservation-line-delete-button" type="submit" aria-label="Quitar carta">&times;</button>
+                                </form>
+                            </div>
+                        </article>
+
+                        <div class="reservation-total-card">
+                            <span class="reservation-total-label">Total</span>
+                            <strong class="price-cell"
+                                    th:text="${group.formattedTotalPrice != null && group.formattedTotalPrice != '' ? '$ ' + group.formattedTotalPrice : '-'}">$ 0</strong>
+                            <span class="reservation-total-count" th:text="${group.totalQuantity}">0</span>
+                            <div class="reservation-action-cell reservation-total-actions">
+                                <form method="post" th:action="@{/reservas/entregar-grupo}"
+                                      th:if="${group.availableQuantity > 0}"
+                                      data-app-confirm
+                                      data-loading-button="Entregando..."
+                                      data-loading-title="Entregando disponibles"
+                                      data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
+                                      th:attr="data-confirm-title=${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'},
+                                               data-confirm-message=${group.availableQuantity < group.totalQuantity ? 'Se van a entregar solo las cartas disponibles y quedara el resto reservado.' : 'Se van a entregar todas las cartas disponibles de esta reserva.'},
+                                               data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'}">
+                                    <input type="hidden" name="groupKey" th:value="${group.key}">
+                                    <button class="reservation-deliver-button"
+                                            th:classappend="${group.availableQuantity < group.totalQuantity} ? ' partial'"
+                                            type="submit"
+                                            th:text="${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'}">Entregar todo</button>
+                                </form>
+                                <span class="reservation-deliver-unavailable" th:unless="${group.availableQuantity > 0}">-</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </details>
