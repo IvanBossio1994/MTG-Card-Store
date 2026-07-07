@@ -1315,13 +1315,16 @@ h2 {
 }
 
 .table-wrap {
+    max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
     border: 1px solid var(--border);
     border-radius: 10px;
 }
 
 .table-wrap table {
     table-layout: fixed;
+    min-width: 0;
 }
 
 .table-wrap th,
@@ -1332,6 +1335,7 @@ h2 {
 .card-name-cell,
 .set-name-cell,
 .variation-cell {
+    min-width: 0;
     white-space: normal;
     line-height: 1.35;
 }
@@ -1342,7 +1346,7 @@ h2 {
 }
 
 .set-name-cell {
-    overflow-wrap: normal;
+    overflow-wrap: anywhere;
     word-break: normal;
 }
 
@@ -1391,81 +1395,96 @@ h2 {
     font-variant-numeric: tabular-nums;
 }
 
-#search-results-table {
-    min-width: 100%;
+#search-results-table,
+#synced-table {
+    width: 100%;
+    min-width: 0;
     table-layout: fixed;
 }
 
 #search-results-table th,
-#search-results-table td {
-    padding: 10px 8px;
+#search-results-table td,
+#synced-table th,
+#synced-table td {
+    padding: 10px 7px;
     font-size: 12px;
 }
 
-#search-results-table th {
+#search-results-table th,
+#synced-table th {
     white-space: normal;
     line-height: 1.2;
 }
 
+#search-results-table {
+    min-width: 0;
+}
+
 #search-results-table th:nth-child(1),
 #search-results-table td:nth-child(1) {
-    width: 122px;
+    width: 104px;
     text-align: center;
     white-space: nowrap;
 }
 
 #search-results-table th:nth-child(2),
 #search-results-table td:nth-child(2) {
-    width: 17%;
+    width: 18%;
 }
 
 #search-results-table th:nth-child(3),
 #search-results-table td:nth-child(3) {
-    width: 82px;
+    width: 66px;
 }
 
 #search-results-table th:nth-child(4),
 #search-results-table td:nth-child(4) {
-    width: 14%;
+    width: 13%;
 }
 
 #search-results-table th:nth-child(5),
 #search-results-table td:nth-child(5) {
-    width: 9%;
+    width: 6%;
 }
 
 #search-results-table th:nth-child(6),
 #search-results-table td:nth-child(6) {
-    width: 12%;
+    width: 6%;
 }
 
 #search-results-table th:nth-child(7),
 #search-results-table td:nth-child(7) {
-    width: 7%;
+    width: 56px;
 }
 
 #search-results-table th:nth-child(8),
 #search-results-table td:nth-child(8) {
-    width: 108px;
+    width: 78px;
 }
 
 #search-results-table th:nth-child(9),
 #search-results-table td:nth-child(9) {
-    width: 9%;
+    width: 76px;
     text-align: right;
 }
 
 #search-results-table th:nth-child(10),
 #search-results-table td:nth-child(10) {
-    width: 8%;
+    width: 82px;
     text-align: right;
+}
+
+#search-results-table th:nth-child(11),
+#search-results-table td:nth-child(11) {
+    width: 104px;
+    text-align: center;
 }
 
 .condition-price-select {
     width: 100%;
-    min-width: 72px;
+    min-width: 0;
     height: 34px;
-    padding: 0 9px;
+    padding: 0 6px;
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
@@ -1485,7 +1504,8 @@ h2 {
 
 .add-reservation-button {
     height: 34px;
-    padding: 0 9px;
+    max-width: 100%;
+    padding: 0 8px;
     font-size: 11px;
     white-space: nowrap;
 }
@@ -1642,15 +1662,20 @@ input.stock-value::-webkit-inner-spin-button {
 
 #search-results-table .stock-controls {
     display: grid;
-    grid-template-columns: 32px 42px 32px;
+    grid-template-columns: 28px 38px 28px;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
+}
+
+#search-results-table .stock-button {
+    width: 28px;
+    height: 28px;
 }
 
 #search-results-table .stock-value {
     box-sizing: border-box;
-    width: 42px;
-    min-width: 42px;
+    width: 38px;
+    min-width: 38px;
     padding-right: 6px;
     padding-left: 6px;
 }
@@ -2643,6 +2668,7 @@ input.stock-value::-webkit-inner-spin-button {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    min-width: 0;
 }
 
 .inventory-card-name span {
@@ -2680,11 +2706,11 @@ input.stock-value::-webkit-inner-spin-button {
 
 .inventory-condition-option {
     display: grid;
-    grid-template-columns: 112px minmax(130px, 1.15fr) minmax(92px, 0.75fr) minmax(108px, 0.85fr) minmax(96px, 0.7fr) 126px;
+    grid-template-columns: 104px minmax(118px, 1.2fr) minmax(76px, 0.65fr) minmax(88px, 0.7fr) minmax(82px, 0.65fr) 112px;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     min-height: 58px;
-    padding: 10px 12px;
+    padding: 10px;
 }
 
 .condition-stock-controls {
@@ -2696,7 +2722,7 @@ input.stock-value::-webkit-inner-spin-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 42px;
+    min-width: 38px;
     min-height: 32px;
     color: var(--text);
     font-weight: 800;
@@ -2716,7 +2742,7 @@ input.stock-value::-webkit-inner-spin-button {
 .inventory-condition-option .status {
     flex: 0 0 auto;
     justify-self: center;
-    min-width: 86px;
+    min-width: 76px;
     text-align: center;
 }
 
@@ -2725,8 +2751,8 @@ input.stock-value::-webkit-inner-spin-button {
     justify-self: stretch;
     width: 100%;
     min-height: 30px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 6px 8px;
+    font-size: 11px;
     white-space: nowrap;
 }
 
@@ -3366,43 +3392,43 @@ input.stock-value::-webkit-inner-spin-button {
 }
 
 .updates td {
-    padding: 12px 10px;
+    padding: 10px 7px;
 }
 
 .updates table {
     table-layout: fixed;
-    min-width: 1180px;
+    min-width: 0;
 }
 
 .updates th,
 .updates td {
-    padding-right: 10px;
-    padding-left: 10px;
+    padding-right: 7px;
+    padding-left: 7px;
     text-align: center;
 }
 
 .updates th:nth-child(1),
 .updates td:nth-child(1) {
-    width: 128px;
+    width: 104px;
 }
 
 .updates th:nth-child(2),
 .updates td:nth-child(2) {
-    width: 20%;
-    min-width: 170px;
+    width: 22%;
+    min-width: 0;
     text-align: left;
     white-space: normal;
 }
 
 .updates th:nth-child(3),
 .updates td:nth-child(3) {
-    width: 110px;
+    width: 66px;
 }
 
 .updates th:nth-child(4),
 .updates td:nth-child(4) {
     width: 20%;
-    min-width: 220px;
+    min-width: 0;
     text-align: center;
     white-space: normal;
 }
@@ -3411,34 +3437,34 @@ input.stock-value::-webkit-inner-spin-button {
 .updates td:nth-child(5),
 .updates th:nth-child(6),
 .updates td:nth-child(6) {
-    width: 86px;
+    width: 68px;
 }
 
 .updates th:nth-child(7),
 .updates td:nth-child(7),
 .updates th:nth-child(8),
 .updates td:nth-child(8) {
-    width: 118px;
+    width: 78px;
 }
 
 .updates th:nth-child(9),
 .updates td:nth-child(9) {
-    width: 118px;
+    width: 104px;
 }
 
 .updates .stock-controls {
-    gap: 6px;
+    gap: 4px;
     justify-content: center;
 }
 
 .updates .stock-button {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
 }
 
 .updates .stock-value {
-    width: 42px;
-    min-width: 42px;
+    width: 38px;
+    min-width: 38px;
     padding-right: 6px;
     padding-left: 6px;
 }
@@ -3721,7 +3747,6 @@ input.stock-value::-webkit-inner-spin-button {
     }
 
     .updates table {
-        min-width: 1040px;
         font-size: 13px;
     }
 
@@ -3737,7 +3762,7 @@ input.stock-value::-webkit-inner-spin-button {
     .updates td:nth-child(8),
     .updates th:nth-child(9),
     .updates td:nth-child(9) {
-        width: 108px;
+        width: 96px;
     }
 }
 
