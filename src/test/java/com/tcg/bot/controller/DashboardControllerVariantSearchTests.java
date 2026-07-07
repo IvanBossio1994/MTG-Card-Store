@@ -834,6 +834,67 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void reservePendingReservationLeavesRemainingExactPendingInfoAfterSeparatingOneClient() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        InventoryCard noStockRow = inventoryCard(
+                "Academy Manufactor",
+                "Murders at Karlov Manor Commander Decks",
+                "MKC",
+                "0221",
+                "nonfoil",
+                "0",
+                "Sin Stock",
+                221
+        );
+        noStockRow.setCondition("NM");
+        CardReservation maria = reservedReservation(
+                "Academy Manufactor",
+                "Murders at Karlov Manor Commander Decks",
+                "MKC",
+                "0221",
+                "NM",
+                ""
+        );
+        maria.setId("wanted-maria");
+        maria.setStatus(CardReservation.STATUS_WANTED);
+        maria.setClient("Maria");
+        maria.setPrinting("nonfoil");
+        CardReservation raul = reservedReservation(
+                "Academy Manufactor",
+                "Murders at Karlov Manor Commander Decks",
+                "MKC",
+                "0221",
+                "NM",
+                ""
+        );
+        raul.setId("wanted-raul");
+        raul.setStatus(CardReservation.STATUS_WANTED);
+        raul.setClient("Raul");
+        raul.setPrinting("nonfoil");
+
+        when(inventoryService.getReservations()).thenReturn(new ArrayList<>(List.of(maria, raul)));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(noStockRow));
+
+        ResponseEntity<?> response = controller.reservePendingReservation("wanted-maria", "", "NM", 221, 1, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationStockResponse body =
+                (DashboardController.ReservationStockResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.stockQuantity()).isEqualTo(1);
+        assertThat(body.reservedQuantity()).isEqualTo(1);
+        assertThat(body.availableQuantity()).isZero();
+        assertThat(body.action()).isEqualTo("Reservada");
+        assertThat(body.pendingInfo().quantity()).isEqualTo(1);
+        assertThat(body.pendingInfo().tooltip()).contains("Raul - MKC-0221 NM");
+        assertThat(body.snapshot().pendingInfo().quantity()).isEqualTo(1);
+        assertThat(body.snapshot().pendingInfo().tooltip()).contains("Raul - MKC-0221 NM");
+    }
+
+    @Test
     void reservePendingReservationCreatesReservedRowForExactNoStockPedidoWhenRowIndexIsMissing() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
@@ -1807,6 +1868,112 @@ class DashboardControllerVariantSearchTests {
         assertThat(body.pendingInfo().quantity()).isEqualTo(1);
         assertThat(body.pendingInfo().clientsLabel()).contains("Codex Pending");
         verify(inventoryService, never()).updateStockState(anyInt(), any());
+    }
+
+    @Test
+    void createExactNoStockPendingReservationReturnsFamilyPendingInfo() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        List<CardReservation> savedReservations = new ArrayList<>();
+
+        when(inventoryService.getInventoryCards()).thenReturn(List.of());
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "Murders at Karlov Manor Commander Decks",
+                "MKC",
+                "0221",
+                "No Foil",
+                "NM",
+                "1",
+                "Maria",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                false,
+                0,
+                false,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationCreateResponse body =
+                (DashboardController.ReservationCreateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.rowIndex()).isZero();
+        assertThat(body.pendingInfo().quantity()).isEqualTo(1);
+        assertThat(body.familyPendingInfo().pending()).isTrue();
+        assertThat(body.familyPendingInfo().quantity()).isEqualTo(1);
+        assertThat(body.familyPendingInfo().summaryLabel()).isEqualTo("Pedido pendiente: 1");
+        assertThat(body.familyPendingInfo().tooltip()).contains("Maria - MKC-0221 NM");
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
+    }
+
+    @Test
+    void createExactNoStockPendingReservationFamilyInfoIncludesExistingExactClients() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        CardReservation maria = reservedReservation(
+                "Academy Manufactor",
+                "Murders at Karlov Manor Commander Decks",
+                "MKC",
+                "0221",
+                "NM",
+                ""
+        );
+        maria.setStatus(CardReservation.STATUS_WANTED);
+        maria.setClient("Maria");
+        maria.setPrinting("No Foil");
+        List<CardReservation> savedReservations = new ArrayList<>(List.of(maria));
+
+        when(inventoryService.getInventoryCards()).thenReturn(List.of());
+        when(inventoryService.getReservations()).thenAnswer(invocation -> new ArrayList<>(savedReservations));
+        doAnswer(invocation -> {
+            savedReservations.add(invocation.getArgument(0));
+            return null;
+        }).when(inventoryService).appendReservation(any(CardReservation.class));
+
+        ResponseEntity<?> response = controller.createReservationFromSearch(
+                "Sin Stock",
+                "Academy Manufactor",
+                "Murders at Karlov Manor Commander Decks",
+                "MKC",
+                "0221",
+                "No Foil",
+                "NM",
+                "1",
+                "Raul",
+                "1152356589",
+                "41523568",
+                "2026-07-06",
+                false,
+                "",
+                false,
+                0,
+                false,
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationCreateResponse body =
+                (DashboardController.ReservationCreateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.familyPendingInfo().quantity()).isEqualTo(2);
+        assertThat(body.familyPendingInfo().summaryLabel()).isEqualTo("Pedidos pendientes: 2");
+        assertThat(body.familyPendingInfo().tooltip())
+                .contains("Maria - MKC-0221 NM")
+                .contains("Raul - MKC-0221 NM");
     }
 
     @Test

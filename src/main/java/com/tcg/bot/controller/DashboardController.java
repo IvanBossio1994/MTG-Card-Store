@@ -2677,6 +2677,19 @@ public class DashboardController {
             PendingStockSnapshot pendingInfo = !removeFromStock
                     ? productPendingStockSnapshot(productAggregationKey(name), ledgerReservations)
                     : PendingStockSnapshot.empty();
+            PendingStockSnapshot familyPendingInfo = !removeFromStock
+                    ? familyPendingStockSnapshot(
+                            new ReservationCandidate(
+                                    reservationLookupKey(name, setName, setCode, collectorNumber, printing),
+                                    name,
+                                    setName,
+                                    setCode,
+                                    collectorNumber,
+                                    printing
+                            ),
+                            ledgerReservations
+                    )
+                    : PendingStockSnapshot.empty();
 
             if (removeFromStock && reservedCard != null) {
                 updatedQuantity = previousQuantity;
@@ -2719,7 +2732,8 @@ public class DashboardController {
                     rowIndex > 0 && reservedCard != null
                             ? stockSnapshot(reservedCard, currentInventoryCards, ledgerReservations)
                             : StockSnapshot.empty(rowIndex),
-                    pendingInfo
+                    pendingInfo,
+                    familyPendingInfo
             ));
         } catch (Exception e) {
             log.warn("No se pudo guardar la reserva desde busqueda.", e);
@@ -4776,6 +4790,15 @@ public class DashboardController {
 
     private PendingStockSnapshot productPendingStockSnapshot(String productKey, List<CardReservation> reservations) {
         PendingReservationInfo info = productPendingReservationInfo(productKey, reservations);
+        if (info.getQuantity() <= 0) {
+            return PendingStockSnapshot.empty();
+        }
+
+        return pendingStockSnapshot(info);
+    }
+
+    private PendingStockSnapshot familyPendingStockSnapshot(ReservationCandidate candidate, List<CardReservation> reservations) {
+        PendingReservationInfo info = pendingReservationInfoForCandidate(candidate, reservations);
         if (info.getQuantity() <= 0) {
             return PendingStockSnapshot.empty();
         }
@@ -7680,20 +7703,14 @@ public class DashboardController {
             candidatesByKey.putIfAbsent(candidate.key(), candidate);
         }
 
-        for (CardReservation reservation : inventoryService.getReservations()) {
+        List<CardReservation> reservations = inventoryService.getReservations();
+        for (CardReservation reservation : reservations) {
             if (!CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus())) {
                 continue;
             }
 
             for (ReservationCandidate candidate : candidatesByKey.values()) {
-                if (!matchesReservation(
-                        reservation,
-                        candidate.name(),
-                        candidate.setName(),
-                        candidate.setCode(),
-                        candidate.collectorNumber(),
-                        candidate.printing()
-                )) {
+                if (!matchesReservationCandidate(reservation, candidate)) {
                     continue;
                 }
 
@@ -7703,6 +7720,33 @@ public class DashboardController {
         }
 
         return quantities;
+    }
+
+    private PendingReservationInfo pendingReservationInfoForCandidate(
+            ReservationCandidate candidate,
+            List<CardReservation> reservations
+    ) {
+        PendingReservationInfo info = new PendingReservationInfo();
+        if (candidate == null || reservations == null || reservations.isEmpty()) {
+            return info;
+        }
+
+        reservations.stream()
+                .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
+                .filter(reservation -> matchesReservationCandidate(reservation, candidate))
+                .forEach(info::add);
+        return info;
+    }
+
+    private boolean matchesReservationCandidate(CardReservation reservation, ReservationCandidate candidate) {
+        return candidate != null && matchesReservation(
+                reservation,
+                candidate.name(),
+                candidate.setName(),
+                candidate.setCode(),
+                candidate.collectorNumber(),
+                candidate.printing()
+        );
     }
 
     private List<ReservationCandidate> reservationCandidatesForSearchResults(List<SearchResult> results) {
@@ -9114,7 +9158,8 @@ public class DashboardController {
             String phone,
             String dni,
             StockSnapshot snapshot,
-            PendingStockSnapshot pendingInfo
+            PendingStockSnapshot pendingInfo,
+            PendingStockSnapshot familyPendingInfo
     ) {
     }
 

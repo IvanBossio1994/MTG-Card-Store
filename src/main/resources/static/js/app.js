@@ -1415,6 +1415,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if (!reserveSelectedStock && activeReservationButton) {
                     updateProductPendingIndicator(activeReservationButton, result.pendingInfo || result.snapshot?.pendingInfo);
+                    updateFamilyPendingIndicator(activeReservationButton, result.familyPendingInfo || result.snapshot?.pendingInfo);
                 }
 
                 upsertReservationClientOption({
@@ -2494,7 +2495,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateProductPendingIndicator(sourceButton, pendingInfo) {
-        const primaryRow = primaryInventoryRowFromButton(sourceButton) || sourceButton?.closest?.(".product-family-row");
+        const primaryRow = familyRowFromSource(sourceButton);
         const productKey = primaryRow?.dataset?.productKey || "";
         if (!productKey || !pendingInfo) {
             return;
@@ -2538,9 +2539,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateFamilyPendingIndicator(sourceButton, pendingInfo) {
-        const primaryRow = primaryInventoryRowFromButton(sourceButton) || sourceButton?.closest?.(".product-family-row");
+        const primaryRow = familyRowFromSource(sourceButton);
         const cell = primaryRow?.querySelector(".card-name-cell");
         renderPendingSummary(cell, pendingInfo);
+    }
+
+    function familyRowFromSource(sourceButton) {
+        return primaryInventoryRowFromButton(sourceButton)
+                || sourceButton?.closest?.(".product-family-row")
+                || findFamilyRowByReservationIdentity(sourceButton?.dataset || {});
+    }
+
+    function findFamilyRowByReservationIdentity(identity) {
+        const name = normalizedDatasetText(identity.name);
+        const setCode = normalizedDatasetText(identity.setCode);
+        const collectorNumber = normalizedDatasetText(identity.collectorNumber).replace(/^0+(?=\d)/, "");
+        const printing = normalizedPrinting(identity.printing);
+        if (!name) {
+            return null;
+        }
+
+        return Array.from(document.querySelectorAll(".product-family-row")).find(row => {
+            const rowCollector = normalizedDatasetText(row.dataset.collectorNumber).replace(/^0+(?=\d)/, "");
+            return normalizedDatasetText(row.dataset.name) === name
+                    && (!setCode || normalizedDatasetText(row.dataset.setCode) === setCode)
+                    && (!collectorNumber || rowCollector === collectorNumber)
+                    && (!printing || normalizedPrinting(row.dataset.printing) === printing);
+        }) || null;
+    }
+
+    function normalizedDatasetText(value) {
+        return String(value || "").trim().toLowerCase();
+    }
+
+    function normalizedPrinting(value) {
+        const raw = normalizedDatasetText(value);
+        if (!raw) {
+            return "";
+        }
+        const text = raw.replace(/[\s_-]+/g, "");
+        return text === "foil" ? "foil" : "nonfoil";
     }
 
     function updateConditionStockOption(option, stock) {
