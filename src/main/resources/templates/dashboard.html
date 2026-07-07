@@ -19,53 +19,94 @@
         </div>
     </section>
 
-    <section class="pickup-warning-panel" th:if="${pickupAlerts != null && !#lists.isEmpty(pickupAlerts)}">
+    <section class="pickup-warning-panel" th:if="${pickupAlerts != null && !#lists.isEmpty(pickupAlerts)}"
+             th:with="reservedAlerts=${pickupAlerts.?[reservedQuantity > 0]},
+                      pendingAlerts=${pickupAlerts.?[reservedQuantity == 0]}">
         <div class="pickup-warning-content">
             <div class="pickup-warning-head">
                 <p class="eyebrow">Retiros</p>
                 <h2>Pedidos por retirar</h2>
             </div>
 
-            <div class="pickup-warning-list">
-                <article class="pickup-warning-item"
-                         th:each="alert : ${pickupAlerts}"
-                         th:classappend="${alert.overdue} ? ' overdue' : ''">
-                    <a class="pickup-warning-copy pickup-warning-link"
-                       th:href="@{/reservas(openGroup=${alert.groupKey})} + '#' + ${alert.anchorId}">
-                        <strong th:text="${alert.client}">Cliente</strong>
-                        <span th:text="${alert.overdue ? 'Fecha vencida: ' + alert.formattedPickupDate : 'Retira hoy: ' + alert.formattedPickupDate}">Retira hoy</span>
-                        <p th:text="${alert.cardSummary + ' | ' + alert.totalQuantity + ' unidad(es)' + (alert.phone != '-' ? ' | Tel. ' + alert.phone : '')}">
-                            Pedido
-                        </p>
-                    </a>
+            <div class="pickup-warning-section" th:if="${!#lists.isEmpty(reservedAlerts)}">
+                <div class="pickup-warning-section-head">
+                    <h3>Reservadas <span th:text="${'(' + #lists.size(reservedAlerts) + ')'}">(0)</span></h3>
+                </div>
+                <div class="pickup-warning-list">
+                    <article class="pickup-warning-item pickup-warning-reserved"
+                             th:each="alert : ${reservedAlerts}"
+                             th:classappend="${alert.overdue} ? ' overdue' : ''">
+                        <a class="pickup-warning-copy pickup-warning-link"
+                           th:href="@{/reservas(openGroup=${alert.groupKey})} + '#' + ${alert.anchorId}">
+                            <small class="pickup-status-chip pickup-status-chip-reserved">Reservada</small>
+                            <strong th:text="${alert.client}">Cliente</strong>
+                            <span th:text="${alert.overdue ? 'Fecha vencida: ' + alert.formattedPickupDate : 'Retira hoy: ' + alert.formattedPickupDate}">Retira hoy</span>
+                            <p th:text="${alert.cardSummary + ' | ' + alert.totalQuantity + ' unidad(es)' + (alert.phone != '-' ? ' | Tel. ' + alert.phone : '')}">
+                                Pedido
+                            </p>
+                        </a>
 
-                    <div class="pickup-warning-actions" th:if="${alert.overdue}">
-                        <form method="post" th:action="@{/reservas/retiro/liberar}"
-                              th:if="${alert.reservedQuantity > 0}"
-                              data-app-confirm
-                              data-loading-button="Liberando..."
-                              data-loading-title="Liberando pedido"
-                              data-loading-message="Devolviendo cartas reservadas al stock y actualizando Reservas..."
-                              data-confirm-title="Liberar pedido vencido"
-                              th:attr="data-confirm-message=${'Se van a devolver ' + alert.reservedQuantity + ' carta(s) reservadas al stock y se quitara este pedido.'}">
-                            <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
-                            <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
-                            <input type="hidden" name="returnTo" value="/">
-                            <button class="secondary-button danger-soft-button compact-action-button" type="submit">Volver al stock</button>
-                        </form>
+                        <div class="pickup-warning-actions" th:if="${alert.overdue}">
+                            <form method="post" th:action="@{/reservas/retiro/liberar}"
+                                  data-app-confirm
+                                  data-loading-button="Liberando..."
+                                  data-loading-title="Liberando pedido"
+                                  data-loading-message="Devolviendo cartas reservadas al stock y actualizando Reservas..."
+                                  data-confirm-title="Liberar pedido vencido"
+                                  th:attr="data-confirm-message=${'Se van a devolver ' + alert.reservedQuantity + ' carta(s) reservadas al stock y se quitara este pedido.'}">
+                                <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
+                                <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
+                                <input type="hidden" name="returnTo" value="/">
+                                <button class="secondary-button danger-soft-button compact-action-button" type="submit">Volver al stock</button>
+                            </form>
 
-                        <form class="pickup-reschedule-form pickup-inline-date-form" method="post" th:action="@{/reservas/retiro/reprogramar}"
-                              data-loading-button="Guardando..."
-                              data-loading-title="Reprogramando retiro"
-                              data-loading-message="Actualizando la fecha de retiro en Reservas...">
-                            <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
-                            <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
-                            <input type="hidden" name="returnTo" value="/">
-                            <button class="primary-button compact-action-button pickup-date-trigger" type="button">Cambiar fecha</button>
-                            <input class="pickup-inline-date-input" name="pickupDate" type="date" required>
-                        </form>
-                    </div>
-                </article>
+                            <form class="pickup-reschedule-form pickup-inline-date-form" method="post" th:action="@{/reservas/retiro/reprogramar}"
+                                  data-loading-button="Guardando..."
+                                  data-loading-title="Reprogramando retiro"
+                                  data-loading-message="Actualizando la fecha de retiro en Reservas...">
+                                <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
+                                <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
+                                <input type="hidden" name="returnTo" value="/">
+                                <button class="primary-button compact-action-button pickup-date-trigger" type="button">Cambiar fecha</button>
+                                <input class="pickup-inline-date-input" name="pickupDate" type="date" required>
+                            </form>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <div class="pickup-warning-section" th:if="${!#lists.isEmpty(pendingAlerts)}">
+                <div class="pickup-warning-section-head">
+                    <h3>Pendientes sin stock <span th:text="${'(' + #lists.size(pendingAlerts) + ')'}">(0)</span></h3>
+                </div>
+                <div class="pickup-warning-list">
+                    <article class="pickup-warning-item pickup-warning-pending"
+                             th:each="alert : ${pendingAlerts}"
+                             th:classappend="${alert.overdue} ? ' overdue' : ''">
+                        <a class="pickup-warning-copy pickup-warning-link"
+                           th:href="@{/reservas(openGroup=${alert.groupKey})} + '#' + ${alert.anchorId}">
+                            <small class="pickup-status-chip pickup-status-chip-pending">Pendiente sin stock</small>
+                            <strong th:text="${alert.client}">Cliente</strong>
+                            <span th:text="${alert.overdue ? 'Fecha vencida: ' + alert.formattedPickupDate : 'Retira hoy: ' + alert.formattedPickupDate}">Retira hoy</span>
+                            <p th:text="${alert.cardSummary + ' | ' + alert.totalQuantity + ' unidad(es)' + (alert.phone != '-' ? ' | Tel. ' + alert.phone : '')}">
+                                Pedido
+                            </p>
+                        </a>
+
+                        <div class="pickup-warning-actions" th:if="${alert.overdue}">
+                            <form class="pickup-reschedule-form pickup-inline-date-form" method="post" th:action="@{/reservas/retiro/reprogramar}"
+                                  data-loading-button="Guardando..."
+                                  data-loading-title="Reprogramando retiro"
+                                  data-loading-message="Actualizando la fecha de retiro en Reservas...">
+                                <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
+                                <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
+                                <input type="hidden" name="returnTo" value="/">
+                                <button class="primary-button compact-action-button pickup-date-trigger" type="button">Cambiar fecha</button>
+                                <input class="pickup-inline-date-input" name="pickupDate" type="date" required>
+                            </form>
+                        </div>
+                    </article>
+                </div>
             </div>
         </div>
     </section>

@@ -296,16 +296,16 @@ document.addEventListener("DOMContentLoaded", () => {
         titleWrap.append(eyebrow, title);
         head.appendChild(titleWrap);
 
-        const list = document.createElement("div");
-        list.className = "pickup-warning-list";
-
-        alerts.forEach(alert => {
+        const createPickupAlertItem = (alert, type) => {
             const item = document.createElement("article");
-            item.className = `pickup-warning-item${alert.overdue ? " overdue" : ""}`;
+            item.className = `pickup-warning-item pickup-warning-${type}${alert.overdue ? " overdue" : ""}`;
 
             const copy = document.createElement("a");
             copy.className = "pickup-warning-copy pickup-warning-link";
             copy.href = `/reservas?openGroup=${encodeURIComponent(alert.groupKey || "")}#${alert.anchorId || ""}`;
+            const chip = document.createElement("small");
+            chip.className = `pickup-status-chip pickup-status-chip-${type}`;
+            chip.textContent = type === "reserved" ? "Reservada" : "Pendiente sin stock";
             const client = document.createElement("strong");
             client.textContent = alert.client || "Cliente";
             const date = document.createElement("span");
@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const detail = document.createElement("p");
             detail.textContent = `${alert.cardSummary || "Pedido"} | ${alert.totalQuantity || 0} unidad(es)`
                     + (alert.phone && alert.phone !== "-" ? ` | Tel. ${alert.phone}` : "");
-            copy.append(client, date, detail);
+            copy.append(chip, client, date, detail);
             item.appendChild(copy);
 
             if (alert.overdue) {
@@ -371,10 +371,38 @@ document.addEventListener("DOMContentLoaded", () => {
                 item.appendChild(actions);
             }
 
-            list.appendChild(item);
-        });
+            return item;
+        };
 
-        content.append(head, list);
+        const appendPickupAlertGroup = (titleText, groupAlerts, type) => {
+            if (!groupAlerts.length) {
+                return;
+            }
+
+            const section = document.createElement("div");
+            section.className = "pickup-warning-section";
+            const sectionHead = document.createElement("div");
+            sectionHead.className = "pickup-warning-section-head";
+            const sectionTitle = document.createElement("h3");
+            sectionTitle.textContent = titleText;
+            const count = document.createElement("span");
+            count.textContent = `(${groupAlerts.length})`;
+            sectionTitle.append(" ", count);
+            sectionHead.appendChild(sectionTitle);
+
+            const list = document.createElement("div");
+            list.className = "pickup-warning-list";
+            groupAlerts.forEach(alert => list.appendChild(createPickupAlertItem(alert, type)));
+            section.append(sectionHead, list);
+            content.appendChild(section);
+        };
+
+        const reservedAlerts = alerts.filter(alert => Number(alert.reservedQuantity) > 0);
+        const pendingAlerts = alerts.filter(alert => Number(alert.reservedQuantity) <= 0);
+
+        content.appendChild(head);
+        appendPickupAlertGroup("Reservadas", reservedAlerts, "reserved");
+        appendPickupAlertGroup("Pendientes sin stock", pendingAlerts, "pending");
         panel.append(content);
     };
 

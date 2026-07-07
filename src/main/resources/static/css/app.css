@@ -758,6 +758,7 @@ h2 {
     border-radius: 16px;
     background: var(--panel);
     box-shadow: var(--shadow);
+    min-width: 0;
 }
 
 .search-panel {
@@ -1783,11 +1784,41 @@ input.stock-value::-webkit-inner-spin-button {
     font-size: 20px;
 }
 
+.pickup-warning-section {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pickup-warning-section + .pickup-warning-section {
+    padding-top: 4px;
+}
+
+.pickup-warning-section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pickup-warning-section-head h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.pickup-warning-section-head h3 span {
+    color: var(--muted);
+    font-weight: 800;
+}
+
 .pickup-warning-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
     gap: 10px;
     align-items: stretch;
+    min-width: 0;
 }
 
 .pickup-warning-item {
@@ -1795,11 +1826,20 @@ input.stock-value::-webkit-inner-spin-button {
     grid-template-rows: 1fr auto;
     align-items: stretch;
     gap: 10px;
+    min-width: 0;
     min-height: 132px;
     padding: 12px 14px;
     border: 1px solid rgba(154, 103, 0, 0.22);
     border-radius: 8px;
     background: #fff;
+}
+
+.pickup-warning-reserved {
+    border-color: rgba(23, 105, 224, 0.22);
+}
+
+.pickup-warning-pending {
+    border-color: rgba(154, 103, 0, 0.24);
 }
 
 .pickup-warning-item.overdue {
@@ -1828,6 +1868,34 @@ input.stock-value::-webkit-inner-spin-button {
     font-size: 15px;
 }
 
+.pickup-status-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
+    padding: 2px 7px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.3;
+    white-space: normal;
+}
+
+.pickup-status-chip-reserved {
+    border-color: rgba(23, 105, 224, 0.18);
+    background: var(--blue-soft);
+    color: var(--blue);
+}
+
+.pickup-status-chip-pending {
+    border-color: rgba(154, 103, 0, 0.22);
+    background: var(--amber-soft);
+    color: var(--amber);
+}
+
 .pickup-warning-copy span {
     color: var(--amber);
     font-size: 13px;
@@ -1843,6 +1911,7 @@ input.stock-value::-webkit-inner-spin-button {
     color: var(--muted);
     font-size: 13px;
     line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
 .pickup-warning-actions,
@@ -1850,7 +1919,8 @@ input.stock-value::-webkit-inner-spin-button {
     display: flex;
     align-items: center;
     gap: 7px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    min-width: 0;
 }
 
 .pickup-reschedule-form label {
