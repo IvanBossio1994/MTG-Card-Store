@@ -895,6 +895,81 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void reservePendingReservationLeavesRemainingFlexiblePendingOnlyAtProductLevel() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+
+        InventoryCard stockRow = inventoryCard(
+                "Reaper of Sheoldred",
+                "March of the Machine Promos",
+                "MNP",
+                "072",
+                "nonfoil",
+                "2",
+                "En Stock",
+                72
+        );
+        stockRow.setCondition("NM");
+        CardReservation maria = reservedReservation(
+                "Reaper of Sheoldred",
+                "",
+                "",
+                "",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        maria.setId("wanted-maria");
+        maria.setStatus(CardReservation.STATUS_WANTED);
+        maria.setClient("Maria");
+        CardReservation raul = reservedReservation(
+                "Reaper of Sheoldred",
+                "",
+                "",
+                "",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        raul.setId("wanted-raul");
+        raul.setStatus(CardReservation.STATUS_WANTED);
+        raul.setClient("Raul");
+        List<CardReservation> reservations = new ArrayList<>(List.of(maria, raul));
+
+        when(inventoryService.getReservations()).thenReturn(reservations);
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stockRow));
+
+        ResponseEntity<?> response = controller.reservePendingReservation("wanted-raul", "", "NM", 72, 2, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        DashboardController.ReservationStockResponse body =
+                (DashboardController.ReservationStockResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(raul.getStatus()).isEqualTo(CardReservation.STATUS_RESERVED);
+        assertThat(body.pendingInfo().quantity()).isEqualTo(1);
+        assertThat(body.pendingInfo().tooltip())
+                .contains("Maria - cualquier edicion/condicion")
+                .doesNotContain("Raul");
+        assertThat(body.familyPendingInfo().quantity()).isZero();
+        assertThat(body.snapshot().pendingInfo().quantity()).isZero();
+
+        ResponseEntity<List<DashboardController.PendingReservationView>> pendingResponse =
+                controller.pendingReservationsForCard(
+                        "Reaper of Sheoldred",
+                        "March of the Machine Promos",
+                        "MNP",
+                        "072",
+                        "nonfoil",
+                        "NM",
+                        72,
+                        request
+                );
+
+        assertThat(pendingResponse.getBody())
+                .extracting(DashboardController.PendingReservationView::id)
+                .containsExactly("wanted-maria");
+    }
+
+    @Test
     void reservePendingReservationCreatesReservedRowForExactNoStockPedidoWhenRowIndexIsMissing() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
@@ -1061,7 +1136,100 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
-    void pendingReservationPopupReturnsReservedExactConditionMatch() throws Exception {
+    void rowLevelPendingSnapshotExcludesFlexiblePendingReservations() throws Exception {
+        InventoryCard stockRow = inventoryCard(
+                "Reaper of Sheoldred",
+                "March of the Machine Promos",
+                "MNP",
+                "072",
+                "nonfoil",
+                "0",
+                "Sin Stock",
+                72
+        );
+        stockRow.setCondition("NM");
+        CardReservation flexible = reservedReservation(
+                "Reaper of Sheoldred",
+                "",
+                "",
+                "",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        flexible.setStatus(CardReservation.STATUS_WANTED);
+        flexible.setClient("Maria");
+        CardReservation exact = reservedReservation(
+                "Reaper of Sheoldred",
+                "March of the Machine Promos",
+                "MNP",
+                "072",
+                "NM",
+                ""
+        );
+        exact.setStatus(CardReservation.STATUS_WANTED);
+        exact.setClient("Raul");
+
+        DashboardController.StockSnapshot flexibleOnly =
+                stockSnapshot(stockRow, List.of(stockRow), List.of(flexible));
+        DashboardController.StockSnapshot exactOnly =
+                stockSnapshot(stockRow, List.of(stockRow), List.of(exact));
+
+        assertThat(flexibleOnly.pendingInfo().quantity()).isZero();
+        assertThat(exactOnly.pendingInfo().quantity()).isEqualTo(1);
+        assertThat(exactOnly.pendingInfo().tooltip()).contains("Raul - MNP-072 NM");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void searchRowPendingQuantitiesExcludeFlexiblePendingReservations() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        DashboardController.SearchResult row = searchFamily(
+                "Reaper of Sheoldred",
+                "March of the Machine Promos",
+                "MNP",
+                "072",
+                0,
+                0,
+                72,
+                0
+        );
+        CardReservation flexible = reservedReservation(
+                "Reaper of Sheoldred",
+                "",
+                "",
+                "",
+                "",
+                "[Cualquier edicion/condicion]"
+        );
+        flexible.setStatus(CardReservation.STATUS_WANTED);
+        flexible.setClient("Maria");
+        CardReservation exact = reservedReservation(
+                "Reaper of Sheoldred",
+                "March of the Machine Promos",
+                "MNP",
+                "072",
+                "NM",
+                ""
+        );
+        exact.setStatus(CardReservation.STATUS_WANTED);
+        exact.setClient("Raul");
+        when(inventoryService.getReservations()).thenReturn(List.of(flexible, exact));
+
+        Method method = DashboardController.class.getDeclaredMethod("pendingReservationQuantitiesForSearchResults", List.class);
+        method.setAccessible(true);
+        Map<String, DashboardController.PendingReservationInfo> quantities =
+                (Map<String, DashboardController.PendingReservationInfo>) method.invoke(controller, List.of(row));
+
+        assertThat(quantities).containsKey(row.reservationKey());
+        assertThat(quantities.get(row.reservationKey()).getQuantity()).isEqualTo(1);
+        assertThat(quantities.get(row.reservationKey()).getTooltip())
+                .contains("Raul - MNP-072 NM")
+                .doesNotContain("Maria");
+    }
+
+    @Test
+    void pendingReservationPopupExcludesReservedExactConditionMatch() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
         HttpServletRequest request = unlockedRequest();
@@ -1099,13 +1267,11 @@ class DashboardControllerVariantSearchTests {
                         request
                 );
 
-        assertThat(response.getBody())
-                .extracting(DashboardController.PendingReservationView::id)
-                .containsExactly("reserved-vg");
+        assertThat(response.getBody()).isEmpty();
     }
 
     @Test
-    void pendingReservationPopupUsesRowIndexFallbackWhenExactFieldsMiss() throws Exception {
+    void pendingReservationPopupRowIndexFallbackDoesNotReturnReservedRows() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
         HttpServletRequest request = unlockedRequest();
@@ -1162,9 +1328,7 @@ class DashboardControllerVariantSearchTests {
                         request
                 );
 
-        assertThat(response.getBody())
-                .extracting(DashboardController.PendingReservationView::id)
-                .containsExactly("row-matched-vg");
+        assertThat(response.getBody()).isEmpty();
     }
 
     @Test
@@ -1311,7 +1475,7 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
-    void pendingReservationLookupFindsReservationResponsibleForReservedConditionRow() throws Exception {
+    void pendingReservationLookupExcludesReservationResponsibleForReservedConditionRow() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
         HttpServletRequest request = unlockedRequest();
@@ -1344,13 +1508,11 @@ class DashboardControllerVariantSearchTests {
                         request
                 );
 
-        assertThat(response.getBody())
-                .extracting(DashboardController.PendingReservationView::id)
-                .containsExactly("carlito-blc-ex");
+        assertThat(response.getBody()).isEmpty();
     }
 
     @Test
-    void everyReservedConditionStockCanResolvePendingReservationLookup() throws Exception {
+    void reservedConditionStockDoesNotAppearAsPendingReservationLookup() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
         HttpServletRequest request = unlockedRequest();
@@ -1388,7 +1550,7 @@ class DashboardControllerVariantSearchTests {
                             stock.rowIndex(),
                             request
                     );
-            assertThat(response.getBody()).isNotEmpty();
+            assertThat(response.getBody()).isEmpty();
         }
     }
 

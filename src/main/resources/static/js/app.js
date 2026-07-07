@@ -2978,7 +2978,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         button
                 );
                 updateProductPendingIndicator(button, result.pendingInfo || result.snapshot?.pendingInfo);
-                updateFamilyPendingIndicator(button, result.snapshot?.pendingInfo);
+                updateFamilyPendingIndicator(button, result.familyPendingInfo || result.snapshot?.pendingInfo);
             }
 
             showToast(result.message || "Carta separada para reserva", "success");
