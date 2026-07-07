@@ -2765,8 +2765,7 @@ public class DashboardController {
         try {
             List<CardReservation> activeReservations = cachedReservations()
                     .stream()
-                    .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus())
-                            || CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                    .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
                     .toList();
             List<CardReservation> matchingReservations = activeReservations
                     .stream()
@@ -3244,7 +3243,26 @@ public class DashboardController {
                     snapshot.action(),
                     reservation.getClient(),
                     snapshot,
-                    productPendingStockSnapshot(productAggregationKey(reservation.getName()), ledgerReservations)
+                    productPendingStockSnapshot(productAggregationKey(reservation.getName()), ledgerReservations),
+                    reservedCard == null
+                            ? PendingStockSnapshot.empty()
+                            : familyPendingStockSnapshot(
+                                    new ReservationCandidate(
+                                            reservationLookupKey(
+                                                    reservedCard.getName(),
+                                                    reservedCard.getSetName(),
+                                                    reservedCard.getSetCode(),
+                                                    reservedCard.getCollectorNumber(),
+                                                    reservedCard.getPrinting()
+                                            ),
+                                            reservedCard.getName(),
+                                            reservedCard.getSetName(),
+                                            reservedCard.getSetCode(),
+                                            reservedCard.getCollectorNumber(),
+                                            reservedCard.getPrinting()
+                                    ),
+                                    ledgerReservations
+                            )
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -4774,6 +4792,7 @@ public class DashboardController {
         PendingReservationInfo info = new PendingReservationInfo();
         for (CardReservation reservation : reservations) {
             if (!CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus())
+                    || flexibleMatch(reservation)
                     || !matchesReservationInventoryCard(reservation, card)) {
                 continue;
             }
@@ -7710,7 +7729,7 @@ public class DashboardController {
             }
 
             for (ReservationCandidate candidate : candidatesByKey.values()) {
-                if (!matchesReservationCandidate(reservation, candidate)) {
+                if (!matchesExactReservationCandidate(reservation, candidate)) {
                     continue;
                 }
 
@@ -7733,9 +7752,13 @@ public class DashboardController {
 
         reservations.stream()
                 .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
-                .filter(reservation -> matchesReservationCandidate(reservation, candidate))
+                .filter(reservation -> matchesExactReservationCandidate(reservation, candidate))
                 .forEach(info::add);
         return info;
+    }
+
+    private boolean matchesExactReservationCandidate(CardReservation reservation, ReservationCandidate candidate) {
+        return reservation != null && !flexibleMatch(reservation) && matchesReservationCandidate(reservation, candidate);
     }
 
     private boolean matchesReservationCandidate(CardReservation reservation, ReservationCandidate candidate) {
@@ -9205,7 +9228,8 @@ public class DashboardController {
             String action,
             String client,
             StockSnapshot snapshot,
-            PendingStockSnapshot pendingInfo
+            PendingStockSnapshot pendingInfo,
+            PendingStockSnapshot familyPendingInfo
     ) {
     }
 
