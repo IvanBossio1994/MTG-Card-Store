@@ -2250,9 +2250,7 @@ public class DashboardController {
             );
         }
 
-        if (pickupFlexible) {
-            pickupDate = "";
-        }
+        pickupDate = requestedPickupDate(pickupDate, pickupFlexible);
 
         if (isBlank(client) || isBlank(phone) || isBlank(dni) || (!pickupFlexible && isBlank(pickupDate))) {
             return populateBulkReservationAnalysisModel(
@@ -2407,7 +2405,8 @@ public class DashboardController {
 
             redirectAttributes.addFlashAttribute(
                     "success",
-                    "Pedido masivo guardado: " + reserved + " carta(s) reservadas y "
+                    "Pedido masivo de " + blankToDash(client) + " guardado: "
+                            + reserved + " carta(s) reservadas y "
                             + wanted + " carta(s) sin stock."
             );
         } catch (Exception e) {
@@ -2504,9 +2503,7 @@ public class DashboardController {
             return "redirect:/reservas";
         }
 
-        if (pickupFlexible) {
-            pickupDate = "A convenir";
-        }
+        pickupDate = requestedPickupDate(pickupDate, pickupFlexible);
 
         if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || (!pickupFlexible && isBlank(pickupDate))) {
             redirectAttributes.addFlashAttribute(
@@ -2566,9 +2563,7 @@ public class DashboardController {
                     .body(new ApiMessage(false, "Reservas esta bloqueado."));
         }
 
-        if (pickupFlexible) {
-            pickupDate = "A convenir";
-        }
+        pickupDate = requestedPickupDate(pickupDate, pickupFlexible);
 
         if (isBlank(name) || isBlank(client) || isBlank(phone) || isBlank(dni) || (!pickupFlexible && isBlank(pickupDate))) {
             return ResponseEntity.badRequest()
@@ -3577,6 +3572,10 @@ public class DashboardController {
         }
 
         return LocalDate.parse(pickupDate.trim(), MOVEMENT_DATE_FORMAT).format(MOVEMENT_DATE_FORMAT);
+    }
+
+    private String requestedPickupDate(String pickupDate, boolean pickupFlexible) {
+        return pickupFlexible ? "A convenir" : pickupDate;
     }
 
     private String reservationPickupDateError(String pickupDate) {

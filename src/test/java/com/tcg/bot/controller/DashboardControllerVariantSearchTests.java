@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
@@ -202,6 +204,57 @@ class DashboardControllerVariantSearchTests {
         assertThat(response.getBody().get(0).client()).isEqualTo("Soky");
         assertThat(response.getBody().get(0).phone()).isEqualTo("111");
         assertThat(response.getBody().get(0).dni()).isEqualTo("222");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void bulkReservationWithFlexiblePickupDateSavesAConvenirAndNamesClientInMessage() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
+        DashboardController controller = new DashboardController(
+                inventoryService,
+                cardKingdomApiService,
+                null,
+                null,
+                null,
+                null
+        );
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributes redirectAttributes = mock(RedirectAttributes.class);
+        Model model = mock(Model.class);
+        CardKingdomProduct product = product("Sol Ring", "Commander Masters", "CMM-0410");
+        product.setFoil("false");
+        CardKingdomPriceListResponse priceList = new CardKingdomPriceListResponse();
+        priceList.setData(List.of(product));
+        when(cardKingdomApiService.getPriceList()).thenReturn(priceList);
+        when(inventoryService.getInventoryCards()).thenReturn(List.of());
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        String view = controller.confirmBulkReservation(
+                "1 Sol Ring",
+                List.of("CMM-0410|1"),
+                "Codex",
+                "123456",
+                "36562874",
+                "",
+                true,
+                "",
+                false,
+                false,
+                request,
+                redirectAttributes,
+                model
+        );
+
+        assertThat(view).isEqualTo("redirect:/reservas");
+        ArgumentCaptor<List<CardReservation>> reservationsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(inventoryService).appendReservations(reservationsCaptor.capture());
+        assertThat(reservationsCaptor.getValue()).hasSize(1);
+        assertThat(reservationsCaptor.getValue().get(0).getPickupDate()).isEqualTo("A convenir");
+        verify(redirectAttributes).addFlashAttribute(
+                "success",
+                "Pedido masivo de Codex guardado: 0 carta(s) reservadas y 1 carta(s) sin stock."
+        );
     }
 
     @Test
