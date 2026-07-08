@@ -1176,9 +1176,25 @@ document.addEventListener("DOMContentLoaded", () => {
         let reservationClients = [];
         let reservationClientsLoaded = false;
         let activeReservationButton = null;
+        let selectedClientIdentity = null;
 
         const normalizeClientValue = value => (value || "").trim().toLowerCase();
         const digitsOnly = value => (value || "").replace(/\D/g, "");
+        const clientIdentityKey = client => {
+            const normalizedClient = normalizeClientValue(client?.client);
+            const normalizedDni = digitsOnly(client?.dni || "");
+            if (normalizedDni) {
+                return `${normalizedClient}|dni:${normalizedDni}`;
+            }
+            return `${normalizedClient}|phone:${digitsOnly(client?.phone || "")}`;
+        };
+        const clientOptionLabel = client => {
+            if (client.dni) {
+                return `${client.client} — DNI ${client.dni}`;
+            }
+            return client.client;
+        };
+        const clientOptionValue = client => clientOptionLabel(client);
 
         const renderReservationClients = () => {
             if (!reservationClientOptions) {
@@ -1192,10 +1208,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const option = document.createElement("option");
-                option.value = client.client;
-                option.label = client.phone
-                        ? `${client.client} | ${client.phone}`
-                        : client.client;
+                option.value = clientOptionValue(client);
+                option.label = clientOptionLabel(client);
                 reservationClientOptions.appendChild(option);
             });
         };
@@ -1205,15 +1219,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const normalizedClient = normalizeClientValue(client.client);
-            const existingIndex = reservationClients.findIndex(
-                    existing => normalizeClientValue(existing.client) === normalizedClient
-            );
             const nextClient = {
                 client: client.client,
                 phone: client.phone || "",
                 dni: client.dni || ""
             };
+            const nextIdentity = clientIdentityKey(nextClient);
+            const existingIndex = reservationClients.findIndex(
+                    existing => clientIdentityKey(existing) === nextIdentity
+            );
 
             if (existingIndex >= 0) {
                 reservationClients[existingIndex] = nextClient;
@@ -1249,21 +1263,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const selectedReservationClient = () => {
             const clientInput = reservationModalForm.elements.client;
-            const value = normalizeClientValue(clientInput?.value);
+            const value = (clientInput?.value || "").trim();
 
             if (!value) {
                 return null;
             }
 
-            return reservationClients.find(client => normalizeClientValue(client.client) === value) || null;
+            return reservationClients.find(client => clientOptionValue(client) === value) || null;
         };
 
-        const applySelectedReservationClient = () => {
+        const clearSelectedReservationClient = () => {
+            if (!selectedClientIdentity) {
+                return;
+            }
+
+            const selectedClient = reservationClients.find(client => clientIdentityKey(client) === selectedClientIdentity);
+            const phoneField = reservationModalForm.elements.phone;
+            const dniField = reservationModalForm.elements.dni;
+            if (phoneField && digitsOnly(phoneField.value) === digitsOnly(selectedClient?.phone || "")) {
+                phoneField.value = "";
+            }
+            if (dniField && digitsOnly(dniField.value) === digitsOnly(selectedClient?.dni || "")) {
+                dniField.value = "";
+            }
+            selectedClientIdentity = null;
+        };
+
+        const applySelectedReservationClient = event => {
+            if (event?.type === "input" && selectedClientIdentity) {
+                const selectedClient = reservationClients.find(client => clientIdentityKey(client) === selectedClientIdentity);
+                if (normalizeClientValue(reservationModalForm.elements.client?.value) !== normalizeClientValue(selectedClient?.client)) {
+                    clearSelectedReservationClient();
+                }
+            }
+
             const client = selectedReservationClient();
             if (!client) {
                 return;
             }
 
+            selectedClientIdentity = clientIdentityKey(client);
+            setReservationValue("client", client.client);
             setReservationValue("phone", client.phone);
             setReservationValue("dni", client.dni);
         };
@@ -1282,6 +1322,7 @@ document.addEventListener("DOMContentLoaded", () => {
             reservationModal.hidden = true;
             reservationModal.setAttribute("aria-hidden", "true");
             reservationModalForm.reset();
+            selectedClientIdentity = null;
             reservationModalForm.querySelector("[data-flexible-date-checkbox]")?.dispatchEvent(new Event("change"));
 
             if (reservationModalError) {
@@ -1478,8 +1519,24 @@ document.addEventListener("DOMContentLoaded", () => {
         const clientOptions = form.querySelector("[data-reservation-client-options]");
         let reservationClients = [];
         let loaded = false;
+        let selectedClientIdentity = null;
         const normalizeClientValue = value => (value || "").trim().toLowerCase();
         const digitsOnly = value => (value || "").replace(/\D/g, "");
+        const clientIdentityKey = client => {
+            const normalizedClient = normalizeClientValue(client?.client);
+            const normalizedDni = digitsOnly(client?.dni || "");
+            if (normalizedDni) {
+                return `${normalizedClient}|dni:${normalizedDni}`;
+            }
+            return `${normalizedClient}|phone:${digitsOnly(client?.phone || "")}`;
+        };
+        const clientOptionLabel = client => {
+            if (client.dni) {
+                return `${client.client} — DNI ${client.dni}`;
+            }
+            return client.client;
+        };
+        const clientOptionValue = client => clientOptionLabel(client);
 
         const restrictNumericField = (field, maxLength) => {
             if (!field) {
@@ -1503,10 +1560,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const option = document.createElement("option");
-                option.value = client.client;
-                option.label = client.phone
-                        ? `${client.client} | ${client.phone}`
-                        : client.client;
+                option.value = clientOptionValue(client);
+                option.label = clientOptionLabel(client);
                 clientOptions.appendChild(option);
             });
         };
@@ -1534,15 +1589,46 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
-        const applySelectedReservationClient = () => {
-            const value = normalizeClientValue(clientInput?.value);
+        const selectedReservationClient = () => {
+            const value = (clientInput?.value || "").trim();
             if (!value) {
+                return null;
+            }
+
+            return reservationClients.find(item => clientOptionValue(item) === value) || null;
+        };
+
+        const clearSelectedReservationClient = () => {
+            if (!selectedClientIdentity) {
                 return;
             }
 
-            const client = reservationClients.find(item => normalizeClientValue(item.client) === value);
+            const selectedClient = reservationClients.find(item => clientIdentityKey(item) === selectedClientIdentity);
+            if (phoneInput && digitsOnly(phoneInput.value) === digitsOnly(selectedClient?.phone || "")) {
+                phoneInput.value = "";
+            }
+            if (dniInput && digitsOnly(dniInput.value) === digitsOnly(selectedClient?.dni || "")) {
+                dniInput.value = "";
+            }
+            selectedClientIdentity = null;
+        };
+
+        const applySelectedReservationClient = event => {
+            if (event?.type === "input" && selectedClientIdentity) {
+                const selectedClient = reservationClients.find(item => clientIdentityKey(item) === selectedClientIdentity);
+                if (normalizeClientValue(clientInput?.value) !== normalizeClientValue(selectedClient?.client)) {
+                    clearSelectedReservationClient();
+                }
+            }
+
+            const client = selectedReservationClient();
             if (!client) {
                 return;
+            }
+
+            selectedClientIdentity = clientIdentityKey(client);
+            if (clientInput) {
+                clientInput.value = client.client;
             }
 
             if (phoneInput) {

@@ -5,6 +5,7 @@ import com.tcg.bot.dto.CardKingdomPriceListResponse;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
+import com.tcg.bot.model.ReservationClient;
 import com.tcg.bot.model.ReservationConditionStock;
 import com.tcg.bot.service.CardKingdomApiService;
 import com.tcg.bot.service.InventoryService;
@@ -131,6 +132,76 @@ class DashboardControllerVariantSearchTests {
 
         assertThat(alerts).hasSize(1);
         assertThat(alerts.get(0).cardSummary()).isEqualTo("Arcane Signet (cualquier edicion/condicion)");
+    }
+
+    @Test
+    void reservationClientsKeepSimilarNamesDistinct() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        when(inventoryService.getReservationClients()).thenReturn(List.of(
+                reservationClient("Soky", "111", "222"),
+                reservationClient("Soky dos", "333", "444")
+        ));
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        ResponseEntity<List<DashboardController.ReservationClientView>> response =
+                controller.reservationClients(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .extracting(DashboardController.ReservationClientView::client)
+                .containsExactly("Soky", "Soky dos");
+        assertThat(response.getBody())
+                .extracting(DashboardController.ReservationClientView::phone)
+                .containsExactly("111", "333");
+    }
+
+    @Test
+    void reservationClientsKeepSameNameWithDifferentContactDistinct() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        when(inventoryService.getReservationClients()).thenReturn(List.of(
+                reservationClient("Soky", "111", "222"),
+                reservationClient("Soky", "333", "444")
+        ));
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        ResponseEntity<List<DashboardController.ReservationClientView>> response =
+                controller.reservationClients(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .extracting(DashboardController.ReservationClientView::client)
+                .containsExactly("Soky", "Soky");
+        assertThat(response.getBody())
+                .extracting(DashboardController.ReservationClientView::phone)
+                .containsExactly("111", "333");
+        assertThat(response.getBody())
+                .extracting(DashboardController.ReservationClientView::dni)
+                .containsExactly("222", "444");
+    }
+
+    @Test
+    void reservationClientsTreatSameNameAndDniAsSameIdentity() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        when(inventoryService.getReservationClients()).thenReturn(List.of(
+                reservationClient("Soky", "111", "222"),
+                reservationClient("Soky", "333", "222")
+        ));
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        ResponseEntity<List<DashboardController.ReservationClientView>> response =
+                controller.reservationClients(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().get(0).client()).isEqualTo("Soky");
+        assertThat(response.getBody().get(0).phone()).isEqualTo("111");
+        assertThat(response.getBody().get(0).dni()).isEqualTo("222");
     }
 
     @Test
@@ -3380,6 +3451,14 @@ class DashboardControllerVariantSearchTests {
         when(request.getSession(false)).thenReturn(session);
         when(session.getAttribute("movementsAccessUnlocked")).thenReturn(Boolean.TRUE);
         return request;
+    }
+
+    private ReservationClient reservationClient(String client, String phone, String dni) {
+        ReservationClient reservationClient = new ReservationClient();
+        reservationClient.setClient(client);
+        reservationClient.setPhone(phone);
+        reservationClient.setDni(dni);
+        return reservationClient;
     }
 
     private InventoryCard selectedReservationCard(Object selection) throws Exception {
