@@ -734,8 +734,7 @@ public class GoogleSheetsService {
         Sheets sheetsService = getSheetsService();
         ensureClientsSheet(sheetsService);
 
-        String normalizedClient = normalizedClientName(client);
-        int rowIndex = clientRowIndex(sheetsService, normalizedClient);
+        int rowIndex = clientRowIndex(sheetsService, client, phone, dni);
         List<Object> row = List.of(
                 client.trim(),
                 safe(phone == null ? "" : phone.trim()),
@@ -2287,13 +2286,14 @@ public class GoogleSheetsService {
         return value == null ? "" : value;
     }
 
-    private int clientRowIndex(Sheets sheetsService, String normalizedClient) throws Exception {
-        if (normalizedClient == null || normalizedClient.isBlank()) {
+    private int clientRowIndex(Sheets sheetsService, String client, String phone, String dni) throws Exception {
+        String identityKey = reservationClientIdentityKey(client, phone, dni);
+        if (identityKey.isBlank()) {
             return 0;
         }
 
         var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), clientRange("A2:A"))
+                .get(storeSettingsService.getSpreadsheetId(), clientRange("A2:C"))
                 .execute();
 
         var values = response.getValues();
@@ -2302,8 +2302,12 @@ public class GoogleSheetsService {
         }
 
         for (int index = 0; index < values.size(); index++) {
-            String client = getColumnValue(values.get(index), 0);
-            if (normalizedClient.equals(normalizedClientName(client))) {
+            var row = values.get(index);
+            if (identityKey.equals(reservationClientIdentityKey(
+                    getColumnValue(row, 0),
+                    getColumnValue(row, 1),
+                    getColumnValue(row, 2)
+            ))) {
                 return index + 2;
             }
         }
@@ -2311,8 +2315,28 @@ public class GoogleSheetsService {
         return 0;
     }
 
+    private String reservationClientIdentityKey(String client, String phone, String dni) {
+        String normalizedClient = normalizedClientName(client);
+        if (normalizedClient.isBlank()) {
+            return "";
+        }
+
+        String normalizedDni = digitsOnly(dni);
+        if (!normalizedDni.isBlank()) {
+            return normalizedClient + "|dni:" + normalizedDni;
+        }
+        String normalizedPhone = digitsOnly(phone);
+        return normalizedPhone.isBlank()
+                ? normalizedClient
+                : normalizedClient + "|phone:" + normalizedPhone;
+    }
+
     private String normalizedClientName(String value) {
         return value == null ? "" : value.trim().toLowerCase().replaceAll("\\s+", " ");
+    }
+
+    private String digitsOnly(String value) {
+        return value == null ? "" : value.replaceAll("\\D", "");
     }
 
     private double parseCashNumber(String value) {

@@ -3031,7 +3031,7 @@ public class DashboardController {
                 return ResponseEntity.ok(cache.clients());
             }
 
-            Map<String, ReservationClientView> clientsByName = new LinkedHashMap<>();
+            Map<String, ReservationClientView> clientsByIdentity = new LinkedHashMap<>();
 
             for (ReservationClient savedClient : inventoryService.getReservationClients()) {
                 String client = savedClient.getClient();
@@ -3039,8 +3039,12 @@ public class DashboardController {
                     continue;
                 }
 
-                String key = normalizedCardText(client);
-                clientsByName.putIfAbsent(key, new ReservationClientView(
+                String key = reservationClientIdentityKey(
+                        client,
+                        savedClient.getPhone(),
+                        savedClient.getDni()
+                );
+                clientsByIdentity.putIfAbsent(key, new ReservationClientView(
                         client.trim(),
                         blankToEmpty(savedClient.getPhone()),
                         blankToEmpty(savedClient.getDni())
@@ -3053,21 +3057,37 @@ public class DashboardController {
                     continue;
                 }
 
-                String key = normalizedCardText(client);
-                clientsByName.putIfAbsent(key, new ReservationClientView(
+                String key = reservationClientIdentityKey(
+                        client,
+                        reservation.getPhone(),
+                        reservation.getDni()
+                );
+                clientsByIdentity.putIfAbsent(key, new ReservationClientView(
                         client.trim(),
                         blankToEmpty(reservation.getPhone()),
                         blankToEmpty(reservation.getDni())
                 ));
             }
 
-            List<ReservationClientView> clients = new ArrayList<>(clientsByName.values());
+            List<ReservationClientView> clients = new ArrayList<>(clientsByIdentity.values());
             reservationClientsCache = new ReservationClientsCache(now, clients);
             return ResponseEntity.ok(clients);
         } catch (Exception e) {
             log.warn("No se pudieron consultar clientes de reservas.", e);
             return ResponseEntity.ok(List.of());
         }
+    }
+
+    private String reservationClientIdentityKey(String client, String phone, String dni) {
+        String normalizedDni = digitsOnly(dni);
+        String normalizedClient = normalizedCardText(client);
+        if (!normalizedDni.isBlank()) {
+            return normalizedClient + "|dni:" + normalizedDni;
+        }
+        String normalizedPhone = digitsOnly(phone);
+        return normalizedPhone.isBlank()
+                ? normalizedClient
+                : normalizedClient + "|phone:" + normalizedPhone;
     }
 
     @PostMapping("/reservas/separar")
