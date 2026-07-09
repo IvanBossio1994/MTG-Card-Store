@@ -5,6 +5,7 @@ import com.tcg.bot.dto.CardKingdomPriceListResponse;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
+import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.model.ReservationClient;
 import com.tcg.bot.model.ReservationConditionStock;
 import com.tcg.bot.service.CardKingdomApiService;
@@ -255,6 +256,266 @@ class DashboardControllerVariantSearchTests {
                 "success",
                 "Pedido masivo de Codex guardado: 0 carta(s) reservadas y 1 carta(s) sin stock."
         );
+        ArgumentCaptor<List<InventoryMovement>> movementsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(inventoryService).appendMovements(movementsCaptor.capture());
+        assertThat(movementsCaptor.getValue()).hasSize(1);
+        assertThat(movementsCaptor.getValue().get(0).getSource()).isEqualTo("Pedido sin stock");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reportCountsActiveReservedRowsFromReservations() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        CardReservation reserved = reportReservation(CardReservation.STATUS_RESERVED, "Arcane Signet", "2", "2026-07-01 10:00:00");
+        CardReservation wanted = reportReservation(CardReservation.STATUS_WANTED, "Sol Ring", "3", "2026-07-01 10:00:00");
+
+        List<DashboardController.CashReportMonth> reports =
+                (List<DashboardController.CashReportMonth>) method.invoke(controller, List.of(), List.of(), List.of(reserved, wanted));
+
+        assertThat(reports).hasSize(1);
+        assertThat(reports.get(0).activeReservedQuantity()).isEqualTo(2);
+        assertThat(reports.get(0).activePendingQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void bulkReservationWithStockLogsReservedActivityWithoutStockIngress() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
+        DashboardController controller = new DashboardController(
+                inventoryService,
+                cardKingdomApiService,
+                null,
+                null,
+                null,
+                null
+        );
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributes redirectAttributes = mock(RedirectAttributes.class);
+        Model model = mock(Model.class);
+        CardKingdomProduct product = product("Sol Ring", "Commander Masters", "CMM-0410");
+        product.setFoil("false");
+        CardKingdomPriceListResponse priceList = new CardKingdomPriceListResponse();
+        priceList.setData(List.of(product));
+        InventoryCard stock = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "No Foil", "3", "En Stock", 10);
+        stock.setCondition("NM");
+        when(cardKingdomApiService.getPriceList()).thenReturn(priceList);
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        String view = controller.confirmBulkReservation(
+                "2 Sol Ring",
+                List.of("CMM-0410|2"),
+                "Codex",
+                "123456",
+                "36562874",
+                "2026-07-20",
+                false,
+                "",
+                false,
+                true,
+                request,
+                redirectAttributes,
+                model
+        );
+
+        assertThat(view).isEqualTo("redirect:/reservas");
+        ArgumentCaptor<List<InventoryMovement>> movementsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(inventoryService).appendMovements(movementsCaptor.capture());
+        assertThat(movementsCaptor.getValue()).hasSize(1);
+        assertThat(movementsCaptor.getValue().get(0).getSource()).isEqualTo("Reserva apartada");
+        assertThat(movementsCaptor.getValue().get(0).getSource()).isNotEqualTo("Agregado al stock");
+    }
+
+    @Test
+    void stockIncreaseStillLogsStockIngress() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard stock = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "No Foil", "1", "En Stock", 10);
+        stock.setCondition("NM");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
+        when(inventoryService.getReservations()).thenReturn(List.of());
+
+        ResponseEntity<?> response = controller.updateQuantity(10, 1, false, false, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(inventoryService).appendMovement(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getSource()).isEqualTo("Agregado al stock");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reportUsesActiveReservationStateIndependentOfCreationFlow() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        CardReservation singleFlow = reportReservation(CardReservation.STATUS_RESERVED, "Arcane Signet", "1", "2026-07-01 10:00:00");
+        CardReservation bulkFlow = reportReservation(CardReservation.STATUS_RESERVED, "Sol Ring", "2", "2026-07-01 11:00:00");
+
+        List<DashboardController.CashReportMonth> reports =
+                (List<DashboardController.CashReportMonth>) method.invoke(controller, List.of(), List.of(), List.of(singleFlow, bulkFlow));
+
+        assertThat(reports).hasSize(1);
+        assertThat(reports.get(0).activeReservedQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reportDoesNotCountInactiveReservationsThatAreNoLongerPresent() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        List<DashboardController.CashReportMonth> reports =
+                (List<DashboardController.CashReportMonth>) method.invoke(controller, List.of(), List.of(), List.of());
+
+        assertThat(reports).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reportKeepsMovementSalesAndEntriesWhileReservationsComeFromActiveRows() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        List<InventoryMovement> movements = List.of(
+                movement("2026-07-01", "RESERVA", "2", "Sol Ring", "Reserva apartada"),
+                movement("2026-07-02", "ENTRADA", "1", "Sol Ring", "Reserva cancelada"),
+                movement("2026-07-03", "SALIDA", "-1", "Arcane Signet", "Entrega reserva"),
+                movement("2026-07-03", "RESERVA", "4", "Demand", "Pedido sin stock"),
+                movement("2026-07-04", "ENTRADA", "3", "Sol Ring", "Importar lista")
+        );
+        CashRegisterEntry sale = cashSale("2026-07-03", "Arcane Signet", "1", "1000");
+        CardReservation reserved = reportReservation(CardReservation.STATUS_RESERVED, "Sol Ring", "2", "2026-07-01 10:00:00");
+
+        List<DashboardController.CashReportMonth> reports =
+                (List<DashboardController.CashReportMonth>) method.invoke(controller, List.of(sale), movements, List.of(reserved));
+
+        assertThat(reports).hasSize(1);
+        DashboardController.CashReportMonth report = reports.get(0);
+        assertThat(report.activeReservedQuantity()).isEqualTo(2);
+        assertThat(report.reservedActivityQuantity()).isEqualTo(2);
+        assertThat(report.reservationSoldQuantity()).isEqualTo(1);
+        assertThat(report.reservationReturnedQuantity()).isEqualTo(1);
+        assertThat(report.pendingCreatedQuantity()).isEqualTo(4);
+        assertThat(report.soldQuantity()).isEqualTo(1);
+        assertThat(report.enteredQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    void movementDisplayAliasesReservationSourcesWithoutChangingRawSource() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("movementDisplayRow", InventoryMovement.class);
+        method.setAccessible(true);
+
+        DashboardController.MovementDisplayRow delivered =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement("2026-07-01", "SALIDA", "-1", "Sol Ring", "Entrega reserva")
+                );
+        DashboardController.MovementDisplayRow cancelled =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement("2026-07-01", "ENTRADA", "1", "Sol Ring", "Reserva cancelada")
+                );
+        DashboardController.MovementDisplayRow reserved =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement("2026-07-01", "RESERVA", "1", "Sol Ring", "Reservada")
+                );
+
+        assertThat(delivered.displaySource()).isEqualTo("Reserva entregada");
+        assertThat(delivered.sourceClass()).isEqualTo("entrega-reserva");
+        assertThat(cancelled.displaySource()).isEqualTo("Devuelta/cancelada");
+        assertThat(cancelled.sourceClass()).isEqualTo("devuelta-cancelada");
+        assertThat(reserved.displaySource()).isEqualTo("Reserva apartada");
+        assertThat(reserved.sourceClass()).isEqualTo("reserva-apartada");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reportClassificationAcceptsCurrentAndDisplayReservationAliases() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        List<InventoryMovement> movements = List.of(
+                movement("2026-07-01", "RESERVA", "1", "Sol Ring", "Reservada"),
+                movement("2026-07-01", "RESERVA", "2", "Sol Ring", "Reserva apartada"),
+                movement("2026-07-02", "SALIDA", "-1", "Arcane Signet", "Entrega reserva"),
+                movement("2026-07-02", "SALIDA", "-2", "Arcane Signet", "Reserva entregada"),
+                movement("2026-07-03", "ENTRADA", "1", "Sol Ring", "Reserva cancelada"),
+                movement("2026-07-03", "ENTRADA", "2", "Sol Ring", "Devuelta/cancelada")
+        );
+
+        List<DashboardController.CashReportMonth> reports =
+                (List<DashboardController.CashReportMonth>) method.invoke(controller, List.of(), movements, List.of());
+
+        assertThat(reports).hasSize(1);
+        DashboardController.CashReportMonth report = reports.get(0);
+        assertThat(report.reservedActivityQuantity()).isEqualTo(3);
+        assertThat(report.reservationSoldQuantity()).isEqualTo(3);
+        assertThat(report.reservationReturnedQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void movementConsolidationDoesNotAffectActiveReservedReportCount() throws Exception {
+        Method consolidateMethod = DashboardController.class.getDeclaredMethod("consolidateDailyMovements", List.class);
+        consolidateMethod.setAccessible(true);
+        Method reportMethod = DashboardController.class.getDeclaredMethod(
+                "cashReportMonths",
+                List.class,
+                List.class,
+                List.class
+        );
+        reportMethod.setAccessible(true);
+
+        List<InventoryMovement> consolidatedMovements = (List<InventoryMovement>) consolidateMethod.invoke(
+                controller,
+                List.of(
+                        movement("2026-07-01", "RESERVA", "1", "Arcane Signet", "Reserva apartada"),
+                        movement("2026-07-01", "SALIDA", "-1", "Arcane Signet", "Entrega reserva")
+                )
+        );
+        CardReservation reserved = reportReservation(CardReservation.STATUS_RESERVED, "Arcane Signet", "1", "2026-07-01 10:00:00");
+
+        List<DashboardController.CashReportMonth> reports =
+                (List<DashboardController.CashReportMonth>) reportMethod.invoke(controller, List.of(), consolidatedMovements, List.of(reserved));
+
+        assertThat(consolidatedMovements)
+                .extracting(InventoryMovement::getSource)
+                .contains("Reserva apartada", "Entrega reserva");
+        assertThat(reports).hasSize(1);
+        assertThat(reports.get(0).activeReservedQuantity()).isEqualTo(1);
+        assertThat(reports.get(0).reservedActivityQuantity()).isEqualTo(1);
+        assertThat(reports.get(0).reservationSoldQuantity()).isEqualTo(1);
     }
 
     @Test
@@ -1731,6 +1992,10 @@ class DashboardControllerVariantSearchTests {
         assertThat(body.snapshot().stockTotal()).isEqualTo(2);
         assertThat(body.snapshot().reservedQuantity()).isEqualTo(1);
         assertThat(body.snapshot().availableQuantity()).isEqualTo(1);
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(inventoryService).appendMovement(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getSource()).isEqualTo("Reserva apartada");
+        assertThat(movementCaptor.getValue().getSource()).isNotEqualTo("Agregado al stock");
     }
 
     @Test
@@ -1780,6 +2045,10 @@ class DashboardControllerVariantSearchTests {
         assertThat(body.snapshot().reservedQuantity()).isZero();
         assertThat(body.snapshot().availableQuantity()).isEqualTo(1);
         verify(inventoryService, never()).updateStockState(anyInt(), any());
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(inventoryService).appendMovement(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getSource()).isEqualTo("Pedido sin stock");
+        assertThat(movementCaptor.getValue().getSource()).isNotEqualTo("Agregado al stock");
     }
 
     @Test
@@ -2954,6 +3223,7 @@ class DashboardControllerVariantSearchTests {
         Method reportMethod = DashboardController.class.getDeclaredMethod(
                 "cashReportMonths",
                 List.class,
+                List.class,
                 List.class
         );
         Method overviewMethod = DashboardController.class.getDeclaredMethod(
@@ -2973,7 +3243,7 @@ class DashboardControllerVariantSearchTests {
         sale.setQuantity("2");
         sale.setTotal("15000");
 
-        List<?> reports = (List<?>) reportMethod.invoke(controller, List.of(sale), List.of());
+        List<?> reports = (List<?>) reportMethod.invoke(controller, List.of(sale), List.of(), List.of());
         Object overview = overviewMethod.invoke(controller, reports);
 
         assertThat(reports).hasSize(1);
@@ -3589,6 +3859,60 @@ class DashboardControllerVariantSearchTests {
         card.setAction(action);
         card.setRowIndex(rowIndex);
         return card;
+    }
+
+    private InventoryMovement movement(
+            String date,
+            String type,
+            String quantity,
+            String name,
+            String source
+    ) {
+        return new InventoryMovement(
+                date + " 10:00:00",
+                date,
+                "10:00",
+                type,
+                quantity,
+                name,
+                "Commander Masters",
+                "CMM",
+                "0410",
+                "No Foil",
+                "3",
+                "3",
+                source
+        );
+    }
+
+    private CashRegisterEntry cashSale(String date, String name, String quantity, String total) {
+        CashRegisterEntry entry = new CashRegisterEntry();
+        entry.setDate(date);
+        entry.setTime("10:00");
+        entry.setType("VENTA");
+        entry.setName(name);
+        entry.setSetName("Commander Masters");
+        entry.setSetCode("CMM");
+        entry.setCollectorNumber("0410");
+        entry.setPrinting("No Foil");
+        entry.setQuantity(quantity);
+        entry.setTotal(total);
+        return entry;
+    }
+
+    private CardReservation reportReservation(String status, String name, String quantity, String reservationDate) {
+        CardReservation reservation = new CardReservation();
+        reservation.setStatus(status);
+        reservation.setName(name);
+        reservation.setSetName("Commander Masters");
+        reservation.setSetCode("CMM");
+        reservation.setCollectorNumber("0410");
+        reservation.setPrinting("No Foil");
+        reservation.setCondition("NM");
+        reservation.setQuantity(quantity);
+        reservation.setClient("Codex");
+        reservation.setReservationDate(reservationDate);
+        return reservation;
     }
 
     private List<CardReservation> reservedReservations(String name, int quantity) {

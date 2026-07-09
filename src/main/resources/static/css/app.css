@@ -3432,12 +3432,18 @@ input.stock-value::-webkit-inner-spin-button {
 
 .report-bar-row {
     display: grid;
-    grid-template-columns: 82px minmax(0, 1fr) 34px;
+    grid-template-columns: minmax(104px, 0.9fr) minmax(0, 1fr) 34px;
     align-items: center;
     gap: 12px;
     color: var(--muted);
     font-size: 13px;
     font-weight: 700;
+}
+
+.report-bar-row > span {
+    min-width: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .report-bar {
@@ -3707,6 +3713,11 @@ input.stock-value::-webkit-inner-spin-button {
     font-weight: 700;
 }
 
+.stock-action-status {
+    color: var(--muted);
+    background: #f1f3f6;
+}
+
 .status.sin-stock-ck {
     color: var(--amber);
     background: var(--amber-soft);
@@ -3762,6 +3773,32 @@ input.stock-value::-webkit-inner-spin-button {
 .status.reservada {
     color: var(--blue);
     background: var(--blue-soft);
+}
+
+.status.agregado-al-stock {
+    color: var(--green);
+    background: var(--green-soft);
+}
+
+.status.reserva-apartada {
+    color: var(--blue);
+    background: var(--blue-soft);
+}
+
+.status.entrega-reserva {
+    color: #047481;
+    background: #d9f6f8;
+}
+
+.status.reserva-cancelada,
+.status.devuelta-cancelada {
+    color: var(--amber);
+    background: var(--amber-soft);
+}
+
+.status.pedido-sin-stock {
+    color: var(--amber);
+    background: var(--amber-soft);
 }
 
 .status.pagada,

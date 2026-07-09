@@ -115,8 +115,8 @@
                                 <td th:text="${movement.newStock != null && movement.newStock != '' ? movement.newStock : '-'}">1</td>
                                 <td>
                                     <span class="status stock-action-status"
-                                          th:classappend="${movement.source != null ? #strings.toLowerCase(movement.source).replace(' ', '-') : ''}"
-                                          th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Busqueda</span>
+                                          th:classappend="${movement.sourceClass != null ? movement.sourceClass : ''}"
+                                          th:text="${movement.displaySource != null && movement.displaySource != '' ? movement.displaySource : '-'}">Busqueda</span>
                                 </td>
                             </tr>
                             </tbody>
@@ -294,8 +294,28 @@
                                 <strong th:text="${report.enteredQuantity}">0</strong>
                             </div>
                             <div class="report-kpi">
-                                <span>Cartas reservadas</span>
-                                <strong th:text="${report.reservedQuantity}">0</strong>
+                                <span>Reservas activas</span>
+                                <strong th:text="${report.activeReservedQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Pendientes actuales</span>
+                                <strong th:text="${report.activePendingQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Cartas apartadas en el mes</span>
+                                <strong th:text="${report.reservedActivityQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Vendidas desde reserva</span>
+                                <strong th:text="${report.reservationSoldQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Devueltas/canceladas</span>
+                                <strong th:text="${report.reservationReturnedQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Pendientes sin stock generadas</span>
+                                <strong th:text="${report.pendingCreatedQuantity}">0</strong>
                             </div>
                             <div class="report-kpi">
                                 <span>Diferencia stock</span>
@@ -315,7 +335,8 @@
                                 </div>
                                 <div class="report-bars">
                                     <div class="report-bar-row" th:each="row : ${report.flowRows}">
-                                        <span th:text="${row.label}">Vendidas</span>
+                                        <span th:title="${row.label}"
+                                              th:text="${row.label == 'Devueltas/canceladas' ? 'Devueltas/canc.' : row.label}">Vendidas</span>
                                         <div class="report-bar">
                                             <i th:classappend="${row.type}" th:style="${'width:' + row.width}"></i>
                                         </div>

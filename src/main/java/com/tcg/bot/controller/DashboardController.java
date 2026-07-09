@@ -58,6 +58,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Controller
 public class DashboardController {
@@ -101,6 +102,10 @@ public class DashboardController {
     private static final String ACTION_IN_STOCK = "En Stock";
     private static final String ACTION_RESERVED = "Reservada";
     private static final String ACTION_OUT_OF_STOCK = "Sin Stock";
+    private static final String ACTION_RESERVATION_RESERVED = "Reserva apartada";
+    private static final String ACTION_RESERVATION_CANCELLED = "Devuelta/cancelada";
+    private static final String ACTION_RESERVATION_DELIVERED = "Entrega reserva";
+    private static final String ACTION_PENDING_CREATED = "Pedido sin stock";
     private static final String FLEXIBLE_MATCH_NOTE = "[Cualquier edicion/condicion]";
     private static final String FLEXIBLE_MATCH_ALERT_SUFFIX = " (cualquier edicion/condicion)";
     private static final Locale ARGENTINA_LOCALE = new Locale("es", "AR");
@@ -747,9 +752,11 @@ public class DashboardController {
         }
 
         List<InventoryMovement> allMovements = List.of();
+        List<InventoryMovement> reportMovements = List.of();
 
         try {
-            allMovements = consolidateDailyMovements(inventoryService.getRecentMovements());
+            reportMovements = inventoryService.getRecentMovements();
+            allMovements = consolidateDailyMovements(reportMovements);
             var movements = allMovements;
             String countDate = selectedMovementDate.isBlank()
                     ? LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT)
@@ -783,7 +790,7 @@ public class DashboardController {
             model.addAttribute("movementCountLabel", "movimientos hoy");
         }
 
-        addCashRegisterModel(model, selectedCashDate, allMovements);
+        addCashRegisterModel(model, selectedCashDate, reportMovements);
         addMovementLockModel(model, movementsLocked, request);
         return "movements";
     }
@@ -1637,7 +1644,7 @@ public class DashboardController {
                         card,
                         previousQuantity,
                         currentQuantity,
-                        "Reserva cancelada"
+                        ACTION_RESERVATION_CANCELLED
                 ));
             }
 
@@ -1731,7 +1738,7 @@ public class DashboardController {
                         card,
                         quantity(card),
                         quantity(card),
-                        ACTION_RESERVED
+                        ACTION_RESERVATION_RESERVED
                 ));
             }
 
@@ -2000,7 +2007,7 @@ public class DashboardController {
                         card,
                         previousQuantity,
                         newQuantity,
-                        "Entrega reserva"
+                        ACTION_RESERVATION_DELIVERED
                 ));
                 LocalDateTime now = LocalDateTime.now(APP_ZONE);
                 inventoryService.appendCashSale(
@@ -2122,7 +2129,7 @@ public class DashboardController {
                             card,
                             previousQuantity,
                             newQuantity,
-                            "Entrega reserva"
+                            ACTION_RESERVATION_DELIVERED
                     ));
                     LocalDateTime now = LocalDateTime.now(APP_ZONE);
                     inventoryService.appendCashSale(
@@ -2287,6 +2294,8 @@ public class DashboardController {
             List<CardReservation> ledgerReservations = new ArrayList<>(inventoryService.getReservations());
             Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
             List<CardReservation> reservationsToAppend = new ArrayList<>();
+            List<InventoryMovement> movements = new ArrayList<>();
+            boolean logMovements = movementsModuleEnabled(request);
             int reserved = 0;
             int wanted = 0;
             int saved = 0;
@@ -2359,6 +2368,7 @@ public class DashboardController {
                 saved++;
 
                 if (canReserveFromStock) {
+                    int previousQuantity = quantity(existingCard);
                     int reservedQuantity = reservedQuantityForInventoryCard(
                             reservation,
                             existingCard,
@@ -2367,8 +2377,25 @@ public class DashboardController {
                     );
                     existingCard.setAction(stockActionForReservedState(quantity(existingCard), reservedQuantity));
                     cardsToWrite.put(existingCard.getRowIndex(), existingCard);
+                    if (logMovements) {
+                        movements.add(createMovement(
+                                "RESERVA",
+                                reservationLineQuantity,
+                                existingCard,
+                                previousQuantity,
+                                previousQuantity,
+                                ACTION_RESERVATION_RESERVED
+                        ));
+                    }
                     reserved += reservationLineQuantity;
                 } else {
+                    if (logMovements) {
+                        movements.add(createReservationActivityMovement(
+                                ACTION_PENDING_CREATED,
+                                reservationLineQuantity,
+                                reservation
+                        ));
+                    }
                     wanted += reservationLineQuantity;
                 }
             }
@@ -2400,6 +2427,9 @@ public class DashboardController {
             );
             invalidateReservationClientsCache();
             inventoryService.updateInventoryRows(cardsToWrite);
+            if (logMovements && !movements.isEmpty()) {
+                inventoryService.appendMovements(movements);
+            }
             refreshLatestUpdatesFromInventory();
             invalidateReservationsCache();
 
@@ -2527,6 +2557,28 @@ public class DashboardController {
 
         try {
             saveReservation(status, name, setName, setCode, collectorNumber, printing, condition, quantity, client, phone, dni, pickupDate, reservationNotes(notes, flexibleMatch));
+            if (movementsModuleEnabled(request)
+                    && CardReservation.STATUS_WANTED.equalsIgnoreCase(normalizedReservationStatus(status))) {
+                inventoryService.appendMovement(createReservationActivityMovement(
+                        ACTION_PENDING_CREATED,
+                        reservationQuantity(quantity),
+                        reservationProbe(
+                                CardReservation.STATUS_WANTED,
+                                name,
+                                setName,
+                                setCode,
+                                collectorNumber,
+                                printing,
+                                condition,
+                                normalizedReservationQuantity(quantity),
+                                client,
+                                phone,
+                                dni,
+                                pickupDate,
+                                reservationNotes(notes, flexibleMatch)
+                        )
+                ));
+            }
             redirectAttributes.addFlashAttribute("success", "Reserva guardada en el Sheet.");
         } catch (Exception e) {
             log.warn("No se pudo guardar la reserva.", e);
@@ -2706,11 +2758,17 @@ public class DashboardController {
                             reservedCard,
                             previousQuantity,
                             updatedQuantity,
-                            ACTION_RESERVED
+                            ACTION_RESERVATION_RESERVED
                     ));
                 }
 
                 refreshLatestUpdateForCard(reservedCard);
+            } else if (!removeFromStock && movementsModuleEnabled(request)) {
+                inventoryService.appendMovement(createReservationActivityMovement(
+                        ACTION_PENDING_CREATED,
+                        reservationQuantity,
+                        reservationProbe
+                ));
             }
 
             return ResponseEntity.ok(new ReservationCreateResponse(
@@ -3235,8 +3293,8 @@ public class DashboardController {
                         reservedCard,
                         previousQuantity,
                         stockQuantity,
-                        ACTION_RESERVED
-                    ));
+                        ACTION_RESERVATION_RESERVED
+                ));
             }
 
             StockSnapshot snapshot = reservedCard == null
@@ -3722,12 +3780,12 @@ public class DashboardController {
             openMonth = YearMonth.now(APP_ZONE);
         }
 
-        Map<String, List<InventoryMovement>> movementsByMonth = new LinkedHashMap<>();
+        Map<String, List<MovementDisplayRow>> movementsByMonth = new LinkedHashMap<>();
 
         for (InventoryMovement movement : movements) {
             String monthKey = monthKey(movement.getDate());
             movementsByMonth.computeIfAbsent(monthKey, key -> new ArrayList<>())
-                    .add(movement);
+                    .add(movementDisplayRow(movement));
         }
 
         List<MovementMonthGroup> groups = new ArrayList<>();
@@ -3786,7 +3844,10 @@ public class DashboardController {
                 normalizeKeyPart(movement.getSetCode()),
                 normalizeKeyPart(movement.getCollectorNumber()),
                 normalizeKeyPart(movement.getPrinting()),
-                movementDirection(movement)
+                movementDirection(movement),
+                isReservationActivityMovement(movement)
+                        ? normalizeKeyPart(movement.getSource())
+                        : ""
         );
     }
 
@@ -3912,7 +3973,8 @@ public class DashboardController {
             model.addAttribute("cashGroups", groupCashEntriesByMonth(entries, selectedDate));
             model.addAttribute("cashTodayTotal", formatCashTotal(totalSalesForDate(allEntries, today)));
             model.addAttribute("cashSelectedTotal", formatCashTotal(totalSalesForDate(entries, selectedDate)));
-            List<CashReportMonth> reportMonths = cashReportMonths(allEntries, allMovements);
+            List<CardReservation> activeReservations = consolidateDuplicateReservations(inventoryService.getReservations());
+            List<CashReportMonth> reportMonths = cashReportMonths(allEntries, allMovements, activeReservations);
             model.addAttribute("cashReportMonths", reportMonths);
             model.addAttribute("cashReportOverview", cashReportOverview(reportMonths));
         } catch (Exception e) {
@@ -4082,23 +4144,14 @@ public class DashboardController {
 
     private List<CashReportMonth> cashReportMonths(
             List<CashRegisterEntry> cashEntries,
-            List<InventoryMovement> movements
+            List<InventoryMovement> movements,
+            List<CardReservation> activeReservations
     ) {
         Map<String, Map<String, CashReportCardAccumulator>> cardsByMonth = new LinkedHashMap<>();
         Map<String, Map<String, Double>> salesByMonthAndDay = new LinkedHashMap<>();
 
         if (movements != null) {
             for (InventoryMovement movement : movements) {
-                int movementQuantity = Math.abs(signedQuantity(movement));
-                if (isReservationMovement(movement) && movementQuantity > 0) {
-                    String monthKey = monthKey(movement.getDate());
-                    CashReportCardAccumulator cardReport = cardsByMonth
-                            .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
-                            .computeIfAbsent(movementReportKey(movement), key -> CashReportCardAccumulator.fromMovement(movement));
-                    cardReport.addReserved(movementQuantity);
-                    continue;
-                }
-
                 int quantity = signedQuantity(movement);
 
                 if (quantity == 0) {
@@ -4109,6 +4162,28 @@ public class DashboardController {
                 CashReportCardAccumulator cardReport = cardsByMonth
                         .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
                         .computeIfAbsent(movementReportKey(movement), key -> CashReportCardAccumulator.fromMovement(movement));
+
+                if (isReservationReservedMovement(movement)) {
+                    cardReport.addReservedActivity(Math.abs(quantity));
+                    continue;
+                }
+
+                if (isReservationCancellationMovement(movement)) {
+                    cardReport.addReservationReturned(Math.abs(quantity));
+                    continue;
+                }
+
+                if (isPendingCreatedMovement(movement)) {
+                    cardReport.addPendingCreated(Math.abs(quantity));
+                    continue;
+                }
+
+                if (isReservationDeliveryMovement(movement)) {
+                    int sold = Math.abs(quantity);
+                    cardReport.addSold(sold);
+                    cardReport.addReservationSale(sold);
+                    continue;
+                }
 
                 if (quantity > 0) {
                     cardReport.addEntry(quantity);
@@ -4138,6 +4213,31 @@ public class DashboardController {
             }
         }
 
+        if (activeReservations != null) {
+            for (CardReservation reservation : activeReservations) {
+                boolean reserved = CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus());
+                boolean wanted = CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus());
+                if (!reserved && !wanted) {
+                    continue;
+                }
+
+                int quantity = reservationQuantity(reservation.getQuantity());
+                if (quantity <= 0) {
+                    continue;
+                }
+
+                String monthKey = reservationReportMonthKey(reservation);
+                CashReportCardAccumulator cardReport = cardsByMonth
+                        .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
+                        .computeIfAbsent(reservationReportKey(reservation), key -> CashReportCardAccumulator.fromReservation(reservation));
+                if (reserved) {
+                    cardReport.addActiveReserved(quantity);
+                } else {
+                    cardReport.addActivePending(quantity);
+                }
+            }
+        }
+
         Map<String, CashReportAccumulator> reports = new LinkedHashMap<>();
         for (var monthEntry : cardsByMonth.entrySet()) {
             CashReportAccumulator report = new CashReportAccumulator();
@@ -4161,7 +4261,18 @@ public class DashboardController {
                 .orElse(0);
 
         int maxMovementQuantity = reports.values().stream()
-                .mapToInt(report -> Math.max(Math.max(report.soldQuantity, report.enteredQuantity), report.reservedQuantity))
+                .mapToInt(report -> Stream.of(
+                                report.soldQuantity,
+                                report.enteredQuantity,
+                                report.activeReservedQuantity,
+                                report.reservedActivityQuantity,
+                                report.reservationSoldQuantity,
+                                report.reservationReturnedQuantity,
+                                report.pendingCreatedQuantity
+                        )
+                        .mapToInt(Integer::intValue)
+                        .max()
+                        .orElse(0))
                 .max()
                 .orElse(0);
 
@@ -4226,8 +4337,116 @@ public class DashboardController {
         );
     }
 
-    private boolean isReservationMovement(InventoryMovement movement) {
-        return movement != null && ACTION_RESERVED.equalsIgnoreCase(blankToEmpty(movement.getSource()));
+    private String reservationReportKey(CardReservation reservation) {
+        return reportCardKey(
+                reservation.getName(),
+                reservation.getSetName(),
+                reservation.getSetCode(),
+                reservation.getCollectorNumber(),
+                reservation.getPrinting()
+        );
+    }
+
+    private String reservationReportMonthKey(CardReservation reservation) {
+        String reservationDate = reservation == null ? "" : blankToEmpty(reservation.getReservationDate());
+        if (reservationDate.isBlank()) {
+            return monthKey(reservationDate);
+        }
+
+        try {
+            return YearMonth.from(LocalDateTime.parse(reservationDate, MOVEMENT_DATE_TIME_FORMAT)).toString();
+        } catch (RuntimeException e) {
+            return monthKey(reservationDate);
+        }
+    }
+
+    private boolean isReservationReservedMovement(InventoryMovement movement) {
+        String source = movement == null ? "" : blankToEmpty(movement.getSource());
+        return ACTION_RESERVED.equalsIgnoreCase(source)
+                || ACTION_RESERVATION_RESERVED.equalsIgnoreCase(source);
+    }
+
+    private boolean isReservationCancellationMovement(InventoryMovement movement) {
+        String source = movement == null ? "" : blankToEmpty(movement.getSource());
+        return ACTION_RESERVATION_CANCELLED.equalsIgnoreCase(source)
+                || "Reserva cancelada".equalsIgnoreCase(source);
+    }
+
+    private boolean isReservationDeliveryMovement(InventoryMovement movement) {
+        String source = movement == null ? "" : blankToEmpty(movement.getSource());
+        return ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(source)
+                || "Reserva entregada".equalsIgnoreCase(source);
+    }
+
+    private boolean isPendingCreatedMovement(InventoryMovement movement) {
+        String source = movement == null ? "" : blankToEmpty(movement.getSource());
+        return ACTION_PENDING_CREATED.equalsIgnoreCase(source);
+    }
+
+    private boolean isReservationActivityMovement(InventoryMovement movement) {
+        return isReservationReservedMovement(movement)
+                || isReservationCancellationMovement(movement)
+                || isReservationDeliveryMovement(movement)
+                || isPendingCreatedMovement(movement);
+    }
+
+    private MovementDisplayRow movementDisplayRow(InventoryMovement movement) {
+        return new MovementDisplayRow(
+                movement.getFormattedDate(),
+                movement.getTime(),
+                movement.getQuantity(),
+                movement.getName(),
+                movement.getSetName(),
+                movement.getSetCode(),
+                movement.getCollectorNumber(),
+                movement.getPrinting(),
+                movement.getNewStock(),
+                movementDisplaySource(movement.getSource()),
+                movementDisplayClass(movement.getSource())
+        );
+    }
+
+    private String movementDisplaySource(String source) {
+        if (ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(blankToEmpty(source))) {
+            return "Reserva entregada";
+        }
+
+        if ("Reserva cancelada".equalsIgnoreCase(blankToEmpty(source))) {
+            return ACTION_RESERVATION_CANCELLED;
+        }
+
+        if (ACTION_RESERVED.equalsIgnoreCase(blankToEmpty(source))) {
+            return ACTION_RESERVATION_RESERVED;
+        }
+
+        return blankToEmpty(source);
+    }
+
+    private String movementDisplayClass(String source) {
+        String normalizedSource = blankToEmpty(source);
+        if (ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(normalizedSource)
+                || "Reserva entregada".equalsIgnoreCase(normalizedSource)) {
+            return "entrega-reserva";
+        }
+
+        if (ACTION_RESERVATION_CANCELLED.equalsIgnoreCase(normalizedSource)
+                || "Reserva cancelada".equalsIgnoreCase(normalizedSource)) {
+            return "devuelta-cancelada";
+        }
+
+        if (ACTION_RESERVED.equalsIgnoreCase(normalizedSource)
+                || ACTION_RESERVATION_RESERVED.equalsIgnoreCase(normalizedSource)) {
+            return "reserva-apartada";
+        }
+
+        return movementSourceClass(normalizedSource);
+    }
+
+    private String movementSourceClass(String source) {
+        return blankToEmpty(source)
+                .toLowerCase(ARGENTINA_LOCALE)
+                .replace(" ", "-")
+                .replace("/", "-");
     }
 
     private String reportCardKey(
@@ -4396,7 +4615,7 @@ public class DashboardController {
                                 newCard,
                                 0,
                                 quantity,
-                                ACTION_RESERVED
+                                ACTION_RESERVATION_RESERVED
                         ));
                     }
                     added++;
@@ -4431,7 +4650,7 @@ public class DashboardController {
                             existingCard,
                             previousQuantity,
                             updatedQuantity,
-                            ACTION_RESERVED
+                            ACTION_RESERVATION_RESERVED
                     ));
                 }
                 updated++;
@@ -7385,6 +7604,29 @@ public class DashboardController {
         );
     }
 
+    private InventoryMovement createReservationActivityMovement(
+            String source,
+            int quantity,
+            CardReservation reservation
+    ) {
+        LocalDateTime now = LocalDateTime.now(APP_ZONE);
+        return new InventoryMovement(
+                now.format(MOVEMENT_DATE_TIME_FORMAT),
+                now.format(MOVEMENT_DATE_FORMAT),
+                now.format(MOVEMENT_TIME_FORMAT),
+                "RESERVA",
+                String.valueOf(Math.max(quantity, 1)),
+                blankToEmpty(reservation.getName()),
+                blankToEmpty(reservation.getSetName()),
+                blankToEmpty(reservation.getSetCode()),
+                blankToEmpty(reservation.getCollectorNumber()),
+                blankToEmpty(reservation.getPrinting()),
+                "0",
+                "0",
+                source
+        );
+    }
+
     private void addBaseModel(Model model, String query) {
         model.addAttribute("query", query == null ? "" : query);
         model.addAttribute("updates", List.of());
@@ -8580,7 +8822,22 @@ public class DashboardController {
             String label,
             int count,
             boolean open,
-            List<InventoryMovement> movements
+            List<MovementDisplayRow> movements
+    ) {
+    }
+
+    public record MovementDisplayRow(
+            String formattedDate,
+            String time,
+            String quantity,
+            String name,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String printing,
+            String newStock,
+            String displaySource,
+            String sourceClass
     ) {
     }
 
@@ -8618,14 +8875,20 @@ public class DashboardController {
             double totalSalesValue,
             int soldQuantity,
             int enteredQuantity,
-            int reservedQuantity,
+            int activeReservedQuantity,
+            int activePendingQuantity,
+            int reservedActivityQuantity,
+            int reservationSoldQuantity,
+            int reservationReturnedQuantity,
+            int pendingCreatedQuantity,
             int balanceQuantity,
             int activeDays,
             String averageTicket,
             String salesWidth,
             String soldWidth,
             String enteredWidth,
-            String reservedWidth,
+            String activeReservedWidth,
+            String reservedActivityWidth,
             List<CashReportFlowRow> flowRows,
             List<CashReportDayBar> dayBars,
             List<CashReportCard> topCards
@@ -8673,7 +8936,12 @@ public class DashboardController {
         private double salesTotal;
         private int soldQuantity;
         private int enteredQuantity;
-        private int reservedQuantity;
+        private int activeReservedQuantity;
+        private int activePendingQuantity;
+        private int reservedActivityQuantity;
+        private int reservationSoldQuantity;
+        private int reservationReturnedQuantity;
+        private int pendingCreatedQuantity;
         private final Map<String, Double> salesByDay = new LinkedHashMap<>();
         private final List<CashReportCardAccumulator> cards = new ArrayList<>();
 
@@ -8681,7 +8949,12 @@ public class DashboardController {
             salesTotal += cardReport.salesTotal;
             soldQuantity += cardReport.effectiveSoldQuantity();
             enteredQuantity += cardReport.enteredQuantity;
-            reservedQuantity += cardReport.reservedQuantity;
+            activeReservedQuantity += cardReport.activeReservedQuantity;
+            activePendingQuantity += cardReport.activePendingQuantity;
+            reservedActivityQuantity += cardReport.reservedActivityQuantity;
+            reservationSoldQuantity += cardReport.reservationSoldQuantity;
+            reservationReturnedQuantity += cardReport.reservationReturnedQuantity;
+            pendingCreatedQuantity += cardReport.pendingCreatedQuantity;
             cards.add(cardReport);
         }
 
@@ -8708,14 +8981,20 @@ public class DashboardController {
                     salesTotal,
                     soldQuantity,
                     enteredQuantity,
-                    reservedQuantity,
+                    activeReservedQuantity,
+                    activePendingQuantity,
+                    reservedActivityQuantity,
+                    reservationSoldQuantity,
+                    reservationReturnedQuantity,
+                    pendingCreatedQuantity,
                     enteredQuantity - soldQuantity,
                     salesByDay.size(),
                     formatCashTotal(salesTotal / Math.max(soldQuantity, 1)),
                     percent(salesTotal, maxSales),
                     percent(soldQuantity, maxMovementQuantity),
                     percent(enteredQuantity, maxMovementQuantity),
-                    percent(reservedQuantity, maxMovementQuantity),
+                    percent(activeReservedQuantity, maxMovementQuantity),
+                    percent(reservedActivityQuantity, maxMovementQuantity),
                     flowRows(maxMovementQuantity),
                     dayBars(),
                     topCards()
@@ -8726,7 +9005,10 @@ public class DashboardController {
             return List.of(
                     new CashReportFlowRow("Vendidas", soldQuantity, percent(soldQuantity, maxMovementQuantity), "sold"),
                     new CashReportFlowRow("Ingresadas", enteredQuantity, percent(enteredQuantity, maxMovementQuantity), "entered"),
-                    new CashReportFlowRow("Reservadas", reservedQuantity, percent(reservedQuantity, maxMovementQuantity), "reserved")
+                    new CashReportFlowRow("Apartadas mes", reservedActivityQuantity, percent(reservedActivityQuantity, maxMovementQuantity), "reserved"),
+                    new CashReportFlowRow("Vendidas reserva", reservationSoldQuantity, percent(reservationSoldQuantity, maxMovementQuantity), "sold"),
+                    new CashReportFlowRow("Devueltas/canceladas", reservationReturnedQuantity, percent(reservationReturnedQuantity, maxMovementQuantity), "entered"),
+                    new CashReportFlowRow("Pendientes sin stock", pendingCreatedQuantity, percent(pendingCreatedQuantity, maxMovementQuantity), "reserved")
             );
         }
 
@@ -8780,7 +9062,12 @@ public class DashboardController {
         private int soldQuantity;
         private int saleQuantity;
         private int enteredQuantity;
-        private int reservedQuantity;
+        private int activeReservedQuantity;
+        private int activePendingQuantity;
+        private int reservedActivityQuantity;
+        private int reservationSoldQuantity;
+        private int reservationReturnedQuantity;
+        private int pendingCreatedQuantity;
 
         static CashReportCardAccumulator fromMovement(InventoryMovement movement) {
             CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
@@ -8800,6 +9087,15 @@ public class DashboardController {
             return accumulator;
         }
 
+        static CashReportCardAccumulator fromReservation(CardReservation reservation) {
+            CashReportCardAccumulator accumulator = new CashReportCardAccumulator();
+            accumulator.name = blankToEmptyStatic(reservation.getName());
+            accumulator.setCode = blankToEmptyStatic(reservation.getSetCode());
+            accumulator.collectorNumber = blankToEmptyStatic(reservation.getCollectorNumber());
+            accumulator.printing = blankToEmptyStatic(reservation.getPrinting());
+            return accumulator;
+        }
+
         void addSale(CashRegisterEntry entry, double total) {
             salesTotal += total;
             saleQuantity += parsePositiveInteger(entry.getQuantity());
@@ -8813,12 +9109,40 @@ public class DashboardController {
             enteredQuantity += quantity;
         }
 
-        void addReserved(int quantity) {
-            reservedQuantity += quantity;
+        void addActiveReserved(int quantity) {
+            activeReservedQuantity += quantity;
+        }
+
+        void addActivePending(int quantity) {
+            activePendingQuantity += quantity;
+        }
+
+        void addReservedActivity(int quantity) {
+            reservedActivityQuantity += quantity;
+        }
+
+        void addReservationSale(int quantity) {
+            reservationSoldQuantity += quantity;
+        }
+
+        void addReservationReturned(int quantity) {
+            reservationReturnedQuantity += quantity;
+        }
+
+        void addPendingCreated(int quantity) {
+            pendingCreatedQuantity += quantity;
         }
 
         boolean hasEntryAndSale() {
-            return soldQuantity > 0 || enteredQuantity > 0 || reservedQuantity > 0 || salesTotal > 0;
+            return soldQuantity > 0
+                    || enteredQuantity > 0
+                    || activeReservedQuantity > 0
+                    || activePendingQuantity > 0
+                    || reservedActivityQuantity > 0
+                    || reservationSoldQuantity > 0
+                    || reservationReturnedQuantity > 0
+                    || pendingCreatedQuantity > 0
+                    || salesTotal > 0;
         }
 
         int effectiveSoldQuantity() {
@@ -8840,6 +9164,7 @@ public class DashboardController {
         private String type;
         private int quantity;
         private String newStock;
+        private String source;
         private boolean initialized;
 
         MovementAccumulator(InventoryMovement firstMovement) {
@@ -8858,6 +9183,9 @@ public class DashboardController {
             time = movement.getTime();
             type = quantity < 0 ? "SALIDA" : "ENTRADA";
             newStock = movement.getNewStock();
+            if (source == null || source.isBlank() || isReservationActivityMovement(movement)) {
+                source = movement.getSource();
+            }
         }
 
         InventoryMovement toMovement() {
@@ -8874,7 +9202,9 @@ public class DashboardController {
                     firstMovement.getPrinting(),
                     firstMovement.getPreviousStock(),
                     newStock,
-                    stockAction(quantity)
+                    isReservationActivityMovement(firstMovement)
+                            ? blankToEmpty(source)
+                            : stockAction(quantity)
             );
         }
     }
