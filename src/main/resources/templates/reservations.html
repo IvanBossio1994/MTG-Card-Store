@@ -244,6 +244,7 @@
                 <summary>
                     <span class="reservation-customer">
                         <strong th:text="${group.client}">Cliente</strong>
+                        <small th:text="${group.formattedPoints + ' puntos'}">0 puntos</small>
                     </span>
                     <span class="reservation-group-meta">
                         <span th:text="${group.phone + ' | DNI ' + group.dni}">Telefono | DNI</span>
@@ -348,8 +349,12 @@
                                       data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
                                       th:attr="data-confirm-title=${reservation.partialDelivery ? 'Entrega parcial' : 'Entregar reserva'},
                                                data-confirm-message=${reservation.partialDelivery ? 'Se va a entregar solo el stock disponible y quedara el resto reservado.' : 'Se va a entregar esta reserva y descontar stock.'},
-                                               data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'}">
+                                               data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'},
+                                               data-confirm-points=${group.formattedPoints},
+                                               data-confirm-points-cost=${reservation.formattedDeliverablePointsCost},
+                                               data-confirm-points-enabled=${reservation.payableWithPoints}">
                                     <input type="hidden" name="reservationId" th:value="${reservation.id}">
+                                    <input type="hidden" name="payWithPoints" value="false">
                                     <button class="reservation-deliver-button"
                                             th:classappend="${reservation.partialDelivery} ? ' partial'"
                                             type="submit"
@@ -385,8 +390,12 @@
                                       data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
                                       th:attr="data-confirm-title=${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'},
                                                data-confirm-message=${group.availableQuantity < group.totalQuantity ? 'Se van a entregar solo las cartas disponibles y quedara el resto reservado.' : 'Se van a entregar todas las cartas disponibles de esta reserva.'},
-                                               data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'}">
+                                               data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'},
+                                               data-confirm-points=${group.formattedPoints},
+                                               data-confirm-points-cost=${group.formattedDeliverablePointsCost},
+                                               data-confirm-points-enabled=${group.payableWithPoints}">
                                     <input type="hidden" name="groupKey" th:value="${group.key}">
+                                    <input type="hidden" name="payWithPoints" value="false">
                                     <button class="reservation-deliver-button"
                                             th:classappend="${group.availableQuantity < group.totalQuantity} ? ' partial'"
                                             type="submit"

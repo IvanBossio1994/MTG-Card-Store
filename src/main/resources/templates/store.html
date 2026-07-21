@@ -87,6 +87,19 @@
             </div>
         </section>
 
+        <section class="settings-card">
+            <h2>Logica de puntos</h2>
+            <p class="card-help">Define cuanto credito de compra representa 1 punto cargado manualmente.</p>
+            <div class="pricing-config-grid">
+                <div class="store-field">
+                    <label for="pesosPerPoint">1 punto equivale a</label>
+                    <input id="pesosPerPoint" name="pesosPerPoint" type="number" min="0.01" step="0.01"
+                           th:value="${pesosPerPoint}" required>
+                    <p class="field-help">Ej: 1 para que 1 punto pague $1, o 100 para que 1 punto pague $100.</p>
+                </div>
+            </div>
+        </section>
+
         <section class="settings-card" th:if="${whatsappSettingsVisible}">
             <h2>WhatsApp</h2>
             <p class="card-help">Conecta WhatsApp Cloud API para recibir consultas y pedidos desde el telefono de la tienda.</p>

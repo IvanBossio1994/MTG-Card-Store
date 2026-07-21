@@ -1,6 +1,7 @@
 package com.tcg.bot.service;
 
 import com.tcg.bot.model.ReservationClient;
+import com.tcg.bot.model.PointMovement;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -102,5 +103,34 @@ class GoogleSheetsServiceMigrationTests {
         assertThat(client.getNotes()).isEqualTo("prueba 7");
         assertThat(client.getPoints()).isEqualTo("125000");
         assertThat(client.getUpdatedAt()).isEqualTo("2026-07-20 12:30:00");
+    }
+
+    @Test
+    void pointMovementFromRowReadsPointsLedgerColumns() throws Exception {
+        Method method = GoogleSheetsService.class.getDeclaredMethod("pointMovementFromRow", List.class);
+        method.setAccessible(true);
+
+        PointMovement movement = (PointMovement) method.invoke(
+                service,
+                List.of(
+                        "2026-07-21",
+                        "16:30:00",
+                        "Jorge Macri",
+                        "3777777",
+                        "3666666",
+                        "-85",
+                        "100",
+                        "15",
+                        "Pago con puntos",
+                        "Entrega de reserva"
+                )
+        );
+
+        assertThat(movement.getFormattedDate()).isEqualTo("21/07/2026");
+        assertThat(movement.getClient()).isEqualTo("Jorge Macri");
+        assertThat(movement.getChange()).isEqualTo("-85");
+        assertThat(movement.getPreviousPoints()).isEqualTo("100");
+        assertThat(movement.getNewPoints()).isEqualTo("15");
+        assertThat(movement.getSource()).isEqualTo("Pago con puntos");
     }
 }

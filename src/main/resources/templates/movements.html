@@ -23,6 +23,7 @@
         <p class="alert error" th:if="${error}" th:text="${error}"></p>
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
         <p class="alert error" th:if="${cashError}" th:text="${cashError}"></p>
+        <p class="alert error" th:if="${pointError}" th:text="${pointError}"></p>
 
         <div class="movement-tab-list" role="tablist" aria-label="Secciones de movimientos">
             <button th:classappend="${activeTab == 'movements'} ? ' active' : ''"
@@ -33,6 +34,10 @@
                     class="movement-tab-button" type="button" role="tab"
                     th:attr="aria-selected=${activeTab == 'cash'}"
                     data-tab-target="cash-tab">Caja</button>
+            <button th:classappend="${activeTab == 'points'} ? ' active' : ''"
+                    class="movement-tab-button" type="button" role="tab"
+                    th:attr="aria-selected=${activeTab == 'points'}"
+                    data-tab-target="points-tab">Puntos</button>
             <button th:classappend="${activeTab == 'report'} ? ' active' : ''"
                     class="movement-tab-button" type="button" role="tab"
                     th:attr="aria-selected=${activeTab == 'report'}"
@@ -223,6 +228,93 @@
                                 </table>
                             </div>
                         </details>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <div id="points-tab" class="movement-tab-panel" role="tabpanel"
+             th:classappend="${activeTab == 'points'} ? ' active' : ''"
+             th:hidden="${activeTab != 'points'}">
+            <div class="section-head movement-tabs-head">
+                <div>
+                    <p class="eyebrow">Puntos</p>
+                    <h2 th:text="${pointMovementCount + ' ' + pointMovementCountLabel}">0 movimientos de puntos hoy</h2>
+                </div>
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar puntos.">
+                    <input type="hidden" name="tab" value="points">
+                    <input type="hidden" name="pointFilter" value="true">
+                    <div class="movement-date-field">
+                        <div class="movement-date-control">
+                            <label for="point-date">Fecha</label>
+                            <input id="point-date" name="pointDate" type="date" th:value="${selectedPointDate}"
+                                   aria-describedby="point-date-error">
+                        </div>
+                        <p id="point-date-error" class="field-error"
+                           th:hidden="${pointDateError == null}"
+                           th:text="${pointDateError ?: 'Elegi una fecha para filtrar puntos.'}">
+                            Elegi una fecha para filtrar puntos.
+                        </p>
+                    </div>
+                    <button class="secondary-button" type="submit">Filtrar</button>
+                    <a class="clear-search-button" th:if="${selectedPointDate != null && selectedPointDate != ''}"
+                       th:href="@{/movimientos(tab='points', movementDate=${selectedMovementDate}, cashDate=${selectedCashDate})}" aria-label="Borrar filtro" title="Borrar filtro">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M14.5 3.5 21 10l-2 2-6.5-6.5 2-2Z"/>
+                            <path d="M11.8 6.2 17.8 12.2 10.8 19.2H4.5L3 17.7l8.8-11.5Z"/>
+                            <path d="M6 19.2v-4.4"/>
+                            <path d="M9 19.2v-6.4"/>
+                        </svg>
+                    </a>
+                </form>
+            </div>
+
+            <div class="placeholder" th:if="${#lists.isEmpty(pointMovementGroups)}">
+                <strong>No hay movimientos de puntos</strong>
+                <p>Cuando edites puntos manualmente o una reserva se pague con puntos, van a aparecer aca.</p>
+            </div>
+
+            <div class="movement-month-list point-month-list" th:unless="${#lists.isEmpty(pointMovementGroups)}">
+                <details class="movement-month point-month" th:each="group : ${pointMovementGroups}" th:open="${group.open}">
+                    <summary>
+                        <span th:text="${group.label}">Junio 2026</span>
+                        <strong th:text="${group.count + ' movimientos'}">12 movimientos</strong>
+                    </summary>
+                    <div class="table-wrap movement-table-wrap point-table-wrap">
+                        <table class="movement-table point-table">
+                            <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Cliente</th>
+                                <th>Telefono</th>
+                                <th>DNI</th>
+                                <th>Cambio</th>
+                                <th>Anterior</th>
+                                <th>Nuevo</th>
+                                <th>Origen</th>
+                                <th>Notas</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="movement : ${group.movements}">
+                                <td th:text="${movement.formattedDate != null && movement.formattedDate != '' ? movement.formattedDate : '-'}">01/06/2026</td>
+                                <td th:text="${movement.time != null && movement.time != '' ? movement.time : '-'}">13:00:00</td>
+                                <td th:text="${movement.client != null && movement.client != '' ? movement.client : '-'}">Cliente</td>
+                                <td th:text="${movement.phone != null && movement.phone != '' ? movement.phone : '-'}">123</td>
+                                <td th:text="${movement.dni != null && movement.dni != '' ? movement.dni : '-'}">123</td>
+                                <td>
+                                    <span class="status point-change-status"
+                                          th:classappend="${movement.change != null && #strings.startsWith(movement.change, '-') ? ' salida' : ' entrada'}"
+                                          th:text="${movement.change != null && movement.change != '' ? movement.change : '0'}">+10</span>
+                                </td>
+                                <td th:text="${movement.previousPoints != null && movement.previousPoints != '' ? movement.previousPoints : '0'}">0</td>
+                                <td th:text="${movement.newPoints != null && movement.newPoints != '' ? movement.newPoints : '0'}">0</td>
+                                <td th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Carga manual</td>
+                                <td th:text="${movement.notes != null && movement.notes != '' ? movement.notes : '-'}">-</td>
+                            </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </details>
             </div>

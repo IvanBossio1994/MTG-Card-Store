@@ -49,6 +49,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const message = appConfirmDialog.querySelector("#app-confirm-message");
         const total = appConfirmDialog.querySelector("#app-confirm-total");
         const totalValue = appConfirmDialog.querySelector("[data-app-confirm-total-value]");
+        const points = appConfirmDialog.querySelector("#app-confirm-points");
+        const pointsInput = appConfirmDialog.querySelector("[data-app-confirm-points-input]");
+        const pointsLabel = appConfirmDialog.querySelector("[data-app-confirm-points-label]");
+        const pointsValue = appConfirmDialog.querySelector("[data-app-confirm-points-value]");
         const confirmButton = appConfirmDialog.querySelector("[data-app-confirm-accept]");
         const cancelButtons = appConfirmDialog.querySelectorAll("[data-app-confirm-cancel]");
 
@@ -64,6 +68,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const totalText = form.dataset.confirmTotal || "";
             total.hidden = totalText === "" || totalText === "-";
             totalValue.textContent = totalText;
+        }
+
+        if (points && pointsInput && pointsLabel && pointsValue) {
+            const pointsCost = form.dataset.confirmPointsCost || "";
+            const availablePoints = form.dataset.confirmPoints || "0";
+            const pointsEnabled = form.dataset.confirmPointsEnabled === "true";
+            const showPoints = pointsCost !== "" && pointsCost !== "-";
+            points.hidden = !showPoints;
+            points.classList.toggle("disabled", !pointsEnabled);
+            pointsInput.checked = false;
+            pointsInput.disabled = !pointsEnabled;
+            pointsLabel.textContent = `Pagar con puntos (${availablePoints} disponibles)`;
+            pointsValue.textContent = `${pointsCost} puntos`;
         }
 
         appConfirmDialog.hidden = false;
@@ -87,7 +104,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 resolve(value);
             };
 
-            const confirm = () => finish(true);
+            const confirm = () => {
+                const payWithPoints = pointsInput?.checked === true;
+                const payWithPointsField = form.querySelector("input[name='payWithPoints']");
+                if (payWithPointsField) {
+                    payWithPointsField.value = payWithPoints ? "true" : "false";
+                }
+                finish(true);
+            };
             const cancel = () => finish(false);
             const backdropCancel = event => {
                 if (event.target === appConfirmDialog) {

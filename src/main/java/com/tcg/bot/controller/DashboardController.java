@@ -5,6 +5,7 @@ import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.PointMovement;
 import com.tcg.bot.model.ReservationClient;
 import com.tcg.bot.model.ReservationConditionStock;
 import com.tcg.bot.service.CardKingdomApiService;
@@ -702,8 +703,10 @@ public class DashboardController {
     public String movements(
             @RequestParam(name = "movementDate", required = false) String movementDate,
             @RequestParam(name = "cashDate", required = false) String cashDate,
+            @RequestParam(name = "pointDate", required = false) String pointDate,
             @RequestParam(name = "movementFilter", required = false) String movementFilter,
             @RequestParam(name = "cashFilter", required = false) String cashFilter,
+            @RequestParam(name = "pointFilter", required = false) String pointFilter,
             @RequestParam(name = "tab", required = false) String tab,
             HttpServletRequest request,
             Model model
@@ -713,10 +716,12 @@ public class DashboardController {
 
         String selectedMovementDate = movementDate == null ? "" : movementDate.trim();
         String selectedCashDate = cashDate == null ? "" : cashDate.trim();
-        String activeTab = activeMovementTab(tab, selectedMovementDate, selectedCashDate);
+        String selectedPointDate = pointDate == null ? "" : pointDate.trim();
+        String activeTab = activeMovementTab(tab, selectedMovementDate, selectedCashDate, selectedPointDate);
 
         model.addAttribute("selectedMovementDate", selectedMovementDate);
         model.addAttribute("selectedCashDate", selectedCashDate);
+        model.addAttribute("selectedPointDate", selectedPointDate);
         model.addAttribute("activeTab", activeTab);
 
         if (movementsLocked) {
@@ -732,7 +737,13 @@ public class DashboardController {
             model.addAttribute("cashDateError", "Elegi una fecha para filtrar caja.");
         }
 
-        if (model.containsAttribute("movementDateError") || model.containsAttribute("cashDateError")) {
+        if ("true".equalsIgnoreCase(pointFilter) && selectedPointDate.isBlank()) {
+            model.addAttribute("pointDateError", "Elegi una fecha para filtrar puntos.");
+        }
+
+        if (model.containsAttribute("movementDateError")
+                || model.containsAttribute("cashDateError")
+                || model.containsAttribute("pointDateError")) {
             model.addAttribute("movements", List.of());
             model.addAttribute("movementGroups", List.of());
             model.addAttribute("movementCount", 0);
@@ -743,6 +754,10 @@ public class DashboardController {
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
             model.addAttribute("cashReportOverview", CashReportOverview.empty());
+            model.addAttribute("pointMovements", List.of());
+            model.addAttribute("pointMovementGroups", List.of());
+            model.addAttribute("pointMovementCount", 0);
+            model.addAttribute("pointMovementCountLabel", "Movimientos de puntos hoy");
             addMovementLockModel(model, movementsLocked, request);
             return "movements";
         }
@@ -785,6 +800,7 @@ public class DashboardController {
         }
 
         addCashRegisterModel(model, selectedCashDate, allMovements);
+        addPointMovementsModel(model, selectedPointDate);
         addMovementLockModel(model, movementsLocked, request);
         return "movements";
     }
@@ -807,6 +823,10 @@ public class DashboardController {
         model.addAttribute("cashSelectedTotal", "0");
         model.addAttribute("cashReportMonths", List.of());
         model.addAttribute("cashReportOverview", CashReportOverview.empty());
+        model.addAttribute("pointMovements", List.of());
+        model.addAttribute("pointMovementGroups", List.of());
+        model.addAttribute("pointMovementCount", 0);
+        model.addAttribute("pointMovementCountLabel", "Movimientos de puntos hoy");
         addMovementLockModel(model, true, request);
     }
 
@@ -883,6 +903,7 @@ public class DashboardController {
 
             client.setUpdatedAt(LocalDateTime.now(APP_ZONE).format(MOVEMENT_DATE_TIME_FORMAT));
             inventoryService.upsertReservationClient(client);
+            appendPointMovementIfChanged(client, 0, parseNonNegativeLong(client.getPoints()), "Carga manual", "Alta de cliente");
             invalidateReservationClientsCache();
             redirectAttributes.addFlashAttribute("success", "Cliente guardado.");
         } catch (Exception e) {
@@ -921,14 +942,20 @@ public class DashboardController {
             }
 
             List<ReservationClient> clients = inventoryService.getReservationClients();
+            ReservationClient existingClient = clients.stream()
+                    .filter(existing -> existing.getRowIndex() == rowIndex)
+                    .findFirst()
+                    .orElse(null);
             String duplicateError = duplicateClientError(clients, client, rowIndex);
             if (duplicateError != null) {
                 redirectAttributes.addFlashAttribute("clientError", duplicateError);
                 return "redirect:/clientes?edit=" + rowIndex;
             }
 
+            long previousPoints = existingClient == null ? 0 : parseNonNegativeLong(existingClient.getPoints());
             client.setUpdatedAt(LocalDateTime.now(APP_ZONE).format(MOVEMENT_DATE_TIME_FORMAT));
             inventoryService.updateReservationClient(rowIndex, client);
+            appendPointMovementIfChanged(client, previousPoints, parseNonNegativeLong(client.getPoints()), "Edicion manual", "Edicion de cliente");
             invalidateReservationClientsCache();
             redirectAttributes.addFlashAttribute("success", "Cliente actualizado.");
         } catch (Exception e) {
@@ -1007,8 +1034,9 @@ public class DashboardController {
                     inventoryCards,
                     priceList == null || priceList.getData() == null ? List.of() : priceList.getData()
             );
+            Map<String, ReservationClient> clientsByIdentity = reservationClientsByIdentity(inventoryService.getReservationClients());
             model.addAttribute("reservations", reservations);
-            model.addAttribute("reservationGroups", reservationGroups(reservations, openGroup));
+            model.addAttribute("reservationGroups", reservationGroups(reservations, openGroup, clientsByIdentity));
             model.addAttribute("reservationCount", reservations.size());
             model.addAttribute("reservedCount", reservations.stream()
                     .filter(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
@@ -1207,7 +1235,37 @@ public class DashboardController {
                 .toList();
     }
 
-    private List<ReservationGroupView> reservationGroups(List<CardReservation> reservations, String openGroup) {
+    private Map<String, ReservationClient> reservationClientsByIdentity(List<ReservationClient> clients) {
+        Map<String, ReservationClient> clientsByIdentity = new LinkedHashMap<>();
+        for (ReservationClient client : clients == null ? List.<ReservationClient>of() : clients) {
+            String key = reservationClientIdentityKey(client.getClient(), client.getPhone(), client.getDni());
+            if (!key.isBlank()) {
+                clientsByIdentity.putIfAbsent(key, client);
+            }
+        }
+        return clientsByIdentity;
+    }
+
+    private long reservationClientPoints(
+            String client,
+            String phone,
+            String dni,
+            Map<String, ReservationClient> clientsByIdentity
+    ) {
+        String key = reservationClientIdentityKey(client, phone, dni);
+        if (key.isBlank()) {
+            return 0;
+        }
+
+        ReservationClient savedClient = clientsByIdentity == null ? null : clientsByIdentity.get(key);
+        return savedClient == null ? 0 : parseNonNegativeLong(savedClient.getPoints());
+    }
+
+    private List<ReservationGroupView> reservationGroups(
+            List<CardReservation> reservations,
+            String openGroup,
+            Map<String, ReservationClient> clientsByIdentity
+    ) {
         if (reservations == null || reservations.isEmpty()) {
             return List.of();
         }
@@ -1238,6 +1296,15 @@ public class DashboardController {
             double deliverableTotalPrice = customerReservations.stream()
                     .mapToDouble(CardReservation::getDeliverableTotalPrice)
                     .sum();
+            long clientPoints = reservationClientPoints(first.getClient(), first.getPhone(), first.getDni(), clientsByIdentity);
+            long deliverablePointsCost = pointsCost(deliverableTotalPrice);
+
+            for (CardReservation reservation : customerReservations) {
+                long reservationPointsCost = pointsCost(reservation.getDeliverableTotalPrice());
+                reservation.setDeliverablePointsCost(reservationPointsCost);
+                reservation.setFormattedDeliverablePointsCost(formatPoints(reservationPointsCost));
+                reservation.setPayableWithPoints(clientPoints >= reservationPointsCost);
+            }
 
             groups.add(new ReservationGroupView(
                     entry.getKey(),
@@ -1253,6 +1320,11 @@ public class DashboardController {
                     reservationGroupStatusLabel(customerReservations, availableQuantity, totalQuantity),
                     formatCashTotal(totalPrice),
                     formatCashTotal(deliverableTotalPrice),
+                    deliverablePointsCost,
+                    formatPoints(deliverablePointsCost),
+                    clientPoints,
+                    formatPoints(clientPoints),
+                    clientPoints >= deliverablePointsCost,
                     first.getFormattedReservationDate(),
                     first.getFormattedPickupDate(),
                     blankToEmpty(first.getPickupDate()),
@@ -1848,6 +1920,12 @@ public class DashboardController {
         return parsedPrice == null ? 0 : parsedPrice * quantity;
     }
 
+    private long pointsCost(double localTotal) {
+        return pricingSettingsService == null
+                ? Math.max((long) Math.ceil(localTotal), 0)
+                : pricingSettingsService.pointsCostForPrice(localTotal);
+    }
+
     private int returnReservedCardToStock(CardReservation reservation, HttpServletRequest request) throws Exception {
         return returnReservedCardToStock(reservation, request, inventoryService.getInventoryCards());
     }
@@ -2214,6 +2292,7 @@ public class DashboardController {
     @PostMapping("/reservas/entregar")
     public String deliverReservation(
             @RequestParam("reservationId") String reservationId,
+            @RequestParam(name = "payWithPoints", required = false, defaultValue = "false") boolean payWithPoints,
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
@@ -2267,6 +2346,11 @@ public class DashboardController {
                 redirectAttributes.addFlashAttribute("error", "No hay stock disponible para entregar esta reserva.");
                 return "redirect:/reservas";
             }
+            long pointsCost = pointsCost(lineTotalPrice(card.getLocalPrice(), quantityToDeliver));
+            if (payWithPoints && !clientHasPoints(reservation.getClient(), reservation.getPhone(), reservation.getDni(), pointsCost)) {
+                redirectAttributes.addFlashAttribute("error", "El cliente no tiene puntos suficientes para pagar esta reserva.");
+                return "redirect:/reservas";
+            }
 
             int newQuantity = previousQuantity - quantityToDeliver;
             int remainingReservationQuantity = requestedQuantity - quantityToDeliver;
@@ -2297,13 +2381,17 @@ public class DashboardController {
                         newQuantity,
                         "Entrega reserva"
                 ));
-                LocalDateTime now = LocalDateTime.now(APP_ZONE);
-                inventoryService.appendCashSale(
-                        now.format(MOVEMENT_DATE_FORMAT),
-                        now.format(MOVEMENT_TIME_FORMAT),
-                        card,
-                        quantityToDeliver
-                );
+                if (payWithPoints) {
+                    deductSalePoints(reservation.getClient(), reservation.getPhone(), reservation.getDni(), pointsCost);
+                } else {
+                    LocalDateTime now = LocalDateTime.now(APP_ZONE);
+                    inventoryService.appendCashSale(
+                            now.format(MOVEMENT_DATE_FORMAT),
+                            now.format(MOVEMENT_TIME_FORMAT),
+                            card,
+                            quantityToDeliver
+                    );
+                }
             }
 
             if (remainingReservationQuantity > 0) {
@@ -2334,6 +2422,7 @@ public class DashboardController {
     @PostMapping("/reservas/entregar-grupo")
     public String deliverReservationGroup(
             @RequestParam("groupKey") String groupKey,
+            @RequestParam(name = "payWithPoints", required = false, defaultValue = "false") boolean payWithPoints,
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
@@ -2364,6 +2453,17 @@ public class DashboardController {
             Map<Integer, InventoryCard> cardsByRow = new HashMap<>();
             for (InventoryCard card : inventoryCards) {
                 cardsByRow.put(card.getRowIndex(), card);
+            }
+            long pointsCost = groupDeliveryPointsCost(reservations, inventoryCards, allReservations);
+            CardReservation firstReservation = reservations.get(0);
+            if (payWithPoints && !clientHasPoints(
+                    firstReservation.getClient(),
+                    firstReservation.getPhone(),
+                    firstReservation.getDni(),
+                    pointsCost
+            )) {
+                redirectAttributes.addFlashAttribute("error", "El cliente no tiene puntos suficientes para pagar esta reserva.");
+                return "redirect:/reservas";
             }
 
             List<Integer> deliveredRows = new ArrayList<>();
@@ -2419,13 +2519,15 @@ public class DashboardController {
                             newQuantity,
                             "Entrega reserva"
                     ));
-                    LocalDateTime now = LocalDateTime.now(APP_ZONE);
-                    inventoryService.appendCashSale(
-                            now.format(MOVEMENT_DATE_FORMAT),
-                            now.format(MOVEMENT_TIME_FORMAT),
-                            card,
-                            quantityToDeliver
-                    );
+                    if (!payWithPoints) {
+                        LocalDateTime now = LocalDateTime.now(APP_ZONE);
+                        inventoryService.appendCashSale(
+                                now.format(MOVEMENT_DATE_FORMAT),
+                                now.format(MOVEMENT_TIME_FORMAT),
+                                card,
+                                quantityToDeliver
+                        );
+                    }
                 }
 
                 refreshLatestUpdateForCard(card);
@@ -2441,6 +2543,9 @@ public class DashboardController {
             if (deliveredQuantity <= 0) {
                 redirectAttributes.addFlashAttribute("error", "No hay cartas con stock suficiente para entregar en esta reserva.");
                 return "redirect:/reservas";
+            }
+            if (payWithPoints) {
+                deductSalePoints(firstReservation.getClient(), firstReservation.getPhone(), firstReservation.getDni(), pointsCost);
             }
 
             if (!deliveredRows.isEmpty()) {
@@ -2460,6 +2565,37 @@ public class DashboardController {
         }
 
         return "redirect:/reservas";
+    }
+
+    private long groupDeliveryPointsCost(
+            List<CardReservation> reservations,
+            List<InventoryCard> inventoryCards,
+            List<CardReservation> allReservations
+    ) {
+        long pointsCost = 0;
+        for (CardReservation reservation : reservations) {
+            int requestedQuantity = reservationQuantity(reservation.getQuantity());
+            ReservationStockSelection selection = reservationStockSelection(
+                    reservation,
+                    inventoryCards,
+                    allReservations,
+                    true,
+                    requestedQuantity
+            );
+            InventoryCard card = selection.card();
+            if (card == null) {
+                continue;
+            }
+
+            int quantityToDeliver = Math.min(
+                    Math.min(quantity(card), selection.availableQuantity()),
+                    requestedQuantity
+            );
+            if (quantityToDeliver > 0) {
+                pointsCost += pointsCost(lineTotalPrice(card.getLocalPrice(), quantityToDeliver));
+            }
+        }
+        return pointsCost;
     }
 
     private List<Integer> duplicateReservationRows(CardReservation reservation) {
@@ -4006,13 +4142,20 @@ public class DashboardController {
         return "/movimientos";
     }
 
-    private String activeMovementTab(String tab, String selectedMovementDate, String selectedCashDate) {
-        if ("cash".equalsIgnoreCase(tab) || "report".equalsIgnoreCase(tab) || "movements".equalsIgnoreCase(tab)) {
+    private String activeMovementTab(String tab, String selectedMovementDate, String selectedCashDate, String selectedPointDate) {
+        if ("cash".equalsIgnoreCase(tab)
+                || "report".equalsIgnoreCase(tab)
+                || "points".equalsIgnoreCase(tab)
+                || "movements".equalsIgnoreCase(tab)) {
             return tab.toLowerCase();
         }
 
         if (selectedCashDate != null && !selectedCashDate.isBlank()) {
             return "cash";
+        }
+
+        if (selectedPointDate != null && !selectedPointDate.isBlank()) {
+            return "points";
         }
 
         return "movements";
@@ -4207,6 +4350,100 @@ public class DashboardController {
                 + month.getYear();
     }
 
+    private void addPointMovementsModel(Model model, String selectedDate) {
+        try {
+            List<PointMovement> allMovements = inventoryService.getPointMovements();
+            List<PointMovement> movements = allMovements;
+            String countDate = selectedDate == null || selectedDate.isBlank()
+                    ? LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT)
+                    : selectedDate;
+
+            if (selectedDate != null && !selectedDate.isBlank()) {
+                movements = allMovements.stream()
+                        .filter(movement -> selectedDate.equals(movement.getDate()))
+                        .toList();
+
+                if (movements.isEmpty()) {
+                    model.addAttribute("pointError", "No hay movimientos de puntos para esa fecha.");
+                }
+            }
+
+            model.addAttribute("pointMovements", movements);
+            model.addAttribute("pointMovementGroups", groupPointMovementsByMonth(movements, selectedDate));
+            model.addAttribute("pointMovementCount", countPointMovementsForDate(
+                    selectedDate == null || selectedDate.isBlank() ? allMovements : movements,
+                    countDate
+            ));
+            model.addAttribute(
+                    "pointMovementCountLabel",
+                    selectedDate == null || selectedDate.isBlank()
+                            ? "Movimientos de puntos hoy"
+                            : "Movimientos de puntos del dia"
+            );
+        } catch (Exception e) {
+            log.warn("No se pudieron cargar movimientos de puntos.", e);
+            model.addAttribute("pointError", "No se pudieron cargar los movimientos de puntos.");
+            model.addAttribute("pointMovements", List.of());
+            model.addAttribute("pointMovementGroups", List.of());
+            model.addAttribute("pointMovementCount", 0);
+            model.addAttribute("pointMovementCountLabel", "Movimientos de puntos hoy");
+        }
+    }
+
+    private List<PointMovementMonthGroup> groupPointMovementsByMonth(
+            List<PointMovement> movements,
+            String selectedDate
+    ) {
+        if (movements == null || movements.isEmpty()) {
+            return List.of();
+        }
+
+        YearMonth openMonth = monthFromDate(selectedDate);
+
+        if (openMonth == null) {
+            openMonth = YearMonth.now(APP_ZONE);
+        }
+
+        Map<String, List<PointMovement>> movementsByMonth = new LinkedHashMap<>();
+
+        for (PointMovement movement : movements) {
+            String monthKey = monthKey(movement.getDate());
+            movementsByMonth.computeIfAbsent(monthKey, key -> new ArrayList<>())
+                    .add(movement);
+        }
+
+        List<PointMovementMonthGroup> groups = new ArrayList<>();
+        String openMonthKey = openMonth.toString();
+        boolean hasOpenMonth = movementsByMonth.containsKey(openMonthKey);
+
+        var sortedEntries = movementsByMonth.entrySet()
+                .stream()
+                .sorted((first, second) -> compareMonthKeys(second.getKey(), first.getKey()))
+                .toList();
+
+        for (var entry : sortedEntries) {
+            groups.add(new PointMovementMonthGroup(
+                    entry.getKey(),
+                    monthLabel(entry.getKey()),
+                    entry.getValue().size(),
+                    entry.getKey().equals(openMonthKey) || !hasOpenMonth && groups.isEmpty(),
+                    entry.getValue()
+            ));
+        }
+
+        return groups;
+    }
+
+    private long countPointMovementsForDate(List<PointMovement> movements, String date) {
+        if (movements == null || date == null || date.isBlank()) {
+            return 0;
+        }
+
+        return movements.stream()
+                .filter(movement -> date.equals(movement.getDate()))
+                .count();
+    }
+
     private void addCashRegisterModel(Model model, String selectedDate, List<InventoryMovement> allMovements) {
         String today = LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT);
 
@@ -4341,6 +4578,12 @@ public class DashboardController {
         return NumberFormat
                 .getIntegerInstance(ARGENTINA_LOCALE)
                 .format(Math.round(value));
+    }
+
+    private static String formatPoints(long value) {
+        return NumberFormat
+                .getIntegerInstance(ARGENTINA_LOCALE)
+                .format(Math.max(value, 0));
     }
 
     private static String formatLocalPrice(String value) {
@@ -4577,6 +4820,18 @@ public class DashboardController {
 
         try {
             return Math.max(Integer.parseInt(value.trim()), 0);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static long parseNonNegativeLong(String value) {
+        if (value == null || value.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Math.max(Long.parseLong(value.trim()), 0);
         } catch (NumberFormatException e) {
             return 0;
         }
@@ -5909,6 +6164,7 @@ public class DashboardController {
             @RequestParam(name = "whatsappClosingTime", required = false) String whatsappClosingTime,
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
+            @RequestParam("pesosPerPoint") double pesosPerPoint,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(defaultValue = "false") boolean removeLogo,
             @RequestHeader(name = "X-Requested-With", required = false) String requestedWith,
@@ -5933,7 +6189,7 @@ public class DashboardController {
                         whatsappClosingTime
                 );
             }
-            pricingSettingsService.update(ckDollarRate, roundMultiple);
+            pricingSettingsService.update(ckDollarRate, roundMultiple, pesosPerPoint);
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             if (WHATSAPP_SETTINGS_VISIBLE) {
                 storeSettingsService.updateWhatsapp(
@@ -7733,6 +7989,98 @@ public class DashboardController {
         );
     }
 
+    private boolean clientHasPoints(String client, String phone, String dni, long points) throws Exception {
+        if (points <= 0) {
+            return true;
+        }
+
+        return reservationClientPoints(
+                client,
+                phone,
+                dni,
+                reservationClientsByIdentity(inventoryService.getReservationClients())
+        ) >= points;
+    }
+
+    private void deductSalePoints(String client, String phone, String dni, long points) throws Exception {
+        if (points <= 0 || isBlank(client)) {
+            return;
+        }
+
+        long previousPoints = reservationClientPoints(
+                client,
+                phone,
+                dni,
+                reservationClientsByIdentity(inventoryService.getReservationClients())
+        );
+        inventoryService.addReservationClientPoints(
+                client.trim(),
+                blankToEmpty(phone),
+                blankToEmpty(dni),
+                -points,
+                LocalDateTime.now(APP_ZONE).format(MOVEMENT_DATE_TIME_FORMAT)
+        );
+        appendPointMovement(
+                client,
+                phone,
+                dni,
+                -points,
+                previousPoints,
+                previousPoints - points,
+                "Pago con puntos",
+                "Entrega de reserva"
+        );
+        invalidateReservationClientsCache();
+    }
+
+    private void appendPointMovementIfChanged(
+            ReservationClient client,
+            long previousPoints,
+            long newPoints,
+            String source,
+            String notes
+    ) throws Exception {
+        if (client == null || previousPoints == newPoints) {
+            return;
+        }
+
+        appendPointMovement(
+                client.getClient(),
+                client.getPhone(),
+                client.getDni(),
+                newPoints - previousPoints,
+                previousPoints,
+                newPoints,
+                source,
+                notes
+        );
+    }
+
+    private void appendPointMovement(
+            String client,
+            String phone,
+            String dni,
+            long change,
+            long previousPoints,
+            long newPoints,
+            String source,
+            String notes
+    ) throws Exception {
+        LocalDateTime now = LocalDateTime.now(APP_ZONE);
+        inventoryService.appendPointMovement(new PointMovement(
+                now.format(MOVEMENT_DATE_FORMAT),
+                now.format(MOVEMENT_TIME_FORMAT),
+                blankToEmpty(client).trim(),
+                blankToEmpty(phone),
+                blankToEmpty(dni),
+                String.valueOf(change),
+                String.valueOf(Math.max(previousPoints, 0)),
+                String.valueOf(Math.max(newPoints, 0)),
+                source,
+                notes
+        ));
+    }
+
     private void addBaseModel(Model model, String query) {
         model.addAttribute("query", query == null ? "" : query);
         model.addAttribute("updates", List.of());
@@ -7742,6 +8090,7 @@ public class DashboardController {
         model.addAttribute("updatedCount", 0);
         model.addAttribute("ckDollarRate", pricingSettingsService.getCkDollarRate());
         model.addAttribute("roundMultiple", pricingSettingsService.getRoundMultiple());
+        model.addAttribute("pesosPerPoint", pricingSettingsService.getPesosPerPoint());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("sheetConfigured", storeSettingsService.hasSpreadsheetConfigured());
@@ -8940,6 +9289,15 @@ public class DashboardController {
     ) {
     }
 
+    public record PointMovementMonthGroup(
+            String key,
+            String label,
+            int count,
+            boolean open,
+            List<PointMovement> movements
+    ) {
+    }
+
     public record CashMonthGroup(
             String key,
             String label,
@@ -9349,16 +9707,18 @@ public class DashboardController {
             }
 
             int newQuantity = Math.max(previousQuantity + change, 0);
+            boolean logMovements = movementsModuleEnabled(request);
 
             if (previousQuantity != newQuantity) {
                 card.setQuantity(String.valueOf(newQuantity));
                 applyStockAction(card);
                 inventoryService.updateStockState(rowIndex, card);
 
-                if (movementsModuleEnabled(request)) {
+                if (logMovements) {
+                    int changedQuantity = Math.abs(newQuantity - previousQuantity);
                     inventoryService.appendMovement(createMovement(
                             change > 0 ? "ENTRADA" : "SALIDA",
-                            Math.abs(newQuantity - previousQuantity),
+                            changedQuantity,
                             card,
                             previousQuantity,
                             newQuantity,
@@ -9371,7 +9731,7 @@ public class DashboardController {
                                 now.format(MOVEMENT_DATE_FORMAT),
                                 now.format(MOVEMENT_TIME_FORMAT),
                                 card,
-                                Math.abs(newQuantity - previousQuantity)
+                                changedQuantity
                         );
                     }
                 }
@@ -9633,6 +9993,11 @@ public class DashboardController {
             String statusLabel,
             String formattedTotalPrice,
             String formattedDeliverableTotalPrice,
+            long deliverablePointsCost,
+            String formattedDeliverablePointsCost,
+            long points,
+            String formattedPoints,
+            boolean payableWithPoints,
             String reservationDate,
             String pickupDate,
             String pickupDateRaw,

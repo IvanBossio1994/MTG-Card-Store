@@ -5,6 +5,7 @@ import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.PointMovement;
 import com.tcg.bot.model.ReservationClient;
 import org.springframework.stereotype.Service;
 
@@ -174,12 +175,24 @@ public class InventoryService {
         return googleSheetsService.getReservationClients();
     }
 
+    public List<PointMovement> getPointMovements() throws Exception {
+        return googleSheetsService.getPointMovements();
+    }
+
+    public void appendPointMovement(PointMovement movement) throws Exception {
+        googleSheetsService.appendPointMovement(movement);
+    }
+
     public void upsertReservationClient(String client, String phone, String dni, String updatedAt) throws Exception {
         googleSheetsService.upsertReservationClient(client, phone, dni, updatedAt);
     }
 
     public void upsertReservationClient(ReservationClient client) throws Exception {
         googleSheetsService.upsertReservationClient(client);
+    }
+
+    public void addReservationClientPoints(String client, String phone, String dni, long points, String updatedAt) throws Exception {
+        googleSheetsService.addReservationClientPoints(client, phone, dni, points, updatedAt);
     }
 
     public void updateReservationClient(int rowIndex, ReservationClient client) throws Exception {

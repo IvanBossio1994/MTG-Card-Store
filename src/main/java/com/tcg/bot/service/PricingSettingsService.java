@@ -20,23 +20,31 @@ public class PricingSettingsService {
     private static final String ROUND_MULTIPLE_KEY =
             "pricing.round-multiple";
 
+    private static final String PESOS_PER_POINT_KEY =
+            "points.pesos-per-point";
+
     private final double defaultCkDollarRate;
     private final int defaultRoundMultiple;
+    private final double defaultPesosPerPoint;
     private final Path settingsFile;
 
     private volatile double ckDollarRate;
     private volatile int roundMultiple;
+    private volatile double pesosPerPoint;
 
     public PricingSettingsService(
             @Value("${pricing.ck-dollar-rate:1650.0}") double defaultCkDollarRate,
             @Value("${pricing.round-multiple:500}") int defaultRoundMultiple,
+            @Value("${points.pesos-per-point:1.0}") double defaultPesosPerPoint,
             @Value("${app.storage-dir:D:/TCG-inventory/data}") String storageDirectory
     ) {
         this.defaultCkDollarRate = defaultCkDollarRate;
         this.defaultRoundMultiple = defaultRoundMultiple;
+        this.defaultPesosPerPoint = defaultPesosPerPoint;
         this.settingsFile = Paths.get(storageDirectory).resolve("pricing.properties");
         this.ckDollarRate = defaultCkDollarRate;
         this.roundMultiple = defaultRoundMultiple;
+        this.pesosPerPoint = defaultPesosPerPoint;
         load();
     }
 
@@ -48,7 +56,19 @@ public class PricingSettingsService {
         return roundMultiple;
     }
 
-    public synchronized void update(double newCkDollarRate, int newRoundMultiple) throws IOException {
+    public double getPesosPerPoint() {
+        return pesosPerPoint;
+    }
+
+    public long pointsCostForPrice(double localTotal) {
+        if (localTotal <= 0 || pesosPerPoint <= 0) {
+            return 0;
+        }
+
+        return (long) Math.ceil(localTotal / pesosPerPoint);
+    }
+
+    public synchronized void update(double newCkDollarRate, int newRoundMultiple, double newPesosPerPoint) throws IOException {
         if (newCkDollarRate <= 0) {
             throw new IllegalArgumentException("La cotizacion debe ser mayor a cero.");
         }
@@ -57,9 +77,14 @@ public class PricingSettingsService {
             throw new IllegalArgumentException("El multiplo debe ser mayor a cero.");
         }
 
+        if (newPesosPerPoint <= 0) {
+            throw new IllegalArgumentException("Los pesos por punto deben ser mayores a cero.");
+        }
+
         Properties properties = new Properties();
         properties.setProperty(DOLLAR_RATE_KEY, Double.toString(newCkDollarRate));
         properties.setProperty(ROUND_MULTIPLE_KEY, Integer.toString(newRoundMultiple));
+        properties.setProperty(PESOS_PER_POINT_KEY, Double.toString(newPesosPerPoint));
 
         Files.createDirectories(settingsFile.getParent());
 
@@ -69,6 +94,11 @@ public class PricingSettingsService {
 
         ckDollarRate = newCkDollarRate;
         roundMultiple = newRoundMultiple;
+        pesosPerPoint = newPesosPerPoint;
+    }
+
+    public synchronized void update(double newCkDollarRate, int newRoundMultiple) throws IOException {
+        update(newCkDollarRate, newRoundMultiple, pesosPerPoint);
     }
 
     private void load() {
@@ -88,9 +118,14 @@ public class PricingSettingsService {
                     properties.getProperty(ROUND_MULTIPLE_KEY),
                     defaultRoundMultiple
             );
+            pesosPerPoint = parsePositiveDouble(
+                    properties.getProperty(PESOS_PER_POINT_KEY),
+                    defaultPesosPerPoint
+            );
         } catch (IOException e) {
             ckDollarRate = defaultCkDollarRate;
             roundMultiple = defaultRoundMultiple;
+            pesosPerPoint = defaultPesosPerPoint;
         }
     }
 

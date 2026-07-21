@@ -2336,6 +2336,32 @@ input.stock-value::-webkit-inner-spin-button {
     width: 132px;
 }
 
+.point-table th:nth-child(3),
+.point-table td:nth-child(3),
+.point-table th:nth-child(10),
+.point-table td:nth-child(10) {
+    width: 16%;
+}
+
+.point-table th:nth-child(6),
+.point-table td:nth-child(6),
+.point-table th:nth-child(7),
+.point-table td:nth-child(7),
+.point-table th:nth-child(8),
+.point-table td:nth-child(8) {
+    text-align: right;
+}
+
+.point-change-status.entrada {
+    color: var(--green);
+    background: var(--green-soft);
+}
+
+.point-change-status.salida {
+    color: #b42318;
+    background: #fee4e2;
+}
+
 .cash-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -4404,6 +4430,46 @@ input.stock-value::-webkit-inner-spin-button {
 
 .app-confirm-total[hidden] {
     display: none;
+}
+
+.app-confirm-points {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fbfcfe;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.app-confirm-points[hidden] {
+    display: none;
+}
+
+.app-confirm-points input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--blue);
+}
+
+.app-confirm-points strong {
+    color: var(--green);
+    font-size: 20px;
+    white-space: nowrap;
+}
+
+.app-confirm-points.disabled {
+    color: var(--muted);
+    background: #f3f5f8;
+    opacity: .65;
+}
+
+.app-confirm-points.disabled strong {
+    color: var(--muted);
 }
 
 .app-confirm-total span {
