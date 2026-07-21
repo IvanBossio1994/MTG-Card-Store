@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalTime;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -40,6 +41,13 @@ public class StoreSettingsService {
     private volatile String logoFilename = "";
     private volatile boolean tutorialCompleted = false;
     private volatile boolean modulesTutorialCompleted = false;
+    private volatile boolean whatsappEnabled = false;
+    private volatile String whatsappPhoneNumberId = "";
+    private volatile String whatsappAccessToken = "";
+    private volatile String whatsappVerifyToken = "";
+    private volatile boolean whatsappAlwaysOn = true;
+    private volatile String whatsappOpeningTime = "10:00";
+    private volatile String whatsappClosingTime = "20:00";
 
     public StoreSettingsService(
             @Value("${store.default-spreadsheet-id}") String defaultSpreadsheetId,
@@ -97,6 +105,41 @@ public class StoreSettingsService {
         return getLogoPath().isPresent();
     }
 
+    public boolean isWhatsappEnabled() {
+        return whatsappEnabled;
+    }
+
+    public String getWhatsappPhoneNumberId() {
+        return whatsappPhoneNumberId;
+    }
+
+    public String getWhatsappAccessToken() {
+        return whatsappAccessToken;
+    }
+
+    public String getWhatsappVerifyToken() {
+        return whatsappVerifyToken;
+    }
+
+    public boolean isWhatsappAlwaysOn() {
+        return whatsappAlwaysOn;
+    }
+
+    public String getWhatsappOpeningTime() {
+        return whatsappOpeningTime;
+    }
+
+    public String getWhatsappClosingTime() {
+        return whatsappClosingTime;
+    }
+
+    public boolean hasWhatsappConfigured() {
+        return whatsappEnabled
+                && !whatsappPhoneNumberId.isBlank()
+                && !whatsappAccessToken.isBlank()
+                && !whatsappVerifyToken.isBlank();
+    }
+
     public Optional<Path> getLogoPath() {
         if (logoFilename.isBlank()) {
             return Optional.empty();
@@ -143,6 +186,37 @@ public class StoreSettingsService {
         extensionFor(logo.getContentType());
     }
 
+    public void validateWhatsappSettings(
+            boolean enabled,
+            String phoneNumberId,
+            String accessToken,
+            String verifyToken,
+            boolean alwaysOn,
+            String openingTime,
+            String closingTime
+    ) {
+        if (!enabled) {
+            return;
+        }
+
+        if (phoneNumberId == null || phoneNumberId.isBlank()) {
+            throw new IllegalArgumentException("Ingresa el Phone Number ID de WhatsApp.");
+        }
+
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new IllegalArgumentException("Ingresa el Access Token de WhatsApp.");
+        }
+
+        if (verifyToken == null || verifyToken.isBlank()) {
+            throw new IllegalArgumentException("Ingresa el Verify Token de WhatsApp.");
+        }
+
+        if (!alwaysOn) {
+            parseTime(openingTime, "hora de apertura");
+            parseTime(closingTime, "hora de cierre");
+        }
+    }
+
     public synchronized void update(
             String name,
             String sheetReference,
@@ -153,6 +227,26 @@ public class StoreSettingsService {
         spreadsheetId = extractSpreadsheetId(sheetReference);
         inventorySheetName = sheetName.trim();
         this.cacheDirectory = normalizeCacheDirectory(cacheDirectory);
+        save();
+    }
+
+    public synchronized void updateWhatsapp(
+            boolean enabled,
+            String phoneNumberId,
+            String accessToken,
+            String verifyToken,
+            boolean alwaysOn,
+            String openingTime,
+            String closingTime
+    ) throws IOException {
+        validateWhatsappSettings(enabled, phoneNumberId, accessToken, verifyToken, alwaysOn, openingTime, closingTime);
+        whatsappEnabled = enabled;
+        whatsappPhoneNumberId = blankToEmpty(phoneNumberId);
+        whatsappAccessToken = blankToEmpty(accessToken);
+        whatsappVerifyToken = blankToEmpty(verifyToken);
+        whatsappAlwaysOn = alwaysOn;
+        whatsappOpeningTime = normalizedTime(openingTime, "10:00");
+        whatsappClosingTime = normalizedTime(closingTime, "20:00");
         save();
     }
 
@@ -230,6 +324,26 @@ public class StoreSettingsService {
         }
     }
 
+    private String normalizedTime(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+
+        return parseTime(value, "horario").toString();
+    }
+
+    private LocalTime parseTime(String value, String label) {
+        try {
+            return LocalTime.parse(value);
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("La " + label + " de WhatsApp no es valida.");
+        }
+    }
+
+    private String blankToEmpty(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     private String extractSpreadsheetId(String reference) {
         if (reference == null || reference.isBlank()) {
             throw new IllegalArgumentException("Ingresa el enlace o ID del Google Sheet.");
@@ -276,6 +390,13 @@ public class StoreSettingsService {
             logoFilename = properties.getProperty("store.logo-filename", "");
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
             modulesTutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.modules.completed", "false"));
+            whatsappEnabled = Boolean.parseBoolean(properties.getProperty("whatsapp.enabled", "false"));
+            whatsappPhoneNumberId = properties.getProperty("whatsapp.phone-number-id", "");
+            whatsappAccessToken = properties.getProperty("whatsapp.access-token", "");
+            whatsappVerifyToken = properties.getProperty("whatsapp.verify-token", "");
+            whatsappAlwaysOn = Boolean.parseBoolean(properties.getProperty("whatsapp.always-on", "true"));
+            whatsappOpeningTime = properties.getProperty("whatsapp.opening-time", "10:00");
+            whatsappClosingTime = properties.getProperty("whatsapp.closing-time", "20:00");
         } catch (IOException e) {
             storeName = "Inventory Manager";
             spreadsheetId = defaultSpreadsheetId;
@@ -284,6 +405,13 @@ public class StoreSettingsService {
             logoFilename = "";
             tutorialCompleted = false;
             modulesTutorialCompleted = false;
+            whatsappEnabled = false;
+            whatsappPhoneNumberId = "";
+            whatsappAccessToken = "";
+            whatsappVerifyToken = "";
+            whatsappAlwaysOn = true;
+            whatsappOpeningTime = "10:00";
+            whatsappClosingTime = "20:00";
         }
     }
 
@@ -299,6 +427,13 @@ public class StoreSettingsService {
         properties.setProperty("store.logo-filename", logoFilename);
         properties.setProperty("tutorial.completed", String.valueOf(tutorialCompleted));
         properties.setProperty("tutorial.modules.completed", String.valueOf(modulesTutorialCompleted));
+        properties.setProperty("whatsapp.enabled", String.valueOf(whatsappEnabled));
+        properties.setProperty("whatsapp.phone-number-id", whatsappPhoneNumberId);
+        properties.setProperty("whatsapp.access-token", whatsappAccessToken);
+        properties.setProperty("whatsapp.verify-token", whatsappVerifyToken);
+        properties.setProperty("whatsapp.always-on", String.valueOf(whatsappAlwaysOn));
+        properties.setProperty("whatsapp.opening-time", whatsappOpeningTime);
+        properties.setProperty("whatsapp.closing-time", whatsappClosingTime);
 
         try (OutputStream output = Files.newOutputStream(configFile)) {
             properties.store(output, "Configuracion local de la tienda");

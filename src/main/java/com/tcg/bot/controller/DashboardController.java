@@ -63,6 +63,7 @@ import java.util.regex.Pattern;
 public class DashboardController {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
+    private static final boolean WHATSAPP_SETTINGS_VISIBLE = false;
 
     private final InventoryService inventoryService;
     private final CardKingdomApiService cardKingdomApiService;
@@ -825,6 +826,120 @@ public class DashboardController {
         return "redirect:" + safeProtectedAccessReturnPath(returnTo);
     }
 
+    @GetMapping("/clientes")
+    public String clients(
+            @RequestParam(name = "q", required = false) String query,
+            @RequestParam(name = "edit", required = false) Integer editRow,
+            Model model,
+            HttpServletRequest request
+    ) {
+        addBaseModel(model, "");
+        model.addAttribute("clientsLocked", !isMovementsUnlocked(request.getSession(false)));
+        model.addAttribute("clientSearch", blankToEmpty(query));
+        model.addAttribute("clientRows", List.of());
+        model.addAttribute("clientCount", 0);
+        model.addAttribute("editClient", null);
+
+        if (!isMovementsUnlocked(request.getSession(false))) {
+            model.addAttribute("returnTo", protectedAccessReturnPath(request));
+            return "clients";
+        }
+
+        populateClientsModel(model, query, editRow);
+        return "clients";
+    }
+
+    @PostMapping("/clientes")
+    public String saveClient(
+            @RequestParam(name = "firstName", required = false) String firstName,
+            @RequestParam(name = "lastName", required = false) String lastName,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "email", required = false) String email,
+            @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "points", required = false, defaultValue = "0") String points,
+            HttpServletRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!isMovementsUnlocked(request.getSession(false))) {
+            redirectAttributes.addFlashAttribute("error", "Desbloquea el acceso para cargar clientes.");
+            return "redirect:/clientes";
+        }
+
+        try {
+            ReservationClient client = clientFromForm(firstName, lastName, dni, phone, email, notes, points);
+            String validationError = clientValidationError(client);
+            if (validationError != null) {
+                addClientFailure(redirectAttributes, client, validationError);
+                return "redirect:/clientes";
+            }
+
+            List<ReservationClient> clients = inventoryService.getReservationClients();
+            String duplicateError = duplicateClientError(clients, client, 0);
+            if (duplicateError != null) {
+                addClientFailure(redirectAttributes, client, duplicateError);
+                return "redirect:/clientes";
+            }
+
+            client.setUpdatedAt(LocalDateTime.now(APP_ZONE).format(MOVEMENT_DATE_TIME_FORMAT));
+            inventoryService.upsertReservationClient(client);
+            invalidateReservationClientsCache();
+            redirectAttributes.addFlashAttribute("success", "Cliente guardado.");
+        } catch (Exception e) {
+            log.warn("No se pudo guardar el cliente.", e);
+            ReservationClient client = clientFromForm(firstName, lastName, dni, phone, email, notes, points);
+            addClientFailure(redirectAttributes, client, "No se pudo guardar el cliente: " + syncErrorMessage(e));
+        }
+
+        return "redirect:/clientes";
+    }
+
+    @PostMapping("/clientes/editar")
+    public String updateClient(
+            @RequestParam int rowIndex,
+            @RequestParam(name = "firstName", required = false) String firstName,
+            @RequestParam(name = "lastName", required = false) String lastName,
+            @RequestParam(name = "dni", required = false) String dni,
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "email", required = false) String email,
+            @RequestParam(name = "notes", required = false) String notes,
+            @RequestParam(name = "points", required = false, defaultValue = "0") String points,
+            HttpServletRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!isMovementsUnlocked(request.getSession(false))) {
+            redirectAttributes.addFlashAttribute("error", "Desbloquea el acceso para editar clientes.");
+            return "redirect:/clientes";
+        }
+
+        try {
+            ReservationClient client = clientFromForm(firstName, lastName, dni, phone, email, notes, points);
+            String validationError = clientValidationError(client);
+            if (validationError != null) {
+                redirectAttributes.addFlashAttribute("clientError", validationError);
+                return "redirect:/clientes?edit=" + rowIndex;
+            }
+
+            List<ReservationClient> clients = inventoryService.getReservationClients();
+            String duplicateError = duplicateClientError(clients, client, rowIndex);
+            if (duplicateError != null) {
+                redirectAttributes.addFlashAttribute("clientError", duplicateError);
+                return "redirect:/clientes?edit=" + rowIndex;
+            }
+
+            client.setUpdatedAt(LocalDateTime.now(APP_ZONE).format(MOVEMENT_DATE_TIME_FORMAT));
+            inventoryService.updateReservationClient(rowIndex, client);
+            invalidateReservationClientsCache();
+            redirectAttributes.addFlashAttribute("success", "Cliente actualizado.");
+        } catch (Exception e) {
+            log.warn("No se pudo actualizar el cliente.", e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo actualizar el cliente: " + syncErrorMessage(e));
+            return "redirect:/clientes?edit=" + rowIndex;
+        }
+
+        return "redirect:/clientes";
+    }
+
     @GetMapping("/reservas")
     public String reservations(
             @RequestParam(name = "openGroup", required = false) String openGroup,
@@ -910,6 +1025,186 @@ public class DashboardController {
             model.addAttribute("wantedCount", 0);
             model.addAttribute("error", "No se pudieron cargar las reservas: " + syncErrorMessage(e));
         }
+    }
+
+    private void populateClientsModel(Model model, String query, Integer editRow) {
+        String search = blankToEmpty(query);
+
+        try {
+            List<ReservationClient> clients = inventoryService.getReservationClients();
+            List<CardReservation> reservations = consolidateDuplicateReservations(inventoryService.getReservations());
+            List<ClientPageRow> clientRows = clients.stream()
+                    .filter(client -> matchesClientSearch(client, search))
+                    .map(client -> new ClientPageRow(client, reservationsForClient(client, reservations)))
+                    .toList();
+
+            ReservationClient editClient = editRow == null
+                    ? null
+                    : clients.stream()
+                    .filter(client -> client.getRowIndex() == editRow)
+                    .findFirst()
+                    .orElse(null);
+
+            model.addAttribute("clientsLocked", false);
+            model.addAttribute("clientRows", clientRows);
+            model.addAttribute("clientCount", clientRows.size());
+            model.addAttribute("editClient", editClient);
+        } catch (Exception e) {
+            log.warn("No se pudieron cargar los clientes.", e);
+            model.addAttribute("clientRows", List.of());
+            model.addAttribute("clientCount", 0);
+            model.addAttribute("editClient", null);
+            model.addAttribute("error", "No se pudieron cargar los clientes: " + syncErrorMessage(e));
+        }
+    }
+
+    private void addClientFailure(
+            RedirectAttributes redirectAttributes,
+            ReservationClient client,
+            String message
+    ) {
+        redirectAttributes.addFlashAttribute("submittedClient", client);
+        redirectAttributes.addFlashAttribute(
+                "clientError",
+                isBlank(message) ? "No se pudo guardar el cliente. Revisa la consola del servidor." : message
+        );
+    }
+
+    private ReservationClient clientFromForm(
+            String firstName,
+            String lastName,
+            String dni,
+            String phone,
+            String email,
+            String notes,
+            String points
+    ) {
+        ReservationClient client = new ReservationClient();
+        client.setFirstName(blankToEmpty(firstName));
+        client.setLastName(blankToEmpty(lastName));
+        client.setDni(blankToEmpty(dni));
+        client.setPhone(blankToEmpty(phone));
+        client.setEmail(blankToEmpty(email));
+        client.setNotes(blankToEmpty(notes));
+        client.setPoints(blankToEmpty(points).isBlank() ? "0" : blankToEmpty(points));
+        return client;
+    }
+
+    private String clientValidationError(ReservationClient client) {
+        if (client == null
+                || isBlank(client.getFirstName())
+                || isBlank(client.getLastName())
+                || isBlank(client.getDni())
+                || isBlank(client.getPhone())
+                || isBlank(client.getEmail())) {
+            return "Completa nombre, apellido, DNI, telefono y email.";
+        }
+
+        String contactError = reservationContactError(client.getPhone(), client.getDni());
+        if (!isBlank(contactError)) {
+            return contactError;
+        }
+        client.setDni(digitsOnly(client.getDni()));
+        client.setPhone(digitsOnly(client.getPhone()));
+
+        if (!client.getEmail().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            return "Ingresa un email valido.";
+        }
+
+        try {
+            if (Integer.parseInt(client.getPoints()) < 0) {
+                return "Los puntos no pueden ser negativos.";
+            }
+        } catch (NumberFormatException e) {
+            return "Los puntos deben ser un numero entero.";
+        }
+
+        return null;
+    }
+
+    private String duplicateClientError(List<ReservationClient> clients, ReservationClient candidate, int excludedRowIndex) {
+        for (ReservationClient existing : clients == null ? List.<ReservationClient>of() : clients) {
+            if (excludedRowIndex > 0 && existing.getRowIndex() == excludedRowIndex) {
+                continue;
+            }
+
+            if (sameClientData(existing, candidate)) {
+                return "Ese cliente ya esta en la base de datos con los mismos datos.";
+            }
+
+            if (!digitsOnly(candidate.getDni()).isBlank()
+                    && digitsOnly(candidate.getDni()).equals(digitsOnly(existing.getDni()))) {
+                return "Ya existe un cliente con ese DNI: " + blankToDash(existing.getClient()) + ".";
+            }
+
+            if (!normalizedCardText(candidate.getEmail()).isBlank()
+                    && normalizedCardText(candidate.getEmail()).equals(normalizedCardText(existing.getEmail()))) {
+                return "Ya existe un cliente con ese email: " + blankToDash(existing.getClient()) + ".";
+            }
+
+            if (sameClientIdentity(existing, candidate)) {
+                return "Ya existe un cliente con ese nombre y telefono: " + blankToDash(existing.getClient()) + ".";
+            }
+        }
+
+        return null;
+    }
+
+    private boolean sameClientData(ReservationClient first, ReservationClient second) {
+        return normalizedCardText(first.getFirstName()).equals(normalizedCardText(second.getFirstName()))
+                && normalizedCardText(first.getLastName()).equals(normalizedCardText(second.getLastName()))
+                && digitsOnly(first.getDni()).equals(digitsOnly(second.getDni()))
+                && digitsOnly(first.getPhone()).equals(digitsOnly(second.getPhone()))
+                && normalizedCardText(first.getEmail()).equals(normalizedCardText(second.getEmail()))
+                && normalizedCardText(first.getNotes()).equals(normalizedCardText(second.getNotes()))
+                && normalizedPoints(first.getPoints()).equals(normalizedPoints(second.getPoints()));
+    }
+
+    private boolean sameClientIdentity(ReservationClient first, ReservationClient second) {
+        return reservationClientIdentityKey(first.getClient(), first.getPhone(), first.getDni())
+                .equals(reservationClientIdentityKey(second.getClient(), second.getPhone(), second.getDni()));
+    }
+
+    private String normalizedPoints(String value) {
+        try {
+            return String.valueOf(Integer.parseInt(blankToEmpty(value)));
+        } catch (NumberFormatException e) {
+            return "0";
+        }
+    }
+
+    private boolean matchesClientSearch(ReservationClient client, String query) {
+        String normalizedQuery = normalizedCardText(query);
+        if (normalizedQuery.isBlank()) {
+            return true;
+        }
+
+        String digitQuery = digitsOnly(query);
+        return normalizedCardText(client.getFirstName()).contains(normalizedQuery)
+                || normalizedCardText(client.getLastName()).contains(normalizedQuery)
+                || (!digitQuery.isBlank() && digitsOnly(client.getDni()).contains(digitQuery))
+                || (!digitQuery.isBlank() && digitsOnly(client.getPhone()).contains(digitQuery))
+                || normalizedCardText(client.getEmail()).contains(normalizedQuery)
+                || normalizedCardText(client.getNotes()).contains(normalizedQuery);
+    }
+
+    private List<CardReservation> reservationsForClient(
+            ReservationClient client,
+            List<CardReservation> reservations
+    ) {
+        if (client == null || reservations == null || reservations.isEmpty()) {
+            return List.of();
+        }
+
+        String dni = digitsOnly(client.getDni());
+        String phone = digitsOnly(client.getPhone());
+        String name = normalizedCardText(client.getClient());
+
+        return reservations.stream()
+                .filter(reservation -> (!dni.isBlank() && dni.equals(digitsOnly(reservation.getDni())))
+                        || (!phone.isBlank() && phone.equals(digitsOnly(reservation.getPhone())))
+                        || (!name.isBlank() && name.equals(normalizedCardText(reservation.getClient()))))
+                .toList();
     }
 
     private List<ReservationGroupView> reservationGroups(List<CardReservation> reservations, String openGroup) {
@@ -3042,7 +3337,12 @@ public class DashboardController {
                 clientsByIdentity.putIfAbsent(key, new ReservationClientView(
                         client.trim(),
                         blankToEmpty(savedClient.getPhone()),
-                        blankToEmpty(savedClient.getDni())
+                        blankToEmpty(savedClient.getDni()),
+                        blankToEmpty(savedClient.getFirstName()),
+                        blankToEmpty(savedClient.getLastName()),
+                        blankToEmpty(savedClient.getEmail()),
+                        blankToEmpty(savedClient.getNotes()),
+                        blankToEmpty(savedClient.getPoints())
                 ));
             }
 
@@ -3060,7 +3360,12 @@ public class DashboardController {
                 clientsByIdentity.putIfAbsent(key, new ReservationClientView(
                         client.trim(),
                         blankToEmpty(reservation.getPhone()),
-                        blankToEmpty(reservation.getDni())
+                        blankToEmpty(reservation.getDni()),
+                        client.trim(),
+                        "",
+                        "",
+                        "",
+                        "0"
                 ));
             }
 
@@ -3075,10 +3380,11 @@ public class DashboardController {
 
     private String reservationClientIdentityKey(String client, String phone, String dni) {
         String normalizedDni = digitsOnly(dni);
-        String normalizedClient = normalizedCardText(client);
         if (!normalizedDni.isBlank()) {
-            return normalizedClient + "|dni:" + normalizedDni;
+            return "dni:" + normalizedDni;
         }
+
+        String normalizedClient = normalizedCardText(client);
         String normalizedPhone = digitsOnly(phone);
         return normalizedPhone.isBlank()
                 ? normalizedClient
@@ -3690,6 +3996,10 @@ public class DashboardController {
 
         if ("/movimientos".equals(returnTo) || returnTo.startsWith("/movimientos?")
                 || "/reservas".equals(returnTo) || returnTo.startsWith("/reservas?")) {
+            return returnTo;
+        }
+
+        if ("/clientes".equals(returnTo) || returnTo.startsWith("/clientes?")) {
             return returnTo;
         }
 
@@ -5590,6 +5900,13 @@ public class DashboardController {
             @RequestParam(name = "spreadsheetId", required = false) String spreadsheetId,
             @RequestParam("inventorySheetName") String inventorySheetName,
             @RequestParam(name = "cacheDirectory", required = false) String cacheDirectory,
+            @RequestParam(name = "whatsappEnabled", required = false, defaultValue = "false") boolean whatsappEnabled,
+            @RequestParam(name = "whatsappPhoneNumberId", required = false) String whatsappPhoneNumberId,
+            @RequestParam(name = "whatsappAccessToken", required = false) String whatsappAccessToken,
+            @RequestParam(name = "whatsappVerifyToken", required = false) String whatsappVerifyToken,
+            @RequestParam(name = "whatsappAlwaysOn", required = false, defaultValue = "false") boolean whatsappAlwaysOn,
+            @RequestParam(name = "whatsappOpeningTime", required = false) String whatsappOpeningTime,
+            @RequestParam(name = "whatsappClosingTime", required = false) String whatsappClosingTime,
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
@@ -5602,8 +5919,33 @@ public class DashboardController {
         try {
             storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
+            String effectiveWhatsappAccessToken = whatsappAccessToken == null || whatsappAccessToken.isBlank()
+                    ? storeSettingsService.getWhatsappAccessToken()
+                    : whatsappAccessToken;
+            if (WHATSAPP_SETTINGS_VISIBLE) {
+                storeSettingsService.validateWhatsappSettings(
+                        whatsappEnabled,
+                        whatsappPhoneNumberId,
+                        effectiveWhatsappAccessToken,
+                        whatsappVerifyToken,
+                        whatsappAlwaysOn,
+                        whatsappOpeningTime,
+                        whatsappClosingTime
+                );
+            }
             pricingSettingsService.update(ckDollarRate, roundMultiple);
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
+            if (WHATSAPP_SETTINGS_VISIBLE) {
+                storeSettingsService.updateWhatsapp(
+                        whatsappEnabled,
+                        whatsappPhoneNumberId,
+                        effectiveWhatsappAccessToken,
+                        whatsappVerifyToken,
+                        whatsappAlwaysOn,
+                        whatsappOpeningTime,
+                        whatsappClosingTime
+                );
+            }
 
             if (removeLogo) {
                 storeSettingsService.removeLogo();
@@ -5836,6 +6178,12 @@ public class DashboardController {
     private String syncErrorMessage(Exception exception) {
         Throwable root = rootCause(exception);
 
+        if (root instanceof com.google.api.client.auth.oauth2.TokenResponseException tokenException
+                && tokenException.getDetails() != null
+                && "invalid_grant".equalsIgnoreCase(tokenException.getDetails().getError())) {
+            return "la sesion de Google expiro o fue revocada. Cierra sesion desde Configuracion y vuelve a conectar Google.";
+        }
+
         if (root instanceof com.google.api.client.googleapis.json.GoogleJsonResponseException googleException) {
             int statusCode = googleException.getStatusCode();
             String details = googleException.getDetails() == null
@@ -5867,7 +6215,7 @@ public class DashboardController {
 
         String message = root.getMessage();
         if (message == null || message.isBlank()) {
-            return "revisa permisos del Sheet, credenciales y conexion a Card Kingdom.";
+            return "error interno " + root.getClass().getSimpleName() + ". Revisa permisos del Sheet y la consola del servidor.";
         }
 
         return message;
@@ -7558,6 +7906,14 @@ public class DashboardController {
         if (!model.containsAttribute("submittedInventorySheetName")) {
             model.addAttribute("submittedInventorySheetName", storeSettingsService.getInventorySheetName());
         }
+        model.addAttribute("whatsappEnabled", storeSettingsService.isWhatsappEnabled());
+        model.addAttribute("whatsappPhoneNumberId", storeSettingsService.getWhatsappPhoneNumberId());
+        model.addAttribute("hasWhatsappAccessToken", !storeSettingsService.getWhatsappAccessToken().isBlank());
+        model.addAttribute("whatsappVerifyToken", storeSettingsService.getWhatsappVerifyToken());
+        model.addAttribute("whatsappAlwaysOn", storeSettingsService.isWhatsappAlwaysOn());
+        model.addAttribute("whatsappOpeningTime", storeSettingsService.getWhatsappOpeningTime());
+        model.addAttribute("whatsappClosingTime", storeSettingsService.getWhatsappClosingTime());
+        model.addAttribute("whatsappSettingsVisible", WHATSAPP_SETTINGS_VISIBLE);
     }
 
     private void addLatestUpdates(Model model, boolean reservationsEnabled) {
@@ -9230,10 +9586,21 @@ public class DashboardController {
     ) {
     }
 
+    public record ClientPageRow(
+            ReservationClient client,
+            List<CardReservation> reservations
+    ) {
+    }
+
     public record ReservationClientView(
             String client,
             String phone,
-            String dni
+            String dni,
+            String firstName,
+            String lastName,
+            String email,
+            String notes,
+            String points
     ) {
     }
 

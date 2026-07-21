@@ -177,4 +177,12 @@ public class InventoryService {
     public void upsertReservationClient(String client, String phone, String dni, String updatedAt) throws Exception {
         googleSheetsService.upsertReservationClient(client, phone, dni, updatedAt);
     }
+
+    public void upsertReservationClient(ReservationClient client) throws Exception {
+        googleSheetsService.upsertReservationClient(client);
+    }
+
+    public void updateReservationClient(int rowIndex, ReservationClient client) throws Exception {
+        googleSheetsService.updateReservationClient(rowIndex, client);
+    }
 }

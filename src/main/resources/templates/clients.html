@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clientes | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar('Clientes')}"></header>
+<div th:replace="~{fragments/layout :: menu('clients')}"></div>
+<main class="page clients-page protected-page" th:classappend="${clientsLocked} ? ' protected-page-locked' : ''">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Clientes</p>
+            <h1>Clientes de reservas</h1>
+            <p class="supporting">Carga clientes, busca sus datos y revisa las reservas asociadas.</p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${clientError}" th:text="${clientError}"></p>
+    <p class="alert error" th:if="${error != null && !#strings.isEmpty(error)}" th:text="${error}"></p>
+    <p class="alert success" th:if="${success}" th:text="${success}"></p>
+
+    <th:block th:unless="${clientsLocked}">
+        <section class="panel client-form-panel"
+                 th:with="editing=${editClient != null}, formClient=${editClient != null ? editClient : submittedClient}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="${editing ? 'Editar cliente' : 'Nuevo cliente'}">Nuevo cliente</p>
+                    <h2 th:text="${editing ? editClient.client : 'Cargar cliente'}">Cargar cliente</h2>
+                    <p class="section-note">Los clientes creados aca aparecen como opciones al generar reservas.</p>
+                </div>
+            </div>
+
+            <form class="import-form client-form" method="post"
+                  th:action="${editing} ? @{/clientes/editar} : @{/clientes}"
+                  data-loading-button="Guardando..."
+                  data-loading-title="Guardando cliente"
+                  data-loading-message="Actualizando la hoja Clientes...">
+                <input type="hidden" name="rowIndex" th:if="${editing}" th:value="${editClient.rowIndex}">
+                <div class="reservation-modal-grid">
+                    <label>
+                        Nombre
+                        <input name="firstName" type="text" required autocomplete="given-name"
+                               th:value="${formClient != null ? formClient.firstName : ''}">
+                    </label>
+                    <label>
+                        Apellido
+                        <input name="lastName" type="text" required autocomplete="family-name"
+                               th:value="${formClient != null ? formClient.lastName : ''}">
+                    </label>
+                    <label>
+                        DNI
+                        <input name="dni" type="text" required autocomplete="off" inputmode="numeric"
+                               maxlength="15" pattern="[0-9]{1,15}" title="Debe tener solo numeros, hasta 15 digitos"
+                               th:value="${formClient != null ? formClient.dni : ''}">
+                    </label>
+                    <label>
+                        Telefono
+                        <input name="phone" type="text" required autocomplete="tel" inputmode="numeric"
+                               maxlength="15" pattern="[0-9]{1,15}" title="Debe tener solo numeros, hasta 15 digitos"
+                               th:value="${formClient != null ? formClient.phone : ''}">
+                    </label>
+                    <label>
+                        Email
+                        <input name="email" type="email" required autocomplete="email"
+                               th:value="${formClient != null ? formClient.email : ''}">
+                    </label>
+                    <label>
+                        Puntos
+                        <input name="points" type="number" min="0" step="1"
+                               th:value="${formClient != null && !#strings.isEmpty(formClient.points) ? formClient.points : '0'}">
+                    </label>
+                    <label class="wide">
+                        Notas
+                        <input name="notes" type="text" autocomplete="off"
+                               th:value="${formClient != null ? formClient.notes : ''}">
+                    </label>
+                </div>
+                <div class="store-actions">
+                    <button class="primary-button" type="submit" th:text="${editing ? 'Guardar cambios' : 'Guardar cliente'}">
+                        Guardar cliente
+                    </button>
+                    <a class="secondary-button link-button" th:if="${editing}" th:href="@{/clientes}">Cancelar edicion</a>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel client-search-panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Buscador</p>
+                    <h2 th:text="${clientCount + ' cliente(s)'}">0 cliente(s)</h2>
+                    <p class="section-note">Busca por nombre, apellido, DNI, telefono, email o notas.</p>
+                </div>
+            </div>
+
+            <form class="search-form client-search-form" method="get" th:action="@{/clientes}">
+                <input name="q" type="text" autocomplete="off" placeholder="Buscar cliente" th:value="${clientSearch}">
+                <button class="primary-button" type="submit">Buscar</button>
+                <a class="secondary-button link-button" th:href="@{/clientes}">Limpiar</a>
+            </form>
+
+            <div class="placeholder" th:if="${#lists.isEmpty(clientRows)}">
+                <strong>No hay clientes para mostrar</strong>
+                <p>Carga un cliente nuevo o cambia la busqueda.</p>
+            </div>
+
+            <div class="table-wrap" th:unless="${#lists.isEmpty(clientRows)}">
+                <table class="client-table">
+                    <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>DNI</th>
+                        <th>Telefono</th>
+                        <th>Email</th>
+                        <th>Puntos</th>
+                        <th>Reservas</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${clientRows}" th:with="client=${row.client}, reservations=${row.reservations}">
+                        <td>
+                            <strong th:text="${client.client}">Cliente</strong>
+                            <small th:if="${!#strings.isEmpty(client.notes)}" th:text="${client.notes}">Notas</small>
+                        </td>
+                        <td th:text="${client.dni}">123</td>
+                        <td th:text="${client.phone}">123</td>
+                        <td th:text="${client.email}">cliente@mail.com</td>
+                        <td th:text="${#strings.isEmpty(client.points) ? '0' : client.points}">0</td>
+                        <td>
+                            <details class="client-history" th:if="${!#lists.isEmpty(reservations)}">
+                                <summary th:text="${#lists.size(reservations) + ' reserva(s)'}">1 reserva</summary>
+                                <ul>
+                                    <li th:each="reservation : ${reservations}">
+                                        <strong th:text="${reservation.name}">Carta</strong>
+                                        <span th:text="${reservation.quantity + 'u | ' + reservation.displayStatus}">1u | Sin Stock</span>
+                                    </li>
+                                </ul>
+                            </details>
+                            <span class="muted-cell" th:if="${#lists.isEmpty(reservations)}">Sin reservas</span>
+                        </td>
+                        <td>
+                            <a class="secondary-button link-button compact-button"
+                               th:href="@{/clientes(edit=${client.rowIndex})}">Editar</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </th:block>
+
+    <section class="movement-lock-layer" th:if="${clientsLocked}" role="dialog" aria-modal="true"
+             aria-labelledby="client-lock-title" aria-describedby="client-lock-copy">
+        <div class="movement-lock-dialog">
+            <div class="movement-lock-head">
+                <span class="movement-access-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                </span>
+                <div>
+                    <p class="eyebrow">Modulo protegido</p>
+                    <h2 id="client-lock-title">Clientes bloqueados</h2>
+                </div>
+            </div>
+
+            <p id="client-lock-copy" class="movement-lock-copy">
+                Ingresa la misma clave de Movimientos para crear, buscar y editar clientes.
+            </p>
+
+            <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
+
+            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
+                  data-loading-button="Desbloqueando..."
+                  data-loading-title="Verificando acceso"
+                  data-loading-message="Revisando la contrasena y abriendo clientes...">
+                <input type="hidden" name="returnTo" th:value="${returnTo}">
+                <div class="movement-access-field">
+                    <label for="client-password">Clave de acceso</label>
+                    <input id="client-password" name="password" type="password"
+                           autocomplete="current-password" required autofocus>
+                </div>
+                <div class="movement-lock-actions">
+                    <button class="primary-button" type="submit">Desbloquear</button>
+                    <a class="secondary-button link-button" th:href="@{/}">Volver al inicio</a>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: loading('Guardando cliente', 'Actualizando la hoja Clientes...')}"></div>
+</body>
+</html>

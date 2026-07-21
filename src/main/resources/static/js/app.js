@@ -39,7 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const importConfirmForm = document.getElementById("import-confirm-form");
     const storeForm = document.querySelector(".store-form");
     const loadingOverlay = document.getElementById("loading-overlay");
-
     const confirmWithAppDialog = form => {
         const appConfirmDialog = document.getElementById("app-confirm-dialog");
         if (!appConfirmDialog) {

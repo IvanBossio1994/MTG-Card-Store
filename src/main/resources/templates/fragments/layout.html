@@ -46,6 +46,25 @@
                     </svg>
                 </span>
             </a>
+            <a class="protected-menu-link" th:classappend="${active == 'clients'} ? ' active'" th:href="@{/clientes}">
+                <span>Clientes</span>
+                <span class="menu-lock-icon"
+                      th:classappend="${reservationsUnlocked} ? ' unlocked' : ' locked'"
+                      th:title="${reservationsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
+                      th:attr="aria-label=${reservationsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
+                      role="img">
+                    <svg th:if="${reservationsUnlocked}" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 7V6a4 4 0 0 0-7.7-1.5"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                    <svg th:unless="${reservationsUnlocked}" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                </span>
+            </a>
             <a class="protected-menu-link" th:classappend="${active == 'movements'} ? ' active'" th:href="@{/movimientos}">
                 <span>Movimientos</span>
                 <span class="menu-lock-icon"

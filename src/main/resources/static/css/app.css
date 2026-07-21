@@ -309,6 +309,24 @@ body.menu-open {
     box-shadow: 0 0 0 3px rgba(202, 47, 58, 0.12);
 }
 
+.store-field.checkbox-field label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+}
+
+.store-field.checkbox-field input:not(.file-input) {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+}
+
+.store-field input:disabled {
+    color: var(--muted);
+    background: #eef3fb;
+}
+
 .import-form textarea.invalid-input {
     border-color: var(--red);
     box-shadow: 0 0 0 3px rgba(202, 47, 58, 0.12);
@@ -2426,6 +2444,77 @@ input.stock-value::-webkit-inner-spin-button {
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 12px;
     margin-bottom: 18px;
+}
+
+.clients-page {
+    display: grid;
+    gap: 20px;
+}
+
+.client-form-panel,
+.client-search-panel {
+    display: grid;
+    gap: 18px;
+}
+
+.client-form {
+    display: grid;
+    gap: 16px;
+}
+
+.client-search-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.client-table td:first-child strong,
+.client-table td:first-child small {
+    display: block;
+}
+
+.client-table td:first-child small {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.client-history summary {
+    cursor: pointer;
+    color: var(--blue);
+    font-weight: 700;
+}
+
+.client-history ul {
+    display: grid;
+    gap: 8px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.client-history li {
+    display: grid;
+    gap: 2px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.client-history li:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.client-history span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+@media (max-width: 700px) {
+    .client-search-form {
+        grid-template-columns: 1fr;
+    }
 }
 
 .reservation-table-panel {

@@ -87,6 +87,56 @@
             </div>
         </section>
 
+        <section class="settings-card" th:if="${whatsappSettingsVisible}">
+            <h2>WhatsApp</h2>
+            <p class="card-help">Conecta WhatsApp Cloud API para recibir consultas y pedidos desde el telefono de la tienda.</p>
+            <div class="store-field checkbox-field">
+                <label>
+                    <input id="whatsappEnabled" name="whatsappEnabled" type="checkbox" value="true"
+                           th:checked="${whatsappEnabled}">
+                    Activar WhatsApp
+                </label>
+            </div>
+            <div class="pricing-config-grid">
+                <div class="store-field">
+                    <label for="whatsappPhoneNumberId">Phone Number ID</label>
+                    <input id="whatsappPhoneNumberId" name="whatsappPhoneNumberId" type="text"
+                           th:value="${whatsappPhoneNumberId}" placeholder="Ej: 1234567890">
+                </div>
+                <div class="store-field">
+                    <label for="whatsappVerifyToken">Verify Token</label>
+                    <input id="whatsappVerifyToken" name="whatsappVerifyToken" type="text"
+                           th:value="${whatsappVerifyToken}" placeholder="Texto secreto para Meta">
+                </div>
+            </div>
+            <div class="store-field">
+                <label for="whatsappAccessToken">Access Token</label>
+                <input id="whatsappAccessToken" name="whatsappAccessToken" type="password"
+                       autocomplete="off"
+                       th:placeholder="${hasWhatsappAccessToken ? 'Token guardado. Completa solo para reemplazarlo.' : 'Token permanente de WhatsApp Cloud API'}">
+                <p class="field-help">Webhook para Meta: /webhooks/whatsapp sobre tu URL publica de ngrok.</p>
+            </div>
+            <div class="store-field checkbox-field">
+                <label>
+                    <input id="whatsappAlwaysOn" name="whatsappAlwaysOn" type="checkbox" value="true"
+                           th:checked="${whatsappAlwaysOn}">
+                    WhatsApp operativo mientras la app este abierta
+                </label>
+            </div>
+            <div class="pricing-config-grid whatsapp-hours">
+                <div class="store-field">
+                    <label for="whatsappOpeningTime">Hora de apertura</label>
+                    <input id="whatsappOpeningTime" name="whatsappOpeningTime" type="time"
+                           th:value="${whatsappOpeningTime}">
+                </div>
+                <div class="store-field">
+                    <label for="whatsappClosingTime">Hora de cierre</label>
+                    <input id="whatsappClosingTime" name="whatsappClosingTime" type="time"
+                           th:value="${whatsappClosingTime}">
+                </div>
+            </div>
+        </section>
+
         <div class="store-actions">
             <button class="primary-button" type="submit">Guardar configuracion</button>
             <a class="secondary-button link-button" th:href="@{/}">Cancelar</a>

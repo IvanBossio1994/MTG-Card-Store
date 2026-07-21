@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
@@ -53,9 +54,13 @@ class DashboardControllerVariantSearchTests {
 
         String reservations = (String) method.invoke(controller, "/reservas");
         String reservationsQuery = (String) method.invoke(controller, "/reservas?tab=pendientes");
+        String clients = (String) method.invoke(controller, "/clientes");
+        String clientsQuery = (String) method.invoke(controller, "/clientes?edit=4");
 
         assertThat(reservations).isEqualTo("/reservas");
         assertThat(reservationsQuery).isEqualTo("/reservas?tab=pendientes");
+        assertThat(clients).isEqualTo("/clientes");
+        assertThat(clientsQuery).isEqualTo("/clientes?edit=4");
     }
 
     @Test
@@ -204,6 +209,72 @@ class DashboardControllerVariantSearchTests {
         assertThat(response.getBody().get(0).client()).isEqualTo("Soky");
         assertThat(response.getBody().get(0).phone()).isEqualTo("111");
         assertThat(response.getBody().get(0).dni()).isEqualTo("222");
+    }
+
+    @Test
+    void saveClientPersistsNewClientAndKeepsFields() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+        when(inventoryService.getReservationClients()).thenReturn(List.of());
+
+        String view = controller.saveClient(
+                "Jorge",
+                "Macri",
+                "3666666",
+                "3777777",
+                "jorge.macri@hotmail.com",
+                "prueba 7",
+                "125000",
+                request,
+                redirectAttributes
+        );
+
+        ArgumentCaptor<ReservationClient> captor = ArgumentCaptor.forClass(ReservationClient.class);
+        verify(inventoryService).upsertReservationClient(captor.capture());
+        ReservationClient saved = captor.getValue();
+
+        assertThat(view).isEqualTo("redirect:/clientes");
+        assertThat(redirectAttributes.getFlashAttributes().get("success")).isEqualTo("Cliente guardado.");
+        assertThat(redirectAttributes.getFlashAttributes()).doesNotContainKey("clientError");
+        assertThat(saved.getFirstName()).isEqualTo("Jorge");
+        assertThat(saved.getLastName()).isEqualTo("Macri");
+        assertThat(saved.getDni()).isEqualTo("3666666");
+        assertThat(saved.getPhone()).isEqualTo("3777777");
+        assertThat(saved.getEmail()).isEqualTo("jorge.macri@hotmail.com");
+        assertThat(saved.getNotes()).isEqualTo("prueba 7");
+        assertThat(saved.getPoints()).isEqualTo("125000");
+        assertThat(saved.getUpdatedAt()).isNotBlank();
+    }
+
+    @Test
+    void saveClientRejectsDuplicateDniWithoutPersisting() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+        when(inventoryService.getReservationClients()).thenReturn(List.of(
+                reservationClient("Sofi", "123456789", "123456789")
+        ));
+
+        String view = controller.saveClient(
+                "Jorge",
+                "Macri",
+                "123456789",
+                "3777777",
+                "jorge.macri@hotmail.com",
+                "prueba 7",
+                "125000",
+                request,
+                redirectAttributes
+        );
+
+        verify(inventoryService, never()).upsertReservationClient(any(ReservationClient.class));
+        assertThat(view).isEqualTo("redirect:/clientes");
+        assertThat(redirectAttributes.getFlashAttributes().get("clientError"))
+                .isEqualTo("Ya existe un cliente con ese DNI: Sofi.");
+        assertThat(redirectAttributes.getFlashAttributes()).containsKey("submittedClient");
     }
 
     @Test
