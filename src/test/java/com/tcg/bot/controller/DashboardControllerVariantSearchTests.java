@@ -260,6 +260,9 @@ class DashboardControllerVariantSearchTests {
         verify(inventoryService).appendMovements(movementsCaptor.capture());
         assertThat(movementsCaptor.getValue()).hasSize(1);
         assertThat(movementsCaptor.getValue().get(0).getSource()).isEqualTo("Pedido sin stock");
+        assertThat(movementsCaptor.getValue().get(0).getClient()).isEqualTo("Codex");
+        assertThat(movementsCaptor.getValue().get(0).getDni()).isEqualTo("36562874");
+        assertThat(movementsCaptor.getValue().get(0).getReservationId()).startsWith("RSV-");
     }
 
     @Test
@@ -332,6 +335,10 @@ class DashboardControllerVariantSearchTests {
         assertThat(movementsCaptor.getValue()).hasSize(1);
         assertThat(movementsCaptor.getValue().get(0).getSource()).isEqualTo("Reserva apartada");
         assertThat(movementsCaptor.getValue().get(0).getSource()).isNotEqualTo("Agregado al stock");
+        assertThat(movementsCaptor.getValue().get(0).getCondition()).isEqualTo("NM");
+        assertThat(movementsCaptor.getValue().get(0).getClient()).isEqualTo("Codex");
+        assertThat(movementsCaptor.getValue().get(0).getDni()).isEqualTo("36562874");
+        assertThat(movementsCaptor.getValue().get(0).getReservationId()).startsWith("RSV-");
     }
 
     @Test
@@ -342,7 +349,7 @@ class DashboardControllerVariantSearchTests {
         InventoryCard stock = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "No Foil", "1", "En Stock", 10);
         stock.setCondition("NM");
         when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
-        when(inventoryService.getReservations()).thenReturn(List.of());
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(List.of());
 
         ResponseEntity<?> response = controller.updateQuantity(10, 1, false, false, request);
 
@@ -350,6 +357,206 @@ class DashboardControllerVariantSearchTests {
         ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
         verify(inventoryService).appendMovement(movementCaptor.capture());
         assertThat(movementCaptor.getValue().getSource()).isEqualTo("Agregado al stock");
+        assertThat(movementCaptor.getValue().getCondition()).isEqualTo("NM");
+        assertThat(movementCaptor.getValue().getClient()).isBlank();
+        assertThat(movementCaptor.getValue().getDni()).isBlank();
+        assertThat(movementCaptor.getValue().getReservationId()).isBlank();
+    }
+
+    @Test
+    void addInventoryCardFromSearchWritesStandardStockIngressSource() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
+        PriceComparisonService priceComparisonService = mock(PriceComparisonService.class);
+        DashboardController controller = new DashboardController(
+                inventoryService,
+                cardKingdomApiService,
+                null,
+                priceComparisonService,
+                null,
+                null
+        );
+        HttpServletRequest request = unlockedRequest();
+
+        CardKingdomProduct product = product("Sol Ring", "Commander Masters", "CMM-0410");
+        product.setFoil("false");
+        CardKingdomPriceListResponse priceList = new CardKingdomPriceListResponse();
+        priceList.setData(List.of(product));
+        InventoryCard persisted = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "nonfoil", "1", "En Stock", 10);
+        persisted.setCondition("NM");
+        persisted.setCkPriceUsd("1.00");
+        persisted.setLocalPrice("1000");
+
+        when(cardKingdomApiService.getPriceList()).thenReturn(priceList);
+        when(priceComparisonService.getBestConditionPrice(eq(product), any(InventoryCard.class))).thenReturn(1.0);
+        when(priceComparisonService.calculateLocalPrice(1.0)).thenReturn(1000.0);
+        when(inventoryService.appendInventoryCard(any(InventoryCard.class))).thenReturn(10);
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(persisted));
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(List.of());
+
+        ResponseEntity<?> response = controller.addInventoryCard("CMM-0410", "NM", 1, false, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(inventoryService).appendMovement(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getSource()).isEqualTo("Agregado al stock");
+        assertThat(movementCaptor.getValue().getSource()).isNotEqualTo("Busqueda");
+        verify(inventoryService, never()).appendCashSale(anyString(), anyString(), any(), anyInt());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void ledgerReservationLookupDoesNotCreateReservationsSheet() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(List.of());
+
+        Method method = DashboardController.class.getDeclaredMethod("reservationsForLedgerSafely");
+        method.setAccessible(true);
+
+        List<CardReservation> reservations = (List<CardReservation>) method.invoke(controller);
+
+        assertThat(reservations).isEmpty();
+        verify(inventoryService).getReservationsIfSheetExists();
+        verify(inventoryService, never()).getReservations();
+    }
+
+    @Test
+    void reservationGroupStatusLabelUsesShortPedidoSummary() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod(
+                "reservationGroupStatusLabel",
+                List.class,
+                int.class,
+                int.class
+        );
+        method.setAccessible(true);
+
+        CardReservation single = reservedReservation("Sol Ring", "Commander Masters", "CMM", "0410", "NM", "");
+        CardReservation first = reservedReservation("Sol Ring", "Commander Masters", "CMM", "0410", "NM", "");
+        CardReservation second = reservedReservation("Arcane Signet", "Commander Masters", "CMM", "0411", "NM", "");
+
+        CardReservation pending = pendingReservation("Demand", "Commander Masters", "CMM", "0412", "NM");
+
+        assertThat((String) method.invoke(controller, List.of(single), 0, 1)).isEqualTo("1 reservada");
+        assertThat((String) method.invoke(controller, List.of(first, second), 0, 2)).isEqualTo("2 reservadas");
+        assertThat((String) method.invoke(controller, List.of(single, pending), 0, 2))
+                .isEqualTo("1 reservada · 1 pedido sin stock");
+    }
+
+    @Test
+    void deliverReservationWritesReservationSaleMovementWithMetadataAndCash() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributes redirectAttributes = mock(RedirectAttributes.class);
+        InventoryCard stock = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "nonfoil", "2", "Reservada", 10);
+        stock.setCondition("EX");
+        CardReservation reservation = reservedReservation("Sol Ring", "Commander Masters", "CMM", "0410", "EX", "");
+        reservation.setId("RSV-1");
+        reservation.setClient("Sofi");
+        reservation.setDni("222");
+        when(inventoryService.getReservations()).thenReturn(List.of(reservation));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
+
+        String view = controller.deliverReservation("RSV-1", request, redirectAttributes);
+
+        assertThat(view).isEqualTo("redirect:/reservas");
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(inventoryService).appendMovement(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getSource()).isEqualTo("Entrega reserva");
+        assertThat(movementCaptor.getValue().getCondition()).isEqualTo("EX");
+        assertThat(movementCaptor.getValue().getClient()).isEqualTo("Sofi");
+        assertThat(movementCaptor.getValue().getDni()).isEqualTo("222");
+        assertThat(movementCaptor.getValue().getReservationId()).isEqualTo("RSV-1");
+        verify(inventoryService).appendCashSale(anyString(), anyString(), same(stock), eq(1));
+    }
+
+    @Test
+    void deliverReservationGroupWritesReservationSaleMovementWithMetadataAndCash() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributes redirectAttributes = mock(RedirectAttributes.class);
+        InventoryCard stock = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "nonfoil", "2", "Reservada", 10);
+        stock.setCondition("NM");
+        CardReservation reservation = reservedReservation("Sol Ring", "Commander Masters", "CMM", "0410", "NM", "");
+        reservation.setId("RSV-2");
+        reservation.setClient("Sofi");
+        reservation.setPhone("111");
+        reservation.setDni("222");
+        when(inventoryService.getReservations()).thenReturn(List.of(reservation));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
+
+        String view = controller.deliverReservationGroup("phone:111", request, redirectAttributes);
+
+        assertThat(view).isEqualTo("redirect:/reservas");
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(inventoryService).appendMovement(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getSource()).isEqualTo("Entrega reserva");
+        assertThat(movementCaptor.getValue().getClient()).isEqualTo("Sofi");
+        assertThat(movementCaptor.getValue().getDni()).isEqualTo("222");
+        assertThat(movementCaptor.getValue().getReservationId()).isEqualTo("RSV-2");
+        verify(inventoryService).appendCashSale(anyString(), anyString(), same(stock), eq(1));
+    }
+
+    @Test
+    void deleteReservationWritesReturnMovementWithMetadata() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributes redirectAttributes = mock(RedirectAttributes.class);
+        InventoryCard stock = inventoryCard("Sol Ring", "Commander Masters", "CMM", "0410", "nonfoil", "1", "Reservada", 10);
+        stock.setCondition("NM");
+        CardReservation reservation = reservedReservation("Sol Ring", "Commander Masters", "CMM", "0410", "NM", "");
+        reservation.setId("RSV-3");
+        reservation.setClient("Sofi");
+        reservation.setDni("222");
+        when(inventoryService.getReservations()).thenReturn(List.of(reservation));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
+
+        String view = controller.deleteReservation("RSV-3", request, redirectAttributes);
+
+        assertThat(view).isEqualTo("redirect:/reservas");
+        ArgumentCaptor<List<InventoryMovement>> movementsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(inventoryService).appendMovements(movementsCaptor.capture());
+        assertThat(movementsCaptor.getValue()).hasSize(1);
+        InventoryMovement movement = movementsCaptor.getValue().get(0);
+        assertThat(movement.getSource()).isEqualTo("Pedido cancelado");
+        assertThat(movement.getCondition()).isEqualTo("NM");
+        assertThat(movement.getClient()).isEqualTo("Sofi");
+        assertThat(movement.getDni()).isEqualTo("222");
+        assertThat(movement.getReservationId()).isEqualTo("RSV-3");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void deletePendingReservationWritesCancellationMovementWithoutStockOrCashChanges() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        RedirectAttributes redirectAttributes = mock(RedirectAttributes.class);
+        CardReservation reservation = pendingReservation("Demand", "Commander Masters", "CMM", "0410", "NM");
+        reservation.setId("RSV-4");
+        reservation.setClient("Sofi");
+        reservation.setDni("222");
+        when(inventoryService.getReservations()).thenReturn(List.of(reservation));
+        when(inventoryService.getInventoryCards()).thenReturn(List.of());
+
+        String view = controller.deleteReservation("RSV-4", request, redirectAttributes);
+
+        assertThat(view).isEqualTo("redirect:/reservas");
+        ArgumentCaptor<List<InventoryMovement>> movementsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(inventoryService).appendMovements(movementsCaptor.capture());
+        assertThat(movementsCaptor.getValue()).hasSize(1);
+        InventoryMovement movement = movementsCaptor.getValue().get(0);
+        assertThat(movement.getSource()).isEqualTo("Pedido cancelado");
+        assertThat(movement.getQuantity()).isEqualTo("1");
+        assertThat(movement.getNewStock()).isEqualTo("0");
+        assertThat(movement.getClient()).isEqualTo("Sofi");
+        assertThat(movement.getDni()).isEqualTo("222");
+        assertThat(movement.getReservationId()).isEqualTo("RSV-4");
+        verify(inventoryService, never()).appendCashSale(anyString(), anyString(), any(), anyInt());
+        verify(inventoryService, never()).updateStockState(anyInt(), any());
     }
 
     @Test
@@ -446,12 +653,117 @@ class DashboardControllerVariantSearchTests {
                         movement("2026-07-01", "RESERVA", "1", "Sol Ring", "Reservada")
                 );
 
-        assertThat(delivered.displaySource()).isEqualTo("Reserva entregada");
-        assertThat(delivered.sourceClass()).isEqualTo("entrega-reserva");
-        assertThat(cancelled.displaySource()).isEqualTo("Devuelta/cancelada");
-        assertThat(cancelled.sourceClass()).isEqualTo("devuelta-cancelada");
+        assertThat(delivered.displaySource()).isEqualTo("Reserva vendida");
+        assertThat(delivered.sourceClass()).isEqualTo("reserva-vendida");
+        assertThat(delivered.quantity()).isEqualTo("1");
+        assertThat(cancelled.displaySource()).isEqualTo("Pedido cancelado");
+        assertThat(cancelled.sourceClass()).isEqualTo("pedido-cancelado");
         assertThat(reserved.displaySource()).isEqualTo("Reserva apartada");
         assertThat(reserved.sourceClass()).isEqualTo("reserva-apartada");
+    }
+
+    @Test
+    void movementDisplayAliasesStockAndPendingSources() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("movementDisplayRow", InventoryMovement.class);
+        method.setAccessible(true);
+
+        DashboardController.MovementDisplayRow stockAdded =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement("2026-07-01", "ENTRADA", "1", "Sol Ring", "Agregado al stock")
+                );
+        DashboardController.MovementDisplayRow legacySearchAdded =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement("2026-07-01", "ENTRADA", "1", "Sol Ring", "Busqueda")
+                );
+        DashboardController.MovementDisplayRow pending =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement("2026-07-01", "RESERVA", "2", "Sol Ring", "Pedido sin stock")
+                );
+
+        assertThat(stockAdded.displaySource()).isEqualTo("Unidad agregada");
+        assertThat(stockAdded.sourceClass()).isEqualTo("unidad-agregada");
+        assertThat(stockAdded.quantity()).isEqualTo("1");
+        assertThat(legacySearchAdded.displaySource()).isEqualTo("Unidad agregada");
+        assertThat(legacySearchAdded.sourceClass()).isEqualTo("unidad-agregada");
+        assertThat(pending.displaySource()).isEqualTo("Pedido sin stock");
+        assertThat(pending.sourceClass()).isEqualTo("pedido-sin-stock");
+        assertThat(pending.quantity()).isEqualTo("2");
+    }
+
+    @Test
+    void movementDisplayKeepsReservationMetadata() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("movementDisplayRow", InventoryMovement.class);
+        method.setAccessible(true);
+
+        DashboardController.MovementDisplayRow row =
+                (DashboardController.MovementDisplayRow) method.invoke(
+                        controller,
+                        movement(
+                                "2026-07-01",
+                                "RESERVA",
+                                "1",
+                                "Sol Ring",
+                                "Reserva apartada",
+                                "EX",
+                                "Sofi",
+                                "12345678",
+                                "RSV-1"
+                        )
+                );
+
+        assertThat(row.condition()).isEqualTo("EX");
+        assertThat(row.client()).isEqualTo("Sofi");
+        assertThat(row.dni()).isEqualTo("12345678");
+        assertThat(row.reservationId()).isEqualTo("RSV-1");
+    }
+
+    @Test
+    void legacyMovementRowsWithoutMetadataExposeBlankMetadata() {
+        InventoryMovement movement = new InventoryMovement(
+                "2026-07-01 10:00:00",
+                "2026-07-01",
+                "10:00",
+                "ENTRADA",
+                "1",
+                "Sol Ring",
+                "Commander Masters",
+                "CMM",
+                "0410",
+                "No Foil",
+                "0",
+                "1",
+                "Agregado al stock"
+        );
+
+        assertThat(movement.getCondition()).isBlank();
+        assertThat(movement.getClient()).isBlank();
+        assertThat(movement.getDni()).isBlank();
+        assertThat(movement.getReservationId()).isBlank();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void movementGroupsKeepRawRowsForSameCardReservationEvents() throws Exception {
+        Method method = DashboardController.class.getDeclaredMethod("groupMovementsByMonth", List.class, String.class);
+        method.setAccessible(true);
+
+        List<InventoryMovement> movements = List.of(
+                movement("2026-07-01", "RESERVA", "1", "Sol Ring", "Reserva apartada", "NM", "Sofi", "111", "RSV-1"),
+                movement("2026-07-01", "RESERVA", "1", "Sol Ring", "Reserva apartada", "EX", "Mati", "222", "RSV-2")
+        );
+
+        List<DashboardController.MovementMonthGroup> groups =
+                (List<DashboardController.MovementMonthGroup>) method.invoke(controller, movements, "");
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.get(0).count()).isEqualTo(2);
+        assertThat(groups.get(0).movements()).extracting(DashboardController.MovementDisplayRow::client)
+                .containsExactly("Sofi", "Mati");
+        assertThat(groups.get(0).movements()).extracting(DashboardController.MovementDisplayRow::condition)
+                .containsExactly("NM", "EX");
     }
 
     @Test
@@ -469,9 +781,10 @@ class DashboardControllerVariantSearchTests {
                 movement("2026-07-01", "RESERVA", "1", "Sol Ring", "Reservada"),
                 movement("2026-07-01", "RESERVA", "2", "Sol Ring", "Reserva apartada"),
                 movement("2026-07-02", "SALIDA", "-1", "Arcane Signet", "Entrega reserva"),
-                movement("2026-07-02", "SALIDA", "-2", "Arcane Signet", "Reserva entregada"),
+                movement("2026-07-02", "SALIDA", "-2", "Arcane Signet", "Reserva vendida"),
                 movement("2026-07-03", "ENTRADA", "1", "Sol Ring", "Reserva cancelada"),
-                movement("2026-07-03", "ENTRADA", "2", "Sol Ring", "Devuelta/cancelada")
+                movement("2026-07-03", "ENTRADA", "2", "Sol Ring", "Devuelta al stock"),
+                movement("2026-07-04", "RESERVA", "4", "Demand", "Reserva sin stock")
         );
 
         List<DashboardController.CashReportMonth> reports =
@@ -482,6 +795,7 @@ class DashboardControllerVariantSearchTests {
         assertThat(report.reservedActivityQuantity()).isEqualTo(3);
         assertThat(report.reservationSoldQuantity()).isEqualTo(3);
         assertThat(report.reservationReturnedQuantity()).isEqualTo(3);
+        assertThat(report.pendingCreatedQuantity()).isEqualTo(4);
     }
 
     @Test
@@ -1599,7 +1913,7 @@ class DashboardControllerVariantSearchTests {
         );
         exact.setStatus(CardReservation.STATUS_WANTED);
         exact.setClient("Raul");
-        when(inventoryService.getReservations()).thenReturn(List.of(flexible, exact));
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(List.of(flexible, exact));
 
         Method method = DashboardController.class.getDeclaredMethod("pendingReservationQuantitiesForSearchResults", List.class);
         method.setAccessible(true);
@@ -1996,6 +2310,10 @@ class DashboardControllerVariantSearchTests {
         verify(inventoryService).appendMovement(movementCaptor.capture());
         assertThat(movementCaptor.getValue().getSource()).isEqualTo("Reserva apartada");
         assertThat(movementCaptor.getValue().getSource()).isNotEqualTo("Agregado al stock");
+        assertThat(movementCaptor.getValue().getCondition()).isEqualTo(saved.getCondition());
+        assertThat(movementCaptor.getValue().getClient()).isEqualTo("Sofi");
+        assertThat(movementCaptor.getValue().getDni()).isEqualTo("222");
+        assertThat(movementCaptor.getValue().getReservationId()).isEqualTo(saved.getId());
     }
 
     @Test
@@ -2049,6 +2367,9 @@ class DashboardControllerVariantSearchTests {
         verify(inventoryService).appendMovement(movementCaptor.capture());
         assertThat(movementCaptor.getValue().getSource()).isEqualTo("Pedido sin stock");
         assertThat(movementCaptor.getValue().getSource()).isNotEqualTo("Agregado al stock");
+        assertThat(movementCaptor.getValue().getClient()).isEqualTo("Sofi");
+        assertThat(movementCaptor.getValue().getDni()).isEqualTo("222");
+        assertThat(movementCaptor.getValue().getReservationId()).isEqualTo(savedReservations.get(0).getId());
     }
 
     @Test
@@ -2468,7 +2789,7 @@ class DashboardControllerVariantSearchTests {
         assertThat(body.pendingInfo().quantity()).isEqualTo(1);
         assertThat(body.familyPendingInfo().pending()).isTrue();
         assertThat(body.familyPendingInfo().quantity()).isEqualTo(1);
-        assertThat(body.familyPendingInfo().summaryLabel()).isEqualTo("Pedido pendiente: 1");
+        assertThat(body.familyPendingInfo().summaryLabel()).isEqualTo("Pedido sin stock: 1");
         assertThat(body.familyPendingInfo().tooltip()).contains("Maria - MKC-0221 NM");
         verify(inventoryService, never()).updateStockState(anyInt(), any());
     }
@@ -2525,7 +2846,7 @@ class DashboardControllerVariantSearchTests {
                 (DashboardController.ReservationCreateResponse) response.getBody();
         assertThat(body).isNotNull();
         assertThat(body.familyPendingInfo().quantity()).isEqualTo(2);
-        assertThat(body.familyPendingInfo().summaryLabel()).isEqualTo("Pedidos pendientes: 2");
+        assertThat(body.familyPendingInfo().summaryLabel()).isEqualTo("Pedidos sin stock: 2");
         assertThat(body.familyPendingInfo().tooltip())
                 .contains("Maria - MKC-0221 NM")
                 .contains("Raul - MKC-0221 NM");
@@ -2596,7 +2917,7 @@ class DashboardControllerVariantSearchTests {
                 "[Cualquier edicion/condicion]"
         );
         when(inventoryService.getInventoryCards()).thenReturn(List.of(nm, g));
-        when(inventoryService.getReservations()).thenReturn(List.of(flexible));
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(List.of(flexible));
 
         DashboardController.UpdateResult update =
                 (DashboardController.UpdateResult) method.invoke(controller, nm);
@@ -2860,7 +3181,7 @@ class DashboardControllerVariantSearchTests {
         assertThat(group.reservedQuantity()).isEqualTo(2);
         assertThat(group.availableQuantity()).isEqualTo(9);
         assertThat(group.pendingInfo().getQuantity()).isEqualTo(1);
-        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedido pendiente: 1");
+        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedido sin stock: 1");
         assertThat(group.pendingInfo().getClientsLabel()).contains("Pepito");
         assertThat(group.pendingInfo().getTooltip()).contains("Pepito - cualquier edicion/condicion");
         assertThat(group.families())
@@ -2901,7 +3222,7 @@ class DashboardControllerVariantSearchTests {
         assertThat(group.reservedQuantity()).isZero();
         assertThat(group.availableQuantity()).isZero();
         assertThat(group.pendingInfo().getQuantity()).isEqualTo(1);
-        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedido pendiente: 1");
+        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedido sin stock: 1");
         assertThat(group.pendingInfo().getClientsLabel()).contains("Soky");
         assertThat(group.pendingInfo().getTooltip()).contains("Soky - FMH2-469 NM Foil");
     }
@@ -2946,7 +3267,7 @@ class DashboardControllerVariantSearchTests {
         assertThat(group.reservedQuantity()).isZero();
         assertThat(group.availableQuantity()).isEqualTo(5);
         assertThat(group.pendingInfo().getQuantity()).isEqualTo(2);
-        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedidos pendientes: 2");
+        assertThat(group.pendingInfo().getSummaryLabel()).isEqualTo("Pedidos sin stock: 2");
         assertThat(group.pendingInfo().getTooltip())
                 .contains("Pepito - cualquier edicion/condicion")
                 .contains("Soky - FMH2-469 NM Foil");
@@ -3868,6 +4189,20 @@ class DashboardControllerVariantSearchTests {
             String name,
             String source
     ) {
+        return movement(date, type, quantity, name, source, "", "", "", "");
+    }
+
+    private InventoryMovement movement(
+            String date,
+            String type,
+            String quantity,
+            String name,
+            String source,
+            String condition,
+            String client,
+            String dni,
+            String reservationId
+    ) {
         return new InventoryMovement(
                 date + " 10:00:00",
                 date,
@@ -3881,7 +4216,11 @@ class DashboardControllerVariantSearchTests {
                 "No Foil",
                 "3",
                 "3",
-                source
+                source,
+                condition,
+                client,
+                dni,
+                reservationId
         );
     }
 
@@ -3950,6 +4289,18 @@ class DashboardControllerVariantSearchTests {
         reservation.setCondition(condition);
         reservation.setQuantity("1");
         reservation.setNotes(notes);
+        return reservation;
+    }
+
+    private CardReservation pendingReservation(
+            String name,
+            String setName,
+            String setCode,
+            String collectorNumber,
+            String condition
+    ) {
+        CardReservation reservation = reservedReservation(name, setName, setCode, collectorNumber, condition, "");
+        reservation.setStatus(CardReservation.STATUS_WANTED);
         return reservation;
     }
 

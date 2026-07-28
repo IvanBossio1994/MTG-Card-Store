@@ -253,16 +253,16 @@
                           onclick="event.stopPropagation();"
                           data-app-confirm
                           data-loading-button="&times;"
-                          data-loading-title="Eliminando reserva"
-                          data-loading-message="Quitando el pedido y devolviendo cartas reservadas al stock..."
-                          data-confirm-title="Eliminar reserva"
-                          data-confirm-message="&iquest;Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
+                          data-loading-title="Cancelando pedido"
+                          data-loading-message="Cancelando el pedido y actualizando Reservas..."
+                          data-confirm-title="Cancelar pedido"
+                          data-confirm-message="&iquest;Cancelar este pedido? Si tenia cartas apartadas, volveran a estar disponibles.">
                         <input type="hidden" name="groupKey" th:value="${group.key}">
                         <button class="reservation-delete-button" type="submit" aria-label="Eliminar reserva">&times;</button>
                     </form>
                     <span class="reservation-status-bar"
                           th:classappend="${group.status == null ? '' : #strings.toLowerCase(group.status).replace(' ', '-')}"
-                          th:text="${group.statusLabel}">0 cartas disponibles de 1 reservada</span>
+                          th:text="${group.statusLabel}">1 pedido sin stock</span>
                 </summary>
 
                 <div class="reservation-group-body">
@@ -298,9 +298,6 @@
                     <div class="reservation-items-list">
                         <article class="reservation-item-card" th:each="reservation : ${group.items}">
                             <div class="reservation-item-main">
-                                <span class="status reservation-item-status"
-                                      th:classappend="${reservation.displayStatus == null ? '' : #strings.toLowerCase(reservation.displayStatus).replace(' ', '-')}"
-                                      th:text="${reservation.displayStatus != null && reservation.displayStatus != '' ? reservation.displayStatus : '-'}">Sin Stock</span>
                                 <strong th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</strong>
                                 <span th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</span>
                             </div>

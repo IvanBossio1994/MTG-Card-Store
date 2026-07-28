@@ -49,15 +49,15 @@
                         <div class="pickup-warning-actions" th:if="${alert.overdue}">
                             <form method="post" th:action="@{/reservas/retiro/liberar}"
                                   data-app-confirm
-                                  data-loading-button="Liberando..."
-                                  data-loading-title="Liberando pedido"
-                                  data-loading-message="Devolviendo cartas reservadas al stock y actualizando Reservas..."
-                                  data-confirm-title="Liberar pedido vencido"
-                                  th:attr="data-confirm-message=${'Se van a devolver ' + alert.reservedQuantity + ' carta(s) reservadas al stock y se quitara este pedido.'}">
+                                  data-loading-button="Cancelando..."
+                                  data-loading-title="Cancelando pedido"
+                                  data-loading-message="Cancelando el pedido y actualizando Reservas..."
+                                  data-confirm-title="Cancelar pedido vencido"
+                                  th:attr="data-confirm-message=${'Se cancelara el pedido y ' + alert.reservedQuantity + ' carta(s) volveran a estar disponibles.'}">
                                 <input type="hidden" name="groupKey" th:value="${alert.groupKey}">
                                 <input type="hidden" name="currentPickupDate" th:value="${alert.pickupDate}">
                                 <input type="hidden" name="returnTo" value="/">
-                                <button class="secondary-button danger-soft-button compact-action-button" type="submit">Volver al stock</button>
+                                <button class="secondary-button danger-soft-button compact-action-button" type="submit">Cancelar pedido</button>
                             </form>
 
                             <form class="pickup-reschedule-form pickup-inline-date-form" method="post" th:action="@{/reservas/retiro/reprogramar}"
@@ -77,7 +77,7 @@
 
             <div class="pickup-warning-section" th:if="${!#lists.isEmpty(pendingAlerts)}">
                 <div class="pickup-warning-section-head">
-                    <h3>Pendientes sin stock <span th:text="${'(' + #lists.size(pendingAlerts) + ')'}">(0)</span></h3>
+                    <h3>Pedidos sin stock <span th:text="${'(' + #lists.size(pendingAlerts) + ')'}">(0)</span></h3>
                 </div>
                 <div class="pickup-warning-list">
                     <article class="pickup-warning-item pickup-warning-pending"
@@ -85,7 +85,7 @@
                              th:classappend="${alert.overdue} ? ' overdue' : ''">
                         <a class="pickup-warning-copy pickup-warning-link"
                            th:href="@{/reservas(openGroup=${alert.groupKey})} + '#' + ${alert.anchorId}">
-                            <small class="pickup-status-chip pickup-status-chip-pending">Pendiente sin stock</small>
+                            <small class="pickup-status-chip pickup-status-chip-pending">Pedido sin stock</small>
                             <strong th:text="${alert.client}">Cliente</strong>
                             <span th:text="${alert.overdue ? 'Fecha vencida: ' + alert.formattedPickupDate : 'Retira hoy: ' + alert.formattedPickupDate}">Retira hoy</span>
                             <p th:text="${alert.cardSummary + ' | ' + alert.totalQuantity + ' unidad(es)' + (alert.phone != '-' ? ' | Tel. ' + alert.phone : '')}">
@@ -207,7 +207,7 @@
                                    th:if="${productGroup.pendingInfo != null && productGroup.pendingInfo.quantity > 0}"
                                    th:title="${productGroup.pendingInfo.tooltip}"
                                    th:text="${productGroup.pendingInfo.summaryLabel}">
-                                Pedido pendiente: 1
+                                Pedido sin stock: 1
                             </small>
                         </div>
                     </td>
@@ -293,7 +293,7 @@
                                th:if="${pendingInfo != null && pendingInfo.quantity > 0}"
                                th:title="${pendingInfo.tooltip}"
                                th:text="${pendingInfo.summaryLabel}">
-                            Pedido pendiente: 1
+                            Pedido sin stock: 1
                         </small>
                     </td>
                     <td>
@@ -511,7 +511,7 @@
                                    th:if="${pendingInfo != null && pendingInfo.quantity > 0}"
                                    th:title="${pendingInfo.tooltip}"
                                    th:text="${pendingInfo.summaryLabel}">
-                                Pedido pendiente: 1
+                                Pedido sin stock: 1
                             </small>
                         </td>
                         <td>

@@ -103,7 +103,7 @@ public class DashboardController {
     private static final String ACTION_RESERVED = "Reservada";
     private static final String ACTION_OUT_OF_STOCK = "Sin Stock";
     private static final String ACTION_RESERVATION_RESERVED = "Reserva apartada";
-    private static final String ACTION_RESERVATION_CANCELLED = "Devuelta/cancelada";
+    private static final String ACTION_RESERVATION_CANCELLED = "Pedido cancelado";
     private static final String ACTION_RESERVATION_DELIVERED = "Entrega reserva";
     private static final String ACTION_PENDING_CREATED = "Pedido sin stock";
     private static final String FLEXIBLE_MATCH_NOTE = "[Cualquier edicion/condicion]";
@@ -756,7 +756,7 @@ public class DashboardController {
 
         try {
             reportMovements = inventoryService.getRecentMovements();
-            allMovements = consolidateDailyMovements(reportMovements);
+            allMovements = reportMovements;
             var movements = allMovements;
             String countDate = selectedMovementDate.isBlank()
                     ? LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT)
@@ -1043,11 +1043,7 @@ public class DashboardController {
             return CardReservation.STATUS_RESERVED;
         }
 
-        if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))) {
-            return CardReservation.STATUS_WANTED;
-        }
-
-        return CardReservation.STATUS_IN_STOCK;
+        return CardReservation.STATUS_WANTED;
     }
 
     private String reservationGroupStatusLabel(
@@ -1055,17 +1051,24 @@ public class DashboardController {
             int availableQuantity,
             int totalQuantity
     ) {
-        if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))) {
-            return totalQuantity + " " + cardQuantityWord(totalQuantity) + " reservadas"
-                    + (availableQuantity > 0 ? " | " + availableQuantity + " disponibles" : "");
+        int reservedQuantity = reservations.stream()
+                .filter(reservation -> CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                .mapToInt(reservation -> reservationQuantity(reservation.getQuantity()))
+                .sum();
+        int pendingQuantity = reservations.stream()
+                .filter(reservation -> !CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                .mapToInt(reservation -> reservationQuantity(reservation.getQuantity()))
+                .sum();
+
+        List<String> labels = new ArrayList<>();
+        if (reservedQuantity > 0) {
+            labels.add(reservedQuantity + " " + reservedQuantityWord(reservedQuantity));
+        }
+        if (pendingQuantity > 0) {
+            labels.add(pendingQuantity + " " + pendingOrderLabel(pendingQuantity));
         }
 
-        if (reservations.stream().anyMatch(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))) {
-            return availableQuantity + " " + cardQuantityWord(availableQuantity) + " disponibles de "
-                    + totalQuantity + " " + reservedQuantityWord(totalQuantity);
-        }
-
-        return reservationGroupStatus(reservations);
+        return labels.isEmpty() ? "0 pedidos" : String.join(" · ", labels);
     }
 
     private String cardQuantityWord(int quantity) {
@@ -1074,6 +1077,16 @@ public class DashboardController {
 
     private String reservedQuantityWord(int quantity) {
         return quantity == 1 ? "reservada" : "reservadas";
+    }
+
+    private String pendingOrderLabel(int quantity) {
+        return quantity == 1 ? "pedido sin stock" : "pedidos sin stock";
+    }
+
+    private String reservationDisplayStatus(String status) {
+        return CardReservation.STATUS_RESERVED.equalsIgnoreCase(status)
+                ? CardReservation.STATUS_RESERVED
+                : ACTION_PENDING_CREATED;
     }
 
     private String blankToDash(String value) {
@@ -1170,7 +1183,7 @@ public class DashboardController {
         }
 
         public String getSummaryLabel() {
-            return quantity == 1 ? "Pedido pendiente: 1" : "Pedidos pendientes: " + quantity;
+            return quantity == 1 ? "Pedido sin stock: 1" : "Pedidos sin stock: " + quantity;
         }
 
         public String getTooltip() {
@@ -1206,7 +1219,7 @@ public class DashboardController {
                 reservation.setAvailableStock(0);
                 reservation.setCurrentStock(0);
                 reservation.setDeliverableStock(0);
-                reservation.setDisplayStatus(reservation.getStatus());
+                reservation.setDisplayStatus(reservationDisplayStatus(reservation.getStatus()));
                 reservation.setConditionStocks(conditionStocks);
                 applyReservationPriceFromProduct(reservation, products);
                 continue;
@@ -1227,11 +1240,7 @@ public class DashboardController {
             reservation.setCurrentStock(stockQuantity);
             reservation.setAvailableStock(availableStock);
             reservation.setDeliverableStock(deliverableQuantity);
-            reservation.setDisplayStatus(
-                    CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()) && availableStock > 0
-                            ? CardReservation.STATUS_IN_STOCK
-                            : reservation.getStatus()
-            );
+            reservation.setDisplayStatus(reservationDisplayStatus(reservation.getStatus()));
             reservation.setDeliverableTotalPrice(lineTotalPrice(card.getLocalPrice(), deliverableQuantity));
             reservation.setFormattedDeliverableTotalPrice(formatCashTotal(reservation.getDeliverableTotalPrice()));
         }
@@ -1638,9 +1647,10 @@ public class DashboardController {
             int currentQuantity = quantity(card);
 
             if (logMovements) {
-                movements.add(createMovement(
+                movements.add(createReservationStockMovement(
                         "ENTRADA",
                         quantityToReturn,
+                        reservation,
                         card,
                         previousQuantity,
                         currentQuantity,
@@ -1657,7 +1667,7 @@ public class DashboardController {
     }
 
     private int reassignPendingReservations(List<InventoryCard> inventoryCards, HttpServletRequest request) throws Exception {
-        return reassignPendingReservations(inventoryCards, request, inventoryService.getReservations());
+        return reassignPendingReservations(inventoryCards, request, inventoryService.getReservationsIfSheetExists());
     }
 
     private int reassignPendingReservations(
@@ -1732,9 +1742,10 @@ public class DashboardController {
             cardsToWrite.put(card.getRowIndex(), card);
 
             if (logMovements) {
-                movements.add(createMovement(
+                movements.add(createReservationStockMovement(
                         "ENTRADA",
                         reservationQuantity,
+                        reservation,
                         card,
                         quantity(card),
                         quantity(card),
@@ -1839,6 +1850,7 @@ public class DashboardController {
 
             List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
             int returnedToStock = returnReservedCardsToStock(reservations, request, inventoryCards, allReservations);
+            appendPendingCancellationMovements(reservations, request);
 
             inventoryService.deleteReservationRows(reservations.stream()
                     .map(CardReservation::getRowIndex)
@@ -1900,6 +1912,8 @@ public class DashboardController {
             List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
             if (CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus())) {
                 returnedToStock = returnReservedCardsToStock(List.of(reservation), request, inventoryCards, reservations);
+            } else {
+                appendPendingCancellationMovements(List.of(reservation), request);
             }
 
             inventoryService.deleteReservationRows(reservation.effectiveRowIndexes());
@@ -2001,9 +2015,10 @@ public class DashboardController {
             inventoryService.updateStockState(card.getRowIndex(), card);
 
             if (movementsModuleEnabled(request)) {
-                inventoryService.appendMovement(createMovement(
+                inventoryService.appendMovement(createReservationStockMovement(
                         "SALIDA",
                         quantityToDeliver,
+                        reservation,
                         card,
                         previousQuantity,
                         newQuantity,
@@ -2123,9 +2138,10 @@ public class DashboardController {
                 inventoryService.updateStockState(card.getRowIndex(), card);
 
                 if (logMovements) {
-                    inventoryService.appendMovement(createMovement(
+                    inventoryService.appendMovement(createReservationStockMovement(
                             "SALIDA",
                             quantityToDeliver,
+                            reservation,
                             card,
                             previousQuantity,
                             newQuantity,
@@ -2179,6 +2195,28 @@ public class DashboardController {
                 .stream()
                 .filter(rowIndex -> rowIndex != reservation.getRowIndex())
                 .toList();
+    }
+
+    private void appendPendingCancellationMovements(
+            List<CardReservation> reservations,
+            HttpServletRequest request
+    ) throws Exception {
+        if (!movementsModuleEnabled(request) || reservations == null || reservations.isEmpty()) {
+            return;
+        }
+
+        List<InventoryMovement> movements = reservations.stream()
+                .filter(reservation -> !CardReservation.STATUS_RESERVED.equalsIgnoreCase(reservation.getStatus()))
+                .map(reservation -> createReservationActivityMovement(
+                        ACTION_RESERVATION_CANCELLED,
+                        reservationQuantity(reservation.getQuantity()),
+                        reservation
+                ))
+                .toList();
+        if (movements.isEmpty()) {
+            return;
+        }
+        inventoryService.appendMovements(movements);
     }
 
     @PostMapping("/reservas/pedido-masivo/analizar")
@@ -2378,9 +2416,10 @@ public class DashboardController {
                     existingCard.setAction(stockActionForReservedState(quantity(existingCard), reservedQuantity));
                     cardsToWrite.put(existingCard.getRowIndex(), existingCard);
                     if (logMovements) {
-                        movements.add(createMovement(
+                        movements.add(createReservationStockMovement(
                                 "RESERVA",
                                 reservationLineQuantity,
+                                reservation,
                                 existingCard,
                                 previousQuantity,
                                 previousQuantity,
@@ -2556,27 +2595,13 @@ public class DashboardController {
         }
 
         try {
-            saveReservation(status, name, setName, setCode, collectorNumber, printing, condition, quantity, client, phone, dni, pickupDate, reservationNotes(notes, flexibleMatch));
+            CardReservation reservation = saveReservation(status, name, setName, setCode, collectorNumber, printing, condition, quantity, client, phone, dni, pickupDate, reservationNotes(notes, flexibleMatch));
             if (movementsModuleEnabled(request)
                     && CardReservation.STATUS_WANTED.equalsIgnoreCase(normalizedReservationStatus(status))) {
                 inventoryService.appendMovement(createReservationActivityMovement(
                         ACTION_PENDING_CREATED,
                         reservationQuantity(quantity),
-                        reservationProbe(
-                                CardReservation.STATUS_WANTED,
-                                name,
-                                setName,
-                                setCode,
-                                collectorNumber,
-                                printing,
-                                condition,
-                                normalizedReservationQuantity(quantity),
-                                client,
-                                phone,
-                                dni,
-                                pickupDate,
-                                reservationNotes(notes, flexibleMatch)
-                        )
+                        reservation
                 ));
             }
             redirectAttributes.addFlashAttribute("success", "Reserva guardada en el Sheet.");
@@ -2703,7 +2728,7 @@ public class DashboardController {
                         .orElse(null);
             }
 
-            saveReservation(
+            CardReservation savedReservation = saveReservation(
                     reservationStatus,
                     name,
                     setName,
@@ -2752,9 +2777,10 @@ public class DashboardController {
                 inventoryService.updateStockState(rowIndex, reservedCard);
 
                 if (movementsModuleEnabled(request)) {
-                    inventoryService.appendMovement(createMovement(
+                    inventoryService.appendMovement(createReservationStockMovement(
                             "ENTRADA",
                             reservationQuantity,
+                            savedReservation,
                             reservedCard,
                             previousQuantity,
                             updatedQuantity,
@@ -2767,7 +2793,7 @@ public class DashboardController {
                 inventoryService.appendMovement(createReservationActivityMovement(
                         ACTION_PENDING_CREATED,
                         reservationQuantity,
-                        reservationProbe
+                        savedReservation
                 ));
             }
 
@@ -3287,9 +3313,10 @@ public class DashboardController {
             }
             invalidateReservationsCache();
             if (reservedCard != null && movementsModuleEnabled(request)) {
-                inventoryService.appendMovement(createMovement(
+                inventoryService.appendMovement(createReservationStockMovement(
                         "ENTRADA",
                         reservationQuantity,
+                        reservation,
                         reservedCard,
                         previousQuantity,
                         stockQuantity,
@@ -3355,7 +3382,7 @@ public class DashboardController {
         );
     }
 
-    private void saveReservation(
+    private CardReservation saveReservation(
             String status,
             String name,
             String setName,
@@ -3370,10 +3397,10 @@ public class DashboardController {
             String pickupDate,
             String notes
     ) throws Exception {
-        saveReservation(status, name, setName, setCode, collectorNumber, printing, condition, quantity, client, phone, dni, pickupDate, notes, null);
+        return saveReservation(status, name, setName, setCode, collectorNumber, printing, condition, quantity, client, phone, dni, pickupDate, notes, null);
     }
 
-    private void saveReservation(
+    private CardReservation saveReservation(
             String status,
             String name,
             String setName,
@@ -3430,11 +3457,12 @@ public class DashboardController {
                     + reservationQuantity(reservation.getQuantity());
             inventoryService.updateReservationQuantity(existingReservation.getId(), String.valueOf(updatedQuantity));
             invalidateReservationsCache();
-            return;
+            return existingReservation;
         }
 
         inventoryService.appendReservation(reservation);
         invalidateReservationsCache();
+        return reservation;
     }
 
     private CardReservation createReservation(
@@ -3973,7 +4001,7 @@ public class DashboardController {
             model.addAttribute("cashGroups", groupCashEntriesByMonth(entries, selectedDate));
             model.addAttribute("cashTodayTotal", formatCashTotal(totalSalesForDate(allEntries, today)));
             model.addAttribute("cashSelectedTotal", formatCashTotal(totalSalesForDate(entries, selectedDate)));
-            List<CardReservation> activeReservations = consolidateDuplicateReservations(inventoryService.getReservations());
+            List<CardReservation> activeReservations = consolidateDuplicateReservations(inventoryService.getReservationsIfSheetExists());
             List<CashReportMonth> reportMonths = cashReportMonths(allEntries, allMovements, activeReservations);
             model.addAttribute("cashReportMonths", reportMonths);
             model.addAttribute("cashReportOverview", cashReportOverview(reportMonths));
@@ -4369,18 +4397,23 @@ public class DashboardController {
     private boolean isReservationCancellationMovement(InventoryMovement movement) {
         String source = movement == null ? "" : blankToEmpty(movement.getSource());
         return ACTION_RESERVATION_CANCELLED.equalsIgnoreCase(source)
-                || "Reserva cancelada".equalsIgnoreCase(source);
+                || "Devuelta/cancelada".equalsIgnoreCase(source)
+                || "Reserva cancelada".equalsIgnoreCase(source)
+                || "Devuelta al stock".equalsIgnoreCase(source);
     }
 
     private boolean isReservationDeliveryMovement(InventoryMovement movement) {
         String source = movement == null ? "" : blankToEmpty(movement.getSource());
         return ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(source)
-                || "Reserva entregada".equalsIgnoreCase(source);
+                || "Reserva entregada".equalsIgnoreCase(source)
+                || "Reserva vendida".equalsIgnoreCase(source);
     }
 
     private boolean isPendingCreatedMovement(InventoryMovement movement) {
         String source = movement == null ? "" : blankToEmpty(movement.getSource());
-        return ACTION_PENDING_CREATED.equalsIgnoreCase(source);
+        return ACTION_PENDING_CREATED.equalsIgnoreCase(source)
+                || "Reserva sin stock".equalsIgnoreCase(source)
+                || ACTION_OUT_OF_STOCK.equalsIgnoreCase(source);
     }
 
     private boolean isReservationActivityMovement(InventoryMovement movement) {
@@ -4394,44 +4427,91 @@ public class DashboardController {
         return new MovementDisplayRow(
                 movement.getFormattedDate(),
                 movement.getTime(),
-                movement.getQuantity(),
+                movementDisplayQuantity(movement),
                 movement.getName(),
                 movement.getSetName(),
                 movement.getSetCode(),
                 movement.getCollectorNumber(),
                 movement.getPrinting(),
+                movement.getCondition(),
+                movement.getClient(),
+                movement.getDni(),
+                movement.getReservationId(),
                 movement.getNewStock(),
                 movementDisplaySource(movement.getSource()),
                 movementDisplayClass(movement.getSource())
         );
     }
 
-    private String movementDisplaySource(String source) {
-        if (ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(blankToEmpty(source))) {
-            return "Reserva entregada";
+    private String movementDisplayQuantity(InventoryMovement movement) {
+        if (isReservationActivityMovement(movement)) {
+            return String.valueOf(Math.abs(signedQuantity(movement)));
         }
 
-        if ("Reserva cancelada".equalsIgnoreCase(blankToEmpty(source))) {
+        return blankToEmpty(movement == null ? "" : movement.getQuantity());
+    }
+
+    private String movementDisplaySource(String source) {
+        String normalizedSource = blankToEmpty(source);
+        if ("Agregado al stock".equalsIgnoreCase(normalizedSource)) {
+            return "Unidad agregada";
+        }
+
+        if ("Busqueda".equalsIgnoreCase(normalizedSource)
+                || "Búsqueda".equalsIgnoreCase(normalizedSource)) {
+            return "Unidad agregada";
+        }
+
+        if (ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(normalizedSource)
+                || "Reserva entregada".equalsIgnoreCase(normalizedSource)) {
+            return "Reserva vendida";
+        }
+
+        if (ACTION_RESERVATION_CANCELLED.equalsIgnoreCase(normalizedSource)
+                || "Devuelta/cancelada".equalsIgnoreCase(normalizedSource)
+                || "Reserva cancelada".equalsIgnoreCase(normalizedSource)) {
             return ACTION_RESERVATION_CANCELLED;
         }
 
-        if (ACTION_RESERVED.equalsIgnoreCase(blankToEmpty(source))) {
+        if (ACTION_PENDING_CREATED.equalsIgnoreCase(normalizedSource)
+                || "Reserva sin stock".equalsIgnoreCase(normalizedSource)
+                || ACTION_OUT_OF_STOCK.equalsIgnoreCase(normalizedSource)) {
+            return ACTION_PENDING_CREATED;
+        }
+
+        if (ACTION_RESERVED.equalsIgnoreCase(normalizedSource)) {
             return ACTION_RESERVATION_RESERVED;
         }
 
-        return blankToEmpty(source);
+        return normalizedSource;
     }
 
     private String movementDisplayClass(String source) {
         String normalizedSource = blankToEmpty(source);
+        if ("Agregado al stock".equalsIgnoreCase(normalizedSource)
+                || "Unidad agregada".equalsIgnoreCase(normalizedSource)
+                || "Busqueda".equalsIgnoreCase(normalizedSource)
+                || "Búsqueda".equalsIgnoreCase(normalizedSource)) {
+            return "unidad-agregada";
+        }
+
         if (ACTION_RESERVATION_DELIVERED.equalsIgnoreCase(normalizedSource)
-                || "Reserva entregada".equalsIgnoreCase(normalizedSource)) {
-            return "entrega-reserva";
+                || "Reserva entregada".equalsIgnoreCase(normalizedSource)
+                || "Reserva vendida".equalsIgnoreCase(normalizedSource)) {
+            return "reserva-vendida";
         }
 
         if (ACTION_RESERVATION_CANCELLED.equalsIgnoreCase(normalizedSource)
-                || "Reserva cancelada".equalsIgnoreCase(normalizedSource)) {
-            return "devuelta-cancelada";
+                || "Devuelta/cancelada".equalsIgnoreCase(normalizedSource)
+                || "Reserva cancelada".equalsIgnoreCase(normalizedSource)
+                || "Devuelta al stock".equalsIgnoreCase(normalizedSource)) {
+            return "pedido-cancelado";
+        }
+
+        if (ACTION_PENDING_CREATED.equalsIgnoreCase(normalizedSource)
+                || "Reserva sin stock".equalsIgnoreCase(normalizedSource)
+                || ACTION_OUT_OF_STOCK.equalsIgnoreCase(normalizedSource)) {
+            return "pedido-sin-stock";
         }
 
         if (ACTION_RESERVED.equalsIgnoreCase(normalizedSource)
@@ -4609,14 +4689,17 @@ public class DashboardController {
                         movements.add(createMovement("ENTRADA", stockQuantityToAdd, newCard, 0, stockQuantityToAdd, "Importar lista"));
                     }
                     if (logMovements && reservationAllocation.reservedQuantity() > 0) {
-                        movements.add(createMovement(
-                                "ENTRADA",
-                                reservationAllocation.reservedQuantity(),
-                                newCard,
-                                0,
-                                quantity,
-                                ACTION_RESERVATION_RESERVED
-                        ));
+                        for (CardReservation reservation : reservationAllocation.reservations()) {
+                            movements.add(createReservationStockMovement(
+                                    "ENTRADA",
+                                    reservationQuantity(reservation.getQuantity()),
+                                    reservation,
+                                    newCard,
+                                    0,
+                                    quantity,
+                                    ACTION_RESERVATION_RESERVED
+                            ));
+                        }
                     }
                     added++;
                     continue;
@@ -4644,14 +4727,17 @@ public class DashboardController {
                     ));
                 }
                 if (logMovements && reservationAllocation.reservedQuantity() > 0) {
-                    movements.add(createMovement(
-                            "ENTRADA",
-                            reservationAllocation.reservedQuantity(),
-                            existingCard,
-                            previousQuantity,
-                            updatedQuantity,
-                            ACTION_RESERVATION_RESERVED
-                    ));
+                    for (CardReservation reservation : reservationAllocation.reservations()) {
+                        movements.add(createReservationStockMovement(
+                                "ENTRADA",
+                                reservationQuantity(reservation.getQuantity()),
+                                reservation,
+                                existingCard,
+                                previousQuantity,
+                                updatedQuantity,
+                                ACTION_RESERVATION_RESERVED
+                        ));
+                    }
                 }
                 updated++;
             }
@@ -4943,7 +5029,7 @@ public class DashboardController {
 
         try {
             List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
-            List<CardReservation> reservations = inventoryService.getReservations();
+            List<CardReservation> reservations = inventoryService.getReservationsIfSheetExists();
             InventoryCard card = inventoryCards.stream()
                     .filter(candidate -> candidate.getRowIndex() == rowIndex)
                     .findFirst()
@@ -5113,7 +5199,7 @@ public class DashboardController {
 
         List<ImportResult> results = new ArrayList<>();
         var inventoryCards = inventoryService.getInventoryCards();
-        Map<String, int[]> inventoryIndex = indexInventoryForImport(inventoryCards, inventoryService.getReservations());
+        Map<String, int[]> inventoryIndex = indexInventoryForImport(inventoryCards, inventoryService.getReservationsIfSheetExists());
         var priceList = cardKingdomApiService.getPriceList();
 
         if (priceList == null || priceList.getData() == null) {
@@ -5315,11 +5401,12 @@ public class DashboardController {
             List<String> reservationsToMarkReserved
     ) {
         if (product == null || importedQuantity <= 0 || pendingReservations == null || pendingReservations.isEmpty()) {
-            return new ImportReservationAllocation(0);
+            return new ImportReservationAllocation(List.of(), 0);
         }
 
         int remaining = importedQuantity;
         int reservedQuantity = 0;
+        List<CardReservation> allocatedReservations = new ArrayList<>();
         String setCode = setCode(product.getSku());
         String collectorNumber = collectorNumberForSheet(product.getSku());
         String printing = "true".equalsIgnoreCase(product.getFoil()) ? "Foil" : "No Foil";
@@ -5350,11 +5437,12 @@ public class DashboardController {
             }
 
             reservationsToMarkReserved.add(reservation.getId());
+            allocatedReservations.add(reservation);
             reservedQuantity += reservationQuantity;
             remaining -= reservationQuantity;
         }
 
-        return new ImportReservationAllocation(reservedQuantity);
+        return new ImportReservationAllocation(allocatedReservations, reservedQuantity);
     }
 
     private ImportResult createImportResult(
@@ -7579,6 +7667,44 @@ public class DashboardController {
             int newStock,
             String source
     ) {
+        return createMovement(type, quantity, card, previousStock, newStock, source, "", "", "", "");
+    }
+
+    private InventoryMovement createReservationStockMovement(
+            String type,
+            int quantity,
+            CardReservation reservation,
+            InventoryCard card,
+            int previousStock,
+            int newStock,
+            String source
+    ) {
+        return createMovement(
+                type,
+                quantity,
+                card,
+                previousStock,
+                newStock,
+                source,
+                movementCondition(reservation, card),
+                blankToEmpty(reservation == null ? "" : reservation.getClient()),
+                blankToEmpty(reservation == null ? "" : reservation.getDni()),
+                blankToEmpty(reservation == null ? "" : reservation.getId())
+        );
+    }
+
+    private InventoryMovement createMovement(
+            String type,
+            int quantity,
+            InventoryCard card,
+            int previousStock,
+            int newStock,
+            String source,
+            String condition,
+            String client,
+            String dni,
+            String reservationId
+    ) {
         LocalDateTime now = LocalDateTime.now(APP_ZONE);
         String movementQuantity = "SALIDA".equalsIgnoreCase(type)
                 ? "-" + quantity
@@ -7600,8 +7726,24 @@ public class DashboardController {
                 card.getPrinting() == null ? "" : card.getPrinting(),
                 String.valueOf(previousStock),
                 String.valueOf(newStock),
-                movementSource
+                movementSource,
+                movementCondition(condition, card),
+                blankToEmpty(client),
+                blankToEmpty(dni),
+                blankToEmpty(reservationId)
         );
+    }
+
+    private String movementCondition(CardReservation reservation, InventoryCard card) {
+        return movementCondition(reservation == null ? "" : reservation.getCondition(), card);
+    }
+
+    private String movementCondition(String condition, InventoryCard card) {
+        if (!isBlank(condition)) {
+            return displayCondition(condition);
+        }
+
+        return card == null || isBlank(card.getCondition()) ? "" : displayCondition(card.getCondition());
     }
 
     private InventoryMovement createReservationActivityMovement(
@@ -7623,7 +7765,11 @@ public class DashboardController {
                 blankToEmpty(reservation.getPrinting()),
                 "0",
                 "0",
-                source
+                source,
+                movementCondition(reservation, null),
+                blankToEmpty(reservation.getClient()),
+                blankToEmpty(reservation.getDni()),
+                blankToEmpty(reservation.getId())
         );
     }
 
@@ -7652,7 +7798,7 @@ public class DashboardController {
 
         try {
             model.addAttribute("pickupAlerts", pickupAlerts(
-                    inventoryService.getReservations(),
+                    inventoryService.getReservationsIfSheetExists(),
                     inventoryService.getInventoryCards()
             ));
         } catch (Exception e) {
@@ -7848,9 +7994,28 @@ public class DashboardController {
 
     private List<CardReservation> reservationsForLedgerSafely() {
         try {
-            return cachedReservations();
+            return cachedReservationsIfSheetExists();
         } catch (Exception e) {
             return List.of();
+        }
+    }
+
+    private List<CardReservation> cachedReservationsIfSheetExists() throws Exception {
+        long now = System.currentTimeMillis();
+        ReservationsCache cache = reservationsCache;
+        if (cache.loadedAtMillis() > 0 && now - cache.loadedAtMillis() < 10_000) {
+            return cache.reservations();
+        }
+
+        synchronized (this) {
+            cache = reservationsCache;
+            if (cache.loadedAtMillis() > 0 && now - cache.loadedAtMillis() < 10_000) {
+                return cache.reservations();
+            }
+
+            List<CardReservation> reservations = inventoryService.getReservationsIfSheetExists();
+            reservationsCache = new ReservationsCache(now, reservations);
+            return reservations;
         }
     }
 
@@ -7983,7 +8148,7 @@ public class DashboardController {
             candidatesByKey.putIfAbsent(candidate.key(), candidate);
         }
 
-        List<CardReservation> reservations = inventoryService.getReservations();
+        List<CardReservation> reservations = inventoryService.getReservationsIfSheetExists();
         for (CardReservation reservation : reservations) {
             if (!CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus())) {
                 continue;
@@ -8835,6 +9000,10 @@ public class DashboardController {
             String setCode,
             String collectorNumber,
             String printing,
+            String condition,
+            String client,
+            String dni,
+            String reservationId,
             String newStock,
             String displaySource,
             String sourceClass
@@ -9005,10 +9174,10 @@ public class DashboardController {
             return List.of(
                     new CashReportFlowRow("Vendidas", soldQuantity, percent(soldQuantity, maxMovementQuantity), "sold"),
                     new CashReportFlowRow("Ingresadas", enteredQuantity, percent(enteredQuantity, maxMovementQuantity), "entered"),
-                    new CashReportFlowRow("Apartadas mes", reservedActivityQuantity, percent(reservedActivityQuantity, maxMovementQuantity), "reserved"),
+                    new CashReportFlowRow("Apartadas", reservedActivityQuantity, percent(reservedActivityQuantity, maxMovementQuantity), "reserved"),
                     new CashReportFlowRow("Vendidas reserva", reservationSoldQuantity, percent(reservationSoldQuantity, maxMovementQuantity), "sold"),
-                    new CashReportFlowRow("Devueltas/canceladas", reservationReturnedQuantity, percent(reservationReturnedQuantity, maxMovementQuantity), "entered"),
-                    new CashReportFlowRow("Pendientes sin stock", pendingCreatedQuantity, percent(pendingCreatedQuantity, maxMovementQuantity), "reserved")
+                    new CashReportFlowRow("Pedidos cancelados", reservationReturnedQuantity, percent(reservationReturnedQuantity, maxMovementQuantity), "entered"),
+                    new CashReportFlowRow("Pedidos sin stock", pendingCreatedQuantity, percent(pendingCreatedQuantity, maxMovementQuantity), "reserved")
             );
         }
 
@@ -9255,7 +9424,10 @@ public class DashboardController {
         }
     }
 
-    private record ImportReservationAllocation(int reservedQuantity) {
+    private record ImportReservationAllocation(
+            List<CardReservation> reservations,
+            int reservedQuantity
+    ) {
     }
 
     @PostMapping("/tutorial/completar")
@@ -9394,7 +9566,7 @@ public class DashboardController {
             int rowIndex = inventoryService.appendInventoryCard(card);
             card.setRowIndex(rowIndex);
             if (movementsModuleEnabled(request)) {
-                inventoryService.appendMovement(createMovement("ENTRADA", quantity(card), card, 0, quantity(card), "Busqueda"));
+                inventoryService.appendMovement(createMovement("ENTRADA", quantity(card), card, 0, quantity(card), "Agregado al stock"));
             }
             refreshLatestUpdateForCard(card);
             if (reassignPending) {

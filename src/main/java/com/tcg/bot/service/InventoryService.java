@@ -104,6 +104,10 @@ public class InventoryService {
         return googleSheetsService.getReservations();
     }
 
+    public List<CardReservation> getReservationsIfSheetExists() throws Exception {
+        return googleSheetsService.getReservationsIfSheetExists();
+    }
+
     public void appendReservation(CardReservation reservation) throws Exception {
         googleSheetsService.appendReservation(reservation);
     }

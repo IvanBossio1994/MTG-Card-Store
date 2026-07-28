@@ -305,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
             copy.href = `/reservas?openGroup=${encodeURIComponent(alert.groupKey || "")}#${alert.anchorId || ""}`;
             const chip = document.createElement("small");
             chip.className = `pickup-status-chip pickup-status-chip-${type}`;
-            chip.textContent = type === "reserved" ? "Reservada" : "Pendiente sin stock";
+            chip.textContent = type === "reserved" ? "Reservada" : "Pedido sin stock";
             const client = document.createElement("strong");
             client.textContent = alert.client || "Cliente";
             const date = document.createElement("span");
@@ -328,10 +328,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     releaseForm.action = "/reservas/retiro/liberar";
                     releaseForm.dataset.appConfirm = "";
                     releaseForm.dataset.loadingButton = "Liberando...";
-                    releaseForm.dataset.loadingTitle = "Liberando pedido";
-                    releaseForm.dataset.loadingMessage = "Devolviendo cartas reservadas al stock y actualizando Reservas...";
-                    releaseForm.dataset.confirmTitle = "Liberar pedido vencido";
-                    releaseForm.dataset.confirmMessage = `Se van a devolver ${alert.reservedQuantity} carta(s) reservadas al stock y se quitara este pedido.`;
+                    releaseForm.dataset.loadingTitle = "Cancelando pedido";
+                    releaseForm.dataset.loadingMessage = "Cancelando el pedido y actualizando Reservas...";
+                    releaseForm.dataset.confirmTitle = "Cancelar pedido vencido";
+                    releaseForm.dataset.confirmMessage = `Se cancelara el pedido y ${alert.reservedQuantity} carta(s) volveran a estar disponibles.`;
                     releaseForm.append(
                             hiddenInput("groupKey", alert.groupKey),
                             hiddenInput("currentPickupDate", alert.pickupDate),
@@ -340,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const releaseButton = document.createElement("button");
                     releaseButton.className = "secondary-button danger-soft-button compact-action-button";
                     releaseButton.type = "submit";
-                    releaseButton.textContent = "Volver al stock";
+                    releaseButton.textContent = "Cancelar pedido";
                     releaseForm.appendChild(releaseButton);
                     actions.appendChild(releaseForm);
                 }
@@ -402,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         content.appendChild(head);
         appendPickupAlertGroup("Reservadas", reservedAlerts, "reserved");
-        appendPickupAlertGroup("Pendientes sin stock", pendingAlerts, "pending");
+        appendPickupAlertGroup("Pedidos sin stock", pendingAlerts, "pending");
         panel.append(content);
     };
 
@@ -2139,7 +2139,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const key = conditionDataKey(stock.condition);
         const datasetValue = key ? primaryRow.dataset[`${priceType}${key}`] : "";
         const stockValue = priceType === "ck" ? stock.ckPriceUsd : stock.localPrice;
-        return stockValue || datasetValue || "";
+        const existingOption = primaryRow.nextElementSibling?.classList?.contains("inventory-stock-options-row")
+                ? Array.from(primaryRow.nextElementSibling.querySelectorAll(".inventory-condition-option"))
+                        .find(option => String(option.dataset.row || "0") === String(stock.rowIndex || "0")
+                                || (stock.condition && option.dataset.condition === stock.condition))
+                : null;
+        const optionStock = existingOption ? stockFromConditionOption(existingOption) : null;
+        const optionValue = priceType === "ck" ? optionStock?.ckPriceUsd : optionStock?.localPrice;
+        const primaryPriceCells = primaryRow.querySelectorAll(".price-cell");
+        const primaryValue = (priceType === "ck" ? primaryPriceCells[0] : primaryPriceCells[1])
+                ?.textContent
+                ?.replace(/^\$\s*/, "")
+                ?.trim();
+        return stockValue || optionValue || datasetValue || (primaryValue === "-" ? "" : primaryValue) || "";
     }
 
     function setPrimaryReservationMode(primaryRow, expanded, stock = null) {
@@ -2648,7 +2660,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const clients = pendingInfo.clientsLabel || "cliente sin nombre";
-        pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido pendiente: 1" : `Pedidos pendientes: ${quantity}`);
+        pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido sin stock: 1" : `Pedidos sin stock: ${quantity}`);
         pending.title = pendingInfo.tooltip || `Carta pedida para ${clients}.`;
     }
 
