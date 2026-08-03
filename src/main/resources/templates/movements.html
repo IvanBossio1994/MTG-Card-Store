@@ -93,17 +93,33 @@
                     </summary>
                     <div class="table-wrap movement-table-wrap">
                         <table class="movement-table">
+                            <colgroup>
+                                <col class="movement-col-date">
+                                <col class="movement-col-time">
+                                <col class="movement-col-quantity">
+                                <col class="movement-col-card">
+                                <col class="movement-col-set">
+                                <col class="movement-col-code">
+                                <col class="movement-col-number">
+                                <col class="movement-col-printing">
+                                <col class="movement-col-condition">
+                                <col class="movement-col-client">
+                                <col class="movement-col-stock">
+                                <col class="movement-col-action">
+                            </colgroup>
                             <thead>
                             <tr>
                                 <th>Fecha</th>
                                 <th>Hora</th>
-                                <th>Movimiento</th>
+                                <th>Cant.</th>
                                 <th>Carta</th>
                                 <th>Set</th>
                                 <th>Codigo</th>
                                 <th>Nro.</th>
                                 <th>Printing</th>
-                                <th>Stock actual</th>
+                                <th>Condicion</th>
+                                <th>Cliente / DNI</th>
+                                <th>Stock</th>
                                 <th>Accion</th>
                             </tr>
                             </thead>
@@ -117,11 +133,18 @@
                                 <td th:text="${movement.setCode != null && movement.setCode != '' ? movement.setCode : '-'}">CMM</td>
                                 <td th:text="${movement.collectorNumber != null && movement.collectorNumber != '' ? movement.collectorNumber : '-'}">410</td>
                                 <td th:text="${movement.printing != null && movement.printing != '' ? movement.printing : '-'}">nonfoil</td>
+                                <td th:text="${movement.condition != null && movement.condition != '' ? movement.condition : '-'}">NM</td>
+                                <td>
+                                    <span class="movement-client"
+                                          th:text="${movement.client != null && movement.client != '' ? movement.client : '-'}">Cliente</span>
+                                    <small th:if="${movement.dni != null && movement.dni != ''}"
+                                           th:text="${'DNI ' + movement.dni}">DNI 12345678</small>
+                                </td>
                                 <td th:text="${movement.newStock != null && movement.newStock != '' ? movement.newStock : '-'}">1</td>
                                 <td>
                                     <span class="status stock-action-status"
-                                          th:classappend="${movement.source != null ? #strings.toLowerCase(movement.source).replace(' ', '-') : ''}"
-                                          th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Busqueda</span>
+                                          th:classappend="${movement.sourceClass != null ? movement.sourceClass : ''}"
+                                          th:text="${movement.displaySource != null && movement.displaySource != '' ? movement.displaySource : '-'}">Unidad agregada</span>
                                 </td>
                             </tr>
                             </tbody>
@@ -386,8 +409,28 @@
                                 <strong th:text="${report.enteredQuantity}">0</strong>
                             </div>
                             <div class="report-kpi">
-                                <span>Cartas reservadas</span>
-                                <strong th:text="${report.reservedQuantity}">0</strong>
+                                <span>Reservas activas</span>
+                                <strong th:text="${report.activeReservedQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Pendientes actuales</span>
+                                <strong th:text="${report.activePendingQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Reservas apartadas</span>
+                                <strong th:text="${report.reservedActivityQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Vendidas desde reserva</span>
+                                <strong th:text="${report.reservationSoldQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Pedidos cancelados</span>
+                                <strong th:text="${report.reservationReturnedQuantity}">0</strong>
+                            </div>
+                            <div class="report-kpi">
+                                <span>Pedidos sin stock</span>
+                                <strong th:text="${report.pendingCreatedQuantity}">0</strong>
                             </div>
                             <div class="report-kpi">
                                 <span>Diferencia stock</span>
@@ -407,7 +450,8 @@
                                 </div>
                                 <div class="report-bars">
                                     <div class="report-bar-row" th:each="row : ${report.flowRows}">
-                                        <span th:text="${row.label}">Vendidas</span>
+                                        <span th:title="${row.label}"
+                                              th:text="${row.label}">Vendidas</span>
                                         <div class="report-bar">
                                             <i th:classappend="${row.type}" th:style="${'width:' + row.width}"></i>
                                         </div>

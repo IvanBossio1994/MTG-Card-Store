@@ -424,7 +424,7 @@ public class GoogleSheetsService {
         ensureMovementsSheet(sheetsService);
 
         var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), movementRange("A2:L"))
+                .get(storeSettingsService.getSpreadsheetId(), movementRange("A2:O"))
                 .execute();
 
         var values = response.getValues();
@@ -452,6 +452,7 @@ public class GoogleSheetsService {
             String previousStock;
             String newStock;
             String source;
+            int metadataStartIndex;
 
             if (legacyDateTimeFormat) {
                 type = getColumnValue(row, 1);
@@ -464,6 +465,7 @@ public class GoogleSheetsService {
                 previousStock = getColumnValue(row, 8);
                 newStock = getColumnValue(row, 9);
                 source = getColumnValue(row, 10);
+                metadataStartIndex = 11;
             } else if (typedDateTimeFormat) {
                 type = getColumnValue(row, 2);
                 quantity = signedQuantity(type, getColumnValue(row, 3));
@@ -475,6 +477,7 @@ public class GoogleSheetsService {
                 previousStock = getColumnValue(row, 9);
                 newStock = getColumnValue(row, 10);
                 source = getColumnValue(row, 11);
+                metadataStartIndex = 12;
             } else {
                 quantity = getColumnValue(row, 2);
                 type = quantity.startsWith("-") ? "SALIDA" : "ENTRADA";
@@ -486,6 +489,7 @@ public class GoogleSheetsService {
                 previousStock = getColumnValue(row, 8);
                 newStock = getColumnValue(row, 9);
                 source = getColumnValue(row, 10);
+                metadataStartIndex = 11;
             }
 
             movements.add(new InventoryMovement(
@@ -501,7 +505,11 @@ public class GoogleSheetsService {
                     printing,
                     previousStock,
                     newStock,
-                    source
+                    source,
+                    getColumnValue(row, metadataStartIndex),
+                    getColumnValue(row, metadataStartIndex + 1),
+                    getColumnValue(row, metadataStartIndex + 2),
+                    getColumnValue(row, metadataStartIndex + 3)
             ));
         }
 
@@ -535,7 +543,11 @@ public class GoogleSheetsService {
                     movement.getPrinting(),
                     movement.getPreviousStock(),
                     movement.getNewStock(),
-                    movement.getSource()
+                    movement.getSource(),
+                    movement.getCondition(),
+                    movement.getClient(),
+                    movement.getDni(),
+                    movement.getReservationId()
             ));
         }
 
@@ -543,7 +555,7 @@ public class GoogleSheetsService {
                 .setValues(values);
 
         sheetsService.spreadsheets().values()
-                .append(storeSettingsService.getSpreadsheetId(), movementRange("A:K"), body)
+                .append(storeSettingsService.getSpreadsheetId(), movementRange("A:O"), body)
                 .setValueInputOption("RAW")
                 .setInsertDataOption("INSERT_ROWS")
                 .execute();
@@ -579,7 +591,20 @@ public class GoogleSheetsService {
     public List<CardReservation> getReservations() throws Exception {
         Sheets sheetsService = getSheetsService();
         ensureReservationsSheet(sheetsService);
+        return readReservations(sheetsService);
+    }
 
+    public List<CardReservation> getReservationsIfSheetExists() throws Exception {
+        Sheets sheetsService = getSheetsService();
+        boolean exists = spreadsheetMetadata(sheetsService).idsByTitle().containsKey(RESERVATIONS_SHEET_NAME);
+        if (!exists) {
+            return List.of();
+        }
+
+        return readReservations(sheetsService);
+    }
+
+    private List<CardReservation> readReservations(Sheets sheetsService) throws Exception {
         var response = sheetsService.spreadsheets().values()
                 .get(storeSettingsService.getSpreadsheetId(), reservationRange("A2:P"))
                 .execute();
@@ -2260,16 +2285,19 @@ public class GoogleSheetsService {
         }
 
         var headerResponse = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), movementRange("A1:L1"))
+                .get(storeSettingsService.getSpreadsheetId(), movementRange("A1:O1"))
                 .execute();
 
         if (headerResponse.getValues() != null
                 && !headerResponse.getValues().isEmpty()) {
             var header = headerResponse.getValues().get(0);
-            boolean alreadyUpdated = header.size() > 2
+            boolean alreadyUpdated = header.size() > 14
                     && "Hora".equalsIgnoreCase(header.get(1).toString())
                     && !"Tipo".equalsIgnoreCase(header.get(2).toString())
-                    && (header.size() < 12 || header.get(11).toString().isBlank());
+                    && "Condicion".equalsIgnoreCase(header.get(11).toString())
+                    && "Cliente".equalsIgnoreCase(header.get(12).toString())
+                    && "DNI".equalsIgnoreCase(header.get(13).toString())
+                    && "ReservaId".equalsIgnoreCase(header.get(14).toString());
 
             if (alreadyUpdated) {
                 return;
@@ -2288,20 +2316,16 @@ public class GoogleSheetsService {
                         "Printing",
                         "Stock anterior",
                         "Stock nuevo",
-                        "Accion"
+                        "Accion",
+                        "Condicion",
+                        "Cliente",
+                        "DNI",
+                        "ReservaId"
                 )));
 
         sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), movementRange("A1:K1"), headerBody)
+                .update(storeSettingsService.getSpreadsheetId(), movementRange("A1:O1"), headerBody)
                 .setValueInputOption("RAW")
-                .execute();
-
-        sheetsService.spreadsheets().values()
-                .clear(
-                        storeSettingsService.getSpreadsheetId(),
-                        movementRange("L1:L1"),
-                        new com.google.api.services.sheets.v4.model.ClearValuesRequest()
-                )
                 .execute();
     }
 

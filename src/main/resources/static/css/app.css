@@ -2099,6 +2099,11 @@ input.stock-value::-webkit-inner-spin-button {
     position: relative;
 }
 
+.movements-page {
+    max-width: min(1880px, calc(100vw - 24px));
+    overflow-x: visible;
+}
+
 .movements-page-locked,
 .protected-page-locked {
     min-height: calc(100vh - 72px);
@@ -2177,6 +2182,10 @@ input.stock-value::-webkit-inner-spin-button {
 .movement-tabs-panel {
     display: grid;
     gap: 18px;
+}
+
+.movements-page .movement-tabs-panel {
+    width: 100%;
 }
 
 .movement-tabs-panel > .alert {
@@ -2290,21 +2299,52 @@ input.stock-value::-webkit-inner-spin-button {
 .movement-month .table-wrap {
     border-top: 1px solid var(--border);
     border-radius: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
-.movement-table,
 .cash-table {
     table-layout: fixed;
     min-width: 0;
 }
 
-.movement-table th,
-.movement-table td,
+.movement-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 1520px;
+    font-size: 13px;
+}
+
 .cash-table th,
 .cash-table td {
     padding: 12px 10px;
     white-space: normal;
     overflow-wrap: anywhere;
+}
+
+.movement-table th,
+.movement-table td {
+    padding: 11px 10px;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.movement-table th {
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.movement-table th:nth-child(4),
+.movement-table td:nth-child(4),
+.movement-table th:nth-child(5),
+.movement-table td:nth-child(5),
+.movement-table th:nth-child(10),
+.movement-table td:nth-child(10) {
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.35;
 }
 
 .movement-table th:nth-child(1),
@@ -2320,20 +2360,82 @@ input.stock-value::-webkit-inner-spin-button {
 .movement-table th:nth-child(8),
 .movement-table td:nth-child(8),
 .movement-table th:nth-child(9),
-.movement-table td:nth-child(9) {
+.movement-table td:nth-child(9),
+.movement-table th:nth-child(11),
+.movement-table td:nth-child(11) {
+    text-align: center;
+}
+
+.movement-table th:nth-child(12),
+.movement-table td:nth-child(12) {
+    text-align: left;
+}
+
+.movement-col-date {
+    width: 82px;
+}
+
+.movement-col-time {
+    width: 78px;
+}
+
+.movement-col-quantity {
+    width: 58px;
+}
+
+.movement-col-card {
+    width: 220px;
+}
+
+.movement-col-set {
+    width: 265px;
+}
+
+.movement-col-code {
+    width: 74px;
+}
+
+.movement-col-number {
+    width: 66px;
+}
+
+.movement-col-printing {
+    width: 88px;
+}
+
+.movement-col-condition {
     width: 92px;
 }
 
-.movement-table th:nth-child(4),
-.movement-table td:nth-child(4),
-.movement-table th:nth-child(5),
-.movement-table td:nth-child(5) {
-    width: 18%;
+.movement-col-client {
+    width: 180px;
 }
 
-.movement-table th:nth-child(10),
-.movement-table td:nth-child(10) {
-    width: 132px;
+.movement-col-stock {
+    width: 62px;
+}
+
+.movement-col-action {
+    width: 185px;
+}
+
+.movement-table .status {
+    display: inline-flex;
+    width: max-content;
+    max-width: 100%;
+    white-space: nowrap;
+}
+
+.movement-client {
+    display: block;
+    font-weight: 700;
+}
+
+.movement-table small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    white-space: nowrap;
 }
 
 .point-table th:nth-child(3),
@@ -3547,12 +3649,18 @@ input.stock-value::-webkit-inner-spin-button {
 
 .report-bar-row {
     display: grid;
-    grid-template-columns: 82px minmax(0, 1fr) 34px;
+    grid-template-columns: minmax(104px, 0.9fr) minmax(0, 1fr) 34px;
     align-items: center;
     gap: 12px;
     color: var(--muted);
     font-size: 13px;
     font-weight: 700;
+}
+
+.report-bar-row > span {
+    min-width: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .report-bar {
@@ -3822,6 +3930,11 @@ input.stock-value::-webkit-inner-spin-button {
     font-weight: 700;
 }
 
+.stock-action-status {
+    color: var(--muted);
+    background: #f1f3f6;
+}
+
 .status.sin-stock-ck {
     color: var(--amber);
     background: var(--amber-soft);
@@ -3877,6 +3990,37 @@ input.stock-value::-webkit-inner-spin-button {
 .status.reservada {
     color: var(--blue);
     background: var(--blue-soft);
+}
+
+.status.agregado-al-stock,
+.status.unidad-agregada {
+    color: var(--green);
+    background: var(--green-soft);
+}
+
+.status.reserva-apartada {
+    color: var(--blue);
+    background: var(--blue-soft);
+}
+
+.status.entrega-reserva,
+.status.reserva-vendida {
+    color: #047481;
+    background: #d9f6f8;
+}
+
+.status.reserva-cancelada,
+.status.devuelta-cancelada,
+.status.devuelta-al-stock,
+.status.pedido-cancelado {
+    color: var(--amber);
+    background: var(--amber-soft);
+}
+
+.status.pedido-sin-stock,
+.status.reserva-sin-stock {
+    color: var(--amber);
+    background: var(--amber-soft);
 }
 
 .status.pagada,
