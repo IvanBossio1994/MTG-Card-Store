@@ -2,6 +2,10 @@
 
 Aplicacion local para administrar stock de cartas MTG con Google Sheets y precios de Card Kingdom.
 
+## Documentacion funcional
+
+- [Operaciones y flujo tecnico](docs/operaciones-y-flujo-tecnico.md)
+
 ## Setup en una PC nueva
 
 1. Clonar el repositorio.

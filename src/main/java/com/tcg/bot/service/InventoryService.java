@@ -5,6 +5,7 @@ import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.CardReservation;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.PointMovement;
 import com.tcg.bot.model.ReservationClient;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +16,11 @@ import java.util.Map;
 public class InventoryService {
 
     private final GoogleSheetsService googleSheetsService;
+    private final PlanService planService;
 
-    public InventoryService(GoogleSheetsService googleSheetsService) {
+    public InventoryService(GoogleSheetsService googleSheetsService, PlanService planService) {
         this.googleSheetsService = googleSheetsService;
+        this.planService = planService;
     }
 
     public List<InventoryCard> getInventoryCards() throws Exception {
@@ -98,10 +101,17 @@ public class InventoryService {
 
     public void appendCashSale(String date, String time, InventoryCard card, int quantity) throws Exception {
         googleSheetsService.appendCashSale(date, time, card, quantity);
+        if (planService != null) {
+            planService.recordSale();
+        }
     }
 
     public List<CardReservation> getReservations() throws Exception {
         return googleSheetsService.getReservations();
+    }
+
+    public List<CardReservation> getReservationsIfSheetExists() throws Exception {
+        return googleSheetsService.getReservationsIfSheetExists();
     }
 
     public void appendReservation(CardReservation reservation) throws Exception {
@@ -174,7 +184,27 @@ public class InventoryService {
         return googleSheetsService.getReservationClients();
     }
 
+    public List<PointMovement> getPointMovements() throws Exception {
+        return googleSheetsService.getPointMovements();
+    }
+
+    public void appendPointMovement(PointMovement movement) throws Exception {
+        googleSheetsService.appendPointMovement(movement);
+    }
+
     public void upsertReservationClient(String client, String phone, String dni, String updatedAt) throws Exception {
         googleSheetsService.upsertReservationClient(client, phone, dni, updatedAt);
+    }
+
+    public void upsertReservationClient(ReservationClient client) throws Exception {
+        googleSheetsService.upsertReservationClient(client);
+    }
+
+    public void addReservationClientPoints(String client, String phone, String dni, long points, String updatedAt) throws Exception {
+        googleSheetsService.addReservationClientPoints(client, phone, dni, points, updatedAt);
+    }
+
+    public void updateReservationClient(int rowIndex, ReservationClient client) throws Exception {
+        googleSheetsService.updateReservationClient(rowIndex, client);
     }
 }

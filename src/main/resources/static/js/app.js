@@ -39,7 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const importConfirmForm = document.getElementById("import-confirm-form");
     const storeForm = document.querySelector(".store-form");
     const loadingOverlay = document.getElementById("loading-overlay");
-
     const confirmWithAppDialog = form => {
         const appConfirmDialog = document.getElementById("app-confirm-dialog");
         if (!appConfirmDialog) {
@@ -50,6 +49,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const message = appConfirmDialog.querySelector("#app-confirm-message");
         const total = appConfirmDialog.querySelector("#app-confirm-total");
         const totalValue = appConfirmDialog.querySelector("[data-app-confirm-total-value]");
+        const points = appConfirmDialog.querySelector("#app-confirm-points");
+        const pointsInput = appConfirmDialog.querySelector("[data-app-confirm-points-input]");
+        const pointsLabel = appConfirmDialog.querySelector("[data-app-confirm-points-label]");
+        const pointsValue = appConfirmDialog.querySelector("[data-app-confirm-points-value]");
         const confirmButton = appConfirmDialog.querySelector("[data-app-confirm-accept]");
         const cancelButtons = appConfirmDialog.querySelectorAll("[data-app-confirm-cancel]");
 
@@ -65,6 +68,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const totalText = form.dataset.confirmTotal || "";
             total.hidden = totalText === "" || totalText === "-";
             totalValue.textContent = totalText;
+        }
+
+        if (points && pointsInput && pointsLabel && pointsValue) {
+            const pointsCost = form.dataset.confirmPointsCost || "";
+            const availablePoints = form.dataset.confirmPoints || "0";
+            const pointsEnabled = form.dataset.confirmPointsEnabled === "true";
+            const showPoints = pointsCost !== "" && pointsCost !== "-";
+            points.hidden = !showPoints;
+            points.classList.toggle("disabled", !pointsEnabled);
+            pointsInput.checked = false;
+            pointsInput.disabled = !pointsEnabled;
+            pointsLabel.textContent = `Pagar con puntos (${availablePoints} disponibles)`;
+            pointsValue.textContent = `${pointsCost} puntos`;
         }
 
         appConfirmDialog.hidden = false;
@@ -88,7 +104,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 resolve(value);
             };
 
-            const confirm = () => finish(true);
+            const confirm = () => {
+                const payWithPoints = pointsInput?.checked === true;
+                const payWithPointsField = form.querySelector("input[name='payWithPoints']");
+                if (payWithPointsField) {
+                    payWithPointsField.value = payWithPoints ? "true" : "false";
+                }
+                finish(true);
+            };
             const cancel = () => finish(false);
             const backdropCancel = event => {
                 if (event.target === appConfirmDialog) {
@@ -305,7 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
             copy.href = `/reservas?openGroup=${encodeURIComponent(alert.groupKey || "")}#${alert.anchorId || ""}`;
             const chip = document.createElement("small");
             chip.className = `pickup-status-chip pickup-status-chip-${type}`;
-            chip.textContent = type === "reserved" ? "Reservada" : "Pendiente sin stock";
+            chip.textContent = type === "reserved" ? "Reservada" : "Pedido sin stock";
             const client = document.createElement("strong");
             client.textContent = alert.client || "Cliente";
             const date = document.createElement("span");
@@ -328,10 +351,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     releaseForm.action = "/reservas/retiro/liberar";
                     releaseForm.dataset.appConfirm = "";
                     releaseForm.dataset.loadingButton = "Liberando...";
-                    releaseForm.dataset.loadingTitle = "Liberando pedido";
-                    releaseForm.dataset.loadingMessage = "Devolviendo cartas reservadas al stock y actualizando Reservas...";
-                    releaseForm.dataset.confirmTitle = "Liberar pedido vencido";
-                    releaseForm.dataset.confirmMessage = `Se van a devolver ${alert.reservedQuantity} carta(s) reservadas al stock y se quitara este pedido.`;
+                    releaseForm.dataset.loadingTitle = "Cancelando pedido";
+                    releaseForm.dataset.loadingMessage = "Cancelando el pedido y actualizando Reservas...";
+                    releaseForm.dataset.confirmTitle = "Cancelar pedido vencido";
+                    releaseForm.dataset.confirmMessage = `Se cancelara el pedido y ${alert.reservedQuantity} carta(s) volveran a estar disponibles.`;
                     releaseForm.append(
                             hiddenInput("groupKey", alert.groupKey),
                             hiddenInput("currentPickupDate", alert.pickupDate),
@@ -340,7 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const releaseButton = document.createElement("button");
                     releaseButton.className = "secondary-button danger-soft-button compact-action-button";
                     releaseButton.type = "submit";
-                    releaseButton.textContent = "Volver al stock";
+                    releaseButton.textContent = "Cancelar pedido";
                     releaseForm.appendChild(releaseButton);
                     actions.appendChild(releaseForm);
                 }
@@ -402,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         content.appendChild(head);
         appendPickupAlertGroup("Reservadas", reservedAlerts, "reserved");
-        appendPickupAlertGroup("Pendientes sin stock", pendingAlerts, "pending");
+        appendPickupAlertGroup("Pedidos sin stock", pendingAlerts, "pending");
         panel.append(content);
     };
 
@@ -2139,7 +2162,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const key = conditionDataKey(stock.condition);
         const datasetValue = key ? primaryRow.dataset[`${priceType}${key}`] : "";
         const stockValue = priceType === "ck" ? stock.ckPriceUsd : stock.localPrice;
-        return stockValue || datasetValue || "";
+        const existingOption = primaryRow.nextElementSibling?.classList?.contains("inventory-stock-options-row")
+                ? Array.from(primaryRow.nextElementSibling.querySelectorAll(".inventory-condition-option"))
+                        .find(option => String(option.dataset.row || "0") === String(stock.rowIndex || "0")
+                                || (stock.condition && option.dataset.condition === stock.condition))
+                : null;
+        const optionStock = existingOption ? stockFromConditionOption(existingOption) : null;
+        const optionValue = priceType === "ck" ? optionStock?.ckPriceUsd : optionStock?.localPrice;
+        const primaryPriceCells = primaryRow.querySelectorAll(".price-cell");
+        const primaryValue = (priceType === "ck" ? primaryPriceCells[0] : primaryPriceCells[1])
+                ?.textContent
+                ?.replace(/^\$\s*/, "")
+                ?.trim();
+        return stockValue || optionValue || datasetValue || (primaryValue === "-" ? "" : primaryValue) || "";
     }
 
     function setPrimaryReservationMode(primaryRow, expanded, stock = null) {
@@ -2648,7 +2683,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const clients = pendingInfo.clientsLabel || "cliente sin nombre";
-        pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido pendiente: 1" : `Pedidos pendientes: ${quantity}`);
+        pending.textContent = pendingInfo.summaryLabel || (quantity === 1 ? "Pedido sin stock: 1" : `Pedidos sin stock: ${quantity}`);
         pending.title = pendingInfo.tooltip || `Carta pedida para ${clients}.`;
     }
 
@@ -3141,10 +3176,16 @@ document.addEventListener("DOMContentLoaded", () => {
                                                 rowIndex: reservationRowIndex,
                                                 change: changeQuantity,
                                                 deleteWhenZero: false,
-                                                reassignPending: false
+                                                reassignPending: false,
+                                                ...expectedStockIdentity(button)
                                             })
                                         }
                                 );
+
+                                if (updateResponse.status === 409) {
+                                    showStaleInventoryNotice(updateResponse);
+                                    return;
+                                }
 
                                 if (!updateResponse.ok) {
                                     showToast(
@@ -3305,6 +3346,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
+                    let reason = "VENTA";
+                    if (!increase && !deleteWhenZero) {
+                        reason = await chooseStockDecreaseReason(
+                            button.closest("tr")?.querySelector(".card-name-cell")?.textContent?.trim()
+                        );
+
+                        if (!reason) {
+                            return;
+                        }
+                    }
+
                     const response = await fetch(
                         "/inventory/quantity",
                         {
@@ -3317,10 +3369,17 @@ document.addEventListener("DOMContentLoaded", () => {
                                 new URLSearchParams({
                                     rowIndex,
                                     change,
-                                    deleteWhenZero
+                                    deleteWhenZero,
+                                    reason,
+                                    ...expectedStockIdentity(button)
                                 })
                         }
                     );
+
+                    if (response.status === 409) {
+                        showStaleInventoryNotice(response);
+                        return;
+                    }
 
                     if (!response.ok) {
                         showToast(
@@ -3379,7 +3438,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
                     showToast(
-                        stockChangeMessage(increase, changeQuantity),
+                        increase || reason === "VENTA"
+                                ? stockChangeMessage(increase, changeQuantity)
+                                : (result.message || "Baja registrada"),
                         "success"
                     );
 
@@ -3765,6 +3826,90 @@ document.addEventListener("DOMContentLoaded", () => {
             document.addEventListener("keydown", escapeCancel);
             confirmButton?.focus();
         });
+    }
+
+    // ---- Motivo de baja: solo VENTA impacta en Caja ----
+    function chooseStockDecreaseReason(cardName) {
+        const dialog = document.getElementById("stock-decrease-dialog");
+        if (!dialog) {
+            return Promise.resolve("VENTA");
+        }
+
+        const title = dialog.querySelector("[data-stock-decrease-title]");
+        const reasonButtons = dialog.querySelectorAll("[data-stock-decrease-reason]");
+        const closeButtons = dialog.querySelectorAll("[data-stock-decrease-cancel]");
+
+        if (title) {
+            title.textContent = cardName
+                    ? `Por que sale "${cardName}"?`
+                    : "Por que sale esta carta?";
+        }
+
+        dialog.hidden = false;
+        dialog.setAttribute("aria-hidden", "false");
+
+        return new Promise(resolve => {
+            let resolved = false;
+
+            const finish = value => {
+                if (resolved) {
+                    return;
+                }
+
+                resolved = true;
+                dialog.hidden = true;
+                dialog.setAttribute("aria-hidden", "true");
+                reasonButtons.forEach(button => button.removeEventListener("click", choose));
+                closeButtons.forEach(button => button.removeEventListener("click", cancel));
+                dialog.removeEventListener("click", backdropCancel);
+                document.removeEventListener("keydown", escapeCancel);
+                resolve(value);
+            };
+
+            const choose = event => finish(event.currentTarget.dataset.stockDecreaseReason || "VENTA");
+            const cancel = () => finish(null);
+            const backdropCancel = event => {
+                if (event.target === dialog) {
+                    finish(null);
+                }
+            };
+            const escapeCancel = event => {
+                if (event.key === "Escape") {
+                    finish(null);
+                }
+            };
+
+            reasonButtons.forEach(button => button.addEventListener("click", choose));
+            closeButtons.forEach(button => button.addEventListener("click", cancel));
+            dialog.addEventListener("click", backdropCancel);
+            document.addEventListener("keydown", escapeCancel);
+            dialog.querySelector('[data-stock-decrease-reason="VENTA"]')?.focus();
+        });
+    }
+
+    async function showStaleInventoryNotice(response) {
+        showToast(
+            await responseMessage(response, "El inventario cambio. Recargando..."),
+            "error"
+        );
+        window.setTimeout(() => window.location.reload(), 1800);
+    }
+
+    // ---- Identidad de la carta para que el servidor rechace filas desactualizadas ----
+    function expectedStockIdentity(button) {
+        const source = button.classList.contains("increase")
+                ? button
+                : button.parentElement?.querySelector(".stock-button.increase") || button;
+        const data = source.dataset;
+        const identity = {
+            expectedName: data.name || "",
+            expectedSetCode: data.setCode || "",
+            expectedCollectorNumber: data.collectorNumber || "",
+            expectedPrinting: data.printing || "",
+            expectedCondition: button.dataset.condition || data.condition || ""
+        };
+
+        return Object.fromEntries(Object.entries(identity).filter(([, value]) => value));
     }
 
 // ---- Toast ----
