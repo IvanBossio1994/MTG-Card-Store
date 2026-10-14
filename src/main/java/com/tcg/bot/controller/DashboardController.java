@@ -11,11 +11,13 @@ import com.tcg.bot.model.ReservationConditionStock;
 import com.tcg.bot.service.CardKingdomApiService;
 import com.tcg.bot.service.GoogleOAuthService;
 import com.tcg.bot.service.InventoryService;
+import com.tcg.bot.service.PlanService;
 import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.PricingSettingsService;
 import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -65,14 +67,14 @@ import java.util.stream.Stream;
 public class DashboardController {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-    private static final boolean WHATSAPP_SETTINGS_VISIBLE = false;
-
     private final InventoryService inventoryService;
     private final CardKingdomApiService cardKingdomApiService;
     private final GoogleOAuthService googleOAuthService;
     private final PriceComparisonService priceComparisonService;
     private final PricingSettingsService pricingSettingsService;
     private final StoreSettingsService storeSettingsService;
+    // ---- null = sin limites de plan (tests y arranque sin plan) ----
+    private final PlanService planService;
     private volatile List<UpdateResult> latestUpdates = List.of();
     private volatile long latestUpdatedCount;
     private volatile SuggestionIndex suggestionIndex = new SuggestionIndex(0, 0, List.of(), Map.of(), new ConcurrentHashMap<>());
@@ -122,7 +124,6 @@ public class DashboardController {
             DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter PRICE_LIST_UPDATED_FORMAT =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    private static final String MOVEMENTS_ACCESS_SESSION_KEY = "movementsAccessUnlocked";
     private static final String MOVEMENTS_ACCESS_PASSWORD = "counterspell";
 
     public DashboardController(
@@ -133,12 +134,34 @@ public class DashboardController {
             PricingSettingsService pricingSettingsService,
             StoreSettingsService storeSettingsService
     ) {
+        this(
+                inventoryService,
+                cardKingdomApiService,
+                googleOAuthService,
+                priceComparisonService,
+                pricingSettingsService,
+                storeSettingsService,
+                null
+        );
+    }
+
+    @Autowired
+    public DashboardController(
+            InventoryService inventoryService,
+            CardKingdomApiService cardKingdomApiService,
+            GoogleOAuthService googleOAuthService,
+            PriceComparisonService priceComparisonService,
+            PricingSettingsService pricingSettingsService,
+            StoreSettingsService storeSettingsService,
+            PlanService planService
+    ) {
         this.inventoryService = inventoryService;
         this.cardKingdomApiService = cardKingdomApiService;
         this.googleOAuthService = googleOAuthService;
         this.priceComparisonService = priceComparisonService;
         this.pricingSettingsService = pricingSettingsService;
         this.storeSettingsService = storeSettingsService;
+        this.planService = planService;
     }
 
     @PostConstruct
@@ -160,18 +183,43 @@ public class DashboardController {
 
     @ModelAttribute("movementsUnlocked")
     public boolean movementsUnlocked(HttpServletRequest request) {
-        return isMovementsUnlocked(request.getSession(false));
+        return planAllowsFullMode();
     }
 
     @ModelAttribute("reservationsUnlocked")
     public boolean reservationsUnlocked(HttpServletRequest request) {
-        return isMovementsUnlocked(request.getSession(false));
+        return planAllows(PlanService.Feature.NEW_RESERVATIONS);
+    }
+
+    @ModelAttribute("planLimited")
+    public boolean planLimited() {
+        return !planAllowsFullMode();
+    }
+
+    @ModelAttribute("planPremium")
+    public boolean planPremium() {
+        return planService != null && planService.isPremium();
+    }
+
+    @ModelAttribute("planSalesCount")
+    public int planSalesCount() {
+        return planService == null ? 0 : planService.recordedSales();
+    }
+
+    @ModelAttribute("planSalesLimit")
+    public int planSalesLimit() {
+        return PlanService.FREE_SALES_LIMIT;
     }
 
     @Scheduled(fixedDelayString = "PT1H2M", initialDelayString = "PT1H2M")
     public void synchronizeInventoryAutomatically() {
         if (!storeSettingsService.hasSpreadsheetConfigured() || !inventoryService.hasGoogleConnection()) {
             log.info("Sincronizacion automatica omitida: faltan configuracion o inicio de sesion con Google.");
+            return;
+        }
+
+        if (!planAllows(PlanService.Feature.AUTO_SYNC)) {
+            log.info("Sincronizacion automatica omitida: el plan gratuito llego al limite de ventas.");
             return;
         }
 
@@ -717,22 +765,24 @@ public class DashboardController {
             Model model
     ) {
         addBaseModel(model, "");
-        boolean movementsLocked = !isMovementsUnlocked(request.getSession(false));
+        boolean movementsLocked = false;
+        // ---- Plan gratuito al limite: solo el dia actual, sin historial ni reporte ----
+        boolean historyLocked = !planAllows(PlanService.Feature.MOVEMENT_HISTORY);
 
-        String selectedMovementDate = movementDate == null ? "" : movementDate.trim();
-        String selectedCashDate = cashDate == null ? "" : cashDate.trim();
-        String selectedPointDate = pointDate == null ? "" : pointDate.trim();
+        String today = LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT);
+        String selectedMovementDate = historyLocked ? today : (movementDate == null ? "" : movementDate.trim());
+        String selectedCashDate = historyLocked ? today : (cashDate == null ? "" : cashDate.trim());
+        String selectedPointDate = historyLocked ? today : (pointDate == null ? "" : pointDate.trim());
         String activeTab = activeMovementTab(tab, selectedMovementDate, selectedCashDate, selectedPointDate);
+        if (historyLocked && "report".equals(activeTab)) {
+            activeTab = "movements";
+        }
 
         model.addAttribute("selectedMovementDate", selectedMovementDate);
         model.addAttribute("selectedCashDate", selectedCashDate);
         model.addAttribute("selectedPointDate", selectedPointDate);
         model.addAttribute("activeTab", activeTab);
-
-        if (movementsLocked) {
-            addLockedMovementPreviewModel(model, request);
-            return "movements";
-        }
+        model.addAttribute("historyLocked", historyLocked);
 
         if ("true".equalsIgnoreCase(movementFilter) && selectedMovementDate.isBlank()) {
             model.addAttribute("movementDateError", "Elegi una fecha para filtrar movimientos.");
@@ -783,7 +833,7 @@ public class DashboardController {
                         .filter(movement -> selectedMovementDate.equals(movement.getDate()))
                         .toList();
 
-                if (movements.isEmpty()) {
+                if (movements.isEmpty() && !historyLocked) {
                     model.addAttribute("error", "No hay movimientos registrados para esa fecha.");
                 }
             }
@@ -807,6 +857,10 @@ public class DashboardController {
         }
 
         addCashRegisterModel(model, selectedCashDate, reportMovements);
+        if (historyLocked) {
+            model.addAttribute("cashReportMonths", List.of());
+            model.addAttribute("cashReportOverview", CashReportOverview.empty());
+        }
         addPointMovementsModel(model, selectedPointDate);
         addMovementLockModel(model, movementsLocked, request);
         return "movements";
@@ -819,24 +873,7 @@ public class DashboardController {
         }
     }
 
-    private void addLockedMovementPreviewModel(Model model, HttpServletRequest request) {
-        model.addAttribute("movements", List.of());
-        model.addAttribute("movementGroups", List.of());
-        model.addAttribute("movementCount", 0);
-        model.addAttribute("movementCountLabel", "movimientos hoy");
-        model.addAttribute("cashEntries", List.of());
-        model.addAttribute("cashGroups", List.of());
-        model.addAttribute("cashTodayTotal", "0");
-        model.addAttribute("cashSelectedTotal", "0");
-        model.addAttribute("cashReportMonths", List.of());
-        model.addAttribute("cashReportOverview", CashReportOverview.empty());
-        model.addAttribute("pointMovements", List.of());
-        model.addAttribute("pointMovementGroups", List.of());
-        model.addAttribute("pointMovementCount", 0);
-        model.addAttribute("pointMovementCountLabel", "Movimientos de puntos hoy");
-        addMovementLockModel(model, true, request);
-    }
-
+    // ---- Simulacion temporal del plan pago: se reemplaza por la licencia via Google OAuth ----
     @PostMapping("/movimientos/acceso")
     public String unlockMovements(
             @RequestParam(name = "password", required = false) String password,
@@ -845,7 +882,9 @@ public class DashboardController {
             RedirectAttributes redirectAttributes
     ) {
         if (MOVEMENTS_ACCESS_PASSWORD.equals(password == null ? "" : password.trim())) {
-            request.getSession(true).setAttribute(MOVEMENTS_ACCESS_SESSION_KEY, true);
+            if (planService != null) {
+                planService.activatePremiumSimulation();
+            }
             return "redirect:" + safeProtectedAccessReturnPath(returnTo);
         }
 
@@ -861,13 +900,13 @@ public class DashboardController {
             HttpServletRequest request
     ) {
         addBaseModel(model, "");
-        model.addAttribute("clientsLocked", !isMovementsUnlocked(request.getSession(false)));
+        model.addAttribute("clientsLocked", !planAllows(PlanService.Feature.CLIENTS));
         model.addAttribute("clientSearch", blankToEmpty(query));
         model.addAttribute("clientRows", List.of());
         model.addAttribute("clientCount", 0);
         model.addAttribute("editClient", null);
 
-        if (!isMovementsUnlocked(request.getSession(false))) {
+        if (!planAllows(PlanService.Feature.CLIENTS)) {
             model.addAttribute("returnTo", protectedAccessReturnPath(request));
             return "clients";
         }
@@ -888,8 +927,8 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!isMovementsUnlocked(request.getSession(false))) {
-            redirectAttributes.addFlashAttribute("error", "Desbloquea el acceso para cargar clientes.");
+        if (!planAllows(PlanService.Feature.CLIENTS)) {
+            redirectAttributes.addFlashAttribute("error", planLimitMessage("Clientes y puntos"));
             return "redirect:/clientes";
         }
 
@@ -935,8 +974,8 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!isMovementsUnlocked(request.getSession(false))) {
-            redirectAttributes.addFlashAttribute("error", "Desbloquea el acceso para editar clientes.");
+        if (!planAllows(PlanService.Feature.CLIENTS)) {
+            redirectAttributes.addFlashAttribute("error", planLimitMessage("Clientes y puntos"));
             return "redirect:/clientes";
         }
 
@@ -980,11 +1019,6 @@ public class DashboardController {
             Model model,
             HttpServletRequest request
     ) {
-        if (!isMovementsUnlocked(request.getSession(false))) {
-            addLockedReservationsPreviewModel(model, request);
-            return "reservations";
-        }
-
         populateReservationsModel(model, openGroup);
         model.addAttribute("bulkRawList", "");
         model.addAttribute("bulkClient", "");
@@ -1002,33 +1036,10 @@ public class DashboardController {
         return "reservations";
     }
 
-    private void addLockedReservationsPreviewModel(Model model, HttpServletRequest request) {
-        addBaseModel(model, "");
-        model.addAttribute("reservationsLocked", true);
-        model.addAttribute("returnTo", protectedAccessReturnPath(request));
-        model.addAttribute("reservationStatuses", reservationStatuses());
-        model.addAttribute("reservationGroups", List.of());
-        model.addAttribute("reservationCount", 0);
-        model.addAttribute("reservedCount", 0);
-        model.addAttribute("wantedCount", 0);
-        model.addAttribute("bulkRawList", "");
-        model.addAttribute("bulkClient", "");
-        model.addAttribute("bulkPhone", "");
-        model.addAttribute("bulkDni", "");
-        model.addAttribute("bulkPickupDate", "");
-        model.addAttribute("bulkPickupFlexible", false);
-        model.addAttribute("bulkNotes", "");
-        model.addAttribute("bulkFlexibleMatch", false);
-        model.addAttribute("bulkRemoveFromStock", true);
-        model.addAttribute("bulkAnalyzed", false);
-        model.addAttribute("bulkResults", List.of());
-        model.addAttribute("bulkTotalCount", 0);
-        model.addAttribute("bulkReadyCount", 0);
-    }
-
     private void populateReservationsModel(Model model, String openGroup) {
         addBaseModel(model, "");
         model.addAttribute("reservationsLocked", false);
+        model.addAttribute("reservationsCreateLocked", !planAllows(PlanService.Feature.NEW_RESERVATIONS));
         model.addAttribute("reservationStatuses", reservationStatuses());
 
         try {
@@ -2002,22 +2013,25 @@ public class DashboardController {
                     quantityToReturn
             );
             InventoryCard card = selection.card();
-            int previousQuantity = card == null ? 0 : quantity(card);
 
+            // ---- Reservar no descuenta stock, asi que cancelar tampoco lo suma ----
             if (card == null) {
-                card = inventoryCardFromReservation(reservation, quantityToReturn);
-                int rowIndex = inventoryService.appendInventoryCard(card);
-                card.setRowIndex(rowIndex);
-                inventoryCards.add(card);
-            } else {
-                card.setQuantity(String.valueOf(previousQuantity > 0 ? previousQuantity : quantityToReturn));
-                card.setAction(stockActionForReservedState(
-                        quantity(card),
-                        reservedQuantityForInventoryCard(reservation, card, inventoryCards, remainingReservations)
-                ));
-                cardsToWrite.put(card.getRowIndex(), card);
+                if (logMovements) {
+                    movements.add(createReservationActivityMovement(
+                            ACTION_RESERVATION_CANCELLED,
+                            quantityToReturn,
+                            reservation
+                    ));
+                }
+                continue;
             }
+
             int currentQuantity = quantity(card);
+            card.setAction(stockActionForReservedState(
+                    currentQuantity,
+                    reservedQuantityForInventoryCard(reservation, card, inventoryCards, remainingReservations)
+            ));
+            cardsToWrite.put(card.getRowIndex(), card);
 
             if (logMovements) {
                 movements.add(createReservationStockMovement(
@@ -2025,7 +2039,7 @@ public class DashboardController {
                         quantityToReturn,
                         reservation,
                         card,
-                        previousQuantity,
+                        currentQuantity,
                         currentQuantity,
                         ACTION_RESERVATION_CANCELLED
                 ));
@@ -2199,11 +2213,6 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
-            return "redirect:/reservas";
-        }
-
         if (isBlank(groupKey)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la reserva a eliminar.");
             return "redirect:/reservas";
@@ -2242,7 +2251,7 @@ public class DashboardController {
             redirectAttributes.addFlashAttribute(
                     "success",
                     "Reserva de " + client + " eliminada."
-                            + (returnedToStock > 0 ? " Se devolvieron " + returnedToStock + " carta(s) al stock." : "")
+                            + (returnedToStock > 0 ? " Se liberaron " + returnedToStock + " carta(s) reservadas." : "")
             );
         } catch (Exception e) {
             log.warn("No se pudo eliminar la reserva.", e);
@@ -2258,11 +2267,6 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
-            return "redirect:/reservas";
-        }
-
         if (isBlank(reservationId)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la carta a quitar.");
             return "redirect:/reservas";
@@ -2300,7 +2304,7 @@ public class DashboardController {
             redirectAttributes.addFlashAttribute(
                     "success",
                     "Carta quitada del pedido de " + blankToDash(reservation.getClient()) + "."
-                            + (returnedToStock > 0 ? " Se devolvieron " + returnedToStock + " carta(s) al stock." : "")
+                            + (returnedToStock > 0 ? " Se liberaron " + returnedToStock + " carta(s) reservadas." : "")
             );
         } catch (Exception e) {
             log.warn("No se pudo quitar la carta del pedido.", e);
@@ -2317,11 +2321,6 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
-            return "redirect:/reservas";
-        }
-
         if (isBlank(reservationId)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la reserva a entregar.");
             return "redirect:/reservas";
@@ -2448,11 +2447,6 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
-            return "redirect:/reservas";
-        }
-
         if (isBlank(groupKey)) {
             redirectAttributes.addFlashAttribute("error", "No se pudo identificar la reserva a entregar.");
             return "redirect:/reservas";
@@ -2664,10 +2658,10 @@ public class DashboardController {
             HttpServletRequest request,
             Model model
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            addLockedReservationsPreviewModel(model, request);
-            model.addAttribute("error", "Reservas esta bloqueado.");
-            return "reservations";
+        if (!planAllows(PlanService.Feature.NEW_RESERVATIONS)) {
+            String view = reservations(null, model, request);
+            model.addAttribute("error", planLimitMessage("Crear reservas nuevas"));
+            return view;
         }
 
         if (rawList == null || rawList.isBlank()) {
@@ -2705,8 +2699,8 @@ public class DashboardController {
             RedirectAttributes redirectAttributes,
             Model model
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+        if (!planAllows(PlanService.Feature.NEW_RESERVATIONS)) {
+            redirectAttributes.addFlashAttribute("error", planLimitMessage("Crear reservas nuevas"));
             return "redirect:/reservas";
         }
 
@@ -2998,8 +2992,8 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
+        if (!planAllows(PlanService.Feature.NEW_RESERVATIONS)) {
+            redirectAttributes.addFlashAttribute("error", planLimitMessage("Crear reservas nuevas"));
             return "redirect:/reservas";
         }
 
@@ -3066,9 +3060,9 @@ public class DashboardController {
             @RequestParam(name = "removeFromStock", required = false, defaultValue = "false") boolean removeFromStock,
             HttpServletRequest request
     ) {
-        if (!reservationsModuleEnabled(request)) {
+        if (!planAllows(PlanService.Feature.NEW_RESERVATIONS)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiMessage(false, "Reservas esta bloqueado."));
+                    .body(new ApiMessage(false, planLimitMessage("Crear reservas nuevas")));
         }
 
         pickupDate = requestedPickupDate(pickupDate, pickupFlexible);
@@ -3264,10 +3258,6 @@ public class DashboardController {
             @RequestParam(name = "rowIndex", required = false, defaultValue = "0") int rowIndex,
             HttpServletRequest request
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            return ResponseEntity.ok(List.of());
-        }
-
         if (isBlank(name)) {
             return ResponseEntity.ok(List.of());
         }
@@ -3307,10 +3297,6 @@ public class DashboardController {
     @GetMapping("/api/reservas/pendientes/resumen")
     @ResponseBody
     public ResponseEntity<Map<String, List<PendingReservationView>>> pendingReservationsSummary(HttpServletRequest request) {
-        if (!reservationsModuleEnabled(request)) {
-            return ResponseEntity.ok(Map.of());
-        }
-
         try {
             Map<String, List<PendingReservationView>> reservationsByKey = new HashMap<>();
 
@@ -3364,11 +3350,6 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
-            return "redirect:" + pickupActionReturnPath(returnTo);
-        }
-
         String pickupDateError = reservationPickupDateError(pickupDate);
         if (!isBlank(pickupDateError)) {
             redirectAttributes.addFlashAttribute("error", pickupDateError);
@@ -3408,11 +3389,6 @@ public class DashboardController {
             HttpServletRequest request,
             RedirectAttributes redirectAttributes
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            redirectAttributes.addFlashAttribute("error", "Reservas esta bloqueado.");
-            return "redirect:" + pickupActionReturnPath(returnTo);
-        }
-
         try {
             List<CardReservation> allReservations = inventoryService.getReservations();
             List<CardReservation> reservations = reservationsForPickupGroup(allReservations, groupKey, currentPickupDate);
@@ -3440,7 +3416,7 @@ public class DashboardController {
             redirectAttributes.addFlashAttribute(
                     "success",
                     "Pedido de " + blankToDash(reservations.get(0).getClient()) + " liberado."
-                            + (returnedToStock > 0 ? " Se devolvieron " + returnedToStock + " carta(s) al stock." : "")
+                            + (returnedToStock > 0 ? " Se liberaron " + returnedToStock + " carta(s) reservadas." : "")
             );
         } catch (Exception e) {
             log.warn("No se pudo liberar el pedido vencido.", e);
@@ -3453,10 +3429,6 @@ public class DashboardController {
     @GetMapping("/api/reservas/retiro/alertas")
     @ResponseBody
     public ResponseEntity<List<PickupAlertView>> pickupAlerts(HttpServletRequest request) {
-        if (!reservationsModuleEnabled(request)) {
-            return ResponseEntity.ok(List.of());
-        }
-
         try {
             return ResponseEntity.ok(pickupAlerts(
                     inventoryService.getReservations(),
@@ -3530,7 +3502,7 @@ public class DashboardController {
     @GetMapping("/api/reservas/clientes")
     @ResponseBody
     public ResponseEntity<List<ReservationClientView>> reservationClients(HttpServletRequest request) {
-        if (!reservationsModuleEnabled(request)) {
+        if (!planAllows(PlanService.Feature.NEW_RESERVATIONS)) {
             return ResponseEntity.ok(List.of());
         }
 
@@ -3621,11 +3593,6 @@ public class DashboardController {
             @RequestParam(name = "stockQuantity", required = false, defaultValue = "-1") int stockQuantityFloor,
             HttpServletRequest request
     ) {
-        if (!reservationsModuleEnabled(request)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiMessage(false, "Reservas esta bloqueado."));
-        }
-
         try {
             List<CardReservation> ledgerReservations = inventoryService.getReservations();
             var reservation = ledgerReservations
@@ -4181,16 +4148,27 @@ public class DashboardController {
         return value == null ? "" : value.trim();
     }
 
-    private boolean isMovementsUnlocked(HttpSession session) {
-        return session != null && Boolean.TRUE.equals(session.getAttribute(MOVEMENTS_ACCESS_SESSION_KEY));
-    }
-
+    // ---- Movimientos y Caja se registran siempre, en cualquier plan ----
     private boolean movementsModuleEnabled(HttpServletRequest request) {
-        return request != null && isMovementsUnlocked(request.getSession(false));
+        return true;
     }
 
+    // ---- Las reservas existentes se gestionan siempre; crear nuevas depende del plan ----
     private boolean reservationsModuleEnabled(HttpServletRequest request) {
-        return movementsModuleEnabled(request);
+        return true;
+    }
+
+    private boolean planAllows(PlanService.Feature feature) {
+        return planService == null || planService.canUse(feature);
+    }
+
+    private boolean planAllowsFullMode() {
+        return planService == null || !planService.isLimited();
+    }
+
+    private String planLimitMessage(String feature) {
+        return feature + " es parte del plan premium. El plan gratuito llego a las "
+                + PlanService.FREE_SALES_LIMIT + " ventas registradas.";
     }
 
     private String protectedAccessReturnPath(HttpServletRequest request) {
@@ -4766,6 +4744,10 @@ public class DashboardController {
                     continue;
                 }
 
+                if (StockDecreaseReason.isAdjustmentSource(movement.getSource())) {
+                    continue;
+                }
+
                 if (quantity > 0) {
                     cardReport.addEntry(quantity);
                 } else {
@@ -5161,6 +5143,7 @@ public class DashboardController {
         model.addAttribute("analyzed", false);
         model.addAttribute("totalCount", 0);
         model.addAttribute("readyCount", 0);
+        model.addAttribute("importLocked", !planAllows(PlanService.Feature.IMPORT_LIST));
         return "import-list";
     }
 
@@ -5169,6 +5152,12 @@ public class DashboardController {
             @RequestParam("rawList") String rawList,
             Model model
     ) {
+        if (!planAllows(PlanService.Feature.IMPORT_LIST)) {
+            String view = importList(model);
+            model.addAttribute("error", planLimitMessage("Importar listas"));
+            return view;
+        }
+
         if (rawList == null || rawList.isBlank()) {
             return populateImportAnalysisModel(
                     rawList,
@@ -5189,6 +5178,12 @@ public class DashboardController {
             RedirectAttributes redirectAttributes,
             Model model
     ) {
+        if (!planAllows(PlanService.Feature.IMPORT_LIST)) {
+            String view = importList(model);
+            model.addAttribute("error", planLimitMessage("Importar listas"));
+            return view;
+        }
+
         if (selected == null || selected.isEmpty()) {
             return populateImportAnalysisModel(
                     rawList,
@@ -5208,9 +5203,13 @@ public class DashboardController {
             Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
             List<InventoryCard> cardsToAppend = new ArrayList<>();
             List<InventoryMovement> movements = new ArrayList<>();
+            List<CardReservation> reservationLedger = reservationsModuleEnabled(request)
+                    ? cachedReservations().stream()
+                    .map(this::copyReservation)
+                    .toList()
+                    : List.of();
             List<CardReservation> pendingReservations = honorReservations && reservationsModuleEnabled(request)
-                    ? cachedReservations()
-                    .stream()
+                    ? reservationLedger.stream()
                     .filter(reservation -> CardReservation.STATUS_WANTED.equalsIgnoreCase(reservation.getStatus()))
                     .toList()
                     : List.of();
@@ -5244,11 +5243,12 @@ public class DashboardController {
                 );
                 int stockQuantityToAdd = quantity - reservationAllocation.reservedQuantity();
                 reserved += reservationAllocation.reservedQuantity();
+                markAllocatedReservationsReserved(reservationAllocation);
 
                 if (existingCard == null) {
                     InventoryCard newCard = createInventoryCard(product);
                     newCard.setQuantity(String.valueOf(quantity));
-                    newCard.setAction(stockQuantityToAdd > 0 ? ACTION_IN_STOCK : ACTION_RESERVED);
+                    newCard.setAction(stockActionForInventoryCard(newCard, List.of(newCard), reservationLedger));
                     cardsToAppend.add(newCard);
                     if (logMovements && stockQuantityToAdd > 0) {
                         movements.add(createMovement("ENTRADA", stockQuantityToAdd, newCard, 0, stockQuantityToAdd, "Importar lista"));
@@ -5277,9 +5277,7 @@ public class DashboardController {
                 ) + quantity;
                 quantitiesByRow.put(existingCard.getRowIndex(), updatedQuantity);
                 existingCard.setQuantity(String.valueOf(updatedQuantity));
-                existingCard.setAction(reservationAllocation.reservedQuantity() > 0 && stockQuantityToAdd <= 0
-                        ? ACTION_RESERVED
-                        : stockActionForQuantity(updatedQuantity));
+                existingCard.setAction(stockActionForInventoryCard(existingCard, inventoryCards, reservationLedger));
                 cardsToWrite.put(existingCard.getRowIndex(), existingCard);
                 if (logMovements && stockQuantityToAdd > 0) {
                     movements.add(createMovement(
@@ -5585,6 +5583,35 @@ public class DashboardController {
         }
 
         return ACTION_IN_STOCK;
+    }
+
+    private String stockActionForInventoryCard(
+            InventoryCard card,
+            List<InventoryCard> inventoryCards,
+            List<CardReservation> reservations
+    ) {
+        if (card == null) {
+            return ACTION_OUT_OF_STOCK;
+        }
+
+        List<InventoryCard> familyCards = inventoryCards == null ? List.of() : inventoryCards.stream()
+                .filter(candidate -> sameInventoryCardFamily(card, candidate))
+                .toList();
+        if (familyCards.isEmpty()) {
+            familyCards = List.of(card);
+        }
+
+        ReservationStockLedger ledger = reservationStockLedger(familyCards, reservations);
+        if (card.getRowIndex() <= 0) {
+            return ledger.action();
+        }
+
+        return ledger.conditionStocks(true)
+                .stream()
+                .filter(stock -> stock.rowIndex() == card.getRowIndex())
+                .map(ReservationConditionStock::action)
+                .findFirst()
+                .orElseGet(() -> stockActionForQuantity(quantity(card)));
     }
 
     private StockSnapshot stockSnapshot(int rowIndex) {
@@ -6008,6 +6035,39 @@ public class DashboardController {
         }
 
         return new ImportReservationAllocation(allocatedReservations, reservedQuantity);
+    }
+
+    private void markAllocatedReservationsReserved(ImportReservationAllocation allocation) {
+        if (allocation == null || allocation.reservations().isEmpty()) {
+            return;
+        }
+
+        allocation.reservations().forEach(reservation -> reservation.setStatus(CardReservation.STATUS_RESERVED));
+    }
+
+    private CardReservation copyReservation(CardReservation source) {
+        CardReservation copy = new CardReservation();
+        copy.setId(source.getId());
+        copy.setStatus(source.getStatus());
+        copy.setName(source.getName());
+        copy.setSetName(source.getSetName());
+        copy.setSetCode(source.getSetCode());
+        copy.setCollectorNumber(source.getCollectorNumber());
+        copy.setPrinting(source.getPrinting());
+        copy.setCondition(source.getCondition());
+        copy.setQuantity(source.getQuantity());
+        copy.setClient(source.getClient());
+        copy.setPhone(source.getPhone());
+        copy.setDni(source.getDni());
+        copy.setReservationDate(source.getReservationDate());
+        copy.setPickupDate(source.getPickupDate());
+        copy.setPaymentDate(source.getPaymentDate());
+        copy.setNotes(source.getNotes());
+        copy.setRowIndex(source.getRowIndex());
+        copy.setSourceRowIndexes(source.getSourceRowIndexes() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(source.getSourceRowIndexes()));
+        return copy;
     }
 
     private ImportResult createImportResult(
@@ -6462,16 +6522,14 @@ public class DashboardController {
             @RequestParam(name = "spreadsheetId", required = false) String spreadsheetId,
             @RequestParam("inventorySheetName") String inventorySheetName,
             @RequestParam(name = "cacheDirectory", required = false) String cacheDirectory,
-            @RequestParam(name = "whatsappEnabled", required = false, defaultValue = "false") boolean whatsappEnabled,
-            @RequestParam(name = "whatsappPhoneNumberId", required = false) String whatsappPhoneNumberId,
-            @RequestParam(name = "whatsappAccessToken", required = false) String whatsappAccessToken,
-            @RequestParam(name = "whatsappVerifyToken", required = false) String whatsappVerifyToken,
-            @RequestParam(name = "whatsappAlwaysOn", required = false, defaultValue = "false") boolean whatsappAlwaysOn,
-            @RequestParam(name = "whatsappOpeningTime", required = false) String whatsappOpeningTime,
-            @RequestParam(name = "whatsappClosingTime", required = false) String whatsappClosingTime,
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
             @RequestParam("pesosPerPoint") double pesosPerPoint,
+            @RequestParam("bulkCommonPrice") double bulkCommonPrice,
+            @RequestParam("bulkUncommonPrice") double bulkUncommonPrice,
+            @RequestParam("bulkRarePrice") double bulkRarePrice,
+            @RequestParam("bulkMythicPrice") double bulkMythicPrice,
+            @RequestParam("bulkBasicLandPrice") double bulkBasicLandPrice,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(defaultValue = "false") boolean removeLogo,
             @RequestHeader(name = "X-Requested-With", required = false) String requestedWith,
@@ -6482,33 +6540,17 @@ public class DashboardController {
         try {
             storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
-            String effectiveWhatsappAccessToken = whatsappAccessToken == null || whatsappAccessToken.isBlank()
-                    ? storeSettingsService.getWhatsappAccessToken()
-                    : whatsappAccessToken;
-            if (WHATSAPP_SETTINGS_VISIBLE) {
-                storeSettingsService.validateWhatsappSettings(
-                        whatsappEnabled,
-                        whatsappPhoneNumberId,
-                        effectiveWhatsappAccessToken,
-                        whatsappVerifyToken,
-                        whatsappAlwaysOn,
-                        whatsappOpeningTime,
-                        whatsappClosingTime
-                );
-            }
-            pricingSettingsService.update(ckDollarRate, roundMultiple, pesosPerPoint);
+            pricingSettingsService.update(
+                    ckDollarRate,
+                    roundMultiple,
+                    pesosPerPoint,
+                    bulkCommonPrice,
+                    bulkUncommonPrice,
+                    bulkRarePrice,
+                    bulkMythicPrice,
+                    bulkBasicLandPrice
+            );
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
-            if (WHATSAPP_SETTINGS_VISIBLE) {
-                storeSettingsService.updateWhatsapp(
-                        whatsappEnabled,
-                        whatsappPhoneNumberId,
-                        effectiveWhatsappAccessToken,
-                        whatsappVerifyToken,
-                        whatsappAlwaysOn,
-                        whatsappOpeningTime,
-                        whatsappClosingTime
-                );
-            }
 
             if (removeLogo) {
                 storeSettingsService.removeLogo();
@@ -6719,6 +6761,14 @@ public class DashboardController {
 
         try {
             ensureInventorySetup();
+            if (planService != null && !planService.tryRegisterManualSync()) {
+                model.addAttribute(
+                        "error",
+                        "En el plan gratuito, al superar las " + PlanService.FREE_SALES_LIMIT
+                                + " ventas, la sincronizacion de precios se puede hacer una vez por dia."
+                );
+                return "dashboard";
+            }
             if (!synchronizeInventory(true)) {
                 model.addAttribute("error", "No se pudo obtener la lista actualizada de Card Kingdom.");
                 addPickupAlerts(model, reservationsEnabled);
@@ -6850,11 +6900,11 @@ public class DashboardController {
         String previousCkPrice = card.getCkPriceUsd();
         String previousLocalPrice = card.getLocalPrice();
         String previousAction = card.getAction();
-        List<ReservationConditionStock> conditionStocks = conditionStocksForInventoryCard(card, inventoryCards, reservationsForLedgerSafely());
+        List<CardReservation> reservations = reservationsForLedgerSafely();
+        List<ReservationConditionStock> conditionStocks = conditionStocksForInventoryCard(card, inventoryCards, reservations);
+        card.setAction(stockActionForInventoryCard(card, inventoryCards, reservations));
 
         if (quantity(card) <= 0) {
-            card.setAction(ACTION_OUT_OF_STOCK);
-
             return new UpdateResult(
                     card.getName(),
                     card.getSetName(),
@@ -6874,10 +6924,9 @@ public class DashboardController {
 
         var product = cardKingdomApiService.findProduct(card, priceList);
 
+        // ---- Sin referencia CK: se conserva el precio local para no vender a $0 ----
         if (product == null) {
             card.setCkPriceUsd("");
-            card.setLocalPrice("");
-            applyStockAction(card, previousAction);
 
             return new UpdateResult(
                     card.getName(),
@@ -6900,8 +6949,6 @@ public class DashboardController {
 
         if (ckPrice == null) {
             card.setCkPriceUsd("");
-            card.setLocalPrice("");
-            applyStockAction(card, previousAction);
 
             return new UpdateResult(
                     card.getName(),
@@ -6923,7 +6970,6 @@ public class DashboardController {
         String localPrice = String.format("%.0f", priceComparisonService.calculateLocalPrice(ckPrice));
         card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         card.setLocalPrice(localPrice);
-        applyStockAction(card, previousAction);
 
         if (!changed(previousCkPrice, previousLocalPrice, previousAction, card)) {
             return new UpdateResult(
@@ -8479,6 +8525,11 @@ public class DashboardController {
         model.addAttribute("ckDollarRate", pricingSettingsService.getCkDollarRate());
         model.addAttribute("roundMultiple", pricingSettingsService.getRoundMultiple());
         model.addAttribute("pesosPerPoint", pricingSettingsService.getPesosPerPoint());
+        model.addAttribute("bulkCommonPrice", pricingSettingsService.getBulkCommonPrice());
+        model.addAttribute("bulkUncommonPrice", pricingSettingsService.getBulkUncommonPrice());
+        model.addAttribute("bulkRarePrice", pricingSettingsService.getBulkRarePrice());
+        model.addAttribute("bulkMythicPrice", pricingSettingsService.getBulkMythicPrice());
+        model.addAttribute("bulkBasicLandPrice", pricingSettingsService.getBulkBasicLandPrice());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("sheetConfigured", storeSettingsService.hasSpreadsheetConfigured());
@@ -8643,14 +8694,6 @@ public class DashboardController {
         if (!model.containsAttribute("submittedInventorySheetName")) {
             model.addAttribute("submittedInventorySheetName", storeSettingsService.getInventorySheetName());
         }
-        model.addAttribute("whatsappEnabled", storeSettingsService.isWhatsappEnabled());
-        model.addAttribute("whatsappPhoneNumberId", storeSettingsService.getWhatsappPhoneNumberId());
-        model.addAttribute("hasWhatsappAccessToken", !storeSettingsService.getWhatsappAccessToken().isBlank());
-        model.addAttribute("whatsappVerifyToken", storeSettingsService.getWhatsappVerifyToken());
-        model.addAttribute("whatsappAlwaysOn", storeSettingsService.isWhatsappAlwaysOn());
-        model.addAttribute("whatsappOpeningTime", storeSettingsService.getWhatsappOpeningTime());
-        model.addAttribute("whatsappClosingTime", storeSettingsService.getWhatsappClosingTime());
-        model.addAttribute("whatsappSettingsVisible", WHATSAPP_SETTINGS_VISIBLE);
     }
 
     private void addLatestUpdates(Model model, boolean reservationsEnabled) {
@@ -9133,18 +9176,6 @@ public class DashboardController {
         }
     }
 
-    private void applyStockAction(InventoryCard card) {
-        applyStockAction(card, card.getAction());
-    }
-
-    private void applyStockAction(InventoryCard card, String previousAction) {
-        card.setAction(stockActionForQuantity(quantity(card)));
-    }
-
-    private String displayStockAction(InventoryCard card) {
-        return stockActionForQuantity(quantity(card));
-    }
-
     private String stockActionForQuantity(int quantity) {
         return quantity <= 0 ? ACTION_OUT_OF_STOCK : ACTION_IN_STOCK;
     }
@@ -9162,15 +9193,7 @@ public class DashboardController {
                     .mapToInt(ReservationConditionStock::reservedQuantity)
                     .sum();
 
-            if (totalStock <= 0) {
-                return ACTION_OUT_OF_STOCK;
-            }
-
-            if (reservedStock > 0) {
-                return ACTION_RESERVED;
-            }
-
-            return ACTION_IN_STOCK;
+            return stockActionForReservedState(totalStock, reservedStock);
         }
 
         if (action != null && !action.isBlank()) {
@@ -10174,6 +10197,17 @@ public class DashboardController {
         return "redirect:/";
     }
 
+    public ResponseEntity<?> updateQuantity(
+            int rowIndex,
+            int change,
+            boolean deleteWhenZero,
+            boolean reassignPending,
+            HttpServletRequest request
+    ) {
+        return updateQuantity(rowIndex, change, deleteWhenZero, reassignPending, "VENTA",
+                null, null, null, null, null, request);
+    }
+
     @PostMapping("/inventory/quantity")
     @ResponseBody
     public ResponseEntity<?> updateQuantity(
@@ -10181,13 +10215,42 @@ public class DashboardController {
             @RequestParam int change,
             @RequestParam(defaultValue = "false") boolean deleteWhenZero,
             @RequestParam(defaultValue = "true") boolean reassignPending,
+            @RequestParam(name = "reason", required = false, defaultValue = "VENTA") String reason,
+            @RequestParam(name = "expectedName", required = false) String expectedName,
+            @RequestParam(name = "expectedSetCode", required = false) String expectedSetCode,
+            @RequestParam(name = "expectedCollectorNumber", required = false) String expectedCollectorNumber,
+            @RequestParam(name = "expectedPrinting", required = false) String expectedPrinting,
+            @RequestParam(name = "expectedCondition", required = false) String expectedCondition,
             HttpServletRequest request
     ) {
+        StockDecreaseReason decreaseReason = StockDecreaseReason.fromParam(reason);
+        if (decreaseReason == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiMessage(false, "Motivo de baja invalido."));
+        }
+
         try {
-            InventoryCard card = findInventoryCardByRow(rowIndex);
+            List<InventoryCard> inventoryCards = inventoryService.getInventoryCards();
+            InventoryCard card = inventoryCards.stream()
+                    .filter(candidate -> candidate.getRowIndex() == rowIndex)
+                    .findFirst()
+                    .orElse(null);
             if (card == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiMessage(false, "No se encontro la carta en el inventario."));
+            }
+
+            // ---- La fila puede haber cambiado si el Sheet se reordeno o edito ----
+            if (!inventoryRowMatchesExpected(
+                    card,
+                    expectedName,
+                    expectedSetCode,
+                    expectedCollectorNumber,
+                    expectedPrinting,
+                    expectedCondition
+            )) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiMessage(false, "El inventario cambio desde que abriste la pagina. Recarga antes de modificar el stock."));
             }
 
             int previousQuantity = quantity(card);
@@ -10213,7 +10276,11 @@ public class DashboardController {
 
             if (previousQuantity != newQuantity) {
                 card.setQuantity(String.valueOf(newQuantity));
-                applyStockAction(card);
+                card.setAction(stockActionForInventoryCard(
+                        card,
+                        inventoryCards,
+                        inventoryService.getReservationsIfSheetExists()
+                ));
                 inventoryService.updateStockState(rowIndex, card);
 
                 if (logMovements) {
@@ -10224,10 +10291,10 @@ public class DashboardController {
                             card,
                             previousQuantity,
                             newQuantity,
-                            change > 0 ? "Agregado al stock" : "Unidad vendida"
+                            change > 0 ? "Agregado al stock" : decreaseReason.source()
                     ));
 
-                    if (change < 0) {
+                    if (change < 0 && decreaseReason.registersSale()) {
                         LocalDateTime now = LocalDateTime.now(APP_ZONE);
                         inventoryService.appendCashSale(
                                 now.format(MOVEMENT_DATE_FORMAT),
@@ -10250,7 +10317,7 @@ public class DashboardController {
                     rowIndex,
                     snapshot.stockTotal(),
                     snapshot.action(),
-                    change > 0 ? "Unidad agregada" : "Unidad vendida",
+                    change > 0 ? "Unidad agregada" : decreaseReason.source(),
                     snapshot
             ));
         } catch (Exception e) {
@@ -10258,6 +10325,86 @@ public class DashboardController {
             return ResponseEntity.internalServerError()
                     .body(new ApiMessage(false, "No se pudo actualizar el stock: " + e.getMessage()));
         }
+    }
+
+    // ---- Motivos de baja: solo la venta impacta en Caja ----
+    enum StockDecreaseReason {
+        VENTA("Unidad vendida", true),
+        AJUSTE("Ajuste de conteo", false),
+        PERDIDA("Perdida o dano", false),
+        USO_INTERNO("Uso interno", false);
+
+        private final String source;
+        private final boolean registersSale;
+
+        StockDecreaseReason(String source, boolean registersSale) {
+            this.source = source;
+            this.registersSale = registersSale;
+        }
+
+        String source() {
+            return source;
+        }
+
+        boolean registersSale() {
+            return registersSale;
+        }
+
+        static StockDecreaseReason fromParam(String value) {
+            if (value == null || value.isBlank()) {
+                return VENTA;
+            }
+
+            for (StockDecreaseReason reason : values()) {
+                if (reason.name().equalsIgnoreCase(value.trim())) {
+                    return reason;
+                }
+            }
+
+            return null;
+        }
+
+        static boolean isAdjustmentSource(String source) {
+            for (StockDecreaseReason reason : values()) {
+                if (!reason.registersSale && reason.source.equalsIgnoreCase(blankToEmptyStatic(source))) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    private boolean inventoryRowMatchesExpected(
+            InventoryCard card,
+            String expectedName,
+            String expectedSetCode,
+            String expectedCollectorNumber,
+            String expectedPrinting,
+            String expectedCondition
+    ) {
+        if (!isBlank(expectedName)
+                && !normalizedCardText(expectedName).equals(normalizedCardText(card.getName()))) {
+            return false;
+        }
+
+        if (!isBlank(expectedSetCode)
+                && !normalizedCardText(expectedSetCode).equals(normalizedCardText(card.getSetCode()))) {
+            return false;
+        }
+
+        if (!isBlank(expectedCollectorNumber)
+                && !collectorNumber(expectedCollectorNumber).equals(collectorNumber(card.getCollectorNumber()))) {
+            return false;
+        }
+
+        if (!isBlank(expectedPrinting)
+                && !normalizedPrintingForReservation(expectedPrinting).equals(normalizedPrintingForReservation(card.getPrinting()))) {
+            return false;
+        }
+
+        return isBlank(expectedCondition)
+                || displayCondition(expectedCondition).equals(displayCondition(card.getCondition()));
     }
 
     @PostMapping("/inventory/cards")

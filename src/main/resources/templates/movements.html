@@ -9,6 +9,7 @@
 </head>
 <body>
 <header th:replace="~{fragments/layout :: topbar('Historial de stock')}"></header>
+<div th:replace="~{fragments/layout :: planBanner}"></div>
 <div th:replace="~{fragments/layout :: menu('movements')}"></div>
 <main class="page movements-page" th:classappend="${movementsLocked} ? ' movements-page-locked' : ''">
     <section class="hero">
@@ -24,6 +25,9 @@
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
         <p class="alert error" th:if="${cashError}" th:text="${cashError}"></p>
         <p class="alert error" th:if="${pointError}" th:text="${pointError}"></p>
+        <p class="alert info" th:if="${historyLocked}">
+            Plan gratuito: se muestran los registros de hoy. El historial completo sigue guardado en tu Google Sheet; filtrar fechas anteriores y el reporte mensual son del plan premium.
+        </p>
 
         <div class="movement-tab-list" role="tablist" aria-label="Secciones de movimientos">
             <button th:classappend="${activeTab == 'movements'} ? ' active' : ''"
@@ -39,6 +43,7 @@
                     th:attr="aria-selected=${activeTab == 'points'}"
                     data-tab-target="points-tab">Puntos</button>
             <button th:classappend="${activeTab == 'report'} ? ' active' : ''"
+                    th:unless="${historyLocked}"
                     class="movement-tab-button" type="button" role="tab"
                     th:attr="aria-selected=${activeTab == 'report'}"
                     data-tab-target="report-tab">Reporte</button>
@@ -52,7 +57,7 @@
                     <p class="eyebrow">Registro</p>
                     <h2 th:text="${movementCount + ' ' + movementCountLabel}">0 movimientos hoy</h2>
                 </div>
-                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar movimientos.">
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" th:unless="${historyLocked}" data-required-date-message="Elegi una fecha para filtrar movimientos.">
                     <input type="hidden" name="tab" value="movements">
                     <input type="hidden" name="movementFilter" value="true">
                     <div class="movement-date-field">
@@ -162,7 +167,7 @@
                     <p class="eyebrow">Caja</p>
                     <h2>Ventas registradas</h2>
                 </div>
-                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar caja.">
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" th:unless="${historyLocked}" data-required-date-message="Elegi una fecha para filtrar caja.">
                     <input type="hidden" name="tab" value="cash">
                     <input type="hidden" name="cashFilter" value="true">
                     <div class="movement-date-field">
@@ -264,7 +269,7 @@
                     <p class="eyebrow">Puntos</p>
                     <h2 th:text="${pointMovementCount + ' ' + pointMovementCountLabel}">0 movimientos de puntos hoy</h2>
                 </div>
-                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar puntos.">
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" th:unless="${historyLocked}" data-required-date-message="Elegi una fecha para filtrar puntos.">
                     <input type="hidden" name="tab" value="points">
                     <input type="hidden" name="pointFilter" value="true">
                     <div class="movement-date-field">
@@ -503,46 +508,6 @@
         </div>
     </section>
 
-    <section class="movement-lock-layer" th:if="${movementsLocked}" role="dialog" aria-modal="true"
-             aria-labelledby="movement-lock-title" aria-describedby="movement-lock-copy">
-        <div class="movement-lock-dialog">
-            <div class="movement-lock-head">
-                <span class="movement-access-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
-                        <rect x="5" y="10" width="14" height="10" rx="2"/>
-                        <path d="M12 14v2"/>
-                    </svg>
-                </span>
-                <div>
-                    <p class="eyebrow">Modulo pago</p>
-                    <h2 id="movement-lock-title">Movimientos bloqueados</h2>
-                </div>
-            </div>
-
-            <p id="movement-lock-copy" class="movement-lock-copy">
-                Activa el acceso para ver movimientos, caja diaria y reportes de ventas.
-            </p>
-
-            <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
-
-            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
-                  data-loading-button="Desbloqueando..."
-                  data-loading-title="Verificando acceso"
-                  data-loading-message="Revisando la contrasena y abriendo movimientos...">
-                <input type="hidden" name="returnTo" th:value="${returnTo}">
-                <div class="movement-access-field">
-                    <label for="movement-password">Clave de acceso</label>
-                    <input id="movement-password" name="password" type="password"
-                           autocomplete="current-password" required autofocus>
-                </div>
-                <div class="movement-lock-actions">
-                    <button class="primary-button" type="submit">Desbloquear</button>
-                    <a class="secondary-button link-button" th:href="@{/}">Volver al inicio</a>
-                </div>
-            </form>
-        </div>
-    </section>
 </main>
 
 <div th:replace="~{fragments/layout :: loading('Sincronizando inventario', 'Leyendo el Sheet, conectando la app y recalculando precios...')}"></div>

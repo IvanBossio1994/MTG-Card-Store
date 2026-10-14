@@ -18,6 +18,34 @@
     </div>
 </header>
 
+<div th:fragment="planBanner" class="plan-banner-root">
+    <section class="plan-banner plan-banner-limited" th:if="${planLimited == true}" role="status">
+        <div class="plan-banner-copy">
+            <strong>Modo reducido del plan gratuito</strong>
+            <span th:text="'Llegaste a las ' + ${planSalesLimit} + ' ventas. Ventas, stock, Movimientos y Caja se siguen registrando como siempre. Reservas nuevas, clientes, importar listas, historial y sincronizacion automatica son del plan premium.'">
+                Llegaste al limite de ventas del plan gratuito.
+            </span>
+        </div>
+        <details class="plan-banner-unlock">
+            <summary>Activar premium</summary>
+            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}">
+                <input type="hidden" name="returnTo" value="/">
+                <label for="plan-premium-password">Clave premium</label>
+                <input id="plan-premium-password" name="password" type="password" autocomplete="current-password" required>
+                <button class="primary-button" type="submit">Activar</button>
+            </form>
+        </details>
+    </section>
+    <section class="plan-banner"
+             th:if="${planLimited != true && planPremium != true && planSalesCount != null && planSalesLimit != null && planSalesCount >= planSalesLimit - 20}"
+             role="status">
+        <div class="plan-banner-copy">
+            <strong th:text="'Te quedan ' + (${planSalesLimit} - ${planSalesCount}) + ' ventas del plan gratuito'">Te quedan ventas</strong>
+            <span>Despues de ese limite la app sigue registrando todo, pero algunas funciones pasan al plan premium.</span>
+        </div>
+    </section>
+</div>
+
 <div th:fragment="menu(active)">
     <div id="menu-backdrop" class="menu-backdrop" hidden></div>
     <aside id="app-menu" class="app-menu" aria-hidden="true">

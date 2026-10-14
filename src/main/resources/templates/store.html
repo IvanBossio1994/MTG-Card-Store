@@ -9,6 +9,7 @@
 </head>
 <body>
 <header th:replace="~{fragments/layout :: topbar('Configuracion del comercio')}"></header>
+<div th:replace="~{fragments/layout :: planBanner}"></div>
 <div th:replace="~{fragments/layout :: menu('settings')}"></div>
 <main class="store-page">
     <div class="store-heading">
@@ -21,134 +22,131 @@
         <p id="store-error" class="alert error" th:if="${error}" th:text="${error}"></p>
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
-        <section class="settings-card">
-            <h2>Identidad de la tienda</h2>
-            <div class="store-field">
-                <label for="storeName">Nombre de la tienda</label>
-                <input id="storeName" name="storeName" type="text" th:value="${storeName}"
-                       placeholder="Ingresa nombre de tienda" required>
+        <details class="settings-card" open>
+            <summary class="settings-card-summary">
+                <h2>Identidad de la tienda</h2>
+            </summary>
+            <div class="settings-card-body">
+                <div class="store-field">
+                    <label for="storeName">Nombre de la tienda</label>
+                    <input id="storeName" name="storeName" type="text" th:value="${storeName}"
+                           placeholder="Ingresa nombre de tienda" required>
+                </div>
+                <div class="store-field">
+                    <label>Logo de mi tienda</label>
+                    <label class="upload-zone" for="storeLogo">
+                        <img class="store-logo-preview" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}"
+                             alt="Logo actual de la tienda">
+                        <span class="upload-button">Subir imagen</span>
+                        <span id="logo-file-name" class="upload-help">PNG, JPG o WEBP, hasta 2 MB</span>
+                    </label>
+                    <input class="file-input" id="storeLogo" name="storeLogo" type="file"
+                           accept="image/png,image/jpeg,image/webp">
+                </div>
             </div>
-            <div class="store-field">
-                <label>Logo de mi tienda</label>
-                <label class="upload-zone" for="storeLogo">
-                    <img class="store-logo-preview" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}"
-                         alt="Logo actual de la tienda">
-                    <span class="upload-button">Subir imagen</span>
-                    <span id="logo-file-name" class="upload-help">PNG, JPG o WEBP, hasta 2 MB</span>
-                </label>
-                <input class="file-input" id="storeLogo" name="storeLogo" type="file"
-                       accept="image/png,image/jpeg,image/webp">
-            </div>
-        </section>
+        </details>
 
-        <section class="settings-card">
-            <h2>Inventario</h2>
-            <div class="store-field">
-                <label for="inventorySheetName">Pestana original o pestana final del inventario</label>
-                <input id="inventorySheetName" name="inventorySheetName" type="text"
-                       th:value="${submittedInventorySheetName}"
-                       th:classappend="${inventorySheetError} ? ' invalid-input' : ''"
-                       placeholder="Ej: Stock MTG, Cartas o Inventario" required>
-                <p id="inventory-sheet-error" class="field-error" th:if="${inventorySheetError}"
-                   th:text="${inventorySheetError}"></p>
-                <p class="field-help">Podes indicar una pestana existente con cartas. Si la app reconoce al menos dos nombres, crea una pestana nueva de inventario y deja la original sin tocar.</p>
-            </div>
-            <div id="google-sheet-source" class="store-field source-fields">
-                <label for="spreadsheetId">Google Sheet del inventario</label>
-                <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
-                       placeholder="Pega el enlace de Google Sheets o su ID">
-                <p class="field-help">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestana nueva con las columnas de la app.</p>
-                <div class="setup-notice compact" th:if="${!googleOAuthConnected}">
-                    <strong>Permiso recomendado</strong>
-                    <p>Tu sesion de Google debe tener acceso a este Sheet. No hace falta compartirlo con ningun mail tecnico.</p>
-                </div>
-            </div>
-        </section>
-        <section class="settings-card">
-            <h2>Regla de precio</h2>
-            <p class="card-help">Define como convertir el precio de Card Kingdom al precio sugerido en ARS.</p>
-            <div class="pricing-config-grid">
+        <details class="settings-card" open>
+            <summary class="settings-card-summary">
+                <h2>Inventario</h2>
+            </summary>
+            <div class="settings-card-body">
                 <div class="store-field">
-                    <label for="ckDollarRate">Cotizacion ARS por CK USD</label>
-                    <input id="ckDollarRate" name="ckDollarRate" type="number" min="0.01" step="0.01"
-                           th:value="${ckDollarRate}" required>
+                    <label for="inventorySheetName">Pestana original o pestana final del inventario</label>
+                    <input id="inventorySheetName" name="inventorySheetName" type="text"
+                           th:value="${submittedInventorySheetName}"
+                           th:classappend="${inventorySheetError} ? ' invalid-input' : ''"
+                           placeholder="Ej: Stock MTG, Cartas o Inventario" required>
+                    <p id="inventory-sheet-error" class="field-error" th:if="${inventorySheetError}"
+                       th:text="${inventorySheetError}"></p>
+                    <p class="field-help">Podes indicar una pestana existente con cartas. Si la app reconoce al menos dos nombres, crea una pestana nueva de inventario y deja la original sin tocar.</p>
                 </div>
-                <div class="store-field">
-                    <label for="roundMultiple">Redondear al multiplo de</label>
-                    <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
-                           th:value="${roundMultiple}" required>
+                <div id="google-sheet-source" class="store-field source-fields">
+                    <label for="spreadsheetId">Google Sheet del inventario</label>
+                    <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
+                           placeholder="Pega el enlace de Google Sheets o su ID">
+                    <p class="field-help">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestana nueva con las columnas de la app.</p>
+                    <div class="setup-notice compact" th:if="${!googleOAuthConnected}">
+                        <strong>Permiso recomendado</strong>
+                        <p>Tu sesion de Google debe tener acceso a este Sheet. No hace falta compartirlo con ningun mail tecnico.</p>
+                    </div>
                 </div>
             </div>
-            <div class="store-field">
-                <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
-                <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
-                       placeholder="Ej: D:/TCG-inventory/data/cache o E:/MTG/cache">
-                <p class="field-help">Elegi una carpeta local con espacio disponible. La app guarda la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
-            </div>
-        </section>
+        </details>
 
-        <section class="settings-card">
-            <h2>Logica de puntos</h2>
-            <p class="card-help">Define cuanto credito de compra representa 1 punto cargado manualmente.</p>
-            <div class="pricing-config-grid">
+        <details class="settings-card" open>
+            <summary class="settings-card-summary">
+                <h2>Regla de precio</h2>
+            </summary>
+            <div class="settings-card-body">
+                <p class="card-help">Define como convertir el precio de Card Kingdom al precio sugerido en ARS.</p>
+                <div class="pricing-config-grid">
+                    <div class="store-field">
+                        <label for="ckDollarRate">Cotizacion ARS por CK USD</label>
+                        <input id="ckDollarRate" name="ckDollarRate" type="number" min="0.01" step="0.01"
+                               th:value="${ckDollarRate}" required>
+                    </div>
+                    <div class="store-field">
+                        <label for="roundMultiple">Redondear al multiplo de</label>
+                        <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
+                               th:value="${roundMultiple}" required>
+                    </div>
+                </div>
+                <div class="bulk-pricing-grid">
+                    <div class="store-field">
+                        <label for="bulkCommonPrice">C: Common</label>
+                        <input id="bulkCommonPrice" name="bulkCommonPrice" type="number" min="0.01" step="0.01"
+                               th:value="${bulkCommonPrice}" required>
+                    </div>
+                    <div class="bulk-pricing-note">
+                        <strong>Estos precios sirven al momento de asignarle puntos a un usuario que dejo muchas cartas en la tienda</strong>
+                    </div>
+                    <div class="store-field">
+                        <label for="bulkUncommonPrice">U: Uncommon</label>
+                        <input id="bulkUncommonPrice" name="bulkUncommonPrice" type="number" min="0.01" step="0.01"
+                               th:value="${bulkUncommonPrice}" required>
+                    </div>
+                    <div class="store-field">
+                        <label for="bulkRarePrice">R: Rare</label>
+                        <input id="bulkRarePrice" name="bulkRarePrice" type="number" min="0.01" step="0.01"
+                               th:value="${bulkRarePrice}" required>
+                    </div>
+                    <div class="store-field">
+                        <label for="bulkMythicPrice">M: Mythic</label>
+                        <input id="bulkMythicPrice" name="bulkMythicPrice" type="number" min="0.01" step="0.01"
+                               th:value="${bulkMythicPrice}" required>
+                    </div>
+                    <div class="store-field bulk-basic-land-field">
+                        <label for="bulkBasicLandPrice">L: Basic Land</label>
+                        <input id="bulkBasicLandPrice" name="bulkBasicLandPrice" type="number" min="0.01" step="0.01"
+                               th:value="${bulkBasicLandPrice}" required>
+                    </div>
+                </div>
                 <div class="store-field">
-                    <label for="pesosPerPoint">1 punto equivale a</label>
-                    <input id="pesosPerPoint" name="pesosPerPoint" type="number" min="0.01" step="0.01"
-                           th:value="${pesosPerPoint}" required>
-                    <p class="field-help">Ej: 1 para que 1 punto pague $1, o 100 para que 1 punto pague $100.</p>
+                    <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
+                    <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
+                           placeholder="Ej: D:/TCG-inventory/data/cache o E:/MTG/cache">
+                    <p class="field-help">Elegi una carpeta local con espacio disponible. La app guarda la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
                 </div>
             </div>
-        </section>
+        </details>
 
-        <section class="settings-card" th:if="${whatsappSettingsVisible}">
-            <h2>WhatsApp</h2>
-            <p class="card-help">Conecta WhatsApp Cloud API para recibir consultas y pedidos desde el telefono de la tienda.</p>
-            <div class="store-field checkbox-field">
-                <label>
-                    <input id="whatsappEnabled" name="whatsappEnabled" type="checkbox" value="true"
-                           th:checked="${whatsappEnabled}">
-                    Activar WhatsApp
-                </label>
-            </div>
-            <div class="pricing-config-grid">
-                <div class="store-field">
-                    <label for="whatsappPhoneNumberId">Phone Number ID</label>
-                    <input id="whatsappPhoneNumberId" name="whatsappPhoneNumberId" type="text"
-                           th:value="${whatsappPhoneNumberId}" placeholder="Ej: 1234567890">
-                </div>
-                <div class="store-field">
-                    <label for="whatsappVerifyToken">Verify Token</label>
-                    <input id="whatsappVerifyToken" name="whatsappVerifyToken" type="text"
-                           th:value="${whatsappVerifyToken}" placeholder="Texto secreto para Meta">
+        <details class="settings-card" open>
+            <summary class="settings-card-summary">
+                <h2>Logica de puntos</h2>
+            </summary>
+            <div class="settings-card-body">
+                <p class="card-help">Define cuanto credito de compra representa 1 punto cargado manualmente.</p>
+                <div class="pricing-config-grid">
+                    <div class="store-field">
+                        <label for="pesosPerPoint">1 punto equivale a</label>
+                        <input id="pesosPerPoint" name="pesosPerPoint" type="number" min="0.01" step="0.01"
+                               th:value="${pesosPerPoint}" required>
+                        <p class="field-help">Ej: 1 para que 1 punto pague $1, o 100 para que 1 punto pague $100.</p>
+                    </div>
                 </div>
             </div>
-            <div class="store-field">
-                <label for="whatsappAccessToken">Access Token</label>
-                <input id="whatsappAccessToken" name="whatsappAccessToken" type="password"
-                       autocomplete="off"
-                       th:placeholder="${hasWhatsappAccessToken ? 'Token guardado. Completa solo para reemplazarlo.' : 'Token permanente de WhatsApp Cloud API'}">
-                <p class="field-help">Webhook para Meta: /webhooks/whatsapp sobre tu URL publica de ngrok.</p>
-            </div>
-            <div class="store-field checkbox-field">
-                <label>
-                    <input id="whatsappAlwaysOn" name="whatsappAlwaysOn" type="checkbox" value="true"
-                           th:checked="${whatsappAlwaysOn}">
-                    WhatsApp operativo mientras la app este abierta
-                </label>
-            </div>
-            <div class="pricing-config-grid whatsapp-hours">
-                <div class="store-field">
-                    <label for="whatsappOpeningTime">Hora de apertura</label>
-                    <input id="whatsappOpeningTime" name="whatsappOpeningTime" type="time"
-                           th:value="${whatsappOpeningTime}">
-                </div>
-                <div class="store-field">
-                    <label for="whatsappClosingTime">Hora de cierre</label>
-                    <input id="whatsappClosingTime" name="whatsappClosingTime" type="time"
-                           th:value="${whatsappClosingTime}">
-                </div>
-            </div>
-        </section>
+        </details>
 
         <div class="store-actions">
             <button class="primary-button" type="submit">Guardar configuracion</button>

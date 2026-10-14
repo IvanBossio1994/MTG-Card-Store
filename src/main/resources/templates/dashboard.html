@@ -9,6 +9,7 @@
 </head>
 <body>
 <header th:replace="~{fragments/layout :: topbar('Card Kingdom + Google Sheets')}"></header>
+<div th:replace="~{fragments/layout :: planBanner}"></div>
 <div th:replace="~{fragments/layout :: menu('home')}"></div>
 <main class="page">
     <section class="hero">
@@ -725,6 +726,32 @@
         <div class="tutorial-actions app-confirm-actions">
             <button class="secondary-button" type="button" data-stock-delete-cancel>Cancelar</button>
             <button class="primary-button danger-button" type="button" data-stock-delete-confirm>Eliminar del Sheet</button>
+        </div>
+    </div>
+</div>
+<div id="stock-decrease-dialog"
+     class="app-confirm-overlay"
+     hidden
+     aria-hidden="true"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="stock-decrease-title">
+    <div class="app-confirm-modal">
+        <button class="tutorial-close"
+                type="button"
+                data-stock-decrease-cancel
+                aria-label="Cerrar">x</button>
+        <p class="eyebrow">Baja de stock</p>
+        <h2 id="stock-decrease-title" data-stock-decrease-title>Por que sale esta carta?</h2>
+        <div class="tutorial-copy">
+            <p>Solo las ventas se registran en Caja. Los ajustes, perdidas y uso interno quedan en Movimientos.</p>
+        </div>
+        <div class="tutorial-actions app-confirm-actions">
+            <button class="secondary-button" type="button" data-stock-decrease-cancel>Cancelar</button>
+            <button class="secondary-button" type="button" data-stock-decrease-reason="USO_INTERNO">Uso interno</button>
+            <button class="secondary-button" type="button" data-stock-decrease-reason="PERDIDA">Perdida o dano</button>
+            <button class="secondary-button" type="button" data-stock-decrease-reason="AJUSTE">Ajuste de conteo</button>
+            <button class="primary-button" type="button" data-stock-decrease-reason="VENTA">Venta</button>
         </div>
     </div>
 </div>

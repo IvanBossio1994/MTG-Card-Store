@@ -16,9 +16,11 @@ import java.util.Map;
 public class InventoryService {
 
     private final GoogleSheetsService googleSheetsService;
+    private final PlanService planService;
 
-    public InventoryService(GoogleSheetsService googleSheetsService) {
+    public InventoryService(GoogleSheetsService googleSheetsService, PlanService planService) {
         this.googleSheetsService = googleSheetsService;
+        this.planService = planService;
     }
 
     public List<InventoryCard> getInventoryCards() throws Exception {
@@ -99,6 +101,9 @@ public class InventoryService {
 
     public void appendCashSale(String date, String time, InventoryCard card, int quantity) throws Exception {
         googleSheetsService.appendCashSale(date, time, card, quantity);
+        if (planService != null) {
+            planService.recordSale();
+        }
     }
 
     public List<CardReservation> getReservations() throws Exception {

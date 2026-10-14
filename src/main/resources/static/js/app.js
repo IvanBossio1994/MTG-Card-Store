@@ -3176,10 +3176,16 @@ document.addEventListener("DOMContentLoaded", () => {
                                                 rowIndex: reservationRowIndex,
                                                 change: changeQuantity,
                                                 deleteWhenZero: false,
-                                                reassignPending: false
+                                                reassignPending: false,
+                                                ...expectedStockIdentity(button)
                                             })
                                         }
                                 );
+
+                                if (updateResponse.status === 409) {
+                                    showStaleInventoryNotice(updateResponse);
+                                    return;
+                                }
 
                                 if (!updateResponse.ok) {
                                     showToast(
@@ -3340,6 +3346,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
+                    let reason = "VENTA";
+                    if (!increase && !deleteWhenZero) {
+                        reason = await chooseStockDecreaseReason(
+                            button.closest("tr")?.querySelector(".card-name-cell")?.textContent?.trim()
+                        );
+
+                        if (!reason) {
+                            return;
+                        }
+                    }
+
                     const response = await fetch(
                         "/inventory/quantity",
                         {
@@ -3352,10 +3369,17 @@ document.addEventListener("DOMContentLoaded", () => {
                                 new URLSearchParams({
                                     rowIndex,
                                     change,
-                                    deleteWhenZero
+                                    deleteWhenZero,
+                                    reason,
+                                    ...expectedStockIdentity(button)
                                 })
                         }
                     );
+
+                    if (response.status === 409) {
+                        showStaleInventoryNotice(response);
+                        return;
+                    }
 
                     if (!response.ok) {
                         showToast(
@@ -3414,7 +3438,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
                     showToast(
-                        stockChangeMessage(increase, changeQuantity),
+                        increase || reason === "VENTA"
+                                ? stockChangeMessage(increase, changeQuantity)
+                                : (result.message || "Baja registrada"),
                         "success"
                     );
 
@@ -3800,6 +3826,90 @@ document.addEventListener("DOMContentLoaded", () => {
             document.addEventListener("keydown", escapeCancel);
             confirmButton?.focus();
         });
+    }
+
+    // ---- Motivo de baja: solo VENTA impacta en Caja ----
+    function chooseStockDecreaseReason(cardName) {
+        const dialog = document.getElementById("stock-decrease-dialog");
+        if (!dialog) {
+            return Promise.resolve("VENTA");
+        }
+
+        const title = dialog.querySelector("[data-stock-decrease-title]");
+        const reasonButtons = dialog.querySelectorAll("[data-stock-decrease-reason]");
+        const closeButtons = dialog.querySelectorAll("[data-stock-decrease-cancel]");
+
+        if (title) {
+            title.textContent = cardName
+                    ? `Por que sale "${cardName}"?`
+                    : "Por que sale esta carta?";
+        }
+
+        dialog.hidden = false;
+        dialog.setAttribute("aria-hidden", "false");
+
+        return new Promise(resolve => {
+            let resolved = false;
+
+            const finish = value => {
+                if (resolved) {
+                    return;
+                }
+
+                resolved = true;
+                dialog.hidden = true;
+                dialog.setAttribute("aria-hidden", "true");
+                reasonButtons.forEach(button => button.removeEventListener("click", choose));
+                closeButtons.forEach(button => button.removeEventListener("click", cancel));
+                dialog.removeEventListener("click", backdropCancel);
+                document.removeEventListener("keydown", escapeCancel);
+                resolve(value);
+            };
+
+            const choose = event => finish(event.currentTarget.dataset.stockDecreaseReason || "VENTA");
+            const cancel = () => finish(null);
+            const backdropCancel = event => {
+                if (event.target === dialog) {
+                    finish(null);
+                }
+            };
+            const escapeCancel = event => {
+                if (event.key === "Escape") {
+                    finish(null);
+                }
+            };
+
+            reasonButtons.forEach(button => button.addEventListener("click", choose));
+            closeButtons.forEach(button => button.addEventListener("click", cancel));
+            dialog.addEventListener("click", backdropCancel);
+            document.addEventListener("keydown", escapeCancel);
+            dialog.querySelector('[data-stock-decrease-reason="VENTA"]')?.focus();
+        });
+    }
+
+    async function showStaleInventoryNotice(response) {
+        showToast(
+            await responseMessage(response, "El inventario cambio. Recargando..."),
+            "error"
+        );
+        window.setTimeout(() => window.location.reload(), 1800);
+    }
+
+    // ---- Identidad de la carta para que el servidor rechace filas desactualizadas ----
+    function expectedStockIdentity(button) {
+        const source = button.classList.contains("increase")
+                ? button
+                : button.parentElement?.querySelector(".stock-button.increase") || button;
+        const data = source.dataset;
+        const identity = {
+            expectedName: data.name || "",
+            expectedSetCode: data.setCode || "",
+            expectedCollectorNumber: data.collectorNumber || "",
+            expectedPrinting: data.printing || "",
+            expectedCondition: button.dataset.condition || data.condition || ""
+        };
+
+        return Object.fromEntries(Object.entries(identity).filter(([, value]) => value));
     }
 
 // ---- Toast ----

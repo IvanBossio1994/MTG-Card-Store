@@ -9,6 +9,7 @@
 </head>
 <body>
 <header th:replace="~{fragments/layout :: topbar('Importacion masiva')}"></header>
+<div th:replace="~{fragments/layout :: planBanner}"></div>
 <div th:replace="~{fragments/layout :: menu('import')}"></div>
 <main class="page">
     <section class="hero">
@@ -23,7 +24,12 @@
         <p class="alert error" th:if="${error}" th:text="${error}"></p>
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
-        <form id="import-analyze-form" class="import-form" method="post" th:action="@{/importar-lista/analizar}">
+        <p class="alert info" th:if="${importLocked}">
+            Importar listas es parte del plan premium. Podes seguir sumando cartas al stock desde la busqueda del inicio.
+        </p>
+
+        <form id="import-analyze-form" class="import-form" method="post" th:action="@{/importar-lista/analizar}"
+              th:unless="${importLocked}">
             <label for="rawList">Lista</label>
             <textarea id="rawList" name="rawList" rows="10"
                       placeholder="4 Sol Ring&#10;1 Fell the Profane / Fell Mire (MH3) 244&#10;2x Counterspell [CMM] #81"

@@ -26,8 +26,8 @@ base operativa y Card Kingdom como fuente de precios/productos.
 
 Desde la interfaz local se puede:
 
-- Configurar tienda, Google Sheet, pestana de inventario, logo, cache de Card
-  Kingdom y WhatsApp.
+- Configurar tienda, Google Sheet, pestana de inventario, logo y cache de Card
+  Kingdom.
 - Conectar Google via OAuth para leer y escribir el spreadsheet.
 - Buscar cartas en la pricelist de Card Kingdom.
 - Consultar stock local cruzando productos CK con filas del Sheet.
@@ -36,7 +36,6 @@ Desde la interfaz local se puede:
 - Importar listas de cartas y convertirlas en altas o incrementos de stock.
 - Registrar movimientos de entrada/salida y ventas de caja.
 - Crear, entregar, liberar, reprogramar y eliminar reservas.
-- Recibir pedidos por WhatsApp cuando el canal esta configurado.
 
 ## Datos persistidos
 
@@ -75,17 +74,12 @@ La aplicacion no usa una base SQL. Usa dos lugares de persistencia:
 | `TcgBotApplication` | Arranque Spring Boot y scheduling. |
 | `DesktopLauncher` | Arranque desktop local, puerto dinamico y apertura del navegador. |
 | `DashboardController` | Interfaz web: dashboard, configuracion, inventario, reservas, caja, importacion y sincronizacion. |
-| `WhatsappWebhookController` | Verificacion y recepcion del webhook de WhatsApp. |
-| `WhatsappNotificationController` | Notificaciones cortas para avisar pedidos entrantes. |
-| `PublicTunnelGuardFilter` | Si el host es publico, solo deja pasar `/webhooks/whatsapp`. |
-| `StoreSettingsService` | Configuracion local de tienda, Sheet, cache, logo, tutorial y WhatsApp. |
+| `StoreSettingsService` | Configuracion local de tienda, Sheet, cache, logo y tutorial. |
 | `GoogleOAuthService` | OAuth y cliente Google Sheets autenticado. |
 | `GoogleSheetsService` | Lectura/escritura real de pestanas del spreadsheet. |
 | `InventoryService` | Fachada simple sobre Google Sheets para inventario, movimientos, caja, reservas y clientes. |
 | `CardKingdomApiService` | Descarga, cache y busqueda de la pricelist CK. |
 | `PriceComparisonService` | Conversion CK USD a precio local con redondeo. |
-| `WhatsappOrderService` | Conversacion WhatsApp, consulta de stock y armado de reservas. |
-| `WhatsappClient` | Envio de mensajes mediante Meta Graph API. |
 
 ## Operaciones de inventario
 
@@ -129,34 +123,9 @@ Flujos principales:
 La disponibilidad no es solo la cantidad de inventario: se calcula descontando
 reservas activas para la misma carta/edicion/printing/condicion.
 
-## Operaciones de WhatsApp
-
-WhatsApp es opcional y depende de configuracion local:
-
-- Phone Number ID.
-- Access Token.
-- Verify Token.
-- Horario de atencion o modo siempre activo.
-
-Meta llama a `/webhooks/whatsapp`. La app:
-
-1. Verifica el webhook con el token configurado.
-2. Procesa mensajes de texto en segundo plano.
-3. Deduplica mensajes por ID.
-4. Mantiene una conversacion en memoria por telefono.
-5. Permite comandos como `stock Sol Ring`, `pedido`, `confirmar` y `cancelar`.
-6. Consulta stock disponible contra inventario menos reservas.
-7. Al confirmar, guarda reservas y actualiza/crea el cliente.
-8. Responde al cliente por Meta Graph API.
-
-Nota operativa: las conversaciones de WhatsApp son en memoria. Si la app se
-reinicia, los pedidos no confirmados se pierden.
-
 ## Seguridad operativa
 
 - El servidor escucha por defecto en `127.0.0.1`.
-- Si se expone mediante tunel publico, `PublicTunnelGuardFilter` bloquea todo
-  excepto `/webhooks/whatsapp`.
 - El acceso a Google Sheets requiere OAuth y scope `SPREADSHEETS`.
 - La configuracion local contiene tokens y no debe subirse al repositorio.
 - El logo se valida por tipo y limite de 2 MB.
@@ -226,16 +195,6 @@ flowchart TD
     X --> Y
     Y --> Z
 
-    AL[Meta WhatsApp] --> AM[/webhooks/whatsapp]
-    AM --> I
-    I --> AN{Path publico permitido?}
-    AN -->|No| AO[404]
-    AN -->|Si| AP[WhatsappWebhookController]
-    AP --> AQ[WhatsappOrderService]
-    AQ --> X
-    AQ --> AR[WhatsappClient]
-    AR --> AS[Meta Graph API]
-    AQ --> AT[WhatsappNotificationService]
 ```
 
 ## Lectura rapida para mantenimiento
@@ -245,7 +204,3 @@ flowchart TD
   del usuario y nombre de pestana configurada.
 - Si las cantidades disponibles no coinciden con la cantidad del Sheet, revisar
   reservas activas: el disponible descuenta reservas.
-- Si WhatsApp responde que no esta configurado, revisar `store.properties` desde
-  Configuracion y que el webhook use el verify token correcto.
-- Si la app esta publicada por tunel y el dashboard no abre, es esperado: por
-  host publico solo se permite el webhook.

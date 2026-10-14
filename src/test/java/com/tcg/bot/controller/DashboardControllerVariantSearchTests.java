@@ -435,6 +435,76 @@ class DashboardControllerVariantSearchTests {
     }
 
     @Test
+    void stockQuantityUpdatePersistsReservedActionWhenLedgerHasReservation() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        DashboardController controller = new DashboardController(inventoryService, null, null, null, null, null);
+        HttpServletRequest request = unlockedRequest();
+        InventoryCard stock = inventoryCard("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0305", "nonfoil", "2", "En Stock", 10);
+        stock.setCondition("NM");
+        List<CardReservation> reservations = reservedReservations("Arcane Signet", 1);
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(stock));
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(reservations);
+
+        ResponseEntity<?> response = controller.updateQuantity(10, 1, false, false, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ArgumentCaptor<InventoryCard> cardCaptor = ArgumentCaptor.forClass(InventoryCard.class);
+        verify(inventoryService).updateStockState(eq(10), cardCaptor.capture());
+        assertThat(cardCaptor.getValue().getQuantity()).isEqualTo("3");
+        assertThat(cardCaptor.getValue().getAction()).isEqualTo("Reservada");
+        DashboardController.StockUpdateResponse body =
+                (DashboardController.StockUpdateResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.action()).isEqualTo("Reservada");
+    }
+
+    @Test
+    void syncUpdateUsesReservedLedgerForInventoryAction() throws Exception {
+        InventoryService inventoryService = mock(InventoryService.class);
+        CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
+        PriceComparisonService priceComparisonService = mock(PriceComparisonService.class);
+        DashboardController controller = new DashboardController(
+                inventoryService,
+                cardKingdomApiService,
+                null,
+                priceComparisonService,
+                null,
+                null
+        );
+        InventoryCard stock = inventoryCard("Arcane Signet", "Bloomburrow Commander Decks", "BLC", "0305", "nonfoil", "2", "En Stock", 10);
+        stock.setCondition("NM");
+        stock.setCkPriceUsd("1.00");
+        stock.setLocalPrice("1000");
+        CardKingdomProduct product = product("Arcane Signet", "Bloomburrow Commander Decks", "BLC-0305");
+        CardKingdomPriceListResponse priceList = new CardKingdomPriceListResponse();
+        priceList.setData(List.of(product));
+        when(inventoryService.getReservationsIfSheetExists()).thenReturn(reservedReservations("Arcane Signet", 1));
+        when(cardKingdomApiService.findProduct(eq(stock), eq(priceList))).thenReturn(product);
+        when(priceComparisonService.getBestConditionPrice(eq(product), eq(stock))).thenReturn(1.0);
+        when(priceComparisonService.calculateLocalPrice(1.0)).thenReturn(1000.0);
+        Method method = DashboardController.class.getDeclaredMethod(
+                "updateCard",
+                int.class,
+                InventoryCard.class,
+                CardKingdomPriceListResponse.class,
+                List.class
+        );
+        method.setAccessible(true);
+
+        DashboardController.UpdateResult update = (DashboardController.UpdateResult) method.invoke(
+                controller,
+                10,
+                stock,
+                priceList,
+                List.of(stock)
+        );
+
+        assertThat(stock.getAction()).isEqualTo("Reservada");
+        assertThat(update.action()).isEqualTo("Reservada");
+        assertThat(update.writeRequired()).isTrue();
+    }
+
+    @Test
     void addInventoryCardFromSearchWritesStandardStockIngressSource() throws Exception {
         InventoryService inventoryService = mock(InventoryService.class);
         CardKingdomApiService cardKingdomApiService = mock(CardKingdomApiService.class);
@@ -3092,6 +3162,29 @@ class DashboardControllerVariantSearchTests {
         assertThat(updateResult.displayAvailableQuantity()).isEqualTo(2);
         assertThat(updateResult.displayStockBreakdown()).isEmpty();
         assertThat(updateResult.displayAction()).isEqualTo("En Stock");
+    }
+
+    @Test
+    void conditionStocksDisplayReservedActionEvenWhenPhysicalQuantityIsZero() {
+        DashboardController.UpdateResult updateResult = new DashboardController.UpdateResult(
+                "Arcane Signet",
+                "Commander 2020",
+                "C20",
+                "237",
+                "nonfoil",
+                "4100",
+                "2.49",
+                "Sin Stock",
+                "NM",
+                List.of(new ReservationConditionStock("NM", 0, 0, 1, "Reservada", 10, "2.49", "4100")),
+                10,
+                0,
+                false
+        );
+
+        assertThat(updateResult.displayStockQuantity()).isZero();
+        assertThat(updateResult.displayReservedQuantity()).isEqualTo(1);
+        assertThat(updateResult.displayAction()).isEqualTo("Reservada");
     }
 
     @Test

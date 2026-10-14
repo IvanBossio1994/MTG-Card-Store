@@ -9,6 +9,7 @@
 </head>
 <body>
 <header th:replace="~{fragments/layout :: topbar('Clientes')}"></header>
+<div th:replace="~{fragments/layout :: planBanner}"></div>
 <div th:replace="~{fragments/layout :: menu('clients')}"></div>
 <main class="page clients-page protected-page" th:classappend="${clientsLocked} ? ' protected-page-locked' : ''">
     <section class="hero">
@@ -166,13 +167,14 @@
                     </svg>
                 </span>
                 <div>
-                    <p class="eyebrow">Modulo protegido</p>
-                    <h2 id="client-lock-title">Clientes bloqueados</h2>
+                    <p class="eyebrow">Plan premium</p>
+                    <h2 id="client-lock-title">Clientes y puntos</h2>
                 </div>
             </div>
 
-            <p id="client-lock-copy" class="movement-lock-copy">
-                Ingresa la misma clave de Movimientos para crear, buscar y editar clientes.
+            <p id="client-lock-copy" class="movement-lock-copy"
+               th:text="'El plan gratuito llego a las ' + ${planSalesLimit} + ' ventas. Clientes y puntos es parte del plan premium. Tus ventas y tu stock se siguen registrando igual.'">
+                Clientes y puntos es parte del plan premium.
             </p>
 
             <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
@@ -183,12 +185,12 @@
                   data-loading-message="Revisando la contrasena y abriendo clientes...">
                 <input type="hidden" name="returnTo" th:value="${returnTo}">
                 <div class="movement-access-field">
-                    <label for="client-password">Clave de acceso</label>
+                    <label for="client-password">Clave premium</label>
                     <input id="client-password" name="password" type="password"
                            autocomplete="current-password" required autofocus>
                 </div>
                 <div class="movement-lock-actions">
-                    <button class="primary-button" type="submit">Desbloquear</button>
+                    <button class="primary-button" type="submit">Activar premium</button>
                     <a class="secondary-button link-button" th:href="@{/}">Volver al inicio</a>
                 </div>
             </form>
