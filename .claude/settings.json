@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./target/**)",
+      "Read(./dist/**)",
+      "Read(./.tools/**)",
+      "Read(./data/**)",
+      "Read(./.idea/**)"
+    ]
+  }
+}

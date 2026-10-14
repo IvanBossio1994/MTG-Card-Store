@@ -59,3 +59,7 @@ ck-pricelist.json
 .codex-logs/
 .codex-*.log
 target/codex-*
+
+# Claude Code (configuracion local)
+CLAUDE.local.md
+.claude/settings.local.json
