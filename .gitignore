@@ -51,7 +51,11 @@ google-oauth-token/
 *service-account*.json
 ck-pricelist.json
 
-# Recuperacion/portable local
-/.recovery-orphans/
-/.recovered-files.txt
+# Portable local
 /dist/
+
+# Artefactos de IA (Codex)
+.codex/
+.codex-logs/
+.codex-*.log
+target/codex-*
