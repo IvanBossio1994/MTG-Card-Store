@@ -9,10 +9,10 @@ Si junto al comando ya vino un pedido claro (por ejemplo, `/agente-lider continu
 
 Si no, mostrá el menú con la herramienta de preguntas (`AskUserQuestion`), en una sola pregunta: *"¿Qué querés hacer?"*, con estas opciones y en este orden:
 
-1. **Historia nueva**: convertir un pedido en una historia de usuario.
-2. **Continuar historia**: retomar la historia en curso y hacer el siguiente paso.
-3. **Analizar defectos**: revisar los bugs que reportó QA y priorizarlos.
-4. **Consulta rápida**: una pregunta o un cambio chico, sin agentes.
+**Historia nueva**: convertir un pedido en una historia de usuario.
+**Continuar historia**: retomar la historia en curso y hacer el siguiente paso.
+**Analizar defectos**: revisar los bugs que reportó QA y priorizarlos.
+**Consulta rápida**: una pregunta o un cambio chico, sin agentes.
 
 Antes de mostrar el menú, leé `docs/agentes/historias/README.md` y, si hay una historia que no esté `aceptada`, nombrala en la descripción de la opción 2 (ej.: "Sigue HU-001 · en QA").
 
