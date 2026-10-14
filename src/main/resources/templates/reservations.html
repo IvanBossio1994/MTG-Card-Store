@@ -9,6 +9,7 @@
 </head>
 <body>
 <header th:replace="~{fragments/layout :: topbar('Reservas')}"></header>
+<div th:replace="~{fragments/layout :: planBanner}"></div>
 <div th:replace="~{fragments/layout :: menu('reservations')}"></div>
 <main class="page reservations-page protected-page" th:classappend="${reservationsLocked} ? ' protected-page-locked' : ''">
     <section class="hero">
@@ -37,7 +38,11 @@
     <p class="alert error" th:if="${error}" th:text="${error}"></p>
     <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
-    <details class="panel import-panel reservation-bulk-panel reservation-bulk-details">
+    <p class="alert info" th:if="${reservationsCreateLocked}">
+        Crear reservas nuevas es parte del plan premium. Podes seguir entregando, cancelando y reprogramando las reservas que ya tenes.
+    </p>
+
+    <details class="panel import-panel reservation-bulk-panel reservation-bulk-details" th:unless="${reservationsCreateLocked}">
         <summary class="reservation-bulk-summary">
             <div>
                 <p class="eyebrow">Pedido masivo</p>
@@ -244,6 +249,7 @@
                 <summary>
                     <span class="reservation-customer">
                         <strong th:text="${group.client}">Cliente</strong>
+                        <small th:text="${group.formattedPoints + ' puntos'}">0 puntos</small>
                     </span>
                     <span class="reservation-group-meta">
                         <span th:text="${group.phone + ' | DNI ' + group.dni}">Telefono | DNI</span>
@@ -253,16 +259,16 @@
                           onclick="event.stopPropagation();"
                           data-app-confirm
                           data-loading-button="&times;"
-                          data-loading-title="Eliminando reserva"
-                          data-loading-message="Quitando el pedido y devolviendo cartas reservadas al stock..."
-                          data-confirm-title="Eliminar reserva"
-                          data-confirm-message="&iquest;Eliminar esta reserva? Las cartas apartadas vuelven al stock.">
+                          data-loading-title="Cancelando pedido"
+                          data-loading-message="Cancelando el pedido y actualizando Reservas..."
+                          data-confirm-title="Cancelar pedido"
+                          data-confirm-message="&iquest;Cancelar este pedido? Si tenia cartas apartadas, volveran a estar disponibles.">
                         <input type="hidden" name="groupKey" th:value="${group.key}">
                         <button class="reservation-delete-button" type="submit" aria-label="Eliminar reserva">&times;</button>
                     </form>
                     <span class="reservation-status-bar"
                           th:classappend="${group.status == null ? '' : #strings.toLowerCase(group.status).replace(' ', '-')}"
-                          th:text="${group.statusLabel}">0 cartas disponibles de 1 reservada</span>
+                          th:text="${group.statusLabel}">1 pedido sin stock</span>
                 </summary>
 
                 <div class="reservation-group-body">
@@ -298,9 +304,6 @@
                     <div class="reservation-items-list">
                         <article class="reservation-item-card" th:each="reservation : ${group.items}">
                             <div class="reservation-item-main">
-                                <span class="status reservation-item-status"
-                                      th:classappend="${reservation.displayStatus == null ? '' : #strings.toLowerCase(reservation.displayStatus).replace(' ', '-')}"
-                                      th:text="${reservation.displayStatus != null && reservation.displayStatus != '' ? reservation.displayStatus : '-'}">Sin Stock</span>
                                 <strong th:text="${reservation.name != null && reservation.name != '' ? reservation.name : '-'}">Sol Ring</strong>
                                 <span th:text="${reservation.setName != null && reservation.setName != '' ? reservation.setName : '-'}">Commander Masters</span>
                             </div>
@@ -348,8 +351,12 @@
                                       data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
                                       th:attr="data-confirm-title=${reservation.partialDelivery ? 'Entrega parcial' : 'Entregar reserva'},
                                                data-confirm-message=${reservation.partialDelivery ? 'Se va a entregar solo el stock disponible y quedara el resto reservado.' : 'Se va a entregar esta reserva y descontar stock.'},
-                                               data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'}">
+                                               data-confirm-total=${reservation.formattedDeliverableTotalPrice != null && reservation.formattedDeliverableTotalPrice != '' ? '$ ' + reservation.formattedDeliverableTotalPrice : '-'},
+                                               data-confirm-points=${group.formattedPoints},
+                                               data-confirm-points-cost=${reservation.formattedDeliverablePointsCost},
+                                               data-confirm-points-enabled=${reservation.payableWithPoints}">
                                     <input type="hidden" name="reservationId" th:value="${reservation.id}">
+                                    <input type="hidden" name="payWithPoints" value="false">
                                     <button class="reservation-deliver-button"
                                             th:classappend="${reservation.partialDelivery} ? ' partial'"
                                             type="submit"
@@ -385,8 +392,12 @@
                                       data-loading-message="Descontando stock, registrando movimientos y actualizando caja..."
                                       th:attr="data-confirm-title=${group.availableQuantity < group.totalQuantity ? 'Entregar disponibles' : 'Entregar todo'},
                                                data-confirm-message=${group.availableQuantity < group.totalQuantity ? 'Se van a entregar solo las cartas disponibles y quedara el resto reservado.' : 'Se van a entregar todas las cartas disponibles de esta reserva.'},
-                                               data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'}">
+                                               data-confirm-total=${group.formattedDeliverableTotalPrice != null && group.formattedDeliverableTotalPrice != '' ? '$ ' + group.formattedDeliverableTotalPrice : '-'},
+                                               data-confirm-points=${group.formattedPoints},
+                                               data-confirm-points-cost=${group.formattedDeliverablePointsCost},
+                                               data-confirm-points-enabled=${group.payableWithPoints}">
                                     <input type="hidden" name="groupKey" th:value="${group.key}">
+                                    <input type="hidden" name="payWithPoints" value="false">
                                     <button class="reservation-deliver-button"
                                             th:classappend="${group.availableQuantity < group.totalQuantity} ? ' partial'"
                                             type="submit"
@@ -398,46 +409,6 @@
                     </div>
                 </div>
             </details>
-        </div>
-    </section>
-    <section class="movement-lock-layer" th:if="${reservationsLocked}" role="dialog" aria-modal="true"
-             aria-labelledby="reservation-lock-title" aria-describedby="reservation-lock-copy">
-        <div class="movement-lock-dialog">
-            <div class="movement-lock-head">
-                <span class="movement-access-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
-                        <rect x="5" y="10" width="14" height="10" rx="2"/>
-                        <path d="M12 14v2"/>
-                    </svg>
-                </span>
-                <div>
-                    <p class="eyebrow">Modulo protegido</p>
-                    <h2 id="reservation-lock-title">Reservas bloqueadas</h2>
-                </div>
-            </div>
-
-            <p id="reservation-lock-copy" class="movement-lock-copy">
-                Ingresa la misma clave de Movimientos para revisar y administrar reservas.
-            </p>
-
-            <p class="alert error" th:if="${accessError}" th:text="${accessError}"></p>
-
-            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}"
-                  data-loading-button="Desbloqueando..."
-                  data-loading-title="Verificando acceso"
-                  data-loading-message="Revisando la contrasena y abriendo reservas...">
-                <input type="hidden" name="returnTo" th:value="${returnTo}">
-                <div class="movement-access-field">
-                    <label for="reservation-password">Clave de acceso</label>
-                    <input id="reservation-password" name="password" type="password"
-                           autocomplete="current-password" required autofocus>
-                </div>
-                <div class="movement-lock-actions">
-                    <button class="primary-button" type="submit">Desbloquear</button>
-                    <a class="secondary-button link-button" th:href="@{/}">Volver al inicio</a>
-                </div>
-            </form>
         </div>
     </section>
 </main>

@@ -54,6 +54,9 @@ public class CardReservation {
     private String formattedLineTotalPrice;
     private double deliverableTotalPrice;
     private String formattedDeliverableTotalPrice;
+    private long deliverablePointsCost;
+    private String formattedDeliverablePointsCost;
+    private boolean payableWithPoints;
     private List<Integer> sourceRowIndexes = new ArrayList<>();
     private List<ReservationConditionStock> conditionStocks = new ArrayList<>();
 

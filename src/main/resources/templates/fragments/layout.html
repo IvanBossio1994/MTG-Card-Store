@@ -18,6 +18,34 @@
     </div>
 </header>
 
+<div th:fragment="planBanner" class="plan-banner-root">
+    <section class="plan-banner plan-banner-limited" th:if="${planLimited == true}" role="status">
+        <div class="plan-banner-copy">
+            <strong>Modo reducido del plan gratuito</strong>
+            <span th:text="'Llegaste a las ' + ${planSalesLimit} + ' ventas. Ventas, stock, Movimientos y Caja se siguen registrando como siempre. Reservas nuevas, clientes, importar listas, historial y sincronizacion automatica son del plan premium.'">
+                Llegaste al limite de ventas del plan gratuito.
+            </span>
+        </div>
+        <details class="plan-banner-unlock">
+            <summary>Activar premium</summary>
+            <form class="movement-access-form" method="post" th:action="@{/movimientos/acceso}">
+                <input type="hidden" name="returnTo" value="/">
+                <label for="plan-premium-password">Clave premium</label>
+                <input id="plan-premium-password" name="password" type="password" autocomplete="current-password" required>
+                <button class="primary-button" type="submit">Activar</button>
+            </form>
+        </details>
+    </section>
+    <section class="plan-banner"
+             th:if="${planLimited != true && planPremium != true && planSalesCount != null && planSalesLimit != null && planSalesCount >= planSalesLimit - 20}"
+             role="status">
+        <div class="plan-banner-copy">
+            <strong th:text="'Te quedan ' + (${planSalesLimit} - ${planSalesCount}) + ' ventas del plan gratuito'">Te quedan ventas</strong>
+            <span>Despues de ese limite la app sigue registrando todo, pero algunas funciones pasan al plan premium.</span>
+        </div>
+    </section>
+</div>
+
 <div th:fragment="menu(active)">
     <div id="menu-backdrop" class="menu-backdrop" hidden></div>
     <aside id="app-menu" class="app-menu" aria-hidden="true">
@@ -29,6 +57,25 @@
             <a th:classappend="${active == 'home'} ? 'active'" th:href="@{/}">Inicio</a>
             <a class="protected-menu-link" th:classappend="${active == 'reservations'} ? ' active'" th:href="@{/reservas}">
                 <span>Reservas</span>
+                <span class="menu-lock-icon"
+                      th:classappend="${reservationsUnlocked} ? ' unlocked' : ' locked'"
+                      th:title="${reservationsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
+                      th:attr="aria-label=${reservationsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
+                      role="img">
+                    <svg th:if="${reservationsUnlocked}" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 7V6a4 4 0 0 0-7.7-1.5"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                    <svg th:unless="${reservationsUnlocked}" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 10V8a5 5 0 0 1 10 0v2"/>
+                        <rect x="5" y="10" width="14" height="10" rx="2"/>
+                        <path d="M12 14v2"/>
+                    </svg>
+                </span>
+            </a>
+            <a class="protected-menu-link" th:classappend="${active == 'clients'} ? ' active'" th:href="@{/clientes}">
+                <span>Clientes</span>
                 <span class="menu-lock-icon"
                       th:classappend="${reservationsUnlocked} ? ' unlocked' : ' locked'"
                       th:title="${reservationsUnlocked ? 'Acceso habilitado' : 'Acceso bloqueado'}"
@@ -102,6 +149,11 @@
                 <span>Total a cobrar</span>
                 <strong data-app-confirm-total-value>$ 0</strong>
             </div>
+            <label id="app-confirm-points" class="app-confirm-points" hidden>
+                <input type="checkbox" data-app-confirm-points-input>
+                <span data-app-confirm-points-label>Pagar con puntos</span>
+                <strong data-app-confirm-points-value>0 puntos</strong>
+            </label>
             <div class="app-confirm-actions">
                 <button class="secondary-button" type="button" data-app-confirm-cancel>Cancelar</button>
                 <button class="primary-button" type="button" data-app-confirm-accept>Confirmar</button>
