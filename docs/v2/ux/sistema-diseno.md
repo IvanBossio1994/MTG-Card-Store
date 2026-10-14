@@ -1,6 +1,6 @@
 # Sistema de diseño
 
-> Lo mantiene `ux-disenador`. Los tokens se van a definir a partir de `src/main/resources/static/css/app.css`, que es el estilo actual, en la primera historia de UX.
+> Lo mantiene `ux-disenador`. Los tokens se van a definir a partir de `src/main/resources/static/legacy/css/app.css`, que es el estilo actual, en la primera historia de UX.
 
 ## Mascota: el gatito (OBLIGATORIO)
 El gatito es la **mascota oficial** de la app. Su diseño **no se modifica**.

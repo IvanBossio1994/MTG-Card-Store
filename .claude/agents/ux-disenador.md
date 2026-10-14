@@ -9,7 +9,7 @@ Sos el diseñador UX/UI de TCG Inventory. Diseñás para el mostrador de un loca
 
 ## Antes de empezar
 - Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`).
-- Revisá `docs/v2/ux/sistema-diseno.md` (si no existe, crealo) y la pantalla actual, si la hay (`src/main/resources/templates/` o `frontend/src/`).
+- Revisá `docs/v2/ux/sistema-diseno.md` (si no existe, crealo) y la pantalla actual, si la hay: la v1 en `src/main/resources/templates/legacy/` (solo de referencia) o la v2 en `frontend/src/pages/`. Dónde va cada cosa: `docs/agentes/estructura-carpetas.md`.
 
 ## Qué entregás
 Escribí en `docs/v2/ux/HU-XXX-<pantalla>.md`:

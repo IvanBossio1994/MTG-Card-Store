@@ -1,6 +1,7 @@
 ---
 name: continuar-historia
 description: Retoma una historia de usuario desde su estado guardado y ejecuta el siguiente paso del ciclo (UX → backend → frontend → QA → corrección → cierre) con los agentes que correspondan. Usar para avanzar o retomar una HU.
+user-invocable: false
 ---
 
 # Continuar una historia
@@ -11,7 +12,7 @@ description: Retoma una historia de usuario desde su estado guardado y ejecuta e
 
 | Estado | Siguiente paso |
 |---|---|
-| `aprobada` | Crear la rama `feature/HU-XXX-<tema>` (`E:\Git\cmd\git.exe`). Llamar a `ux-disenador` si hay cambios visibles; si no, a `backend-java`. Pasar a `en desarrollo`. |
+| `aprobada` | Crear desde `v2/dev` la rama `v2/feature/HU-XXX-<tema>`, con el mismo nombre que el archivo de la historia sin `.md` (ej.: `v2/feature/HU-000-documento-funcional-base`), usando `E:\Git\cmd\git.exe`. Llamar a `ux-disenador` si hay cambios visibles; si no, a `backend-java`. Pasar a `en desarrollo`. |
 | `en desarrollo` | Llamar al siguiente agente pendiente de la tabla de tareas (backend → frontend). Cuando todos entregaron, pasar a `en QA`. |
 | `en QA` | **Preguntar:** ¿camino feliz, casos de error o ambos? Y también: ¿ejecutar solo esta historia (`@HU-XXX`, por defecto), esta historia más el smoke (`@critico`), o la regresión completa (`@regresion`)? Llamar solo a `qa-camino-feliz` y/o `qa-casos-error`, indicando el alcance en el prompt. Si hay `DEF` abiertos, pasar a `en corrección`; si no, ir al cierre. |
 | `en corrección` | Llamar al agente del área de cada `DEF`, que arregla solo eso. Después, retest acotado con el mismo QA (lo que falló más `@critico`). Como máximo **2 vueltas**; si sigue fallando, frenar y consultar a la persona a cargo. |

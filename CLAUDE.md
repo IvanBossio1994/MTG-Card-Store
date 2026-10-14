@@ -8,13 +8,11 @@ Stack: Java 21, Spring Boot 3.5 y Thymeleaf. También hay un launcher de escrito
 - Requiere JDK 21.
 - Compilar: `mvn.cmd -q compile` · Tests: `mvn.cmd -q test`
 
-## Paquetes (`com.tcg.bot`)
-- `controller`: `DashboardController`, controlador web único (~9000 líneas). Leerlo por rangos y ubicarse con búsquedas, nunca entero.
-- `service`: integración con Google Sheets, OAuth y Card Kingdom, y configuración de precios y comercio.
-- `model`: entidades de inventario, reservas, clientes, movimientos y caja.
-- `dto`: respuestas de Card Kingdom y filtros/consultas de búsqueda.
-- `config`: configuración de Google Sheets.
-- Raíz: `TcgBotApplication` (Spring) y `DesktopLauncher` (abre la app en modo ventana).
+## Estructura de carpetas
+**Regla obligatoria para todos los agentes:** `docs/agentes/estructura-carpetas.md`. En resumen:
+- **v2 (lo nuevo):** un paquete por módulo en `com.tcg.bot` (`compartido`, `google`, `inventario`, `precios`, `reservas`, `caja`, `movimientos`, `importacion`, `configuracion`) y el frontend en `frontend/src/` (`api`, `pages`, `components`, `hooks`, `styles`, `assets`).
+- **v1 (`legacy`), solo de referencia:** `com.tcg.bot.legacy` (controller, service, model, dto, config), `templates/legacy/` y `static/legacy/`. Sigue funcionando hasta el corte, pero no se le agrega código. `legacy/controller/DashboardController` tiene unas 9000 líneas: leerlo por rangos y ubicarse con búsquedas, nunca entero.
+- **Compartido:** `TcgBotApplication` y `DesktopLauncher` (raíz), `google/`, `config/` y `static/images/` (mascota).
 
 ## Reglas
 - Responder siempre en español.
@@ -28,12 +26,8 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 ### Al empezar
 - Leer `docs/agentes/estado.md` (diagnóstico, backlog y decisiones). Si el pedido toca la v2, leer también `docs/agentes/roadmap-v2.md`.
 - **Antes de explorar código**, consultar `docs/funcional/documento-funcional.md`: buscar con Grep la sección del módulo y leer solo esa parte. El código se lee solo para lo que haya que modificar.
-- Si la sesión arranca sin un pedido claro, preguntar con opciones:
-  1. Crear una historia nueva (`/historia-nueva`).
-  2. Continuar la historia en curso (`/continuar-historia`).
-  3. Analizar defectos de QA (`/analizar-defectos`).
-  4. Consulta rápida, sin agentes.
-- Si el pedido es claro, aplicar directamente la skill que corresponda.
+- La entrada es `/agente-lider`: muestra el menú numerado (1. historia nueva, 2. continuar historia, 3. analizar defectos, 4. consulta rápida) y aplica la skill elegida. Las skills `historia-nueva`, `continuar-historia` y `analizar-defectos` no aparecen en el menú de `/`; las usa el líder.
+- Si la sesión arranca sin un pedido claro, aplicar `agente-lider`. Si el pedido es claro, aplicar directamente la skill que corresponda.
 
 ### Equipo
 | Agente | Rol |
@@ -74,5 +68,11 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - **Locators:** `data-testid="<pantalla>-<elemento>[-<id>]"`, con el catálogo en `docs/v2/locators.md`.
 - **Mascota:** el gatito (`static/images/cat-*` y `tutorial-cat-*`) es la mascota oficial. Se usa tal cual, sin redibujarlo ni modificarlo (`docs/v2/ux/sistema-diseno.md`).
 - **Diseño:** UX entrega una spec y un prototipo HTML en `docs/v2/ux/`. Por ahora no se usa Figma.
-- **Git:** una rama por historia (`feature/HU-XXX-<tema>`). Commit y push solo cuando lo pida.
+- **Git:** una rama por historia, que sale de `v2/dev` y se llama `v2/feature/` + el nombre del archivo de la historia sin `.md` (`HU-XXX-<tema>`, donde el tema es el que se decida para esa historia). Ejemplo: `HU-000-documento-funcional-base.md` → `v2/feature/HU-000-documento-funcional-base`. Commit y push solo cuando lo pida.
+- **Levantar la app:** solo cuando haga falta ver algo funcionando que no se pueda comprobar compilando ni con los tests. Nunca "por las dudas". Los tests E2E de QA (Playwright) no cuentan, porque arrancan la app por su cuenta. Cuando haga falta:
+  1. Arrancarla con el JDK 21 (`mvn.cmd -q spring-boot:run`, en segundo plano).
+  2. Verla en el **Chrome que ya está abierto**, siempre en una **pestaña nueva** (Claude in Chrome).
+  3. Si Chrome falla, no reintentar: frenar y seguir verificando solo con el JDK (pedidos HTTP a la app levantada), que es lo que ya funcionó.
+  4. Si con el JDK tampoco funciona, frenar sin reintentar, analizar la causa (log, puerto ocupado, configuración) y contarla.
+  5. Al terminar, detener la app.
 - **Producto:** la app es la cara del Google Sheet, que sigue siendo la fuente de verdad. Cada comercio usa su propio Gmail y su propio Sheet.

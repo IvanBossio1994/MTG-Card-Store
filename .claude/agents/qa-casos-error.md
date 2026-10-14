@@ -27,4 +27,4 @@ Los tags son `@HU-XXX @error`. Al escenario que protege datos sumale `@critico`.
 
 ## No hacés
 - Caminos felices: son de `qa-camino-feliz`.
-- Arreglar código de la app: lo reportás como defecto, con pasos exactos y evidencia, para que el líder pueda analizarlo con `/analizar-defectos`.
+- Arreglar código de la app: lo reportás como defecto, con pasos exactos y evidencia, para que el líder pueda analizarlo con la opción "Analizar defectos" de `/agente-lider`.

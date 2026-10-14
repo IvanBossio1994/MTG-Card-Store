@@ -3,7 +3,7 @@
 - **Estado:** borrador | aprobada | en desarrollo | en QA | en corrección | aceptada
 - **Tipo:** funcionalidad | bugfix (DEF-XXX) | mejora técnica
 - **Módulo:** inventario | precios | reservas | caja | movimientos | importacion | configuracion | google
-- **Rama:** `feature/HU-XXX-<tema>`
+- **Rama:** `v2/feature/HU-XXX-<tema>` (igual al nombre de este archivo sin `.md`; ej.: `v2/feature/HU-000-documento-funcional-base`)
 - **QA elegido:** feliz | error | ambos (lo completa el líder cuando llega a QA)
 - **Funcional documentado:** felices | alternativos | ambos
 - **Flujos funcionales:** INV-F0X, INV-A0X… (los completa `analista-funcional`)

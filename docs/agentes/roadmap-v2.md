@@ -42,6 +42,7 @@ configuracion/ comercio, logo, tutorial
   - lock en las escrituras;
   - descarga de Card Kingdom sincronizada, con archivo temporal y movimiento atómico.
 - **Convivencia:** la v1 sigue en `/` y la v2 en `/app`. En el corte, la v2 pasa a `/` y se borra lo viejo.
+- **Carpetas:** la v1 ya está aislada en `com.tcg.bot.legacy`, `templates/legacy/` y `static/legacy/`; los paquetes v2 y `frontend/src/` ya existen. El detalle está en `estructura-carpetas.md`.
 
 ## Fases
 | # | Fase | Resultado |

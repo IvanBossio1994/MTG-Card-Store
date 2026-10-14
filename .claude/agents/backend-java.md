@@ -10,10 +10,12 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
 ## Antes de empezar
 - Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`): hacé solo tu parte y cumplí sus criterios de aceptación.
 - Si la tarea es de v2, leé `docs/agentes/roadmap-v2.md`, sección de arquitectura.
-- Ubicate con Grep. `DashboardController.java` (v1) tiene unas 9000 líneas: **leelo por rangos**, nunca entero.
+- **Leé `docs/agentes/estructura-carpetas.md`**: dice dónde va cada archivo.
+- Ubicate con Grep. `legacy/controller/DashboardController.java` (v1) tiene unas 9000 líneas: **leelo por rangos**, nunca entero.
 
 ## Arquitectura v2 (lo nuevo se escribe así)
 - **Paquetes por módulo** en `com.tcg.bot`: `compartido`, `google`, `inventario`, `precios`, `reservas`, `caja`, `movimientos`, `importacion`, `configuracion`.
+- **`com.tcg.bot.legacy` es solo de referencia:** leé ahí cómo funciona hoy y reescribilo en el módulo v2. No le agregues código ni importes nada de `legacy` desde la v2. Sus tests tienen que seguir pasando.
 - **Capas:** `XController` (`@RestController`, solo HTTP) → `XService` (reglas de negocio) → `XRepository` (interfaz) con dos implementaciones:
   - `XSheetsRepository` (real);
   - `XEnMemoriaRepository` (`@Profile("e2e")`, con datos de ejemplo para QA).
@@ -31,6 +33,7 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
 - Pestañas: Inventario (A:L), Movimientos (A:K), Caja (A:K), Reservas (A:P), Clientes (A:D). Las columnas se ubican por alias del encabezado.
 - **Tests obligatorios:** unitarios del servicio (con el repositorio en memoria) y MockMvc del controller (estado HTTP y forma del JSON).
 - Verificá con `.tools\apache-maven-3.9.16\bin\mvn.cmd -q compile` y `... -q test`.
+- No levantes la app salvo que sea imprescindible. Si hace falta, seguí la regla **Levantar la app** de `CLAUDE.md`: JDK, Chrome abierto en pestaña nueva, sin reintentos y detenerla al final.
 - Si estás corrigiendo un `DEF-XXX`, leé el defecto, arreglá **solo** eso y dejá un test que lo cubra.
 - No toques `data/`. No hagas commit ni push. Git: `E:\Git\cmd\git.exe`.
 

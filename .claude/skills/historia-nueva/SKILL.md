@@ -1,6 +1,7 @@
 ---
 name: historia-nueva
 description: Convierte un pedido en una historia de usuario. Primero muestra un brief en tabla y espera aprobación; después escribe la HU y la deja lista para ejecutar. Usar cuando se pide una funcionalidad, un cambio o un arreglo nuevo.
+user-invocable: false
 ---
 
 # Crear una historia nueva
@@ -23,10 +24,10 @@ Analizá lo justo:
 
 ## 2. Historia (solo con el OK)
 - Número: el siguiente al último de `docs/agentes/historias/README.md`.
-- Creá `docs/agentes/historias/HU-XXX-<tema>.md` desde `docs/agentes/plantilla-historia.md`, con estado `aprobada`.
+- Creá `docs/agentes/historias/HU-XXX-<tema>.md` desde `docs/agentes/plantilla-historia.md`, con estado `aprobada`. En el campo **Rama** poné `v2/feature/` + el nombre del archivo sin `.md`.
 - Criterios de aceptación en Dado / Cuando / Entonces: los del camino feliz y los de error que importan.
 - Incluí los locators esperados y el contrato de API si aplica.
 - Agregá la fila al índice `historias/README.md`.
 - **Documento funcional:** preguntá *¿documentar caminos felices, alternativos o ambos?* y llamá una vez a `analista-funcional`, con la ruta de la HU y el modo. Deja los flujos `propuesto · HU-XXX` y anota sus IDs en la historia.
 - Mostrale a la persona a cargo un resumen de 3 líneas y la ruta del archivo.
-- Preguntá si arrancar la ejecución ahora. Si dice que sí, seguí con `/continuar-historia HU-XXX`.
+- Preguntá si arrancar la ejecución ahora. Si dice que sí, seguí con la skill `continuar-historia` para HU-XXX.
