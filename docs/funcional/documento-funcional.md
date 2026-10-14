@@ -1,6 +1,6 @@
 # Documento funcional: TCG Inventory
 
-- **Versión:** 0.1.0 (esqueleto; la base de la v1 se documenta en HU-000 y pasa a 1.0.0)
+- **Versión:** 0.2.0 (la base completa de la v1 pasa a 1.0.0)
 - **Mantiene:** `analista-funcional` (contenido) y el líder (versión e historial)
 
 > **Cómo leerlo (agentes):** buscá con Grep el título del módulo (por ejemplo `## Reservas`) y leé solo esa sección. No leas el documento entero.
@@ -19,6 +19,7 @@
 | Versión | Fecha | HU | Cambios |
 |---|---|---|---|
 | 0.1.0 | 2026-10-14 | — | Esqueleto del documento |
+| 0.2.0 | 2026-10-14 | HU-000 | Google: GOO-F01 (iniciar sesión) y GOO-F02 (conectar el Sheet) |
 
 ## Índice
 1. [Glosario](#glosario)
@@ -94,7 +95,26 @@ _(pendiente)_
 _(pendiente)_
 
 ## Google: sesión y Sheet (GOO)
+> Requisito previo: claves del cliente OAuth en `config/google-oauth.properties` (ver `docs/google/guia-credenciales-oauth.md`). Mientras la app esté en modo Prueba, solo entran los Gmail cargados como usuarios de prueba (hoy `TCGStorehelper@gmail.com`).
+
 ### Caminos felices
-_(pendiente)_
+#### GOO-F01: Iniciar sesión con Google · `vigente` (HU-000)
+- **Actor:** dueño del comercio.
+- **Precondición:** el Gmail está cargado como usuario de prueba y la app tiene las claves configuradas.
+1. El dueño abre la app; aparece la pantalla de login con el botón **Iniciar sesion con Google**.
+2. Hace clic en el botón; se abre la página de Google (`/configuracion/google/oauth/iniciar`).
+3. Elige el Gmail y escribe su contraseña en la página de Google.
+4. Google avisa **"Google no verificó esta app"**; el dueño hace clic en **Configuración avanzada** → **Ir a TCG Inventory (no seguro)**.
+5. Acepta el permiso para ver y editar sus hojas de cálculo y hace clic en **Continuar**.
+6. Google vuelve a la app (`/configuracion/google/oauth/callback`), que guarda el permiso en la carpeta local `data/` y muestra **"Google conectado. Ya podes usar la app."**
+- **Resultado:** la sesión queda iniciada. En modo Prueba, el permiso dura 7 días; después se repite este flujo.
+
+#### GOO-F02: Conectar el Sheet del comercio · `vigente` (HU-000)
+- **Actor:** dueño del comercio.
+- **Precondición:** GOO-F01 completo; el Sheet pertenece al Gmail conectado o está compartido con él.
+1. El dueño entra a **Configuración**.
+2. En **Google Sheet del inventario** pega el link o el ID del Sheet y guarda.
+3. La app crea las pestañas y columnas que faltan (Inventario, Movimientos, Caja, Reservas, Clientes).
+- **Resultado:** la app lee y escribe ese Sheet; un Sheet nuevo queda en blanco con los encabezados.
 ### Caminos alternativos y de error
 _(pendiente)_

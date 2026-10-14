@@ -43,6 +43,7 @@ build/
 /config/store.properties
 /config/store-logo.*
 /config/inventory.*
+/config/google-oauth.properties
 
 # Datos locales y credenciales
 /data/

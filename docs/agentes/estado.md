@@ -29,20 +29,19 @@
 
 Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~2524).
 
-## Google: por qué no funciona el login
-1. Faltan las variables `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` en esta PC, así que el login no arranca.
-2. **Plan:** la persona a cargo del proyecto creó un Gmail nuevo para el proyecto. Con esa cuenta hay que:
-   - crear un proyecto en Google Cloud y habilitar la Sheets API;
-   - configurar la pantalla de consentimiento (modo Prueba) y agregar usuarios de prueba;
-   - crear un cliente OAuth de tipo **aplicación de escritorio**;
-   - definir las variables de entorno.
-3. **Modo Prueba:** solo pueden entrar los Gmail cargados como testers, y la sesión vence a los 7 días.
-4. **Para varios comercios** hay que verificar la app ante Google (`spreadsheets` es un scope sensible) o migrar a `drive.file` con Google Picker. Decisión pendiente.
+## Google: login funcionando (HU-000)
+1. Proyecto **TCG Inventory** en Google Cloud con el Gmail del proyecto `TCGStorehelper@gmail.com` (dueño y usuario de prueba). Cliente OAuth "App de escritorio".
+2. Las claves van en `config/google-oauth.properties` (ignorado por git; ejemplo en `config/google-oauth.properties.example`). Las variables de entorno siguen teniendo prioridad. La contraseña del Gmail no se guarda en ningún lado.
+3. Guía paso a paso: `docs/google/guia-credenciales-oauth.md`.
+4. **Modo Prueba:** solo pueden entrar los Gmail cargados como testers, y la sesión vence a los 7 días.
+5. **Para varios comercios:** publicar sin verificar (tope de 100 usuarios), verificar `spreadsheets` o migrar a `drive.file` con Google Picker (sección 8 de la guía). Decisión pendiente.
+6. El login de Google no se puede automatizar en E2E: se usa el token guardado en `data/`.
 
 ## Backlog
 | Prio | Tema | Detalle |
 |---|---|---|
-| P0 | Credenciales OAuth | Pasos del punto anterior. Responsable: `google-integracion`. |
+| P1 | Documento funcional base | Documentar los módulos de la v1 que faltan (INV, PRE, RES, CAJ, MOV, IMP, CFG) para llegar a 1.0.0. |
+| P2 | Publicar la app | Decidir opción A/B/C de la guía de Google para abrir a otros comercios. |
 | P1 | Escritura por fila | `GoogleSheetsService.updateQuantity` (~240-268) escribe por `rowIndex` sin verificar que la fila siga siendo esa carta. Si alguien ordena o borra filas a mano, escribe en otra carta. Lectura y escritura sin lock. |
 | P1 | Cache Card Kingdom | La descarga no está sincronizada y la escritura no es atómica (`CardKingdomApiService`). Si hay más de un resultado posible para una carta, devuelve `null` y no actualiza el precio. |
 | P1 | Token vencido | Detectar `invalid_grant` y pedir reconexión con un mensaje claro. |
@@ -60,6 +59,7 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 - 2026-10-14: se suma `analista-funcional` con un documento funcional único y versionado (`docs/funcional/documento-funcional.md`, v0.1.0). Primera historia sugerida: HU-000, base de la v1 → 1.0.0.
 - 2026-10-14: UX trabaja con spec y prototipos HTML, sin Figma. El gatito es la mascota oficial y no se modifica.
 - 2026-10-14: locators con `data-testid="<pantalla>-<elemento>[-<id>]"` (`docs/v2/locators.md`).
+- 2026-10-14: HU-000 aceptada. Credenciales de Google en archivo local ignorado; login con `TCGStorehelper@gmail.com` funcionando. Commits sin co-autoría del agente.
 - 2026-10-14: JDK 21 (Temurin) en `C:\Users\sofii\.jdks\temurin-21.0.12.1`. El proyecto compila.
 
 ## Glosario
@@ -67,4 +67,5 @@ El glosario se movió a `docs/funcional/documento-funcional.md`, sección "Glosa
 
 ## Aprendizajes
 _(Anotar acá lo que se descubra trabajando: trampas del Sheet, comportamientos raros, preferencias de la persona a cargo del proyecto.)_
+- 2026-10-14: `spring-boot:run` arranca `DesktopLauncher`: abre una ventana propia en un puerto al azar (no 8080) y Windows pide permiso de firewall para Java la primera vez.
 - 2026-10-14: estado base. `mvn -q test` pasa (exit 0). `BackendApplicationTests` levanta el contexto completo y descarga la pricelist real de Card Kingdom, así que necesita internet.
