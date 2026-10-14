@@ -1,0 +1,5 @@
+# Copiar este archivo como config/google-oauth.properties (ignorado por Git)
+# y pegar las claves del cliente OAuth "App de escritorio" de Google Cloud.
+# Guía: docs/google/guia-credenciales-oauth.md
+google.oauth.client-id=PEGAR_CLIENT_ID.apps.googleusercontent.com
+google.oauth.client-secret=PEGAR_CLIENT_SECRET
