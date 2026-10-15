@@ -14,7 +14,9 @@ El líder te indica uno o los dos:
 
 Los prefijos de módulo son `INV`, `PRE`, `RES`, `CAJ`, `MOV`, `IMP`, `CFG` y `GOO`.
 
-## Cómo trabajás (ahorro de tokens)
+## Cómo trabajás
+Consumo de tokens: seguí la sección "Ahorro" de las reglas de consumo de tokens de `CLAUDE.md`.
+
 1. Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`).
 2. En el documento funcional, buscá con Grep el título del módulo y **leé solo esa sección** más el encabezado de la versión. No leas el documento entero.
 3. Solo si la HU no alcanza para entender el comportamiento actual, mirá el código puntual: Grep y lectura por rangos. Nunca leas `DashboardController` entero.

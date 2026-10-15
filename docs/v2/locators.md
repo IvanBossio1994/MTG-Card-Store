@@ -51,6 +51,18 @@ Es un contrato entre UX, que los define, frontend, que los pone, y QA, que los u
 | `configuracion-boton-seguir-editando` | configuracion | Cerrar el modal y seguir editando | HU-001 |
 | `configuracion-boton-salir-igual` | configuracion | Salir descartando los cambios | HU-001 |
 | `configuracion-enlace-iniciar-sesion-google` | configuracion | Volver a iniciar sesión con Google (dentro del error de sesión vencida) | HU-001 |
+| `configuracion-selector-pestana-a-renombrar` | configuracion | Lista desplegable de pestañas del Sheet guardado (fila de renombrar) | HU-005 |
+| `configuracion-campo-nombre-nuevo` | configuracion | Nombre nuevo de la pestaña | HU-005 |
+| `configuracion-boton-renombrar-pestana` | configuracion | Renombrar la pestaña elegida | HU-005 |
+| `configuracion-boton-reintentar-pestanas` | configuracion | Reintentar la carga de la lista de pestañas (dentro del error de la lista) | HU-005 |
+| `configuracion-mensaje-exito-renombrar` | configuracion | Éxito de renombrar una pestaña | HU-005 |
+| `configuracion-mensaje-error-renombrar` | configuracion | Error de toda la fila de renombrar (sin permiso, sesión, pestaña inexistente, inesperado) | HU-005 |
+| `configuracion-mensaje-error-pestana-a-renombrar` | configuracion | Error junto a la lista (sin elegir, o falla al listar) | HU-005 |
+| `configuracion-mensaje-error-nombre-nuevo` | configuracion | Error junto al nombre nuevo (vacío, largo, igual, repetido) | HU-005 |
+| `configuracion-selector-traer-cartas-de` | configuracion | Lista desplegable "Traer cartas de" (fila de arriba del Sheet) | HU-005 |
+| `configuracion-texto-ayuda-traer-cartas-de` | configuracion | Ayuda de la lista (cambia en "sin Sheet" y "ninguna reconocida") | HU-005 |
+| `configuracion-mensaje-error-traer-cartas-de` | configuracion | Error junto a la lista (falla al listar, origen borrado) | HU-005 |
+| `configuracion-boton-reintentar-pestanas-origen` | configuracion | Reintentar la carga de la lista "Traer cartas de" | HU-005 |
 | `app-enlace-inventario` | app | Menú lateral: Inventario | HU-001 |
 | `app-enlace-reservas` | app | Menú lateral: Reservas | HU-001 |
 | `app-enlace-caja` | app | Menú lateral: Caja | HU-001 |

@@ -73,7 +73,32 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
    - en el documento funcional, pasar a `vigente` los flujos que esta HU deja **usables** por la persona a cargo (los `propuesto · HU-XXX` o `diseñado · … → HU-XXX`); subir la versión y sumar una fila al historial;
    - actualizar `estado.md`.
 
-### Ahorro de tokens
+### Reglas de consumo de tokens
+Aplican al agente principal. De "Ahorro", los subagentes siguen solo lo que les toca: todos responden con un resumen corto y trabajan con el contexto que reciben por archivo; backend-java y frontend, además, siguen "Compilar no es testear". El ahorro nunca justifica saltear tests, leer menos de lo que la tarea necesita ni entregar algo sin verificar: primero la calidad.
+
+#### Unidad de medida
+- Medir con el % de `/usage`: "Current session" (ventana de 5 h) y "Current week".
+- No estimar con el $ de `/cost`: es de una sola sesión, y el límite suma todas las sesiones, otros dispositivos y claude.ai. El 15/10 la sesión del IDE marcó $38.71, pero fue ~1/5 de los tokens del día.
+- El registro de mediciones está en `docs/consumo-tokens.md`. Leerlo solo al estimar, no en cada tarea.
+
+#### Checkpoints
+- Al iniciar la sesión y al terminar cada tarea (historia, sub-tarea grande o ronda de subagentes), pedir al usuario las dos líneas de `/usage` y anotar una fila en el registro.
+- Antes de arrancar una tarea, estimar su costo en puntos de % con las filas de tareas parecidas. Si (100 − % ventana) < estimación + 15, no arrancarla y proponer un corte.
+
+#### Umbrales de la ventana de 5 h
+- ≥ 70%: no arrancar tareas grandes ni lanzar subagentes nuevos sin confirmar con el usuario.
+- ≥ 85%: solo terminar la tarea en curso.
+- ≥ 90%: cerrar. Nota de traspaso (qué se hizo, qué falta, próximo paso, archivos clave) en el archivo de la historia en curso, o en `docs/consumo-tokens.md` si no hay; ofrecer el commit, sin hacerlo hasta que se pida. Después, parar.
+
+#### Presupuesto semanal (hoy es el límite que manda)
+- Presupuesto del día = (100 − % semana) ÷ días que faltan para el reinicio. Al alcanzarlo, avisar y proponer cortar.
+- Próximo reinicio semanal: martes 20/10, 10:00 (Buenos Aires). Actualizar la fecha cada semana.
+
+#### Ahorro
+- Contexto: avisar al usuario que haga `/compact` cuando el contexto pase ~150k tokens, y `/clear` (después de dejar la nota de traspaso) al cambiar de historia. El 70% del consumo de las últimas 24 h fue con más de 150k.
+- Subagentes: lanzarlos solo para tareas grandes y separables. Deben devolver un resumen corto (qué cambió, archivos tocados, pendientes), nunca volcados de código ni logs. Para trabajo mecánico, usar subagentes con `model: sonnet`.
+- claude-in-chrome (7% del uso): solo para probar la UI. Fuera de eso, recordar al usuario que lo apague.
+- Mantener este archivo corto: se envía con cada request.
 - Un turno por agente y por paso. Los agentes van en secuencia; solo se paralelizan tareas independientes.
 - El contexto se pasa por archivo: al agente le llega la ruta de la historia y su tarea en pocas líneas, y responde con formato fijo en 150 palabras como máximo.
 - **Compilar no es testear:** después de cambios chicos o renombres, alcanza con `mvn.cmd -q test-compile`. Los tests completos se corren una sola vez al final de cada paso, antes de entregar.

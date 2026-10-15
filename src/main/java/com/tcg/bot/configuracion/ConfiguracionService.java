@@ -42,7 +42,8 @@ public class ConfiguracionService {
 
     private static final Pattern LINK_DE_SHEET =
             Pattern.compile("^https?://docs\\.google\\.com/spreadsheets/(?:u/\\d+/)?d/([A-Za-z0-9_-]{20,})(?:[/?#].*)?$");
-    private static final Pattern ID_DE_SHEET = Pattern.compile("^[A-Za-z0-9_-]{20,}$");
+    /** ID solo, o el ID con el final de la URL pegado (ej.: {@code 1vSk7…/edit?gid=0#gid=0}). */
+    private static final Pattern ID_DE_SHEET = Pattern.compile("^([A-Za-z0-9_-]{20,})(?:[/?#].*)?$");
 
     /** Encabezados de la pestaña del inventario (los mismos que escribe la v1, columnas A:K). */
     static final List<String> ENCABEZADOS_INVENTARIO = List.of("Cantidad", "Nombre", "Codigo de set", "Nombre del set",
@@ -200,8 +201,9 @@ public class ConfiguracionService {
         if (link.matches()) {
             return link.group(1);
         }
-        if (ID_DE_SHEET.matcher(valor).matches()) {
-            return valor;
+        Matcher id = ID_DE_SHEET.matcher(valor);
+        if (id.matches()) {
+            return id.group(1);
         }
         throw ErrorDeNegocioException.campoInvalido("sheet", MENSAJE_SHEET_INVALIDO);
     }

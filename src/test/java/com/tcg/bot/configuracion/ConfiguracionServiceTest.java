@@ -181,6 +181,7 @@ class ConfiguracionServiceTest {
                 .isEqualTo(SHEET_INVENTARIO);
         assertThat(ConfiguracionService.idDeSheet("https://docs.google.com/spreadsheets/u/0/d/" + SHEET_INVENTARIO))
                 .isEqualTo(SHEET_INVENTARIO);
+        assertThat(ConfiguracionService.idDeSheet(SHEET_INVENTARIO + "/edit?gid=0#gid=0")).isEqualTo(SHEET_INVENTARIO);
     }
 
     // ---- CA6 ----
