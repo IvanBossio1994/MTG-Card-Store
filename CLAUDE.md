@@ -83,8 +83,11 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - **Nombres:** todo lo del negocio en español (endpoints, campos JSON, clases y métodos: `ReservaService.entregarReserva`). Los sufijos de Spring (`Controller`, `Service`, `Repository`) quedan en inglés.
   - **Descriptivos:** el nombre dice qué hace o qué devuelve, para alguien que no programa. Ejemplos: `/api/v1/estado-app` y no `/salud`; `entregarReserva` y no `procesar`. Las rutas van en minúscula con guiones (`estado-app`).
 - **Sheet real y pruebas:**
-  - Las pruebas automáticas (tests y E2E de QA) **nunca tocan el Sheet real del local**: corren en el modo de prueba (perfil `e2e`), con datos en memoria.
-  - La verificación con el Sheet real la hace la persona a cargo con la app normal, al probar cada historia. El "Cómo probarlo" del cierre dice qué mirar en el Sheet.
+  - **Nadie prueba sobre el Sheet del local.** Hay tres Sheets, todos compartidos como editor con la cuenta de servicio (ver `estado.md`, Google, punto 7):
+    - **Tests unitarios y de API:** datos en memoria, sin Google.
+    - **QA E2E:** el **Sheet de QA** (`1wWH5bJV3kqXHyLK4zorxnGcGsZ_bRHrKXmn4DGgrG2I`), vía la cuenta de servicio, sin login de Gmail.
+    - **Persona a cargo:** su **Sheet de pruebas** (`1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ`), con la app normal, al probar cada historia. El "Cómo probarlo" del cierre dice qué mirar.
+  - **Login de Gmail:** lo hace la persona a cargo a mano. Ningún agente escribe contraseñas ni las guarda.
 - **Locators:** `data-testid="<pantalla>-<elemento>[-<id>]"`, con el catálogo en `docs/v2/locators.md`.
 - **Textos:** todos los textos visibles (títulos, etiquetas, ayudas, botones y mensajes de éxito, aviso y error) viven en la biblioteca `docs/v2/textos.md`, con su clave.
   - UX busca ahí antes de escribir un texto nuevo, reutiliza lo que ya hay y suma lo nuevo.

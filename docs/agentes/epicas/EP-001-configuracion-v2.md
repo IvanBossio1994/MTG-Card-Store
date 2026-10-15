@@ -42,4 +42,8 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 ## Decisiones y pendientes
 - 2026-10-14: el bug de la pestaña se arregla en la v2 (HU-003), no en la v1.
 - 2026-10-14: con varias pestañas y sin la pedida, se crea la pestaña nueva y se avisa.
-- **Pendiente (HU-003):** conexión al Sheet por OAuth o por la cuenta de servicio `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com` (ver `estado.md`, Google, punto 7).
+- 2026-10-14: **conexión decidida (modelo mixto):** login con el Gmail del usuario; lectura y escritura del Sheet con la cuenta de servicio `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`; sincronización inmediata. La clave ya está en `config/google-service-account.json` (la colocó la dueña). Detalle y Sheets de QA y de pruebas en `estado.md`, Google, punto 7.
+- 2026-10-14: QA E2E solo en HU-004 (frontend conectado), contra el Sheet de QA. HU-003 se valida con tests de API y con Postman de la dueña sobre su Sheet de pruebas.
+
+## Para retomar
+La próxima es **HU-003** (Configuración · backend). Con `/agente-lider continuar HU-003`, el líder arma el brief desde esta épica, espera el OK, crea la rama `v2/feature/HU-003-<tema>` desde `v2/dev` y llama a `backend-java`.

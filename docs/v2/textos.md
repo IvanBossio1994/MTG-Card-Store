@@ -85,7 +85,7 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `configuracion.sheet.aviso.creada` | Se creó la pestaña «{pestana}». | aviso | CFG-A07 | `configuracion-mensaje-aviso-sheet` |
 | `configuracion.sheet.error.vacio` | Pegá el link o el ID del Sheet. | error de campo | CFG-A03 | `configuracion-mensaje-error-sheet` |
 | `configuracion.sheet.error.invalido` | Ese link no es de un Google Sheet. | error de campo | CFG-A03 | `configuracion-mensaje-error-sheet` |
-| `configuracion.sheet.error.sin-permiso` | Tu cuenta no tiene acceso a este Sheet. Compartilo con {gmail} como editor. | error de bloque | CFG-A04 | `configuracion-mensaje-error-sheet` |
+| `configuracion.sheet.error.sin-permiso` | La app no tiene acceso a este Sheet. Compartilo con {cuenta-servicio} como editor. ({cuenta-servicio} = `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`) | error de bloque | CFG-A04 | `configuracion-mensaje-error-sheet` |
 | `configuracion.sheet.error.pestana-vacia` | Ingresá el nombre de la pestaña. | error de campo | CFG-A07 | `configuracion-mensaje-error-pestana-inventario` |
 | **Precios** | | | | |
 | `configuracion.precios.titulo` | Regla de precio | título de bloque | CFG-F04 | |

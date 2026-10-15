@@ -7,7 +7,9 @@ user-invocable: false
 # Continuar una historia
 
 1. **Ubicar la historia:** la indicada en el argumento, o la que no esté `aceptada` en `docs/agentes/historias/README.md`. Si hay varias, preguntá cuál.
-2. **Leer solo su archivo**, el estado y el registro. No vuelvas a analizar el proyecto.
+   - **Si no hay ninguna abierta**, tomá la próxima `planificada` de la épica abierta (`docs/agentes/epicas/`).
+   - **Si la historia está `planificada` en una épica pero todavía no tiene archivo**, aplicá la skill `historia-nueva` con lo que dice la épica (brief, OK y armado de la HU). Con el OK, seguí acá desde `aprobada`.
+2. **Leer solo su archivo** (o la fila de la épica, si recién se arma), el estado y el registro. Para HU-003 en adelante, leé también `docs/agentes/estado.md`, sección Google. No vuelvas a analizar el proyecto.
 3. **Ejecutar el siguiente paso** según el estado:
 
 | Estado | Siguiente paso |

@@ -14,7 +14,9 @@ Si no, mostrá el menú con la herramienta de preguntas (`AskUserQuestion`), en 
 **Analizar defectos**: revisar los bugs que reportó QA y priorizarlos.
 **Consulta rápida**: una pregunta o un cambio chico, sin agentes.
 
-Antes de mostrar el menú, leé `docs/agentes/historias/README.md` y, si hay una historia que no esté `aceptada`, nombrala en la descripción de la opción 2 (ej.: "Sigue HU-001 · en QA").
+Antes de mostrar el menú, leé `docs/agentes/historias/README.md` y `docs/agentes/epicas/README.md`. En la descripción de la opción 2, nombrá lo que sigue:
+- si hay una historia que no esté `aceptada`, esa (ej.: "Sigue HU-001 · en QA");
+- si no hay ninguna, la próxima `planificada` de la épica abierta (ej.: "Sigue HU-003 · planificada en EP-001").
 
 Según lo que se elija:
 

@@ -13,7 +13,11 @@ La usan `qa-camino-feliz` y `qa-casos-error`.
   ```
 - **Cucumber-JVM + JUnit Platform**: los pasos se implementan en Java.
 - **Playwright para Java** maneja el navegador. Se ubican los elementos **solo** con `page.getByTestId("...")`; nada de CSS ni XPath, salvo que no haya otra opción, y en ese caso se reporta como deuda.
-- Se corre contra la app con el perfil `e2e`, que usa los repositorios en memoria con datos de ejemplo, así no depende de Google ni de internet.
+- **Sheet de QA:** los E2E corren contra un Sheet real, solo para QA: `1wWH5bJV3kqXHyLK4zorxnGcGsZ_bRHrKXmn4DGgrG2I`.
+  - Se accede con la cuenta de servicio (`config/google-service-account.json`), sin login de Gmail.
+  - **Nunca** se usa el Sheet del local ni el de pruebas de la dueña.
+  - Cada escenario deja el Sheet de QA como lo encontró, o lo prepara en el `Background`.
+- Los escenarios que no necesitan Google pueden correr con el perfil `e2e` (datos en memoria), que es más rápido.
 - Comando: `.tools\apache-maven-3.9.16\bin\mvn.cmd -q test`, o filtrando por tag (`-Dcucumber.filter.tags="@HU-001"`).
 - **Si la rama todavía no tiene el harness** (Cucumber y Playwright en `pom.xml`, runner y hooks), avisale al líder: armarlo es una tarea de `backend-java`, no de QA.
 

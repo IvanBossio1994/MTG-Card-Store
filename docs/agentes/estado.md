@@ -36,16 +36,22 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 4. **Modo Prueba:** solo pueden entrar los Gmail cargados como testers, y la sesión vence a los 7 días.
 5. **Para varios comercios:** publicar sin verificar (tope de 100 usuarios), verificar `spreadsheets` o migrar a `drive.file` con Google Picker (sección 8 de la guía). Decisión pendiente.
 6. El login de Google no se puede automatizar en E2E: se usa el token guardado en `data/`.
-7. **Cuenta de servicio (dato de la dueña, 2026-10-14):** `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`, que sería la editora del Sheet y haría todo lo que hace la app. **Hoy el código no la usa:** entra solo por OAuth con el Gmail del comercio. Decisión pendiente para HU-003, con `google-integracion`:
-   - **OAuth:** como hoy.
-   - **Cuenta de servicio:** el comercio comparte el Sheet con ese mail. No vence ni hace falta verificar la app, pero la clave dentro de la app instalada expone los Sheets de todos los comercios.
-   - **Mixto.**
+7. **Cuenta de servicio, DECIDIDO 2026-10-14 (modelo mixto):**
+   - **Login:** el usuario entra a la app con su Gmail (OAuth, como hoy). Lo hace a mano, una vez; la contraseña nunca se guarda ni la escribe un agente.
+   - **Lectura y escritura del Sheet:** las hace la cuenta de servicio `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`. Cada Sheet se comparte con ese mail como **editor**.
+   - **Sincronización inmediata:** cada acción de la app se escribe en el Sheet en el momento.
+   - **Clave del robot:** archivo JSON en `config/google-service-account.json`. Lo ignora git (`*service-account*.json`) y lo coloca la dueña; los agentes no leen su contenido.
+   - **Sheets:**
+     - **QA (E2E):** `1wWH5bJV3kqXHyLK4zorxnGcGsZ_bRHrKXmn4DGgrG2I`. Lo usan solo las pruebas automáticas.
+     - **Pruebas de la dueña:** `1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ`. Lo usa ella con la app normal.
+     - **Sheet del local:** ninguna prueba lo toca.
+   - **Riesgo a resolver antes de distribuir a otros comercios:** la clave del robot dentro de la app instalada da acceso a todos los Sheets compartidos con él.
 
 ## Backlog
 | Prio | Tema | Detalle |
 |---|---|---|
 | P1 | Documento funcional base | Documentar los módulos de la v1 que faltan (INV, PRE, RES, CAJ, MOV, IMP, CFG) para llegar a 1.0.0. |
-| P1 | OAuth o cuenta de servicio | Definir en HU-003 cómo se conecta la app al Sheet (ver Google, punto 7). Afecta el mensaje "sin permiso" y el texto "Conectado como" del diseño de Configuración. |
+| P1 | Cuenta de servicio en la v2 | Decidido (Google, punto 7): login con Gmail y lectura y escritura con la cuenta de servicio. Se implementa en HU-003. En el diseño, el error "sin permiso" pasa a decir "Compartí el Sheet con tcgbotsheet@… como editor". |
 | P2 | E2E con Sheet temporal | Que QA pueda probar contra Google de verdad: cada corrida crea un Sheet nuevo, lo usa y lo borra al terminar, sin tocar el del local. Va en otra rama (pedido de la dueña, 2026-10-14). |
 | P2 | Publicar la app | Decidir opción A/B/C de la guía de Google para abrir a otros comercios. |
 | P1 | Escritura por fila | `GoogleSheetsService.updateQuantity` (~240-268) escribe por `rowIndex` sin verificar que la fila siga siendo esa carta. Si alguien ordena o borra filas a mano, escribe en otra carta. Lectura y escritura sin lock. |
