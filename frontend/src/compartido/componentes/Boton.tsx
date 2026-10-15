@@ -33,7 +33,7 @@ const CELDA = 'col-start-1 row-start-1 inline-flex items-center justify-center g
 export function Boton({ variante = 'primario', Icono, guardando, className, disabled, children, type = 'button', ...props }: BotonProps) {
   const contenido = (
     <>
-      {Icono && <Icono className="h-4 w-4" aria-hidden="true" />}
+      {Icono && <Icono className="h-4 w-4 shrink-0" aria-hidden="true" />}
       {children}
     </>
   );

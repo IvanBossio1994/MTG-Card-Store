@@ -34,9 +34,29 @@ export interface paths {
         get?: never;
         /**
          * Conectar el Google Sheet
-         * @description Verifica la sesión y el acceso de la cuenta de servicio, renombra la pestaña única o crea la pedida, crea Movimientos, Caja, Reservas y Clientes si faltan, y guarda (CFG-F02, CFG-F03, CFG-A03, CFG-A04, CFG-A05, CFG-A07).
+         * @description Verifica la sesión y el acceso de la cuenta de servicio; si la pestaña del inventario no existe la crea (trayendo las cartas de otra pestaña si se pide, en una sola escritura) o usa la pestaña vacía de un Sheet nuevo; crea Movimientos, Caja, Reservas y Clientes si faltan, y guarda (CFG-F02, CFG-A03, CFG-A04, CFG-A05, CFG-A07).
          */
         put: operations["conectarSheet"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/configuracion/sheet/pestanas/renombrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Renombrar una pestaña del Sheet
+         * @description Cambia el nombre en el Sheet en el momento (CFG-F03). Si es la del inventario, guarda el nombre nuevo en la configuración. Movimientos, Caja, Reservas y Clientes no se pueden renombrar.
+         */
+        put: operations["renombrarPestana"];
         post?: never;
         delete?: never;
         options?: never;
@@ -148,6 +168,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/configuracion/sheet/pestanas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver las pestañas del Sheet
+         * @description Para las listas "Pestaña a renombrar" y "Traer cartas de" (CFG-F02, CFG-F03). Solo lee. Sin Sheet guardado y sin idOLink responde sheetGuardado=false sin llamar a Google.
+         */
+        get: operations["verPestanas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -198,9 +238,14 @@ export interface components {
             sheet: string;
             /**
              * @description Nombre de la pestaña del inventario
-             * @example Inventario
+             * @example Stock 2026
              */
             pestanaInventario: string;
+            /**
+             * @description Pestaña de la que traer las cartas si la del inventario no existe. Null o vacío = no traer cartas
+             * @example stock viejo
+             */
+            traerCartasDe?: string;
         };
         /** @description Google Sheet de la tienda */
         BloqueSheet: {
@@ -216,10 +261,88 @@ export interface components {
              */
             gmail?: string;
             /**
-             * @description Solo en PUT /sheet: aviso de pestaña renombrada o creada
+             * @description Solo en PUT /sheet: aviso si se creó la pestaña del inventario sin traer cartas
              * @example Se creó la pestaña «Inventario».
              */
             aviso?: string;
+            /**
+             * @description Solo en PUT /sheet: true si la pestaña del inventario no existía y se creó. En el GET, false
+             * @example true
+             */
+            pestanaCreada?: boolean;
+            /** @description Solo en PUT /sheet, si se creó la pestaña trayendo cartas; si no, null */
+            cartasTraidas?: components["schemas"]["CartasTraidasRespuesta"];
+        };
+        /** @description Cartas copiadas de otra pestaña */
+        CartasTraidasRespuesta: {
+            /**
+             * @description Pestaña de origen
+             * @example stock viejo
+             */
+            origen?: string;
+            /**
+             * Format: int32
+             * @description Cartas (filas) copiadas
+             * @example 128
+             */
+            cantidad?: number;
+            /**
+             * @description true si quedaron al final columnas que la app no usa
+             * @example true
+             */
+            hayColumnasExtra?: boolean;
+        };
+        /** @description Pestaña a renombrar y su nombre nuevo (lo valida el servicio, con campo y código) */
+        RenombrarPestanaPedido: {
+            /**
+             * @description Nombre actual de la pestaña
+             * @example Inventario
+             */
+            nombreActual: string;
+            /**
+             * @description Nombre nuevo, hasta 100 caracteres
+             * @example Stock 2026
+             */
+            nombreNuevo: string;
+        };
+        /** @description Pestaña renombrada */
+        PestanaRenombradaRespuesta: {
+            /** @example Inventario */
+            nombreAnterior?: string;
+            /** @example Stock 2026 */
+            nombreNuevo?: string;
+            /**
+             * @description true si era la del inventario: la configuración ya quedó guardada con el nombre nuevo
+             * @example true
+             */
+            eraPestanaInventario?: boolean;
+            /**
+             * @description Pestaña del inventario después del cambio
+             * @example Stock 2026
+             */
+            nombrePestanaInventario?: string;
+            /** @description Lista actualizada */
+            pestanas?: components["schemas"]["PestanaRespuesta"][];
+        };
+        /** @description Pestaña del Sheet */
+        PestanaRespuesta: {
+            /** @example Inventario */
+            nombre?: string;
+            /**
+             * @description true si es la pestaña del inventario del Sheet guardado
+             * @example true
+             */
+            enUso?: boolean;
+            /**
+             * @description true si su fila 1 tiene encabezados de inventario
+             * @example true
+             */
+            sugerida?: boolean;
+            /**
+             * @description true si es Movimientos, Caja, Reservas o Clientes (no se puede renombrar)
+             * @example false
+             */
+            fija?: boolean;
         };
         /** @description Puntos de clientes */
         PuntosPedido: {
@@ -336,7 +459,7 @@ export interface components {
             carpetaCache?: string;
             /**
              * @description Solo en PUT /precios: aviso si falló la sincronización con Card Kingdom
-             * @example Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde.
+             * @example Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde.
              */
             aviso?: string;
         };
@@ -369,6 +492,16 @@ export interface components {
             sheet?: components["schemas"]["BloqueSheet"];
             precios?: components["schemas"]["BloquePrecios"];
             puntos?: components["schemas"]["BloquePuntos"];
+        };
+        /** @description Pestañas de un Sheet */
+        ListaPestanasRespuesta: {
+            /**
+             * @description false solo si no vino idOLink y no hay Sheet guardado
+             * @example true
+             */
+            sheetGuardado?: boolean;
+            /** @description En el orden del Sheet; vacía si sheetGuardado es false */
+            pestanas?: components["schemas"]["PestanaRespuesta"][];
         };
     };
     responses: never;
@@ -415,7 +548,7 @@ export interface operations {
                      *       "detail": "Hay datos para corregir.",
                      *       "instance": "/api/v1/configuracion/tienda",
                      *       "errores": {
-                     *         "nombre": "Ingresá el nombre de la tienda."
+                     *         "nombre": "El nombre de la tienda es obligatorio."
                      *       }
                      *     }
                      */
@@ -447,20 +580,40 @@ export interface operations {
                      * @example {
                      *       "sheetId": "1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ",
                      *       "link": "https://docs.google.com/spreadsheets/d/1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ/edit",
-                     *       "pestanaInventario": "Inventario",
+                     *       "pestanaInventario": "Stock 2026",
                      *       "gmail": "tienda@gmail.com",
-                     *       "aviso": "La pestaña «Hoja 1» se renombró a «Inventario»."
+                     *       "aviso": null,
+                     *       "pestanaCreada": true,
+                     *       "cartasTraidas": {
+                     *         "origen": "stock viejo",
+                     *         "cantidad": 128,
+                     *         "hayColumnasExtra": true
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["BloqueSheet"];
                 };
             };
-            /** @description Link o pestaña inválidos */
+            /** @description Link o pestaña inválidos, o la pestaña de origen ya no existe (ORIGEN_INEXISTENTE) */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "type": "about:blank",
+                     *       "title": "Datos inválidos",
+                     *       "status": 400,
+                     *       "detail": "Hay datos para corregir.",
+                     *       "instance": "/api/v1/configuracion/sheet",
+                     *       "errores": {
+                     *         "traerCartasDe": "La pestaña de origen ya no existe en el Sheet. Se actualizó la lista."
+                     *       },
+                     *       "campo": "traer-cartas-de",
+                     *       "codigo": "ORIGEN_INEXISTENTE"
+                     *     }
+                     */
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
@@ -475,7 +628,7 @@ export interface operations {
                      *       "type": "about:blank",
                      *       "title": "Sesión de Google vencida",
                      *       "status": 401,
-                     *       "detail": "Tu sesión de Google venció.",
+                     *       "detail": "La sesión de Google venció.",
                      *       "instance": "/api/v1/configuracion",
                      *       "accion": "volver-a-iniciar-sesion",
                      *       "urlInicioSesion": "/configuracion/google/oauth/iniciar"
@@ -486,6 +639,122 @@ export interface operations {
             };
             /** @description El Sheet no está compartido con la cuenta de servicio */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    renombrarPestana: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenombrarPestanaPedido"];
+            };
+        };
+        responses: {
+            /** @description Pestaña renombrada, con la lista actualizada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "nombreAnterior": "Inventario",
+                     *       "nombreNuevo": "Stock 2026",
+                     *       "eraPestanaInventario": true,
+                     *       "nombrePestanaInventario": "Stock 2026",
+                     *       "pestanas": [
+                     *         {
+                     *           "nombre": "Stock 2026",
+                     *           "enUso": true,
+                     *           "sugerida": true,
+                     *           "fija": false
+                     *         },
+                     *         {
+                     *           "nombre": "Caja",
+                     *           "enUso": false,
+                     *           "sugerida": false,
+                     *           "fija": true
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PestanaRenombradaRespuesta"];
+                };
+            };
+            /** @description Validación (PESTANA_VACIA, PESTANA_FIJA, NOMBRE_VACIO, NOMBRE_LARGO, NOMBRE_IGUAL, NOMBRE_REPETIDO) o sin Sheet guardado (SIN_SHEET_GUARDADO) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "type": "about:blank",
+                     *       "title": "Datos inválidos",
+                     *       "status": 400,
+                     *       "detail": "Hay datos para corregir.",
+                     *       "instance": "/api/v1/configuracion/sheet/pestanas/renombrar",
+                     *       "errores": {
+                     *         "nombreNuevo": "Ya existe una pestaña con ese nombre."
+                     *       },
+                     *       "campo": "nombre-nuevo",
+                     *       "codigo": "NOMBRE_REPETIDO"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Venció la sesión de Google */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "type": "about:blank",
+                     *       "title": "Sesión de Google vencida",
+                     *       "status": 401,
+                     *       "detail": "La sesión de Google venció.",
+                     *       "instance": "/api/v1/configuracion",
+                     *       "accion": "volver-a-iniciar-sesion",
+                     *       "urlInicioSesion": "/configuracion/google/oauth/iniciar"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description El Sheet no está compartido con la cuenta de servicio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description La pestaña ya no existe en el Sheet (PESTANA_INEXISTENTE) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error inesperado (si falló guardar la configuración, se deshace el renombrado) */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -686,12 +955,101 @@ export interface operations {
                      *       "type": "about:blank",
                      *       "title": "Sesión de Google vencida",
                      *       "status": 401,
-                     *       "detail": "Tu sesión de Google venció.",
+                     *       "detail": "La sesión de Google venció.",
                      *       "instance": "/api/v1/configuracion",
                      *       "accion": "volver-a-iniciar-sesion",
                      *       "urlInicioSesion": "/configuracion/google/oauth/iniciar"
                      *     }
                      */
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    verPestanas: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Link o ID de otro Sheet (opcional). Sin él, se listan las del Sheet guardado.
+                 * @example https://docs.google.com/spreadsheets/d/1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ/edit
+                 */
+                idOLink?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pestañas en el orden del Sheet */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "sheetGuardado": true,
+                     *       "pestanas": [
+                     *         {
+                     *           "nombre": "Inventario",
+                     *           "enUso": true,
+                     *           "sugerida": true,
+                     *           "fija": false
+                     *         },
+                     *         {
+                     *           "nombre": "stock viejo",
+                     *           "enUso": false,
+                     *           "sugerida": true,
+                     *           "fija": false
+                     *         },
+                     *         {
+                     *           "nombre": "Caja",
+                     *           "enUso": false,
+                     *           "sugerida": false,
+                     *           "fija": true
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ListaPestanasRespuesta"];
+                };
+            };
+            /** @description idOLink no es un link ni un ID de Google Sheets (LINK_INVALIDO) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Venció la sesión de Google */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "type": "about:blank",
+                     *       "title": "Sesión de Google vencida",
+                     *       "status": 401,
+                     *       "detail": "La sesión de Google venció.",
+                     *       "instance": "/api/v1/configuracion",
+                     *       "accion": "volver-a-iniciar-sesion",
+                     *       "urlInicioSesion": "/configuracion/google/oauth/iniciar"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description El Sheet no está compartido con la cuenta de servicio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };

@@ -118,16 +118,16 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
       )}
 
       {estado.tipo === 'lista' && (
-        // Grilla de 2 columnas iguales: Tienda | Sheet arriba y Precios | Puntos abajo.
+        // Grilla (HU-005): Tienda | Puntos arriba, de igual altura; Sheet y Precios a todo el ancho (col-span-2).
         <div className="grid grid-cols-2 items-start gap-4 max-[1100px]:grid-cols-[minmax(0,720px)]">
           <BloqueTienda
             tienda={estado.configuracion.tienda ?? {}}
             alGuardar={tiendaGuardada}
             alCambiarSinGuardar={marcarSinGuardar}
           />
+          <BloquePuntos puntos={estado.configuracion.puntos ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
           <BloqueSheet sheet={estado.configuracion.sheet ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
           <BloquePrecios precios={estado.configuracion.precios ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
-          <BloquePuntos puntos={estado.configuracion.puntos ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
         </div>
       )}
 

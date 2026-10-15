@@ -20,9 +20,22 @@ export function EtiquetaCampo({ htmlFor, children }: { htmlFor?: string; childre
 /**
  * Error de un campo, en su lugar reservado debajo del campo (18 px, o 36 px con `lineas={2}` en campos angostos): aparece sin mover nada.
  * Sin `mensaje` queda invisible, pero ocupa su lugar, y no lleva `data-testid` (QA solo encuentra errores visibles).
+ * `accion` suma algo después del texto (por ejemplo, el enlace-botón "Reintentar").
  * Ejemplo: `<ErrorCampo id="nombre-error" testId="configuracion-mensaje-error-nombre-tienda" mensaje={errores.nombre} />`
  */
-export function ErrorCampo({ id, testId, mensaje, lineas = 1 }: { id?: string; testId: string; mensaje?: string; lineas?: 1 | 2 }) {
+export function ErrorCampo({
+  id,
+  testId,
+  mensaje,
+  lineas = 1,
+  accion,
+}: {
+  id?: string;
+  testId: string;
+  mensaje?: string;
+  lineas?: 1 | 2;
+  accion?: ReactNode;
+}) {
   return (
     <div
       id={id}
@@ -36,7 +49,11 @@ export function ErrorCampo({ id, testId, mensaje, lineas = 1 }: { id?: string; t
       {mensaje && (
         <>
           <CircleAlert className={cn('h-3.5 w-3.5 shrink-0', lineas === 2 && 'mt-[2px]')} aria-hidden="true" />
-          <span className={lineas === 1 ? 'truncate' : 'line-clamp-2'}>{mensaje}</span>
+          <span className={lineas === 1 ? 'truncate' : 'line-clamp-2'}>
+            {mensaje}
+            {accion && ' '}
+          </span>
+          {accion}
         </>
       )}
     </div>

@@ -7,30 +7,41 @@ export type ProblemaApi = components['schemas']['ProblemDetail'] & {
   errores?: Record<string, string>;
   /** Solo en 401 de Google: adónde ir para volver a iniciar sesión. */
   urlInicioSesion?: string;
+  /** Motivo fijo del error, en mayúsculas (por ejemplo `ORIGEN_INEXISTENTE`), en los endpoints que lo informan. */
+  codigo?: string | null;
 };
 
 /**
  * Error de una llamada a la API, con lo que hace falta para mostrarlo: código, mensaje para el usuario
- * (`detail` del ProblemDetail), errores por campo y, si la sesión de Google venció, adónde volver a iniciarla.
- * Ejemplo: `if (error instanceof ErrorApi && error.estado === 401) irA(error.urlInicioSesion)`
+ * (`detail` del ProblemDetail), errores por campo, el `codigo` del motivo (si viene) y, si la sesión de Google venció,
+ * adónde volver a iniciarla.
+ * Ejemplo: `if (error instanceof ErrorApi && error.codigo === 'PESTANA_INEXISTENTE') recargarLista()`
  */
 export class ErrorApi extends Error {
   readonly estado: number;
   readonly errores: Record<string, string>;
   readonly urlInicioSesion?: string;
+  readonly codigo?: string;
 
-  constructor(estado: number, mensaje: string, errores: Record<string, string> = {}, urlInicioSesion?: string) {
+  constructor(
+    estado: number,
+    mensaje: string,
+    errores: Record<string, string> = {},
+    urlInicioSesion?: string,
+    codigo?: string,
+  ) {
     super(mensaje);
     this.name = 'ErrorApi';
     this.estado = estado;
     this.errores = errores;
     this.urlInicioSesion = urlInicioSesion;
+    this.codigo = codigo;
   }
 }
 
 /**
  * Llama a la API v2 y devuelve el JSON de la respuesta. Si falla, lanza un `ErrorApi`: con el `detail` del
- * ProblemDetail, o con "Revisá tu conexión…" si no hubo respuesta (estado 0).
+ * ProblemDetail, o con "No hay conexión a internet…" si no hubo respuesta (estado 0).
  * Ejemplo: `const config = await pedirApi<Configuracion>('/api/v1/configuracion')`
  */
 export async function pedirApi<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
@@ -66,6 +77,7 @@ async function errorDeRespuesta(respuesta: Response): Promise<ErrorApi> {
       problema.detail ?? textos['general.error.inesperado'],
       problema.errores ?? {},
       problema.urlInicioSesion,
+      problema.codigo ?? undefined,
     );
   } catch {
     return new ErrorApi(respuesta.status, textos['general.error.inesperado']);

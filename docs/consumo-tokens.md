@@ -15,7 +15,8 @@ Se mide **una vez por tipo**: `/usage` al lanzar la primera tarea de ese agente 
 | `ux-disenador` | HU-005, vuelta "Traer cartas de" (chica) | 69k | 7 | 1 |
 | `backend-java` | HU-006, tarea 1 (contrato y riesgos) | 78k | 6 | 1 |
 | `backend-java` | HU-006, tarea 2 (programar, 3 endpoints + textos + tests) | 226k | 17 | 2 |
-| `frontend` | HU-007 | pendiente | pendiente | pendiente |
+| `frontend` | HU-007, tarea 1 (textos de toda la pantalla + bloque del Sheet + 3 endpoints + Vitest) | 232k | 16 | 2 |
+| líder | HU-007, verificación en Chrome con la app levantada (+ 1 arreglo chico y `mvn test`) | — | 3 | 1 |
 | `analista-funcional` | próxima llamada | pendiente | pendiente | pendiente |
 | `qa-camino-feliz` / `qa-casos-error` | HU-008 | pendiente | pendiente | pendiente |
 
@@ -30,3 +31,6 @@ Se mide **una vez por tipo**: `/usage` al lanzar la primera tarea de ese agente 
 | 15/10 (antes de HU-006) | 13 | 60 | Inicio de sesión: brief de HU-006 | Punto de partida para medir `backend-java` |
 | 15/10 (fin de HU-006 tarea 1) | 19 | 61 | Fin: backend-java contrato (78k) + armado de la HU | **Contrato de backend ≈ 6 puntos de ventana, 1 de semana**. Inicio de la tarea 2 |
 | 15/10 (fin de HU-006 tarea 2) | 36 | 63 | Fin: backend-java programación (226k) + test del líder | **Programar backend (3 endpoints) ≈ 17 puntos de ventana, 2 de semana** |
+| 15/10 (antes de HU-007) | 39 | 63 | Inicio de sesión: brief de HU-007 | Punto de partida para medir `frontend` |
+| 15/10 (fin de HU-007 tarea 1) | 55 | 65 | Fin: frontend (232k) + armado de la HU | **Programar frontend (1 bloque grande + textos) ≈ 16 puntos de ventana, 2 de semana**. Inicio de la verificación del líder |
+| 15/10 (fin de la verificación de HU-007) | 58 | 66 | Fin: líder en Chrome con la app levantada | **Verificación del líder en Chrome ≈ 3 puntos de ventana, 1 de semana**. Día: 58 → 66 = 8 puntos (presupuesto del día alcanzado) |

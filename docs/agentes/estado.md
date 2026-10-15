@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-15 (HU-006 aceptada). Sigue: HU-007 (EP-001, frontend del bloque del Sheet y textos nuevos). QA de la épica: HU-008.
+> Última actualización: 2026-10-15 (HU-007 aceptada). Sigue: HU-008 (EP-001, QA E2E de toda la épica).
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -94,6 +94,7 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 - 2026-10-15: **Textos en tono impersonal y en singular** (pedido de la dueña): nada de "Ingresá…", "la creamos" ni "No pudimos…". Se reescribe toda la biblioteca en HU-005.
 - 2026-10-15: **HU-005 aceptada:** biblioteca de textos en tono nuevo; bloque del Sheet en dos filas (conectar + "Traer cartas de" / renombrar con lista). "Traer cartas de": la app sugiere la pestaña con encabezados de inventario, crea la del inventario en el formato de la app con esas cartas y no toca la de origen (reemplaza a "copiar la actual"). Costó 216 mil tokens en 3 llamadas; desde esta HU se aplican las reglas de consumo (`docs/consumo-tokens.md`): la última vuelta de diseño midió 7 puntos de ventana y 1 de semana.
 - 2026-10-15: **HU-006 aceptada:** `GET /sheet/pestanas[?idOLink]`, `PUT /sheet/pestanas/renombrar` y `PUT /sheet` con `traerCartasDe` (copia valores en una escritura; ya no renombra salvo la pestaña vacía de un Sheet nuevo). Alias de columnas copiados a `configuracion/ColumnasInventario`. Caja, Movimientos, Reservas y Clientes no se renombran ni se sugieren (`fija`). Si falla guardar después de renombrar, se deshace en el Sheet. Textos del back en tono nuevo. Probada contra el Sheet de pruebas. Costó 304 mil tokens en 2 tareas (78 + 226 mil); medición en `docs/consumo-tokens.md`.
+- 2026-10-15: **HU-007 aceptada:** Configuración v2 con textos en tono nuevo y bloque del Sheet en dos filas ("Traer cartas de" con la sugerida preseleccionada; renombrar con lista, fijas deshabilitadas). `compartido/ListaDesplegable.tsx` (select nativo). Costó 232 mil tokens en 1 tarea (16 puntos de ventana, 2 de semana) más 3 puntos de la verificación del líder. Documento funcional 0.5.0. La carpeta de cache CK queda en Precios (se guarda con la regla de precio).
 - 2026-10-15: **la v1 puede romperse** (la dueña): lo que importa es la v2; si algo queda raro, se arregla para mejor en la v2 sin arreglos de convivencia.
 - 2026-10-15: **Carpetas de QA por tipo** (`features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), con un archivo por módulo en cada una. Front y back siguen por módulo.
 - 2026-10-15: **HU de backend en tareas:** contrato y riesgos primero (revisión de la dueña), infraestructura nueva aparte, hasta 6 endpoints por tarea (`CLAUDE.md`, ciclo, paso 3).

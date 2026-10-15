@@ -1,6 +1,6 @@
 # Documento funcional: TCG Inventory
 
-- **Versión:** 0.4.0 (la base completa de la v1 pasa a 1.0.0)
+- **Versión:** 0.5.0 (la base completa de la v1 pasa a 1.0.0)
 - **Mantiene:** `analista-funcional` (contenido) y el líder (versión e historial)
 
 > **Cómo leerlo (agentes):** buscá con Grep el título del módulo (por ejemplo `## Reservas`) y leé solo esa sección. No leas el documento entero.
@@ -21,6 +21,7 @@
 |---|---|---|---|
 | 0.1.0 | 2026-10-14 | — | Esqueleto del documento |
 | 0.2.0 | 2026-10-14 | HU-000 | Google: GOO-F01 (iniciar sesión) y GOO-F02 (conectar el Sheet) |
+| 0.5.0 | 2026-10-15 | HU-005, HU-006, HU-007 | Bloque del Sheet usable: CFG-F02 (con "Traer cartas de"), CFG-F03 (renombrar una pestaña), CFG-A03, CFG-A07 y CFG-A10 a A14 pasan a `vigente`. Guardar el inventario ya no renombra. Textos en tono impersonal. |
 | 0.4.0 | 2026-10-15 | HU-003, HU-004 | Configuración v2 usable: CFG-F01 a F06 y CFG-A01 a A09 pasan a `vigente`. Cambios al programarla: la pestaña pedida que no existe renombra la del inventario de antes (CFG-F03, CFG-A07); mensajes de error que dicen cómo va el campo. |
 | 0.3.0 | 2026-10-14 | HU-001 | Configuración v2: CFG-F01 a F06 y CFG-A01 a A09 con el diseño aprobado (`diseñado`, se programa en HU-003). Nuevo estado `diseñado`. Los textos exactos pasan a `docs/v2/textos.md`. |
 
@@ -103,7 +104,7 @@ _(pendiente)_
 - **Reglas de negocio:** el nombre es obligatorio. El logo no puede superar 2 MB. Solo se aceptan PNG, JPG o WEBP.
 - **Pantalla / locators:** `configuracion-campo-nombre-tienda`, `configuracion-boton-subir-logo`, `configuracion-boton-guardar-tienda`, `configuracion-mensaje-exito` · **Endpoint:** `PUT /api/v1/configuracion/tienda`, `POST /api/v1/configuracion/tienda/logo` · **Sheet:** no usa.
 
-#### CFG-F02: Conectar el Sheet y elegir la pestaña del inventario `propuesto · HU-005` [vigente desde 0.4.0 · HU-004; cambia el trato de la pestaña]
+#### CFG-F02: Conectar el Sheet y elegir la pestaña del inventario `vigente` [vigente desde 0.4.0 · HU-004; cambia el trato de la pestaña]
 - **Actor:** dueño · **Disparador:** botón Guardar inventario (fila 1 del bloque).
 - **Precondiciones:** sesión de Google iniciada; el Sheet es del Gmail conectado o está compartido con él.
 - **Pasos:** 1. Ingresa el link o ID del Sheet; al salir del campo se cargan sus pestañas en la lista «Traer cartas de». 2. Escribe el nombre de la pestaña del inventario. 3. En «Traer cartas de» deja la pestaña sugerida (la que tiene encabezados de inventario), elige otra o elige «No traer cartas». 4. Guarda. 5. La app verifica el acceso, crea las pestañas y columnas que falten y sincroniza el inventario. 6. Se vuelve a cargar la lista de pestañas de la fila de renombrar (CFG-F03).
@@ -116,13 +117,13 @@ _(pendiente)_
 - **Pantalla / locators:** `configuracion-campo-sheet`, `configuracion-campo-pestana-inventario`, `configuracion-selector-traer-cartas-de`, `configuracion-texto-ayuda-traer-cartas-de`, `configuracion-mensaje-error-traer-cartas-de`, `configuracion-boton-reintentar-pestanas-origen`, `configuracion-boton-guardar-sheet`, `configuracion-mensaje-exito-sheet`, `configuracion-mensaje-aviso-sheet` · **Endpoint:** `GET /api/v1/configuracion/sheet/pestanas?idOLink=…` (lista con `sugerida`), `PUT /api/v1/configuracion/sheet` (con `traerCartasDe` opcional) · **Sheet:** pestaña de inventario (nueva con las cartas traídas, nueva vacía o existente) y alta de Movimientos, Caja, Reservas, Clientes si faltan; la de origen solo se lee.
 - **Alternativos de «Traer cartas de»:** sin link escrito, la lista queda deshabilitada («Disponible cuando se escribe el link del Sheet.»); si falla el listado, error con Reintentar y Guardar sigue funcionando sin traer cartas (como CFG-A10); si ninguna pestaña se reconoce, queda en «No traer cartas» con su ayuda; si la de origen fue borrada al guardar, error «La pestaña de origen ya no existe en el Sheet. Se actualizó la lista.» (como CFG-A13).
 
-#### CFG-F03: Renombrar una pestaña del Sheet `propuesto · HU-005` [reemplaza al CFG-F03 de 0.4.0 «Renombrar la pestaña única», que ocurría al guardar el inventario]
+#### CFG-F03: Renombrar una pestaña del Sheet `vigente` [reemplaza al CFG-F03 de 0.4.0 «Renombrar la pestaña única», que ocurría al guardar el inventario]
 - **Actor:** dueño · **Disparador:** botón Renombrar pestaña (fila 2 del bloque Inventario).
 - **Precondiciones:** hay un Sheet ya guardado (la fila trabaja sobre el guardado, no sobre lo escrito en el campo del link); sesión de Google iniciada.
 - **Pasos:** 1. La lista «Pestaña a renombrar» se carga sola al abrir Configuración, con las pestañas del Sheet guardado; la del inventario lleva la marca «en uso». 2. Elige una pestaña. 3. Escribe el nombre nuevo (hasta 100 caracteres). 4. Aprieta Renombrar pestaña. 5. Aparece la carga «Renombrando la pestaña…».
 - **Resultado:** la pestaña se renombra y la lista se actualiza. Éxito en verde debajo de la fila (`configuracion.sheet.renombrar.exito`). Si era la pestaña del inventario, el mensaje agrega que también se actualizó la pestaña del inventario (`configuracion.sheet.aviso.renombrada`, también éxito en verde): la configuración queda guardada con el nombre nuevo y el campo «Pestaña del inventario» lo muestra sin quedar como cambio sin guardar.
 - **Reglas de negocio:** el nombre nuevo es obligatorio, de hasta 100 caracteres, distinto del actual y sin repetir otra pestaña (sin distinguir mayúsculas). La lista se recarga al abrir, tras Guardar inventario y tras renombrar. Estados de la lista: con pestañas; cargando (lista, nombre nuevo y botón deshabilitados); sin Sheet guardado («Disponible cuando haya un Sheet guardado.»); error al listar con enlace Reintentar (CFG-A10); Sheet sin pestañas.
-- **Pantalla / locators:** `configuracion-selector-pestana-a-renombrar`, campo de nombre nuevo, `configuracion-boton-renombrar-pestana`, `configuracion-mensaje-exito-renombrar` (ver `docs/v2/ux/configuracion/spec.md`, sección 6) · **Endpoint:** `GET /api/v1/configuracion/sheet/pestanas`, `PUT /api/v1/configuracion/sheet/pestanas/renombrar` (propuestos, HU-006) · **Sheet:** nombre de la pestaña elegida; si era la del inventario, también el nombre guardado en la configuración.
+- **Pantalla / locators:** `configuracion-selector-pestana-a-renombrar`, campo de nombre nuevo, `configuracion-boton-renombrar-pestana`, `configuracion-mensaje-exito-renombrar` (ver `docs/v2/ux/configuracion/spec.md`, sección 6) · **Endpoint:** `GET /api/v1/configuracion/sheet/pestanas`, `PUT /api/v1/configuracion/sheet/pestanas/renombrar` (HU-006) · **Sheet:** nombre de la pestaña elegida; si era la del inventario, también el nombre guardado en la configuración.
 
 #### CFG-F04: Guardar la regla de precio `vigente · HU-004`
 - **Actor:** dueño · **Disparador:** botón Guardar del bloque Precios.
@@ -151,18 +152,18 @@ Cada error se muestra en español llano, junto al campo o bloque, diciendo qué 
 |---|---|---|---|
 | CFG-A01 | Nombre de tienda vacío | "El nombre de la tienda es obligatorio." No guarda. | `vigente · HU-004` |
 | CFG-A02 | Logo de más de 2 MB o formato no PNG/JPG/WEBP | "El logo no debe superar los 2 MB." / "El logo debe ser PNG, JPG o WEBP." No cambia el logo. | `vigente · HU-004` |
-| CFG-A03 | Link o ID de Sheet inválido o vacío | Error junto al campo del Sheet: el ID o la URL es obligatorio / debe ser una URL de Google Sheets o solo el ID (`configuracion.sheet.error.vacio` / `.invalido`). No guarda. | `propuesto · HU-005` (cambia el tono; antes pedía «pegar») |
+| CFG-A03 | Link o ID de Sheet inválido o vacío | Error junto al campo del Sheet: el ID o la URL es obligatorio / debe ser una URL de Google Sheets o solo el ID (`configuracion.sheet.error.vacio` / `.invalido`). No guarda. | `vigente` (cambia el tono; antes pedía «pegar») |
 | CFG-A04 | La app no tiene acceso al Sheet (no está compartido con la cuenta de servicio) | Error 403 en el bloque Inventario: compartir el Sheet con `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com` como editor, o usar otro Sheet. | `vigente · HU-004` |
 | CFG-A05 | Sesión de Google vencida (en Prueba dura 7 días) | Error 401 en el bloque: volver a iniciar sesión con Google (GOO-F01) y reintentar. | `vigente · HU-004` |
 | CFG-A06 | Número inválido o menor o igual a cero (cotización, múltiplo, bulk, pesos por punto) | Error junto al campo: "Debe ser mayor a 0." (en bulk con centavos: "El precio debe ser un número entero, sin centavos."). No guarda el bloque. | `vigente · HU-004` |
-| CFG-A07 | Nombre de pestaña del inventario vacío, o la pestaña pedida no existe | Vacío: error junto al campo, «El nombre de la pestaña es obligatorio.». No existe: **ya no se renombra la anterior** (reemplaza el comportamiento de 0.4.0). Si la actual tiene cartas, se crea la nueva copiándolas en el formato de la app y la anterior queda intacta (aviso de copia, CFG-F02). Si la actual está vacía o sin ninguna pestaña, se crea con sus encabezados y se avisa («Se creó la pestaña «X».»). Las demás pestañas no se tocan. | `propuesto · HU-005` |
+| CFG-A07 | Nombre de pestaña del inventario vacío, o la pestaña pedida no existe | Vacío: error junto al campo, «El nombre de la pestaña es obligatorio.». No existe: **ya no se renombra la anterior** (reemplaza el comportamiento de 0.4.0). Si la actual tiene cartas, se crea la nueva copiándolas en el formato de la app y la anterior queda intacta (aviso de copia, CFG-F02). Si la actual está vacía o sin ninguna pestaña, se crea con sus encabezados y se avisa («Se creó la pestaña «X».»). Las demás pestañas no se tocan. | `vigente` |
 | CFG-A08 | Carpeta de cache no válida | "La carpeta no existe. Se puede indicar otra o dejar el campo vacío." | `vigente · HU-004` |
 | CFG-A09 | Se guardó pero falló la sincronización con Card Kingdom | Aviso de que la configuración quedó guardada pero no se pudo sincronizar ahora; reintentar luego. | `vigente · HU-004` |
-| CFG-A10 | No se puede cargar la lista de pestañas (Google falla, sin permiso o sesión vencida) | La lista queda deshabilitada con el error «No se pudieron cargar las pestañas del Sheet.» y el enlace Reintentar. Nombre nuevo y botón deshabilitados. El resto del bloque sigue usable. | `propuesto · HU-005` |
-| CFG-A11 | Renombrar sin elegir pestaña, o con nombre nuevo vacío, de más de 100 caracteres o igual al actual | Error junto a la lista («La pestaña a renombrar es obligatoria.») o junto al nombre nuevo (obligatorio / no debe superar los 100 caracteres / igual al actual). No llama a Google. | `propuesto · HU-005` |
-| CFG-A12 | Ya existe otra pestaña con el nombre nuevo (sin distinguir mayúsculas) | Error junto al nombre nuevo: «Ya existe una pestaña con ese nombre.». No renombra. | `propuesto · HU-005` |
-| CFG-A13 | La pestaña elegida fue borrada en el Sheet | Error de la fila: «La pestaña ya no existe en el Sheet. Se actualizó la lista.». | `propuesto · HU-005` |
-| CFG-A14 | Sin permiso (403), sesión vencida (401) o falla inesperada al renombrar | Error de la fila de renombrar con los textos generales (como CFG-A04, CFG-A05). Lo escrito no se pierde. | `propuesto · HU-005` |
+| CFG-A10 | No se puede cargar la lista de pestañas (Google falla, sin permiso o sesión vencida) | La lista queda deshabilitada con el error «No se pudieron cargar las pestañas del Sheet.» y el enlace Reintentar. Nombre nuevo y botón deshabilitados. El resto del bloque sigue usable. | `vigente` |
+| CFG-A11 | Renombrar sin elegir pestaña, o con nombre nuevo vacío, de más de 100 caracteres o igual al actual | Error junto a la lista («La pestaña a renombrar es obligatoria.») o junto al nombre nuevo (obligatorio / no debe superar los 100 caracteres / igual al actual). No llama a Google. | `vigente` |
+| CFG-A12 | Ya existe otra pestaña con el nombre nuevo (sin distinguir mayúsculas) | Error junto al nombre nuevo: «Ya existe una pestaña con ese nombre.». No renombra. | `vigente` |
+| CFG-A13 | La pestaña elegida fue borrada en el Sheet | Error de la fila: «La pestaña ya no existe en el Sheet. Se actualizó la lista.». | `vigente` |
+| CFG-A14 | Sin permiso (403), sesión vencida (401) o falla inesperada al renombrar | Error de la fila de renombrar con los textos generales (como CFG-A04, CFG-A05). Lo escrito no se pierde. | `vigente` |
 
 ## Google: sesión y Sheet (GOO)
 > Requisito previo: claves del cliente OAuth en `config/google-oauth.properties` (ver `docs/google/guia-credenciales-oauth.md`). Mientras la app esté en modo Prueba, solo entran los Gmail cargados como usuarios de prueba (hoy `TCGStorehelper@gmail.com`).

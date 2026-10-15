@@ -5,12 +5,14 @@ import { textos } from '@/compartido/textos/textos';
 
 /** Qué mostrar cuando el guardado sale bien. */
 export interface OpcionesGuardar<T> {
-  /** Texto de éxito del bloque (por ejemplo, "Tienda guardada."). */
-  exito: string;
-  /** Si devuelve un texto, se muestra como aviso en lugar del éxito (por ejemplo, pestaña renombrada). */
+  /** Texto de éxito del bloque (por ejemplo, "Tienda guardada."), o una función que lo arma con la respuesta. */
+  exito: string | ((resultado: T) => string);
+  /** Si devuelve un texto, se muestra como aviso en lugar del éxito (por ejemplo, pestaña creada). */
   aviso?: (resultado: T) => string | null | undefined;
-  /** Si hay errores de campo, suma el error de bloque "No se guardó. Corregí el campo marcado en rojo.". */
+  /** Si hay errores de campo, suma el error de bloque "No se guardó. Hay un campo con error, marcado en rojo.". */
   avisarErroresDeCampo?: boolean;
+  /** Se llama si el guardado falla, después de mostrar el error (por ejemplo, para recargar una lista). */
+  alFallar?: (error: unknown) => void;
 }
 
 /**
@@ -52,7 +54,7 @@ export function useGuardarBloque() {
 
   /**
    * Marca errores de campo (por ejemplo, de una validación en pantalla) y pone el foco en el primero.
-   * Con `avisarBloque`, suma el error de bloque "No se guardó. Corregí el campo marcado en rojo.".
+   * Con `avisarBloque`, suma el error de bloque "No se guardó. Hay un campo con error, marcado en rojo.".
    */
   const marcarErrores = useCallback((nuevos: Record<string, string>, avisarBloque = false) => {
     setMensaje(avisarBloque ? { tipo: 'error', texto: textos['general.error.corregir-campo'] } : null);
@@ -82,11 +84,13 @@ export function useGuardarBloque() {
       try {
         const resultado = await accion();
         const aviso = opciones.aviso?.(resultado);
-        setMensaje(aviso ? { tipo: 'aviso', texto: aviso } : { tipo: 'exito', texto: opciones.exito });
+        const exito = typeof opciones.exito === 'function' ? opciones.exito(resultado) : opciones.exito;
+        setMensaje(aviso ? { tipo: 'aviso', texto: aviso } : { tipo: 'exito', texto: exito });
         setSinGuardar(false);
         return resultado;
       } catch (error) {
         mostrarError(error, opciones.avisarErroresDeCampo ?? false);
+        opciones.alFallar?.(error);
         return undefined;
       } finally {
         enCurso.current = false;

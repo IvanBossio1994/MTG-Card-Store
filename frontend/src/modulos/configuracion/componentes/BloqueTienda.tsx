@@ -24,7 +24,7 @@ export interface BloqueTiendaProps {
 }
 
 /**
- * Bloque "Tu tienda": nombre y logo. El logo elegido (o "Quitar") solo cambia la vista previa;
+ * Bloque "Tienda":nombre y logo. El logo elegido (o "Quitar") solo cambia la vista previa;
  * se aplica al apretar "Guardar tienda", que primero sube el logo y después guarda el nombre (CFG-F01, A01, A02).
  * Ejemplo: `<BloqueTienda tienda={configuracion.tienda} alGuardar={actualizarMenu} />`
  */

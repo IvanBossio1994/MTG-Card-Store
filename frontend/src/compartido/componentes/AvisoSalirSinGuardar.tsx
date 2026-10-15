@@ -11,7 +11,7 @@ export interface AvisoSalirSinGuardarProps {
 }
 
 /**
- * Avisa al salir con cambios sin guardar: al tocar un enlace muestra el modal "Tenés cambios sin guardar"
+ * Avisa al salir con cambios sin guardar: al tocar un enlace muestra el modal "Hay cambios sin guardar"
  * con "Seguir editando" (foco inicial y Esc) y "Salir igual"; al cerrar la pestaña usa el aviso del navegador.
  * Ejemplo: `<AvisoSalirSinGuardar pantalla="configuracion" hayCambiosSinGuardar={() => sinGuardar.size > 0} />`
  */

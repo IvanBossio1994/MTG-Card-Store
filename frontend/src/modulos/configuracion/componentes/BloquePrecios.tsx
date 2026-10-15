@@ -161,6 +161,7 @@ export function BloquePrecios({ precios, alCambiarSinGuardar }: BloquePreciosPro
       Icono={BadgeDollarSign}
       titulo={textos['configuracion.precios.titulo']}
       bajada={textos['configuracion.precios.bajada']}
+      className="col-span-2 max-[1100px]:col-span-1"
       alEnviar={guardar}
       pie={
         <>
@@ -209,7 +210,7 @@ export function BloquePrecios({ precios, alCambiarSinGuardar }: BloquePreciosPro
         />
       </div>
       <h3 className="mt-6 mb-2 text-[14px] font-semibold">{textos['configuracion.precios.titulo.bulk']}</h3>
-      <div className="grid grid-cols-5 items-start gap-4 max-[1500px]:grid-cols-3">
+      <div className="grid grid-cols-5 items-start gap-4 max-[1100px]:grid-cols-3">
         {RAREZAS.map(({ rareza, nombre, etiqueta, color }) => (
           <Campo
             key={rareza}
