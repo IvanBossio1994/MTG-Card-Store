@@ -146,7 +146,7 @@ Cada error se muestra en español llano, junto al campo o bloque, diciendo qué 
 | CFG-A01 | Nombre de tienda vacío | "Ingresá el nombre de la tienda." No guarda. | `diseñado · HU-001 → HU-004` |
 | CFG-A02 | Logo de más de 2 MB o formato no PNG/JPG/WEBP | "El logo no puede superar los 2 MB" / "debe ser PNG, JPG o WEBP". No cambia el logo. | `diseñado · HU-001 → HU-004` |
 | CFG-A03 | Link o ID de Sheet inválido o vacío | Error junto al campo del Sheet pidiendo pegar el link completo o el ID. No guarda. | `diseñado · HU-001 → HU-004` |
-| CFG-A04 | Sheet sin permiso para el Gmail conectado | Error 403 en el bloque Inventario: compartir el Sheet con el Gmail conectado o usar otro Sheet. | `diseñado · HU-001 → HU-004` |
+| CFG-A04 | La app no tiene acceso al Sheet (no está compartido con la cuenta de servicio) | Error 403 en el bloque Inventario: compartir el Sheet con `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com` como editor, o usar otro Sheet. | `diseñado · HU-001 → HU-004` |
 | CFG-A05 | Sesión de Google vencida (en Prueba dura 7 días) | Error 401 en el bloque: volver a iniciar sesión con Google (GOO-F01) y reintentar. | `diseñado · HU-001 → HU-004` |
 | CFG-A06 | Número inválido o menor o igual a cero (cotización, múltiplo, bulk, pesos por punto) | Error junto al campo: "debe ser mayor a cero". No guarda el bloque. | `diseñado · HU-001 → HU-004` |
 | CFG-A07 | Nombre de pestaña vacío, o el Sheet tiene varias pestañas y no existe la pedida | Vacío: error junto al campo de pestaña (hoy "Ingresa el nombre de la hoja…"). Varias pestañas sin la pedida: se crea la pestaña nueva con sus encabezados y se avisa ("Se creó la pestaña «X»"); las demás no se tocan. | `diseñado · HU-001 → HU-004` |

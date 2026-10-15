@@ -6,6 +6,8 @@ user-invocable: false
 
 # Analizar defectos
 
+> Los `DEF` que se arreglan dentro de la HU de QA (máximo 2 vueltas) no pasan por acá. Esta skill es para los que quedaron abiertos o los que pide revisar la persona a cargo.
+
 1. Leé el índice `docs/agentes/defectos/README.md`. Abrí solo los `DEF` en estado `abierto`, o los que pida la persona a cargo. No lances agentes.
 2. Agrupá los que tienen la misma causa probable, por área o pantalla.
 3. Mostrá:

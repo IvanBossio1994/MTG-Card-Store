@@ -4,7 +4,7 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 
 **Quién la usa:**
 - **UX:** antes de escribir un texto nuevo, busca acá si ya existe uno que sirva y lo reutiliza. Si crea uno nuevo, lo suma.
-- **Frontend:** usa estos textos tal cual. En la v2 van a ir a un solo archivo de textos (`frontend/src/textos/`), con la misma clave.
+- **Frontend:** usa estos textos tal cual. Están en `frontend/src/compartido/textos/textos.ts`, con la misma clave.
 - **QA:** valida los mensajes contra este texto exacto.
 
 **Un texto existente no se cambia sin avisar al líder:** puede romper pruebas de QA.

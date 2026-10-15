@@ -16,11 +16,16 @@
 - **No entra:** ...
 
 ## Historias
-| HU | Título | Estado | Depende de |
-|---|---|---|---|
-| HU-XXX | ... | planificada \| aprobada \| en desarrollo \| en QA \| aceptada | — |
+Una HU por tipo, en orden: diseño (si hay pantalla) → backend → frontend → QA (una sola, al final; ver `CLAUDE.md`).
+
+| HU | Tipo | Título | Estado | Depende de |
+|---|---|---|---|---|
+| HU-XXX | diseño \| backend \| frontend \| QA \| base técnica | ... | planificada \| aprobada \| en desarrollo \| en QA \| aceptada | — |
 
 **Progreso:** 0 de N historias aceptadas.
 
 ## Decisiones y pendientes
 - ...
+
+## Para retomar
+La próxima es **HU-XXX**. Con `/agente-lider continuar HU-XXX`, el líder arma el brief desde esta épica.

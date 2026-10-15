@@ -71,7 +71,7 @@ La v1 sigue igual en `/`. `DesktopLauncher` no cambia.
 - **When** arranca
 - **Then** no se conecta a Google ni descarga la lista de precios de Card Kingdom
 
-**CA8: Smoke automático** (se pasa a HU-004, junto con el arnés)
+**CA8: Smoke automático** (pasa a la HU de QA de la épica, HU-005, junto con el arnés)
 - **Given** el arnés de Cucumber y Playwright
 - **When** corro `mvn.cmd -q test -Dcucumber.filter.tags="@critico"`
 - **Then** el escenario de humo abre `/app`, encuentra el menú lateral por `data-testid` y pasa

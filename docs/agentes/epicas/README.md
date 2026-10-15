@@ -6,4 +6,4 @@ Plantilla: `../plantilla-epica.md`. Archivos: `EP-XXX-<tema>.md`.
 
 | Épica | Título | Estado | Historias | Progreso |
 |---|---|---|---|---|
-| [EP-001](EP-001-configuracion-v2.md) | Configuración v2 | abierta | HU-001, HU-002, HU-003, HU-004 | 2 de 4 |
+| [EP-001](EP-001-configuracion-v2.md) | Configuración v2 | abierta | HU-001, HU-002, HU-003, HU-004, HU-005 (QA) | 2 de 5 |

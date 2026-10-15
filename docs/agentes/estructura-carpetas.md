@@ -8,13 +8,14 @@
 ```
 src/main/java/com/tcg/bot/
   TcgBotApplication.java, DesktopLauncher.java   arranque (compartido v1 y v2)
-  compartido/      v2 · errores (ProblemDetail), utilidades, OpenAPI
-  google/          v2 · OAuth (GoogleOAuthService) y cliente de Sheets de bajo nivel
+  compartido/      v2 · lo común: ManejadorErroresApi (ProblemDetail), ErrorDeNegocioException, EstadoAppController,
+                   FrontendConfig (/app), ModoPruebaConfig (perfil e2e) y la base de acceso al Sheet
+  google/          v2 · OAuth (GoogleOAuthService) y cliente de Sheets con la cuenta de servicio
   inventario/      v2 · un paquete por módulo, con:
-  precios/              XController   (@RestController, /api/v1/...)
-  reservas/             XService      (reglas de negocio)
+  precios/              XController   (@RestController, /api/v1/..., uno por módulo)
+  reservas/             XService      (solo si hay reglas de negocio)
   caja/                 XRepository   (interfaz) + XSheetsRepository + XEnMemoriaRepository
-  movimientos/          dto/          (records con campos en español)
+  movimientos/          dto/          (solo si un record lo usa más de una clase; si no, va adentro del controller)
   importacion/
   configuracion/
   legacy/          v1 · SOLO REFERENCIA (controller, service, model, dto, config)
@@ -25,7 +26,7 @@ src/main/resources/
   static/legacy/css, js/     v1 · app.css y app.js (se sirven en /legacy/css y /legacy/js)
   static/images/             compartido · mascota (cat-*, tutorial-cat-*) y logo por defecto
 
-frontend/                    v2 · React + TypeScript + Vite (se sirve en /app)
+frontend/                    v2 · React + TypeScript + Vite (se sirve en /app). Mapa objetivo: cada carpeta se crea con su primer archivo (regla 7)
   src/app/                   arranque: main.tsx, rutas y MarcoApp (barra lateral)
   src/compartido/            lo que usan todos los módulos
     componentes/             piezas del sistema de diseño: Tarjeta, Campo, Boton, MensajeBloque, CapaCarga…
@@ -43,18 +44,19 @@ frontend/                    v2 · React + TypeScript + Vite (se sirve en /app)
 src/test/java/com/tcg/bot/
   <modulo>/                  v2 · tests unitarios y de API, en el mismo paquete que la clase
   e2e/soporte/               v2 · hooks, arranque de la app y del navegador (ver qa-guia.md)
+  e2e/compartido/            v2 · PantallaBase y piezas comunes (MarcoApp, CapaCarga)
   e2e/<modulo>/              v2 · por módulo: <Modulo>Pasos.java (steps) y <Modulo>Pantalla.java (Page Object)
   legacy/                    v1 · tests de la versión vieja (se mantienen verdes, no se agregan)
 src/test/resources/features/<modulo>/<modulo>.feature   escenarios Gherkin del módulo
 
-config/        claves locales (google-oauth.properties, ignorado por git) · compartido
+config/        claves locales, ignoradas por git: google-oauth.properties y google-service-account.json · compartido
 docs/          documentación · data/ NO se toca
 ```
 
 ## Reglas
 1. **Código nuevo, solo en v2.** Cada clase va en el paquete de su módulo. Si no está claro a qué módulo pertenece, preguntale al líder.
 2. **`legacy` se usa como ejemplo.** Para migrar algo, se lee la lógica en `legacy/` (y el documento funcional) y se reescribe en el módulo v2 con la arquitectura nueva. No se copian clases enteras ni se importa nada de `legacy` desde la v2.
-   - Hay una sola excepción pendiente: `google/GoogleOAuthService` usa `legacy.service.StoreSettingsService` para ubicar la carpeta del token. Se resuelve cuando se migre `configuracion` (fase 2).
+   - Hay una sola excepción pendiente: `google/GoogleOAuthService` usa `legacy.service.StoreSettingsService` para ubicar la carpeta del token. Se resuelve al migrar `configuracion` (HU-003).
 3. **Lo que usan las dos versiones** (arranque, `google/`, `config/`, `static/images/`) no se mueve a `legacy`.
 4. **Al migrar un módulo**, lo viejo queda como está hasta el corte. No se borra ni se modifica `legacy` durante el rework, salvo un arreglo urgente que pida la persona a cargo.
 5. **Tests:** cada clase nueva lleva sus tests en `src/test/java/com/tcg/bot/<modulo>/`. Los tests de `legacy/` tienen que seguir pasando.

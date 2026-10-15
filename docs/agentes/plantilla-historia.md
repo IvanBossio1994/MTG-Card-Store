@@ -1,13 +1,14 @@
 # HU-XXX: <título corto>
 
-- **Estado:** borrador | aprobada | en desarrollo | en QA | en corrección | aceptada
+- **Estado:** aprobada | en desarrollo | en QA (solo HU de QA) | en corrección | aceptada
 - **Épica:** EP-XXX (o `—` si es una historia suelta)
-- **Tipo:** funcionalidad | bugfix (DEF-XXX) | mejora técnica
-- **Módulo:** inventario | precios | reservas | caja | movimientos | importacion | configuracion | google
-- **Rama:** `v2/feature/HU-XXX-<tema>` (igual al nombre de este archivo sin `.md`; ej.: `v2/feature/HU-000-documento-funcional-base`)
-- **QA elegido:** feliz | error | ambos (lo completa el líder cuando llega a QA)
-- **Funcional documentado:** felices | alternativos | ambos
-- **Flujos funcionales:** INV-F0X, INV-A0X… (los completa `analista-funcional`)
+- **Tipo:** diseño | backend | frontend | QA | base técnica | bugfix (DEF-XXX) — una HU, un tipo (ver `CLAUDE.md`, "Épicas y tipos de historia")
+- **Cubre:** (solo en HU de QA) las HU que prueba, ej.: `HU-003, HU-004`
+- **Módulo:** compartido | inventario | precios | reservas | caja | movimientos | importacion | configuracion | google
+- **Rama:** `v2/feature/HU-XXX-<tema>` (igual al nombre de este archivo sin `.md`)
+- **QA elegido:** (solo en HU de QA) feliz | error | ambos, y el alcance de ejecución
+- **Funcional documentado:** felices | alternativos | ambos | no aplica | reusa los de HU-XXX
+- **Flujos funcionales:** CFG-F01, CFG-A01… (los completa `analista-funcional` o el líder si se reusan)
 
 ## Historia
 **Como** <rol: empleado del local / dueño del comercio>
@@ -18,24 +19,26 @@
 <Contexto en 3 a 6 líneas: situación actual, qué cambia, pantallas o endpoints involucrados, archivos relevantes.>
 
 ## Criterios de aceptación
-Escritos para que QA los pase directo a Gherkin: palabras clave en inglés (Given / When / Then / And) y texto en español.
+Escritos para que QA los pase directo a Gherkin: palabras clave en inglés, en tercera persona y con el texto visible entre comillas (ver "Cómo se escribe el Gherkin" en `docs/agentes/qa-guia.md`).
 
 **CA1: <nombre>**
-- **Given** <estado inicial>
-- **When** <acción>
-- **Then** <resultado observable>
+- **Given** <estado inicial, ej.: visualiza el módulo de "Configuración">
+- **When** <acción, ej.: hace clic en "Guardar tienda">
+- **Then** <resultado observable, ej.: visualiza el mensaje "Tienda guardada.">
 
 **CA2: <nombre>** (sumar los casos de error relevantes)
 - **Given** ...
 - **When** ...
 - **Then** ...
 
-## Locators (`data-testid`)
+## Locators (`data-testid`) — HU de diseño o frontend
 | data-testid | Elemento |
 |---|---|
 | `<pantalla>-<elemento>` | ... |
 
-## Contrato de API (si aplica)
+## Contrato de API — HU de backend
+Resumen; el contrato completo va en `docs/v2/api/<modulo>.md`.
+
 | Método | Ruta | Request | Respuesta OK | Errores |
 |---|---|---|---|---|
 | POST | `/api/v1/...` | `{ ... }` | 201 `{ ... }` | 400, 409 |
@@ -43,13 +46,12 @@ Escritos para que QA los pase directo a Gherkin: palabras clave en inglés (Give
 ## Fuera de alcance
 - ...
 
-## Tareas por agente (en orden)
+## Tareas (en orden)
+Normalmente un solo agente, el del tipo de la HU. La HU de QA puede tener dos: `backend-java` (arnés, si falta) y `qa-*`.
+
 | # | Agente | Tarea | Listo cuando |
 |---|---|---|---|
-| 1 | ux-disenador | ... (solo si hay cambios visibles) | Spec en `docs/v2/ux/` |
-| 2 | backend-java | ... | Compila y pasan los tests unitarios y de API |
-| 3 | frontend | ... | Build y tests OK, locators puestos |
-| 4 | qa-* | Escenarios según el QA elegido | Veredicto y defectos reportados |
+| 1 | <agente del tipo> | ... | Diseño: spec y prototipo · Backend: contrato, compila y pasan los tests · Frontend: build, Vitest y locators · QA: veredicto y defectos |
 
 ## Consumo
 | Agente | Llamada | Tokens |

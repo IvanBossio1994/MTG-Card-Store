@@ -17,7 +17,7 @@
 | Node en el local | No hace falta: `frontend-maven-plugin` descarga Node al compilar y el build queda dentro del `.jar`. | La app de Windows y `DesktopLauncher` siguen igual (`localhost:8080`). |
 | API | REST `/api/v1/...` en español, DTOs `record` + `@Valid`, errores `ProblemDetail` | Contratos reales. |
 | Contrato | springdoc-openapi (`/swagger-ui`). El front genera sus tipos con `openapi-typescript`. | Si cambia el contrato, el front deja de compilar. |
-| Datos | Un `XRepository` por módulo, con implementación Sheets (real) y EnMemoria (perfil `e2e`) | QA no depende de Google ni de internet, y se puede desarrollar sin credenciales. |
+| Datos | Un `XRepository` por módulo, con implementación Sheets (cuenta de servicio, sincronización inmediata) y EnMemoria (tests y modo prueba, perfil `e2e`) | Los tests no dependen de Google ni de internet. QA E2E usa un Sheet real propio (ver `estado.md`, Google, punto 7). |
 | E2E | Cucumber-JVM (Gherkin con palabras clave en inglés y texto en español) + Playwright Java + JUnit 5, con Maven | Mismo stack que conoce la persona a cargo (Java, Maven, data-testid). Espera sola a los elementos, así hay menos pruebas que fallan al azar que con Selenium. |
 | Capas de test | Unitarias (servicios) → API (MockMvc) → E2E (flujos críticos) → Vitest (front) | Pirámide de tests. |
 | Locators | `data-testid="<pantalla>-<elemento>[-<id>]"` (`docs/v2/locators.md`) | Contrato entre UX, front y QA. |
@@ -36,7 +36,7 @@ importacion/   importar lista
 configuracion/ comercio, logo, tutorial
 ```
 
-- **Patrón:** `Controller` (HTTP) → `Service` (negocio) → `Repository` (datos).
+- **Patrón:** `Controller` (HTTP) → `Service` (negocio, solo si hay reglas) → `Repository` (datos). Detalle y reglas en `estructura-carpetas.md`.
 - **En la migración se corrigen los P1:**
   - verificar la clave antes de escribir en una fila;
   - lock en las escrituras;
@@ -45,18 +45,15 @@ configuracion/ comercio, logo, tutorial
 - **Carpetas:** la v1 ya está aislada en `com.tcg.bot.legacy`, `templates/legacy/` y `static/legacy/`; los paquetes v2 y `frontend/src/` ya existen. El detalle está en `estructura-carpetas.md`.
 
 ## Fases
-| # | Fase | Resultado |
-|---|---|---|
-| 0 | HU-000: documento funcional base | `analista-funcional` documenta todo lo que hace la v1 (los 37 endpoints y sus flujos felices y alternativos) en `docs/funcional/documento-funcional.md`, que pasa a la versión 1.0.0. Es la base de la regresión. |
-| 1 | Base | Paquetes, OpenAPI, errores, perfil `e2e`, `frontend/` integrado a Maven, harness Cucumber + Playwright con 1 smoke y sistema de diseño UX. |
-| 2 | Configuración + sesión Google | API y pantalla. Detecta el token vencido. |
-| 3 | Inventario + búsqueda + precios CK | El núcleo del mostrador. |
-| 4 | Reservas + clientes + retiros + pedido masivo | |
-| 5 | Movimientos + caja + reportes mensuales | |
-| 6 | Importar lista + tutorial | |
-| 7 | Corte | Borrar la v1, `/app` pasa a `/`, actualizar el build de Windows y correr la regresión completa. |
+Cada fase de módulo es una épica, con sus HU de diseño, backend, frontend y QA (ver `CLAUDE.md`).
 
-## Criterios de la fase 1 (para cuando se haga)
-- `mvn -q test` corre las pruebas unitarias, de API y el smoke de Cucumber + Playwright (abre `/app` con el perfil `e2e` y encuentra `app-titulo`).
-- `/swagger-ui` muestra la API.
-- El `.jar` sirve el frontend sin Node instalado.
+| # | Fase | Resultado | Estado |
+|---|---|---|---|
+| 0 | Documento funcional base | Documentar lo que hace la v1 en `docs/funcional/documento-funcional.md` hasta la 1.0.0. Es la base de la regresión. | Parcial: HU-000 hizo Google; faltan módulos (backlog P1) |
+| 1 | Base | Paquetes, OpenAPI, errores, perfil `e2e`, `frontend/` integrado a Maven, marco de la app y sistema de diseño UX. El arnés E2E se arma en la primera HU de QA. | Hecho: HU-001 (diseño) y HU-002 (base) |
+| 2 | Configuración + sesión Google | API y pantalla. Cuenta de servicio y detección del token vencido. | Épica EP-001: HU-003 a HU-005 |
+| 3 | Inventario + búsqueda + precios CK | El núcleo del mostrador. | Pendiente |
+| 4 | Reservas + clientes + retiros + pedido masivo | | Pendiente |
+| 5 | Movimientos + caja + reportes mensuales | | Pendiente |
+| 6 | Importar lista + tutorial | | Pendiente |
+| 7 | Corte | Borrar la v1, `/app` pasa a `/`, actualizar el build de Windows y correr la regresión completa. | Pendiente |
