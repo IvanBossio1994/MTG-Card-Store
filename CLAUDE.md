@@ -81,6 +81,11 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - **Mascota:** el gatito (`static/images/cat-*` y `tutorial-cat-*`) es la mascota oficial. Se usa tal cual, sin redibujarlo ni modificarlo (`docs/v2/ux/sistema-diseno.md`).
 - **Diseño:** UX entrega una spec y un prototipo HTML en `docs/v2/ux/`. Por ahora no se usa Figma.
 - **Git:** una rama por historia, que sale de `v2/dev` y se llama `v2/feature/` + el nombre del archivo de la historia sin `.md` (`HU-XXX-<tema>`, donde el tema es el que se decida para esa historia). Ejemplo: `HU-000-documento-funcional-base.md` → `v2/feature/HU-000-documento-funcional-base`. Commit y push solo cuando lo pida.
+- **Formato del commit:** `[<tipo de agente>] <descripción corta de lo que agrega>`, en español y en presente.
+  - Ejemplos: `[ux-disenador] Agrega prototipo de Configuración`, `[backend-java] Agrega API de configuración`.
+  - Si entra trabajo de varios agentes, van todos en el corchete: `[ux-disenador, lider]`.
+  - Si hace falta, el cuerpo lleva una lista corta de lo que se agregó.
+  - El autor de git es SofiaRiMar (`-c user.name=SofiaRiMar -c user.email=sofiarimar96@gmail.com`), sin trailer `Co-Authored-By`.
 - **Ver un prototipo HTML (obligatorio antes de mostrárselo a la persona a cargo):** el líder lo revisa con sus propios ojos. La extensión de Chrome no abre archivos `file://`, por eso se sirve con el servidor web que ya trae el JDK 21 (no hay que instalar nada):
   1. En segundo plano: `& "C:\Users\sofii\.jdks\temurin-21.0.12.1\bin\jwebserver.exe" -p 8765 -b 127.0.0.1 -d "E:\TCG-inventory\backend"`. Sirve desde la raíz del repo, así cargan las imágenes del gatito.
   2. Abrir `http://127.0.0.1:8765/docs/v2/ux/<pantalla>/prototipo.html` en una **pestaña nueva** del Chrome abierto y sacar una captura. Revisar alineación, tamaños, textos cortados y estados de la barra del prototipo.

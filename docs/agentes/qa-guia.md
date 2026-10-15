@@ -22,6 +22,11 @@ target/evidencias/                                    capturas y trazas de Playw
 ## Base funcional
 - Los escenarios salen de los criterios de aceptación de la HU y de los **flujos del documento funcional** (`docs/funcional/documento-funcional.md`, leé solo la sección del módulo).
 - Cada escenario lleva el tag del flujo que cubre, por ejemplo `@INV-F01`.
+- **Flujos de la historia:** son los del campo "Flujos funcionales" de la HU y, en el documento funcional, los marcados `propuesto · HU-XXX` o `diseñado · HU-YYY → HU-XXX`. **Cada uno tiene que tener al menos un escenario.** Si alguno queda sin cubrir, se informa como hueco.
+- Si la HU tiene diseño, sumá también:
+  - los estados de la spec UX (`docs/v2/ux/<pantalla>/spec.md`: cargando, guardando, éxito, aviso, error);
+  - los textos exactos de `docs/v2/textos.md`;
+  - los locators de `docs/v2/locators.md`.
 - La regresión se arma recorriendo los flujos `vigente` del documento. Si un flujo vigente no tiene escenario, es un hueco de cobertura y se informa.
 
 ## Tags
