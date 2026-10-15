@@ -1,0 +1,84 @@
+package com.tcg.bot.compartido;
+
+import org.springframework.http.HttpStatus;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Base común de acceso al Google Sheet de la tienda (v2). La usan todos los módulos por composición.
+ * Implementaciones: {@code google.AccesoSheetCuentaServicio} (real, con la cuenta de servicio) y
+ * {@link AccesoSheetEnMemoria} (tests y modo prueba). Cada llamada lee o escribe en el Sheet en el momento.
+ * <p>
+ * Errores: si la cuenta de servicio no tiene acceso lanza {@link #sinAcceso()} (403); si no hay conexión, {@link #sinConexion()} (503).
+ */
+public interface AccesoSheet {
+
+    /** Mail de la cuenta de servicio con la que hay que compartir cada Sheet como editor. */
+    String CUENTA_SERVICIO = "tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com";
+
+    /**
+     * Devuelve los nombres de las pestañas del Sheet, en el orden en que aparecen.
+     * Ejemplo: Sheet con "Hoja 1" y "Ventas" → {@code ["Hoja 1", "Ventas"]}; Sheet no compartido → 403.
+     */
+    List<String> listarPestanas(String sheetId);
+
+    /**
+     * Cambia el nombre de una pestaña existente.
+     * Ejemplo: {@code renombrarPestana(id, "Hoja 1", "Inventario")} → la pestaña pasa a llamarse "Inventario".
+     */
+    void renombrarPestana(String sheetId, String nombreActual, String nombreNuevo);
+
+    /**
+     * Agrega una pestaña vacía al final del Sheet.
+     * Ejemplo: {@code crearPestana(id, "Caja")} → el Sheet tiene una pestaña "Caja" nueva.
+     */
+    void crearPestana(String sheetId, String pestana);
+
+    /**
+     * Lee la fila 1 (encabezados) de una pestaña. Vacía si la fila no tiene datos.
+     * Ejemplo: pestaña "Caja" recién creada → {@code []}.
+     */
+    List<String> leerEncabezados(String sheetId, String pestana);
+
+    /**
+     * Escribe los encabezados en la fila 1 de una pestaña, desde la columna A.
+     * Ejemplo: {@code escribirEncabezados(id, "Clientes", ["Nombre", "Apellido"])} → A1="Nombre", B1="Apellido".
+     */
+    void escribirEncabezados(String sheetId, String pestana, List<String> encabezados);
+
+    /**
+     * Crea la pestaña si no está en {@code pestanasActuales} y escribe los encabezados solo si la fila 1 está vacía
+     * (nunca pisa encabezados existentes, porque el Sheet también se edita a mano). Devuelve si tuvo que crearla.
+     * Ejemplo: Sheet sin "Caja" → crea "Caja" con sus encabezados y devuelve {@code true}.
+     */
+    default boolean asegurarPestana(String sheetId, List<String> pestanasActuales, String pestana, List<String> encabezados) {
+        boolean creada = !pestanasActuales.contains(pestana);
+        if (creada) {
+            crearPestana(sheetId, pestana);
+        }
+        if (leerEncabezados(sheetId, pestana).stream().allMatch(String::isBlank)) {
+            escribirEncabezados(sheetId, pestana, encabezados);
+        }
+        return creada;
+    }
+
+    /**
+     * Error 403: el Sheet no está compartido con la cuenta de servicio (o no existe).
+     * Ejemplo: {@code throw AccesoSheet.sinAcceso()} → 403 "La app no tiene acceso a este Sheet. Compartilo con … como editor."
+     */
+    static ErrorDeNegocioException sinAcceso() {
+        return new ErrorDeNegocioException(HttpStatus.FORBIDDEN, "Sin acceso al Sheet",
+                "La app no tiene acceso a este Sheet. Compartilo con " + CUENTA_SERVICIO + " como editor.",
+                Map.of("cuentaServicio", CUENTA_SERVICIO));
+    }
+
+    /**
+     * Error 503: no se pudo hablar con Google.
+     * Ejemplo: {@code throw AccesoSheet.sinConexion()} → 503 "Revisá tu conexión a internet e intentá de nuevo."
+     */
+    static ErrorDeNegocioException sinConexion() {
+        return new ErrorDeNegocioException(HttpStatus.SERVICE_UNAVAILABLE, "Sin conexión",
+                "Revisá tu conexión a internet e intentá de nuevo.");
+    }
+}

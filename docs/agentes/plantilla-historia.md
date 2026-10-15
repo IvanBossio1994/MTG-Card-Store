@@ -48,6 +48,7 @@ Resumen; el contrato completo va en `docs/v2/api/<modulo>.md`.
 
 ## Tareas (en orden)
 Normalmente un solo agente, el del tipo de la HU. La HU de QA puede tener dos: `backend-java` (arnés, si falta) y `qa-*`.
+**Backend:** 1) contrato y riesgos (lo revisa la persona a cargo) · 2) infraestructura nueva, si hace falta · 3) endpoints y tests (hasta 6 endpoints por tarea). Un agente nuevo por tarea (ver `CLAUDE.md`, ciclo, paso 3).
 
 | # | Agente | Tarea | Listo cuando |
 |---|---|---|---|

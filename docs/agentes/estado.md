@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-15 (revisión de coherencia del equipo de agentes). Próxima: HU-003 (EP-001).
+> Última actualización: 2026-10-15 (HU-003 aceptada). Próxima: HU-004 (EP-001, frontend de Configuración).
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -51,9 +51,9 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 ## Backlog
 | Prio | Tema | Detalle |
 |---|---|---|
-| P1 | Cuenta de servicio en la v2 | Decidido (Google, punto 7). **Se implementa en HU-003.** |
-| P1 | Escritura por fila | `GoogleSheetsService.updateQuantity` (~240-268) escribe por `rowIndex` sin verificar que la fila siga siendo esa carta. Si alguien ordena o borra filas a mano, escribe en otra carta. Lectura y escritura sin lock. **Se resuelve con la base de acceso al Sheet de la v2 (HU-003).** |
-| P1 | Token vencido | Detectar `invalid_grant` y pedir reconexión con un mensaje claro. **HU-003.** |
+| P1 | Cuenta de servicio en la v2 | Hecho en HU-003 (`compartido/AccesoSheet`, `google/AccesoSheetCuentaServicio`). Falta que la usen los demás módulos. |
+| P1 | Escritura por fila | `GoogleSheetsService.updateQuantity` (~240-268) escribe por `rowIndex` sin verificar que la fila siga siendo esa carta. Si alguien ordena o borra filas a mano, escribe en otra carta. Lectura y escritura sin lock. **Se resuelve en la épica de Inventario, sobre la base de acceso al Sheet que arma HU-003** (decidido 2026-10-15). |
+| P1 | Token vencido | Hecho en la v2 (HU-003): 401 "Tu sesión de Google venció." con el link para volver a entrar. La v1 sigue igual. |
 | P1 | Cache Card Kingdom | La descarga no está sincronizada y la escritura no es atómica (`CardKingdomApiService`). Si hay más de un resultado posible para una carta, devuelve `null` y no actualiza el precio. Fase 3 (precios). |
 | P1 | Documento funcional base | Documentar los módulos de la v1 que faltan (INV, PRE, RES, CAJ, MOV, IMP) para llegar a 1.0.0. Conviene hacerlo al arrancar cada épica de módulo. |
 | P2 | E2E con Sheet temporal | Hoy QA usa un Sheet fijo de QA. Mejora: que cada corrida cree un Sheet nuevo, lo use y lo borre al terminar. Va en otra rama (pedido de la dueña, 2026-10-14). |
@@ -62,8 +62,9 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 | P2 | Controller gigante | `DashboardController` tiene ~9000 líneas. Extraer servicios por área (reservas, caja/reportes, importación), de a una. |
 | P2 | Errores | 51 `catch (Exception)` genéricos. Si la cantidad no es numérica, se convierte en 0 sin avisar (`GoogleSheetsService` ~255). |
 | P2 | Tests | No hay tests de Card Kingdom, escritura en Sheets ni reservas de punta a punta. |
+| P3 | Aviso tras el login | La dueña pide sacar el cartel "Google conectado. Ya podés usar la app." después de iniciar sesión: es obvio que conectó. Tenerlo en cuenta al diseñar el login de la v2 (2026-10-15). |
 | P3 | Código sin uso | Confirmar si `PriceComparisonService` y `PricingSettingsService` se usan. |
-| P3 | Ruta por defecto | Si falta `app.storage-dir`, `StoreSettingsService` usa `D:/TCG-inventory/data` (`application.properties` ya define `./data`). |
+| P3 | Ruta por defecto | Si falta `app.storage-dir`, la v1 (`StoreSettingsService`, `PricingSettingsService`) usa `D:/TCG-inventory/data` (`application.properties` ya define `./data`). En la v2 se corrigió a `./data` (HU-003). La cache de Card Kingdom de esta PC está en `C:\TCG-inventory\cache` (pedido de la dueña). |
 
 ## Decisiones tomadas
 > Las decisiones vigentes ya están en `CLAUDE.md` y en las reglas. Esta lista es el historial; si una entrada vieja choca con una nueva, manda la nueva.
@@ -87,6 +88,9 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
   - **Reglas nuevas:** todo por módulo, sin archivos "porque sí", composición en lugar de herencia, código moderno, nombres descriptivos, contrato primero, compilar no es testear y commits con el formato `[agente] descripción`.
 - 2026-10-14: **una HU por tipo de trabajo** (diseño, backend, frontend y QA) y **una sola HU de QA por épica**, al final. Nadie prueba sobre el Sheet del local: QA usa el Sheet de QA y la dueña, su Sheet de pruebas (Google, punto 7). EP-001 queda con 5 HU.
 - 2026-10-15: revisión de coherencia de `CLAUDE.md`, agentes, skills, plantillas y guías. Gherkin en tercera persona con nombre `[Pantalla] acción` y `Scenario Outline` con el parámetro en el nombre (`qa-guia.md`).
+- 2026-10-15: **la v1 es solo machete** (decisión de la dueña): lo que tiene que funcionar es la v2; la v1 sirve para entender cómo era cada flujo y no se le hacen arreglos de convivencia. Si se guarda la configuración en la v2, la v1 la ve recién al reiniciar la app (HU-003). Hoy nadie usa la app en el local porque no está completa.
+- 2026-10-15: **HU-003 aceptada:** API `/api/v1/configuracion` (contrato en `docs/v2/api/configuracion.md`), acceso al Sheet con la cuenta de servicio, arreglo de la pestaña (renombrar o crear), errores 400/401/403/500. Probada contra el Sheet de pruebas, que pasa a ser el configurado en esta PC. `TcgBotApplication` arranca en el 8765. Costó 197 mil tokens de agentes (una sola tarea).
+- 2026-10-15: **HU de backend en tareas:** contrato y riesgos primero (revisión de la dueña), infraestructura nueva aparte, hasta 6 endpoints por tarea (`CLAUDE.md`, ciclo, paso 3).
 - 2026-10-14: el proyecto requiere JDK 21 (Temurin). La ruta de cada PC va en `CLAUDE.local.md`.
 - 2026-10-15: **otra PC u otro usuario:** la primera vez, `/agente-lider` aplica `preparar-entorno`. Revisa e instala, con OK, JDK 21, Git y Maven (`.tools\`, que git no versiona). Verifica que estén las 2 claves de `config/` (la persona a cargo las pasa por un canal privado) y crea `CLAUDE.local.md`. Se usan los mismos usuarios de Google; `data/` no se pasa y cada uno inicia sesión una vez.
 
@@ -96,6 +100,7 @@ El glosario se movió a `docs/funcional/documento-funcional.md`, sección "Glosa
 ## Aprendizajes
 _(Anotar acá lo que se descubra trabajando: trampas del Sheet, comportamientos raros, preferencias de la persona a cargo del proyecto.)_
 - 2026-10-14: `spring-boot:run` arranca `DesktopLauncher` por defecto: abre una ventana propia en un puerto al azar y apaga la app al cerrarla. Para levantarla sin ventana: `-Dapp.clase-principal=com.tcg.bot.TcgBotApplication` (propiedad del `pom.xml`, HU-002). Windows pide permiso de firewall para Java la primera vez.
+- 2026-10-15: `data/google-oauth-token` da `AccessDeniedException` al leer su dueño (`FileDataStoreFactory.setPermissionsToOwnerOnlyWindows`), **también con la app levantada por la dueña fuera de Claude Code**: no era el sandbox, son los permisos de esa carpeta en esta PC. La carpeta estaba a nombre de otro usuario de Windows; se arregla, como administrador, con `takeown /F <carpeta> /R /D S` y `icacls <carpeta> /reset /T`. **La app nunca se levanta como administrador** (las carpetas que crea quedan a nombre del administrador): se usa la terminal del IDE. Al pegar comandos en la terminal se puede perder el último carácter: revisarlo antes de Enter. El líder puede hacer pedidos HTTP a `127.0.0.1:8765` (permitidos en `.claude/settings.local.json`).
 - 2026-10-14: la extensión de Chrome no abre `file://`. Para ver un prototipo se sirve el repo con `jwebserver` del JDK (puerto 8765).
 - 2026-10-14: HU-001 costó 349 mil tokens; el 92 % se fue en retomar al mismo agente UX en cada vuelta. Con un agente nuevo por vuelta y los ajustes chicos hechos por el líder, las últimas 8 vueltas no sumaron tokens de agentes.
 - 2026-10-14: estado base. `mvn -q test` pasa (exit 0). `BackendApplicationTests` levanta el contexto completo y descarga la pricelist real de Card Kingdom, así que necesita internet.

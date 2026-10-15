@@ -14,6 +14,7 @@ import org.springframework.core.Ordered;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Perfil {@code e2e}: la app arranca sin Google ni internet.
@@ -26,6 +27,7 @@ import java.util.List;
 public class ModoPruebaConfig {
 
     static final List<String> PAQUETES_EXCLUIDOS = List.of("com.tcg.bot.legacy.", "com.tcg.bot.google.");
+    static final String GMAIL_DE_PRUEBA = "prueba@tcg-inventory.local";
 
     /**
      * Registra el filtro que quita los beans de v1 y Google.
@@ -34,6 +36,27 @@ public class ModoPruebaConfig {
     @Bean
     public static BeanDefinitionRegistryPostProcessor excluirBeansSinGoogle() {
         return new ExcluirPaquetes(PAQUETES_EXCLUIDOS);
+    }
+
+    /**
+     * Sheets simulados del modo prueba (docs/v2/api/configuracion.md, "Modo prueba"). Cualquier otro ID responde 403.
+     * Ejemplo: {@code listarPestanas("1PruebaSheetConPestanaUnica0000000000000000")} → {@code ["Hoja 1"]}.
+     */
+    @Bean
+    public AccesoSheet accesoSheetDePrueba() {
+        return new AccesoSheetEnMemoria()
+                .compartir("1PruebaSheetConInventario000000000000000000", "Inventario")
+                .compartir("1PruebaSheetConPestanaUnica0000000000000000", "Hoja 1")
+                .compartir("1PruebaSheetConVariasPestanas00000000000000", "Hoja 1", "Ventas");
+    }
+
+    /**
+     * Sesión de Google simulada: siempre vigente, con un Gmail de prueba.
+     * Ejemplo: {@code gmailConectado()} → {@code Optional.of("prueba@tcg-inventory.local")}.
+     */
+    @Bean
+    public SesionGoogle sesionGoogleDePrueba() {
+        return () -> Optional.of(GMAIL_DE_PRUEBA);
     }
 
     /** Quita las definiciones de beans cuya clase está en alguno de los paquetes indicados. */

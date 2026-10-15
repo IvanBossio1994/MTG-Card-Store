@@ -35,6 +35,7 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `general.error.conexion` | Revisá tu conexión a internet e intentá de nuevo. | error | HU-001 |
 | `general.error.sesion-vencida` | Tu sesión de Google venció. (+ enlace "Volver a iniciar sesión") | error | HU-001 |
 | `general.boton.volver-a-iniciar-sesion` | Volver a iniciar sesión | enlace | HU-001 |
+| `general.error.sesion-ilegible` | La app no puede leer tu sesión de Google en esta PC. Abrila sin permisos de administrador y volvé a iniciar sesión. | error (500: Windows no deja leer la carpeta de la sesión) | HU-003 |
 | `general.modal.sin-guardar-titulo` | Tenés cambios sin guardar | modal | HU-001 |
 | `general.modal.sin-guardar-pregunta` | ¿Salir igual? | modal | HU-001 |
 | `general.boton.seguir-editando` | Seguir editando | botón | HU-001 |

@@ -49,6 +49,17 @@ class ModoPruebaTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void configuracionFuncionaSinGoogleConDatosDePrueba() {
+        @SuppressWarnings("rawtypes")
+        ResponseEntity<Map> respuesta = http.getForEntity("/api/v1/configuracion", Map.class);
+
+        assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat((Map<String, Object>) respuesta.getBody().get("sheet"))
+                .containsEntry("gmail", ModoPruebaConfig.GMAIL_DE_PRUEBA);
+    }
+
+    @Test
     void rutaInexistenteDevuelveProblemDetailEnEspanol() {
         @SuppressWarnings("rawtypes")
         ResponseEntity<Map> respuesta = http.getForEntity("/api/v1/no-existe", Map.class);

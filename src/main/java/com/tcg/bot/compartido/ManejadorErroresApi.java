@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -40,6 +41,8 @@ public class ManejadorErroresApi {
 
     private static final Logger log = LoggerFactory.getLogger(ManejadorErroresApi.class);
     private static final String PREFIJO_API = "/api/";
+    static final String TITULO_DATOS_INVALIDOS = "Datos inválidos";
+    static final String DETALLE_DATOS_INVALIDOS = "Hay datos para corregir.";
 
     /**
      * Ruta inexistente bajo /api → 404.
@@ -84,7 +87,7 @@ public class ManejadorErroresApi {
             errores.putIfAbsent(error.getField(), error.getDefaultMessage());
         }
         ResponseEntity<ProblemDetail> respuesta =
-                problema(HttpStatus.BAD_REQUEST, "Datos inválidos", "Hay datos para corregir.", request);
+                problema(HttpStatus.BAD_REQUEST, TITULO_DATOS_INVALIDOS, DETALLE_DATOS_INVALIDOS, request);
         respuesta.getBody().setProperty("errores", errores);
         return respuesta;
     }
@@ -97,15 +100,15 @@ public class ManejadorErroresApi {
     public ResponseEntity<ProblemDetail> parametrosInvalidos(HandlerMethodValidationException ex,
                                                              HttpServletRequest request) throws Exception {
         soloApi(ex, request);
-        return problema(HttpStatus.BAD_REQUEST, "Datos inválidos", "Hay datos para corregir.", request);
+        return problema(HttpStatus.BAD_REQUEST, TITULO_DATOS_INVALIDOS, DETALLE_DATOS_INVALIDOS, request);
     }
 
     /**
-     * JSON mal formado, parámetro faltante o de tipo incorrecto → 400.
+     * JSON mal formado, parámetro o archivo faltante, o de tipo incorrecto → 400.
      * Ejemplo: cuerpo "{nombre:" → 400 "Revisá los datos enviados: el pedido no se pudo leer."
      */
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class,
-            MethodArgumentTypeMismatchException.class})
+            MissingServletRequestPartException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ProblemDetail> pedidoInvalido(Exception ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
         return problema(HttpStatus.BAD_REQUEST, "Pedido inválido",
@@ -125,14 +128,16 @@ public class ManejadorErroresApi {
     }
 
     /**
-     * Error de negocio lanzado por un servicio v2 → su código y su mensaje.
+     * Error de negocio lanzado por un servicio v2 → su código, su mensaje y sus propiedades extra.
      * Ejemplo: {@code ErrorDeNegocioException(CONFLICT, "Sin stock", "No queda stock.")} → 409 con ese detalle.
      */
     @ExceptionHandler(ErrorDeNegocioException.class)
     public ResponseEntity<ProblemDetail> errorDeNegocio(ErrorDeNegocioException ex,
                                                         HttpServletRequest request) throws Exception {
         soloApi(ex, request);
-        return problema(ex.getEstado(), ex.getTitulo(), ex.getMessage(), request);
+        ResponseEntity<ProblemDetail> respuesta = problema(ex.getEstado(), ex.getTitulo(), ex.getMessage(), request);
+        ex.getPropiedades().forEach(respuesta.getBody()::setProperty);
+        return respuesta;
     }
 
     /**

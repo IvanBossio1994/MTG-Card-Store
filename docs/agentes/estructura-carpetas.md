@@ -56,7 +56,7 @@ docs/          documentación · data/ NO se toca
 ## Reglas
 1. **Código nuevo, solo en v2.** Cada clase va en el paquete de su módulo. Si no está claro a qué módulo pertenece, preguntale al líder.
 2. **`legacy` se usa como ejemplo.** Para migrar algo, se lee la lógica en `legacy/` (y el documento funcional) y se reescribe en el módulo v2 con la arquitectura nueva. No se copian clases enteras ni se importa nada de `legacy` desde la v2.
-   - Hay una sola excepción pendiente: `google/GoogleOAuthService` usa `legacy.service.StoreSettingsService` para ubicar la carpeta del token. Se resuelve al migrar `configuracion` (HU-003).
+   - Sin excepciones: desde HU-003, `google/GoogleOAuthService` ubica la carpeta del token con `app.storage-dir` y ya no usa `legacy`.
 3. **Lo que usan las dos versiones** (arranque, `google/`, `config/`, `static/images/`) no se mueve a `legacy`.
 4. **Al migrar un módulo**, lo viejo queda como está hasta el corte. No se borra ni se modifica `legacy` durante el rework, salvo un arreglo urgente que pida la persona a cargo.
 5. **Tests:** cada clase nueva lleva sus tests en `src/test/java/com/tcg/bot/<modulo>/`. Los tests de `legacy/` tienen que seguir pasando.

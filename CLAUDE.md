@@ -61,6 +61,7 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
    - **Funcional:** solo en la **primera HU de la épica que define comportamiento** (diseño o, si no hay, backend). Preguntar *¿documentar caminos felices, alternativos o ambos?* y llamar a `analista-funcional` una vez. Deja los flujos como `propuesto · HU-XXX`. Las HU siguientes de la épica reusan esos flujos, sin volver a llamarlo; la base técnica no lleva.
 3. **Ejecución:** el agente del tipo de la HU entrega cuando compila y pasan sus tests.
    - **Contrato antes de programar (obligatorio):** si hay endpoints nuevos o que cambian, backend escribe primero el contrato en `docs/v2/api/<modulo>.md`, y recién después programa. El frontend y QA trabajan contra ese contrato.
+   - **Tareas de una HU de backend:** la tarea 1 es solo el contrato, con un análisis corto de riesgos (qué toca de la v1, del Sheet o de Google). La persona a cargo lo revisa antes de programar. Si hace falta una pieza nueva de infraestructura (por ejemplo, el acceso al Sheet), va en su propia tarea. El resto va en una sola tarea, hasta 6 endpoints; si son más, se parte. Cada tarea, un agente nuevo. **Por qué:** en HU-003 (197 mil tokens en una sola tarea) un riesgo con la v1 apareció recién al final, con todo programado.
 4. **QA (solo en la HU de QA):** hacer dos preguntas y llamar solo a los agentes elegidos, pasándoles el alcance en el prompt:
    - *¿camino feliz, casos de error o ambos?*
    - *¿qué ejecutar?*: los escenarios de las HU que cubre (por defecto), esos más el smoke (`@critico`), o la regresión completa (`@regresion`).
@@ -117,6 +118,7 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - **Levantar la app:** solo cuando haga falta ver algo funcionando que no se pueda comprobar compilando ni con los tests. Nunca "por las dudas". Los tests E2E de QA (Playwright) no cuentan, porque arrancan la app por su cuenta. Cuando haga falta:
   1. Arrancarla con el JDK 21, en segundo plano y **sin la ventana de escritorio**. Por defecto arranca `DesktopLauncher`, que abre su propia ventana y apaga la app al cerrarla. Comando:
      `mvn.cmd -q spring-boot:run "-Dapp.clase-principal=com.tcg.bot.TcgBotApplication" "-Dspring-boot.run.arguments=--server.port=8765"`.
+     `TcgBotApplication` ya arranca en el 8765 por defecto, así que la persona a cargo también puede levantarla con el botón Run del IDE. Si la app necesita leer `data/` (sesión de Google), la levanta ella desde la terminal del IDE o con Run, nunca como administrador: desde la consola del líder el sandbox no deja leer esa carpeta.
      Para probar sin Google, sumar `"-Dspring-boot.run.profiles=e2e"` (modo prueba). Sin ese perfil usa el Sheet configurado en la app, que para probar es el Sheet de pruebas de la persona a cargo; nunca el del local.
   2. Verla en el **Chrome que ya está abierto**, siempre en una **pestaña nueva** (Claude in Chrome).
   3. Si Chrome falla, no reintentar: frenar y seguir verificando solo con el JDK (pedidos HTTP a la app levantada), que es lo que ya funcionó.
