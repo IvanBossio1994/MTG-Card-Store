@@ -87,7 +87,8 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
   - **Reglas nuevas:** todo por módulo, sin archivos "porque sí", composición en lugar de herencia, código moderno, nombres descriptivos, contrato primero, compilar no es testear y commits con el formato `[agente] descripción`.
 - 2026-10-14: **una HU por tipo de trabajo** (diseño, backend, frontend y QA) y **una sola HU de QA por épica**, al final. Nadie prueba sobre el Sheet del local: QA usa el Sheet de QA y la dueña, su Sheet de pruebas (Google, punto 7). EP-001 queda con 5 HU.
 - 2026-10-15: revisión de coherencia de `CLAUDE.md`, agentes, skills, plantillas y guías. Gherkin en tercera persona con nombre `[Pantalla] acción` y `Scenario Outline` con el parámetro en el nombre (`qa-guia.md`).
-- 2026-10-14: JDK 21 (Temurin) en `C:\Users\sofii\.jdks\temurin-21.0.12.1`. El proyecto compila.
+- 2026-10-14: el proyecto requiere JDK 21 (Temurin). La ruta de cada PC va en `CLAUDE.local.md`.
+- 2026-10-15: **otra PC u otro usuario:** la primera vez, `/agente-lider` aplica `preparar-entorno`. Revisa e instala, con OK, JDK 21, Git y Maven (`.tools\`, que git no versiona). Verifica que estén las 2 claves de `config/` (la persona a cargo las pasa por un canal privado) y crea `CLAUDE.local.md`. Se usan los mismos usuarios de Google; `data/` no se pasa y cada uno inicia sesión una vez.
 
 ## Glosario
 El glosario se movió a `docs/funcional/documento-funcional.md`, sección "Glosario".

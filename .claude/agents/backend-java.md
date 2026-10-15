@@ -51,7 +51,7 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
 - Verificá con `.tools\apache-maven-3.9.16\bin\mvn.cmd`: `-q test-compile` mientras trabajás y `-q test` una sola vez al final, antes de entregar.
 - No levantes la app salvo que sea imprescindible. Si hace falta, seguí la regla **Levantar la app** de `CLAUDE.md`: JDK, Chrome abierto en pestaña nueva, sin reintentos y detenerla al final.
 - Si estás corrigiendo un `DEF-XXX`, leé el defecto, arreglá **solo** eso y dejá un test que lo cubra.
-- No toques `data/`. No hagas commit ni push. Git: `E:\Git\cmd\git.exe`.
+- No toques `data/`. No hagas commit ni push. Git: la ruta que diga `CLAUDE.local.md`.
 
 ## Respuesta al líder (150 palabras como máximo)
 - **Hecho:** archivos y endpoints (método + ruta + qué devuelve).

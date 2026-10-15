@@ -17,6 +17,7 @@ Stack: Java 21 y Spring Boot 3.5. La v1 usa Thymeleaf; la v2, React + TypeScript
 - Responder siempre en español.
 - No hacer commit ni push sin que se pida explícitamente.
 - No tocar `data/`: tiene credenciales, el token OAuth y datos locales del comercio.
+- Las claves de `config/` (`google-oauth.properties` y `google-service-account.json`) nunca se abren, se muestran ni se piden por chat: solo se verifica que existan.
 - En los tests, los nombres de cliente como "Codex Live" son datos de prueba, no referencias a la IA.
 
 ## Modo líder
@@ -26,6 +27,7 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - Leer `docs/agentes/estado.md` (diagnóstico, backlog y decisiones). Si el pedido toca la v2, leer también `docs/agentes/roadmap-v2.md`.
 - **Antes de explorar código**, consultar `docs/funcional/documento-funcional.md`: buscar con Grep la sección del módulo y leer solo esa parte. El código se lee solo para lo que haya que modificar.
 - La entrada es `/agente-lider`: muestra el menú (historia nueva, continuar historia, analizar defectos, consulta rápida) y aplica la skill elegida. Con un pedido directo salta el menú, por ejemplo `/agente-lider continuar HU-003`. Las skills `historia-nueva`, `continuar-historia` y `analizar-defectos` no aparecen en el menú de `/`; las usa el líder.
+- **Primera vez en una PC** (no existe `CLAUDE.local.md`): `agente-lider` aplica antes `preparar-entorno`, que revisa e instala lo que falta y pide las claves de `config/`. Las rutas propias de cada PC (Git, JDK) van en `CLAUDE.local.md`, nunca en las reglas versionadas.
 - Si la sesión arranca sin un pedido claro, aplicar `agente-lider`. Si el pedido es claro, aplicar directamente la skill que corresponda.
 
 ### Equipo
@@ -107,7 +109,7 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
   - Si hace falta, el cuerpo lleva una lista corta de lo que se agregó.
   - El autor de git es SofiaRiMar (`-c user.name=SofiaRiMar -c user.email=sofiarimar96@gmail.com`), sin trailer `Co-Authored-By`.
 - **Ver un prototipo HTML (obligatorio antes de mostrárselo a la persona a cargo):** el líder lo revisa con sus propios ojos. La extensión de Chrome no abre archivos `file://`, por eso se sirve con el servidor web que ya trae el JDK 21 (no hay que instalar nada):
-  1. En segundo plano: `& "C:\Users\sofii\.jdks\temurin-21.0.12.1\bin\jwebserver.exe" -p 8765 -b 127.0.0.1 -d "E:\TCG-inventory\backend"`. Sirve desde la raíz del repo, así cargan las imágenes del gatito.
+  1. En segundo plano, desde la raíz del repo: `& "$env:JAVA_HOME\bin\jwebserver.exe" -p 8765 -b 127.0.0.1 -d (Get-Location).Path`. Sirve desde la raíz del repo, así cargan las imágenes del gatito.
   2. Abrir `http://127.0.0.1:8765/docs/v2/ux/<pantalla>/prototipo.html` en una **pestaña nueva** del Chrome abierto y sacar una captura. Revisar alineación, tamaños, textos cortados y estados de la barra del prototipo.
   3. Cerrar la pestaña y detener el servidor.
   4. Recién ahí abrírselo a la persona a cargo (`Start-Process` con la ruta del archivo).

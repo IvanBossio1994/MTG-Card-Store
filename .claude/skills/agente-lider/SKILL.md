@@ -5,6 +5,8 @@ description: Menú del líder. Muestra las opciones del equipo de agentes (histo
 
 # Menú del líder
 
+**Primera vez en esta PC:** si no existe `CLAUDE.local.md` en la raíz del repo, aplicá antes la skill `preparar-entorno`. Recién después seguí con el menú.
+
 Si junto al comando ya vino un pedido claro (por ejemplo, `/agente-lider continuar HU-002`), saltá el menú y aplicá directamente la opción que corresponda.
 
 Si no, mostrá el menú con la herramienta de preguntas (`AskUserQuestion`), en una sola pregunta: *"¿Qué querés hacer?"*, con estas opciones y en este orden:
