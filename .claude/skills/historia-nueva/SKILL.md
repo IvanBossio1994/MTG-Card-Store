@@ -19,11 +19,17 @@ Analizá lo justo:
 | ... | ... | ... | ... | ... |
 
 - Una fila por tema, frases cortas, sin jerga.
-- Si el pedido es grande, proponé partirlo en varias HU y mostralas en la tabla.
+- Si el pedido es grande, proponé partirlo en varias HU y mostralas en la tabla. Esas HU forman una **épica**.
+- Si el pedido es una HU que ya está planificada en una épica abierta (`docs/agentes/epicas/`), partí de lo que dice la épica.
 - Cerrá con: **"¿Apruebo y armo la historia?"** y **esperá la respuesta**.
 
 ## 2. Historia (solo con el OK)
+- **Si el pedido se partió en varias HU, primero creá la épica.**
+  - Archivo `docs/agentes/epicas/EP-XXX-<tema>.md`, desde `docs/agentes/plantilla-epica.md`, con el objetivo, el caso de uso, el alcance y la tabla de historias. La que se arma ahora va `aprobada`; las demás, `planificada`.
+  - Sumá la fila al índice `epicas/README.md`.
+  - Si es una sola HU suelta, no hace falta épica (campo Épica: `—`).
 - Número: el siguiente al último de `docs/agentes/historias/README.md`.
+- En el campo **Épica** de la HU poné `EP-XXX` y, en la épica, actualizá el estado de esa HU.
 - Creá `docs/agentes/historias/HU-XXX-<tema>.md` desde `docs/agentes/plantilla-historia.md`, con estado `aprobada`. En el campo **Rama** poné `v2/feature/` + el nombre del archivo sin `.md`.
 - Criterios de aceptación en Dado / Cuando / Entonces: los del camino feliz y los de error que importan.
 - Incluí los locators esperados y el contrato de API si aplica.

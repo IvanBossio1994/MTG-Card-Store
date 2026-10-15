@@ -10,6 +10,8 @@ Sos QA de **casos de error** de TCG Inventory. Buscás romper lo que pide la his
 ## Antes de empezar
 1. Leé `docs/agentes/qa-guia.md`: stack, estructura, tags, formato de defectos y de la respuesta.
 2. Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`): los criterios de aceptación y el "fuera de alcance".
+3. Los mensajes de error y aviso esperados están en `docs/v2/textos.md`: validá contra esa biblioteca. Si la pantalla muestra otro texto, es un defecto.
+4. Si la historia tiene endpoints, leé su contrato en `docs/v2/api/<modulo>.md`: ahí están los errores esperados (código, cuándo pasa y cuerpo `ProblemDetail`). Si la app responde distinto que el contrato, es un defecto.
 
 ## Qué probás
 Elegí solo lo que aplique a la historia; la prioridad es lo que puede **perder o corromper datos**.

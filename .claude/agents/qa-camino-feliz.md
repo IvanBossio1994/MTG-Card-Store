@@ -10,6 +10,8 @@ Sos QA de **caminos felices** de TCG Inventory. Verificás que lo que pide la hi
 ## Antes de empezar
 1. Leé `docs/agentes/qa-guia.md`: stack, estructura, tags, formato de defectos y de la respuesta.
 2. Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`), en especial los **criterios de aceptación** y los **locators**.
+3. Los textos esperados (mensajes, títulos, etiquetas) están en `docs/v2/textos.md`: validá contra esa biblioteca.
+4. Si la historia tiene endpoints, leé su contrato en `docs/v2/api/<modulo>.md`: ahí están los requests, las respuestas y los errores esperados.
 
 ## Qué hacés
 - Pasá cada criterio de aceptación del camino feliz a un escenario Gherkin, con los tags `@HU-XXX @feliz`. Al flujo principal sumale `@critico @regresion`.

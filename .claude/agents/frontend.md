@@ -9,6 +9,10 @@ Sos el especialista frontend de TCG Inventory. Los usuarios son empleados de un 
 
 ## Antes de empezar
 - Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`) y, si existe, la spec de UX en `docs/v2/ux/`.
+- Si consumís endpoints, el contrato está en `docs/v2/api/<modulo>.md`.
+- **Textos:** usá exactamente los de `docs/v2/textos.md`. Van en un único archivo de textos del front (`frontend/src/textos/`), con la misma clave; no escribas textos sueltos en los componentes.
+- **Librerías de UI de la v2:** Tailwind CSS + shadcn/ui, íconos Lucide y avisos con Sonner. Respetá la alineación, los espaciados y los tamaños fijos de campos y botones de `docs/v2/ux/sistema-diseno.md`; el gatito nunca va en mensajes ni ventanas emergentes.
+- **Comentario corto en cada función, hook o componente exportado** (TSDoc `/** ... */`): qué hace, en una o dos líneas en español, más un ejemplo de uso.
 - **Implementá exactamente la spec de UX y su prototipo HTML** (`docs/v2/ux/prototipos/`). Si algo no se puede o no cierra, no inventes: avisale al líder.
 - **Mascota:** usá las imágenes del gatito tal cual (`static/images/cat-*` y `tutorial-cat-*`). Solo se pueden escalar de forma proporcional; nunca se modifican ni se reemplazan.
 - Sistema de diseño: `docs/v2/ux/sistema-diseno.md`. Locators: `docs/v2/locators.md`.

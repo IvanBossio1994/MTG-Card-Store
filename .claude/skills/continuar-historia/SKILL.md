@@ -16,9 +16,10 @@ user-invocable: false
 | `en desarrollo` | Llamar al siguiente agente pendiente de la tabla de tareas (backend → frontend). Cuando todos entregaron, pasar a `en QA`. |
 | `en QA` | **Preguntar:** ¿camino feliz, casos de error o ambos? Y también: ¿ejecutar solo esta historia (`@HU-XXX`, por defecto), esta historia más el smoke (`@critico`), o la regresión completa (`@regresion`)? Llamar solo a `qa-camino-feliz` y/o `qa-casos-error`, indicando el alcance en el prompt. Si hay `DEF` abiertos, pasar a `en corrección`; si no, ir al cierre. |
 | `en corrección` | Llamar al agente del área de cada `DEF`, que arregla solo eso. Después, retest acotado con el mismo QA (lo que falló más `@critico`). Como máximo **2 vueltas**; si sigue fallando, frenar y consultar a la persona a cargo. |
-| Cierre | Mostrar la tabla `Hecho | Cómo probarlo | Pendiente` y pedir la **aceptación final**. Con el OK:
+| Cierre | Mostrar la tabla `Hecho | Cómo probarlo | Pendiente`, y después la tabla de **consumo de tokens** de la sección `Consumo` de la historia (`Agente | Llamadas | Tokens`, con fila de total) y 1 o 2 líneas sobre dónde se gastó más y qué se puede mejorar. Pedir la **aceptación final**. Con el OK:
 - estado `aceptada`;
 - actualizar el índice;
+- si la HU pertenece a una épica, actualizar en la épica su estado y el progreso (`N de M aceptadas`). Si todas quedaron aceptadas, la épica pasa a `cerrada`;
 - en `docs/funcional/documento-funcional.md`, pasar los flujos de la HU de `propuesto · HU-XXX` a `vigente` y subir la versión (MENOR si es funcionalidad nueva, PARCHE si es un bugfix), con una fila en el historial;
 - actualizar `docs/agentes/estado.md`.
 
@@ -27,8 +28,10 @@ Si durante el desarrollo cambió el alcance o QA encontró reglas nuevas, llamá
 **Cómo llamar a cada agente:**
 - Un prompt corto: la ruta de la historia, qué tarea de la tabla le toca y, si es una corrección, qué `DEF-XXX`.
 - No copies la historia en el prompt; el agente la lee.
+- Para pedir cambios sobre algo ya entregado, lanzá un agente **nuevo** que lea los archivos entregados, en lugar de retomar el anterior con `SendMessage`, que arrastra todo su historial. Juntá todos los cambios en una sola llamada. Si el cambio es chico (un par de líneas en un archivo), hacelo vos.
 
 **Después de cada paso:**
 - Anotar una línea en el **Registro** de la historia.
+- Sumar los tokens del agente a la sección **Consumo** de la historia. El dato sale del aviso de fin del agente (`subagent_tokens`) y se anota por llamada, porque retomar un agente que ya trabajó vuelve a cargar todo lo que hizo antes y cada llamada cuesta más que la anterior. El consumo del líder no se puede medir con exactitud, así que no se anota.
 - Contarle a la persona a cargo, en 1 o 2 líneas, qué se hizo y cuál es el próximo paso.
 - Preguntar si sigue. Se avanza **un paso por confirmación**, salvo que la persona a cargo diga "seguí hasta QA" o algo similar.

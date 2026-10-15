@@ -41,6 +41,7 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 | `qa-casos-error` | Validaciones, límites, fallas externas y errores del usuario. Reporta los defectos `DEF-XXX`. |
 
 ### Ciclo de una historia
+0. **Épica:** si un pedido se parte en varias historias, se arma primero una épica en `docs/agentes/epicas/EP-XXX-<tema>.md`, con el caso de uso y la lista de historias. Cada historia indica su épica, y la épica muestra cuántas tiene y cuántas están aceptadas.
 1. **Brief:** el líder muestra una tabla corta (`Qué entendí | Qué conviene | Qué se quita | Orden y agente | Riesgo`) y **espera el OK**.
 2. **Historia:** con el OK, escribe `docs/agentes/historias/HU-XXX-<tema>.md` usando `docs/agentes/plantilla-historia.md`, y la deja en estado `aprobada`.
    - **Funcional:** preguntar *¿documentar caminos felices, alternativos o ambos?* y llamar a `analista-funcional` una vez. Deja los flujos como `propuesto · HU-XXX`.
@@ -61,14 +62,31 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - El contexto se pasa por archivo: al agente le llega la ruta de la historia y su tarea en pocas líneas, y responde con formato fijo en 150 palabras como máximo.
 - Retest acotado: lo que falló más un smoke. La regresión completa solo al cerrar una fase o si se pide.
 - Lo trivial (textos, docs, cambios de una línea) lo hace el líder sin delegar.
+- **Cuándo NO usar un agente.** El líder lo hace solo cuando el cambio:
+  - toca pocos archivos que ya conoce;
+  - se puede ubicar con Grep sin explorar;
+  - no necesita la especialidad del agente (diseñar algo nuevo, programar una funcionalidad, escribir tests).
+
+  Ejemplos: mover o alinear bloques de un prototipo, cambiar un color o un texto, sacar un elemento, actualizar docs o reglas. **Por qué:** un agente arranca de cero y tiene que leer la historia, las reglas y los archivos antes de cambiar nada. Eso cuesta entre 40 y 100 mil tokens, contra unos pocos miles si lo hace el líder. Se usa agente cuando hay que crear algo nuevo o el cambio es grande.
+- **Agente nuevo para cada vuelta de cambios:** cuando hay que pedir cambios sobre algo que ya entregó un agente (diseño, código o tests), no se retoma ese agente. Retomarlo vuelve a cargar todo su historial, y cada vuelta cuesta más que la anterior. Se lanza uno nuevo del mismo tipo, que lee solo los archivos entregados (la spec, el prototipo, el código) y la lista de cambios. Los cambios del pedido se juntan en una sola llamada.
 
 ### Reglas generales
 - **Explicar en simple:** español llano; si aparece un término técnico, explicarlo en una frase. Decidir solo lo técnico y preguntar lo que es de negocio.
 - **Nombres:** todo lo del negocio en español (endpoints, campos JSON, clases y métodos: `ReservaService.entregarReserva`). Los sufijos de Spring (`Controller`, `Service`, `Repository`) quedan en inglés.
 - **Locators:** `data-testid="<pantalla>-<elemento>[-<id>]"`, con el catálogo en `docs/v2/locators.md`.
+- **Textos:** todos los textos visibles (títulos, etiquetas, ayudas, botones y mensajes de éxito, aviso y error) viven en la biblioteca `docs/v2/textos.md`, con su clave.
+  - UX busca ahí antes de escribir un texto nuevo, reutiliza lo que ya hay y suma lo nuevo.
+  - Frontend los usa tal cual.
+  - QA valida contra esa biblioteca.
 - **Mascota:** el gatito (`static/images/cat-*` y `tutorial-cat-*`) es la mascota oficial. Se usa tal cual, sin redibujarlo ni modificarlo (`docs/v2/ux/sistema-diseno.md`).
 - **Diseño:** UX entrega una spec y un prototipo HTML en `docs/v2/ux/`. Por ahora no se usa Figma.
 - **Git:** una rama por historia, que sale de `v2/dev` y se llama `v2/feature/` + el nombre del archivo de la historia sin `.md` (`HU-XXX-<tema>`, donde el tema es el que se decida para esa historia). Ejemplo: `HU-000-documento-funcional-base.md` → `v2/feature/HU-000-documento-funcional-base`. Commit y push solo cuando lo pida.
+- **Ver un prototipo HTML (obligatorio antes de mostrárselo a la persona a cargo):** el líder lo revisa con sus propios ojos. La extensión de Chrome no abre archivos `file://`, por eso se sirve con el servidor web que ya trae el JDK 21 (no hay que instalar nada):
+  1. En segundo plano: `& "C:\Users\sofii\.jdks\temurin-21.0.12.1\bin\jwebserver.exe" -p 8765 -b 127.0.0.1 -d "E:\TCG-inventory\backend"`. Sirve desde la raíz del repo, así cargan las imágenes del gatito.
+  2. Abrir `http://127.0.0.1:8765/docs/v2/ux/<pantalla>/prototipo.html` en una **pestaña nueva** del Chrome abierto y sacar una captura. Revisar alineación, tamaños, textos cortados y estados de la barra del prototipo.
+  3. Cerrar la pestaña y detener el servidor.
+  4. Recién ahí abrírselo a la persona a cargo (`Start-Process` con la ruta del archivo).
+  Si Chrome falla, no reintentar: avisar que no se pudo revisar.
 - **Levantar la app:** solo cuando haga falta ver algo funcionando que no se pueda comprobar compilando ni con los tests. Nunca "por las dudas". Los tests E2E de QA (Playwright) no cuentan, porque arrancan la app por su cuenta. Cuando haga falta:
   1. Arrancarla con el JDK 21 (`mvn.cmd -q spring-boot:run`, en segundo plano).
   2. Verla en el **Chrome que ya está abierto**, siempre en una **pestaña nueva** (Claude in Chrome).
