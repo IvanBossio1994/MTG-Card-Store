@@ -36,6 +36,7 @@ El gatito es la mascota oficial. Usá **solo** los archivos existentes listados 
 **El gatito no va en mensajes ni en ventanas emergentes** (éxito, error, advertencia, confirmación o pregunta): ahí se usan íconos de la librería. Queda solo para la pantalla de carga, el tutorial y los estados vacíos.
 
 ## Estilo visual (obligatorio)
+- **Pantalla de referencia:** Configuración (`docs/v2/ux/configuracion/`) es el ejemplo aprobado para todos los módulos. Copiá su estructura, sus componentes y su CSS y cambiá solo el contenido. Lo nuevo (tablas, por ejemplo) se suma al sistema de diseño.
 - **Identidad:** es una app para una comiquería o tienda de cartas, con un estilo **moderno, minimalista y cálido ("cozy")**: tonos neutros cálidos, mucho aire, bordes redondeados, sombras suaves, un solo color de acento y una tipografía sans moderna. Nada de bordes gruesos, efectos de cómic ni look de web vieja. La personalidad la ponen el gatito y algún detalle de color, no la decoración.
 - **Librerías de la v2:** Tailwind CSS + shadcn/ui (componentes sobre Radix), íconos Lucide y avisos emergentes con Sonner. El prototipo usa lo mismo por CDN para que se vea igual que la app final.
 - **Alineación y espaciado:** todo alineado a una grilla, con el contenido pegado al menú lateral (alineado a la izquierda, sin márgenes enormes a los costados) y con márgenes y espacios de la escala de tokens. Solo se centran los modales y los estados vacíos o de carga. No agregues navegación interna (índices, pestañas) en pantallas cortas. Nada de valores sueltos.

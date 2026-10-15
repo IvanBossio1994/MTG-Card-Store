@@ -3,7 +3,14 @@
 La usan `qa-camino-feliz` y `qa-casos-error`.
 
 ## Stack de automatización
-- **Gherkin en español** (`# language: es`): Característica / Antecedentes / Escenario / Esquema del escenario / Dado / Cuando / Entonces / Y / Ejemplos.
+- **Gherkin con palabras clave en inglés y texto en español**: `Feature`, `Background`, `Scenario`, `Scenario Outline`, `Given`, `When`, `Then`, `And`, `But` y `Examples`. Los archivos no llevan `# language: es`. Ejemplo:
+  ```gherkin
+  @HU-003 @CFG-F01 @feliz
+  Scenario: Guardar el nombre de la tienda
+    Given que estoy en la pantalla de Configuración
+    When cambio el nombre de la tienda a "Mazo Mágico" y guardo
+    Then veo el mensaje "Tienda guardada."
+  ```
 - **Cucumber-JVM + JUnit Platform**: los pasos se implementan en Java.
 - **Playwright para Java** maneja el navegador. Se ubican los elementos **solo** con `page.getByTestId("...")`; nada de CSS ni XPath, salvo que no haya otra opción, y en ese caso se reporta como deuda.
 - Se corre contra la app con el perfil `e2e`, que usa los repositorios en memoria con datos de ejemplo, así no depende de Google ni de internet.
@@ -12,10 +19,11 @@ La usan `qa-camino-feliz` y `qa-casos-error`.
 
 ## Estructura
 ```
-src/test/resources/features/<modulo>/<tema>.feature   escenarios
-src/test/java/com/tcg/bot/e2e/pasos/                  step definitions (se reutilizan entre módulos)
-src/test/java/com/tcg/bot/e2e/paginas/                Page Objects, uno por pantalla
-src/test/java/com/tcg/bot/e2e/soporte/                hooks, arranque de la app y del navegador, evidencias
+src/test/resources/features/<modulo>/<modulo>.feature  un feature por módulo; cada HU suma sus escenarios con sus tags
+src/test/java/com/tcg/bot/e2e/<modulo>/<Modulo>Pasos.java     steps del módulo
+src/test/java/com/tcg/bot/e2e/<modulo>/<Modulo>Pantalla.java  Page Object del módulo, con todas sus acciones
+src/test/java/com/tcg/bot/e2e/compartido/                     PantallaBase (abrir módulo, esperar carga, leer mensajes) y objetos de piezas comunes (MarcoApp, CapaCarga); cada <Modulo>Pantalla extiende PantallaBase
+src/test/java/com/tcg/bot/e2e/soporte/                         hooks, arranque de la app y del navegador, evidencias
 target/evidencias/                                    capturas y trazas de Playwright (no se versionan)
 ```
 

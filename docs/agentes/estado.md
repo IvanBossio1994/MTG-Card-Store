@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-14 (cierre de HU-001).
+> Última actualización: 2026-10-14 (cierre de HU-002).
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -46,6 +46,7 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 |---|---|---|
 | P1 | Documento funcional base | Documentar los módulos de la v1 que faltan (INV, PRE, RES, CAJ, MOV, IMP, CFG) para llegar a 1.0.0. |
 | P1 | OAuth o cuenta de servicio | Definir en HU-003 cómo se conecta la app al Sheet (ver Google, punto 7). Afecta el mensaje "sin permiso" y el texto "Conectado como" del diseño de Configuración. |
+| P2 | E2E con Sheet temporal | Que QA pueda probar contra Google de verdad: cada corrida crea un Sheet nuevo, lo usa y lo borra al terminar, sin tocar el del local. Va en otra rama (pedido de la dueña, 2026-10-14). |
 | P2 | Publicar la app | Decidir opción A/B/C de la guía de Google para abrir a otros comercios. |
 | P1 | Escritura por fila | `GoogleSheetsService.updateQuantity` (~240-268) escribe por `rowIndex` sin verificar que la fila siga siendo esa carta. Si alguien ordena o borra filas a mano, escribe en otra carta. Lectura y escritura sin lock. |
 | P1 | Cache Card Kingdom | La descarga no está sincronizada y la escritura no es atómica (`CardKingdomApiService`). Si hay más de un resultado posible para una carta, devuelve `null` y no actualiza el precio. |
@@ -72,6 +73,22 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
   - Quedan en `docs/v2/ux/configuracion/` (spec y prototipo), el sistema de diseño, `docs/v2/textos.md` y `docs/v2/locators.md`.
   - Reglas de diseño: estilo cozy con acento azul y barra lateral; nada se mueve; columnas alineadas; tamaños fijos; regla de espera; errores específicos.
   - Reglas del equipo: épicas, consumo de tokens por HU, agente nuevo para cada vuelta de cambios, cuándo no usar agente y revisar los prototipos en Chrome con `jwebserver`.
+- 2026-10-14: **HU-002 aceptada:** base técnica v2.
+  - **Backend:** `compartido` con `EstadoAppController` (`/api/v1/estado-app`), `ManejadorErroresApi` (ProblemDetail en español), `ModoPruebaConfig` (perfil `e2e`) y `FrontendConfig` (`/app`), más springdoc.
+  - **Frontend:** React, TS, Tailwind 4, shadcn y Lucide en `frontend/`, compilado por Maven (Node 22), con `MarcoApp`.
+  - **Reglas nuevas:**
+    - backend y frontend en HU separadas;
+    - QA E2E solo en la HU de frontend conectado;
+    - todo por módulo;
+    - sin archivos "porque sí";
+    - composición en lugar de herencia;
+    - código moderno;
+    - nombres descriptivos;
+    - contrato primero;
+    - el Sheet real nunca se usa en pruebas;
+    - compilar no es testear;
+    - commits con el formato `[agente] descripción`.
+  - **Próxima:** HU-003 (Configuración · backend).
 - 2026-10-14: JDK 21 (Temurin) en `C:\Users\sofii\.jdks\temurin-21.0.12.1`. El proyecto compila.
 
 ## Glosario
@@ -79,7 +96,7 @@ El glosario se movió a `docs/funcional/documento-funcional.md`, sección "Glosa
 
 ## Aprendizajes
 _(Anotar acá lo que se descubra trabajando: trampas del Sheet, comportamientos raros, preferencias de la persona a cargo del proyecto.)_
-- 2026-10-14: `spring-boot:run` arranca `DesktopLauncher`: abre una ventana propia en un puerto al azar (no 8080) y Windows pide permiso de firewall para Java la primera vez.
+- 2026-10-14: `spring-boot:run` arranca `DesktopLauncher` por defecto: abre una ventana propia en un puerto al azar y apaga la app al cerrarla. Para levantarla sin ventana: `-Dapp.clase-principal=com.tcg.bot.TcgBotApplication` (propiedad del `pom.xml`, HU-002). Windows pide permiso de firewall para Java la primera vez.
 - 2026-10-14: la extensión de Chrome no abre `file://`. Para ver un prototipo se sirve el repo con `jwebserver` del JDK (puerto 8765).
 - 2026-10-14: HU-001 costó 349 mil tokens; el 92 % se fue en retomar al mismo agente UX en cada vuelta. Con un agente nuevo por vuelta y los ajustes chicos hechos por el líder, las últimas 8 vueltas no sumaron tokens de agentes.
 - 2026-10-14: estado base. `mvn -q test` pasa (exit 0). `BackendApplicationTests` levanta el contexto completo y descarga la pricelist real de Card Kingdom, así que necesita internet.

@@ -20,6 +20,7 @@ Analizá lo justo:
 
 - Una fila por tema, frases cortas, sin jerga.
 - Si el pedido es grande, proponé partirlo en varias HU y mostralas en la tabla. Esas HU forman una **épica**.
+- **Si necesita backend y frontend, siempre son dos HU:** una de backend (API, contrato y tests; se prueba con Postman o Swagger) y otra de frontend (la pantalla contra ese contrato), en ese orden. Nunca las dos juntas en una misma HU.
 - Si el pedido es una HU que ya está planificada en una épica abierta (`docs/agentes/epicas/`), partí de lo que dice la épica.
 - Cerrá con: **"¿Apruebo y armo la historia?"** y **esperá la respuesta**.
 
@@ -31,7 +32,7 @@ Analizá lo justo:
 - Número: el siguiente al último de `docs/agentes/historias/README.md`.
 - En el campo **Épica** de la HU poné `EP-XXX` y, en la épica, actualizá el estado de esa HU.
 - Creá `docs/agentes/historias/HU-XXX-<tema>.md` desde `docs/agentes/plantilla-historia.md`, con estado `aprobada`. En el campo **Rama** poné `v2/feature/` + el nombre del archivo sin `.md`.
-- Criterios de aceptación en Dado / Cuando / Entonces: los del camino feliz y los de error que importan.
+- Criterios de aceptación en Given / When / Then / And (palabras clave en inglés, texto en español): los del camino feliz y los de error que importan.
 - Incluí los locators esperados y el contrato de API si aplica.
 - Agregá la fila al índice `historias/README.md`.
 - **Documento funcional:** preguntá *¿documentar caminos felices, alternativos o ambos?* y llamá una vez a `analista-funcional`, con la ruta de la HU y el modo. Deja los flujos `propuesto · HU-XXX` y anota sus IDs en la historia.

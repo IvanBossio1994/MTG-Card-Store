@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/compartido/estilos/estilos.css",
+    "baseColor": "stone",
+    "cssVariables": false,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/compartido/componentes",
+    "ui": "@/compartido/componentes/ui",
+    "utils": "@/compartido/estilos/combinarClases",
+    "lib": "@/compartido",
+    "hooks": "@/compartido/hooks"
+  },
+  "iconLibrary": "lucide"
+}

@@ -18,17 +18,17 @@
 <Contexto en 3 a 6 líneas: situación actual, qué cambia, pantallas o endpoints involucrados, archivos relevantes.>
 
 ## Criterios de aceptación
-Escritos para que QA los pase directo a Gherkin.
+Escritos para que QA los pase directo a Gherkin: palabras clave en inglés (Given / When / Then / And) y texto en español.
 
 **CA1: <nombre>**
-- **Dado** <estado inicial>
-- **Cuando** <acción>
-- **Entonces** <resultado observable>
+- **Given** <estado inicial>
+- **When** <acción>
+- **Then** <resultado observable>
 
 **CA2: <nombre>** (sumar los casos de error relevantes)
-- **Dado** ...
-- **Cuando** ...
-- **Entonces** ...
+- **Given** ...
+- **When** ...
+- **Then** ...
 
 ## Locators (`data-testid`)
 | data-testid | Elemento |

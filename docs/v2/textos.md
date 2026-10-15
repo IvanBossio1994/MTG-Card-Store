@@ -48,6 +48,8 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `menu.caja` | Caja | HU-001 |
 | `menu.movimientos` | Movimientos | HU-001 |
 | `menu.configuracion` | Configuración | HU-001 |
+| `menu.etiqueta.menu-principal` | Menú principal (etiqueta de accesibilidad del menú, no se ve) | HU-002 |
+| `general.texto.nombre-tienda-por-defecto` | Inventory Manager (nombre que se muestra si la tienda todavía no cargó el suyo; es el de la v1) | HU-002 |
 
 ## Configuración (HU-001)
 | Clave | Texto | Tipo | Flujo | Locator |

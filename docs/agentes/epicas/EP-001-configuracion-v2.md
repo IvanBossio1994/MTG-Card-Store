@@ -31,10 +31,13 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 | HU | Título | Estado | Depende de |
 |---|---|---|---|
 | [HU-001](../historias/HU-001-diseno-configuracion.md) | Diseño nuevo de Configuración | aceptada | — |
-| HU-002 | Base técnica v2 (React en Maven, OpenAPI, errores, perfil e2e, arnés Cucumber + Playwright con 1 smoke) | planificada | — |
-| HU-003 | Configuración v2 funcionando (API + pantalla + arreglo de la pestaña + sesión vencida) | planificada | HU-001, HU-002 |
+| [HU-002](../historias/HU-002-base-tecnica-v2.md) | Base técnica v2 (React en Maven, OpenAPI, errores, perfil e2e, arnés Cucumber + Playwright con 1 smoke) | aceptada | — |
+| HU-003 | Configuración v2 · backend: contrato `docs/v2/api/configuracion.md`, `ConfiguracionController`, arreglo de la pestaña (renombrar o crear) y sesión vencida (401) | planificada | HU-002 |
+| HU-004 | Configuración v2 · frontend: pantalla según el prototipo, contra la API de HU-003. **Incluye QA E2E:** arnés Cucumber + Playwright (`PantallaBase`, `MarcoApp`), smoke `@critico` (heredado de HU-002) y los escenarios de los flujos CFG | planificada | HU-001, HU-003 |
 
-**Progreso:** 1 de 3 historias aceptadas.
+**Progreso:** 2 de 4 historias aceptadas.
+
+> 2026-10-14: la antigua HU-003 se partió en back (HU-003) y front (HU-004), por la regla nueva de historias separadas para backend y frontend.
 
 ## Decisiones y pendientes
 - 2026-10-14: el bug de la pestaña se arregla en la v2 (HU-003), no en la v1.
