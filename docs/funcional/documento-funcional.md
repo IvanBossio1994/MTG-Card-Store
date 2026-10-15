@@ -91,10 +91,10 @@ _(pendiente)_
 _(pendiente)_
 
 ## Configuración y tutorial (CFG)
-> Pantalla Configuración v2 (diseño en HU-001, se programa en HU-003). Cada bloque se guarda por separado, sin recargar la pantalla; el resultado se muestra junto al bloque. Hoy (v1) hay un solo botón que guarda todo y recarga. El tutorial no está documentado todavía.
+> Pantalla Configuración v2 (diseño en HU-001; la API se programa en HU-003 y la pantalla en HU-004). Cada bloque se guarda por separado, sin recargar la pantalla; el resultado se muestra junto al bloque. Hoy (v1) hay un solo botón que guarda todo y recarga. El tutorial no está documentado todavía.
 
 ### Caminos felices
-#### CFG-F01: Guardar identidad de la tienda (nombre y logo) `diseñado · HU-001 → HU-003`
+#### CFG-F01: Guardar identidad de la tienda (nombre y logo) `diseñado · HU-001 → HU-004`
 - **Actor:** dueño del comercio · **Disparador:** botón Guardar del bloque Identidad.
 - **Precondiciones:** sesión de Google iniciada.
 - **Pasos:** 1. Escribe el nombre de la tienda. 2. Opcional: sube un logo (PNG, JPG o WEBP, hasta 2 MB) o marca quitar el logo. 3. Guarda.
@@ -102,7 +102,7 @@ _(pendiente)_
 - **Reglas de negocio:** el nombre es obligatorio. El logo no puede superar 2 MB. Solo se aceptan PNG, JPG o WEBP.
 - **Pantalla / locators:** `configuracion-campo-nombre-tienda`, `configuracion-boton-subir-logo`, `configuracion-boton-guardar-tienda`, `configuracion-mensaje-exito` · **Endpoint:** `PUT /api/v1/configuracion/tienda`, `POST /api/v1/configuracion/tienda/logo` · **Sheet:** no usa.
 
-#### CFG-F02: Conectar el Sheet y elegir la pestaña del inventario `diseñado · HU-001 → HU-003`
+#### CFG-F02: Conectar el Sheet y elegir la pestaña del inventario `diseñado · HU-001 → HU-004`
 - **Actor:** dueño · **Disparador:** botón Guardar del bloque Inventario.
 - **Precondiciones:** sesión de Google iniciada; el Sheet es del Gmail conectado o está compartido con él.
 - **Pasos:** 1. Pega el link o ID del Sheet. 2. Escribe el nombre de la pestaña del inventario. 3. Guarda. 4. La app verifica el acceso, crea las pestañas y columnas que falten y sincroniza el inventario.
@@ -110,7 +110,7 @@ _(pendiente)_
 - **Reglas de negocio:** acepta link completo o solo el ID. Ambos campos son obligatorios. Ver GOO-F02 para la conexión inicial.
 - **Pantalla / locators:** `configuracion-campo-sheet`, `configuracion-campo-pestana-inventario`, `configuracion-boton-guardar-sheet` · **Endpoint:** `PUT /api/v1/configuracion/sheet` · **Sheet:** pestaña de inventario (y alta de Movimientos, Caja, Reservas, Clientes si faltan).
 
-#### CFG-F03: Renombrar la pestaña única del Sheet `diseñado · HU-001 → HU-003`
+#### CFG-F03: Renombrar la pestaña única del Sheet `diseñado · HU-001 → HU-004`
 - **Actor:** dueño · **Disparador:** guardar el bloque Inventario.
 - **Precondiciones:** el Sheet tiene una sola pestaña (ej. «Hoja 1») y no existe una con el nombre pedido (ej. «Inventario»).
 - **Pasos:** 1. Escribe «Inventario» como nombre de pestaña. 2. Guarda.
@@ -118,21 +118,21 @@ _(pendiente)_
 - **Reglas de negocio:** corrige el comportamiento actual (v1), que adopta la pestaña existente y pisa el nombre guardado. Solo se renombra si hay exactamente una pestaña; con varias y sin la pedida, se crea una pestaña nueva (CFG-A07).
 - **Pantalla / locators:** `configuracion-mensaje-exito` · **Endpoint:** `PUT /api/v1/configuracion/sheet` (respuesta con la pestaña renombrada) · **Sheet:** nombre de la pestaña única.
 
-#### CFG-F04: Guardar la regla de precio `diseñado · HU-001 → HU-003`
+#### CFG-F04: Guardar la regla de precio `diseñado · HU-001 → HU-004`
 - **Actor:** dueño · **Disparador:** botón Guardar del bloque Precios.
 - **Pasos:** 1. Carga la cotización ARS por USD de Card Kingdom. 2. Elige el múltiplo de redondeo. 3. Carga el precio bulk por rareza (common, uncommon, rare, mythic, tierra básica). 4. Opcional: indica la carpeta de cache de Card Kingdom. 5. Guarda.
 - **Resultado:** mensaje de éxito; los precios se recalculan con la regla nueva.
 - **Reglas de negocio:** cotización, múltiplo y cada precio bulk deben ser mayores a cero. La carpeta de cache debe ser una ruta válida.
 - **Pantalla / locators:** `configuracion-campo-cotizacion`, `configuracion-campo-redondeo`, `configuracion-campo-bulk-<rareza>`, `configuracion-boton-guardar-precios` · **Endpoint:** `PUT /api/v1/configuracion/precios` · **Sheet:** no usa.
 
-#### CFG-F05: Guardar la lógica de puntos `diseñado · HU-001 → HU-003`
+#### CFG-F05: Guardar la lógica de puntos `diseñado · HU-001 → HU-004`
 - **Actor:** dueño · **Disparador:** botón Guardar del bloque Puntos.
 - **Pasos:** 1. Escribe cuántos pesos equivalen a un punto. 2. Guarda.
 - **Resultado:** mensaje de éxito; los puntos de clientes se calculan con el valor nuevo.
 - **Reglas de negocio:** pesos por punto mayor a cero.
 - **Pantalla / locators:** `configuracion-campo-pesos-por-punto`, `configuracion-boton-guardar-puntos` · **Endpoint:** `PUT /api/v1/configuracion/puntos` · **Sheet:** no usa.
 
-#### CFG-F06: Ver la configuración y estados de la pantalla `diseñado · HU-001 → HU-003`
+#### CFG-F06: Ver la configuración y estados de la pantalla `diseñado · HU-001 → HU-004`
 - **Actor:** dueño · **Disparador:** abrir Configuración.
 - **Pasos:** 1. La pantalla muestra "cargando". 2. Aparecen los cuatro bloques con los valores guardados. 3. Al guardar un bloque pasa a "guardando" y luego a "guardado" o "error", sin tocar los otros bloques.
 - **Reglas de negocio:** un error en un bloque no pierde lo escrito en los demás.
@@ -143,15 +143,15 @@ Cada error se muestra en español llano, junto al campo o bloque, diciendo qué 
 
 | ID | Situación | Mensaje / comportamiento | Estado |
 |---|---|---|---|
-| CFG-A01 | Nombre de tienda vacío | "Ingresá el nombre de la tienda." No guarda. | `diseñado · HU-001 → HU-003` |
-| CFG-A02 | Logo de más de 2 MB o formato no PNG/JPG/WEBP | "El logo no puede superar los 2 MB" / "debe ser PNG, JPG o WEBP". No cambia el logo. | `diseñado · HU-001 → HU-003` |
-| CFG-A03 | Link o ID de Sheet inválido o vacío | Error junto al campo del Sheet pidiendo pegar el link completo o el ID. No guarda. | `diseñado · HU-001 → HU-003` |
-| CFG-A04 | Sheet sin permiso para el Gmail conectado | Error 403 en el bloque Inventario: compartir el Sheet con el Gmail conectado o usar otro Sheet. | `diseñado · HU-001 → HU-003` |
-| CFG-A05 | Sesión de Google vencida (en Prueba dura 7 días) | Error 401 en el bloque: volver a iniciar sesión con Google (GOO-F01) y reintentar. | `diseñado · HU-001 → HU-003` |
-| CFG-A06 | Número inválido o menor o igual a cero (cotización, múltiplo, bulk, pesos por punto) | Error junto al campo: "debe ser mayor a cero". No guarda el bloque. | `diseñado · HU-001 → HU-003` |
-| CFG-A07 | Nombre de pestaña vacío, o el Sheet tiene varias pestañas y no existe la pedida | Vacío: error junto al campo de pestaña (hoy "Ingresa el nombre de la hoja…"). Varias pestañas sin la pedida: se crea la pestaña nueva con sus encabezados y se avisa ("Se creó la pestaña «X»"); las demás no se tocan. | `diseñado · HU-001 → HU-003` |
-| CFG-A08 | Carpeta de cache no válida | "La carpeta de cache no es válida." | `diseñado · HU-001 → HU-003` |
-| CFG-A09 | Se guardó pero falló la sincronización con Card Kingdom | Aviso de que la configuración quedó guardada pero no se pudo sincronizar ahora; reintentar luego. | `diseñado · HU-001 → HU-003` |
+| CFG-A01 | Nombre de tienda vacío | "Ingresá el nombre de la tienda." No guarda. | `diseñado · HU-001 → HU-004` |
+| CFG-A02 | Logo de más de 2 MB o formato no PNG/JPG/WEBP | "El logo no puede superar los 2 MB" / "debe ser PNG, JPG o WEBP". No cambia el logo. | `diseñado · HU-001 → HU-004` |
+| CFG-A03 | Link o ID de Sheet inválido o vacío | Error junto al campo del Sheet pidiendo pegar el link completo o el ID. No guarda. | `diseñado · HU-001 → HU-004` |
+| CFG-A04 | Sheet sin permiso para el Gmail conectado | Error 403 en el bloque Inventario: compartir el Sheet con el Gmail conectado o usar otro Sheet. | `diseñado · HU-001 → HU-004` |
+| CFG-A05 | Sesión de Google vencida (en Prueba dura 7 días) | Error 401 en el bloque: volver a iniciar sesión con Google (GOO-F01) y reintentar. | `diseñado · HU-001 → HU-004` |
+| CFG-A06 | Número inválido o menor o igual a cero (cotización, múltiplo, bulk, pesos por punto) | Error junto al campo: "debe ser mayor a cero". No guarda el bloque. | `diseñado · HU-001 → HU-004` |
+| CFG-A07 | Nombre de pestaña vacío, o el Sheet tiene varias pestañas y no existe la pedida | Vacío: error junto al campo de pestaña (hoy "Ingresa el nombre de la hoja…"). Varias pestañas sin la pedida: se crea la pestaña nueva con sus encabezados y se avisa ("Se creó la pestaña «X»"); las demás no se tocan. | `diseñado · HU-001 → HU-004` |
+| CFG-A08 | Carpeta de cache no válida | "La carpeta de cache no es válida." | `diseñado · HU-001 → HU-004` |
+| CFG-A09 | Se guardó pero falló la sincronización con Card Kingdom | Aviso de que la configuración quedó guardada pero no se pudo sincronizar ahora; reintentar luego. | `diseñado · HU-001 → HU-004` |
 
 ## Google: sesión y Sheet (GOO)
 > Requisito previo: claves del cliente OAuth en `config/google-oauth.properties` (ver `docs/google/guia-credenciales-oauth.md`). Mientras la app esté en modo Prueba, solo entran los Gmail cargados como usuarios de prueba (hoy `TCGStorehelper@gmail.com`).

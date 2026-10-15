@@ -10,7 +10,10 @@ Sos el especialista frontend de TCG Inventory. Los usuarios son empleados de un 
 ## Antes de empezar
 - Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`) y, si existe, la spec de UX en `docs/v2/ux/`.
 - Si consumís endpoints, el contrato está en `docs/v2/api/<modulo>.md`.
+- **Código moderno:** solo componentes de función con hooks, TS `strict` sin `any`; lo común son componentes y hooks en `compartido/`, nunca clases base (reglas 8 y 9 de `estructura-carpetas.md`).
+- **Sin archivos de más:** nada de componentes que solo envuelven a otro ni de carpetas vacías; algo va en su propio archivo solo si se reutiliza. Ver la regla 7 de `estructura-carpetas.md`.
 - **Textos:** usá exactamente los de `docs/v2/textos.md`. Van en un único archivo de textos del front (`frontend/src/textos/`), con la misma clave; no escribas textos sueltos en los componentes.
+- **Pantalla de referencia:** Configuración (`docs/v2/ux/configuracion/prototipo.html`) es el ejemplo visual para todos los módulos. Sus piezas (marco, tarjeta, campo, botón con "Guardando…", mensaje de bloque, error de campo y capa de carga) se arman una vez como componentes y se reutilizan.
 - **Librerías de UI de la v2:** Tailwind CSS + shadcn/ui, íconos Lucide y avisos con Sonner. Respetá la alineación, los espaciados y los tamaños fijos de campos y botones de `docs/v2/ux/sistema-diseno.md`; el gatito nunca va en mensajes ni ventanas emergentes.
 - **Comentario corto en cada función, hook o componente exportado** (TSDoc `/** ... */`): qué hace, en una o dos líneas en español, más un ejemplo de uso.
 - **Implementá exactamente la spec de UX y su prototipo HTML** (`docs/v2/ux/prototipos/`). Si algo no se puede o no cierra, no inventes: avisale al líder.

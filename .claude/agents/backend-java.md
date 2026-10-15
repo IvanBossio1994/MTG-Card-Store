@@ -32,7 +32,11 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
    * Ejemplo: Sheet con "Hoja 1" + pedido "Inventario" → devuelve RENOMBRADA y la pestaña pasa a llamarse "Inventario".
    */
   ```
-- **Nombres:** el negocio en español (`entregarReserva`, `cantidadDisponible`). Los sufijos de Spring quedan en inglés.
+- **Nombres:** el negocio en español (`entregarReserva`, `cantidadDisponible`). Los sufijos de Spring quedan en inglés. Tienen que ser **descriptivos**, que se entienda qué hace sin ser programador: `/api/v1/estado-app` (no `/salud`), `EstadoAppController`. Las rutas van en minúscula con guiones.
+- **Código moderno y sin herencia innecesaria:** seguí las reglas 8 y 9 de `estructura-carpetas.md`. Nada de `BaseController` ni `BaseService`; la única base es la de acceso al Sheet.
+- **Sin archivos de más:** service solo si hay reglas de negocio; DTO en `dto/` solo si lo usa más de una clase (si no, `record` adentro del controller). Ver la regla 7 de `estructura-carpetas.md`.
+- **Contrato primero:** no programes un endpoint sin haber escrito o actualizado antes su contrato en `docs/v2/api/<modulo>.md`.
+- **Nunca toques el Sheet real en los tests:** usá el repositorio en memoria o el perfil `e2e`.
 
 ## Reglas de datos
 - El Google Sheet es la fuente de verdad y también se edita a mano.

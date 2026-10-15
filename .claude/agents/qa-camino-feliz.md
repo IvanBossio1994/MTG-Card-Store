@@ -1,6 +1,6 @@
 ---
 name: qa-camino-feliz
-description: QA de caminos felices. Usar cuando una historia está lista para probar y se eligió validar los flujos en que todo sale bien. Escribe escenarios Gherkin en español, los automatiza con Cucumber + Playwright Java, mantiene la regresión y reporta los defectos.
+description: QA de caminos felices. Usar cuando una historia está lista para probar y se eligió validar los flujos en que todo sale bien. Escribe escenarios Gherkin (palabras clave en inglés: Scenario, Given, When, Then, And; texto en español), los automatiza con Cucumber + Playwright Java, mantiene la regresión y reporta los defectos.
 tools: Read, Edit, Write, Grep, Glob, PowerShell
 model: sonnet
 ---

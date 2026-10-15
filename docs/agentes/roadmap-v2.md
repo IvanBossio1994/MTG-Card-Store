@@ -18,7 +18,7 @@
 | API | REST `/api/v1/...` en español, DTOs `record` + `@Valid`, errores `ProblemDetail` | Contratos reales. |
 | Contrato | springdoc-openapi (`/swagger-ui`). El front genera sus tipos con `openapi-typescript`. | Si cambia el contrato, el front deja de compilar. |
 | Datos | Un `XRepository` por módulo, con implementación Sheets (real) y EnMemoria (perfil `e2e`) | QA no depende de Google ni de internet, y se puede desarrollar sin credenciales. |
-| E2E | Cucumber-JVM (Gherkin en español) + Playwright Java + JUnit 5, con Maven | Mismo stack que conoce la persona a cargo (Java, Maven, data-testid). Espera sola a los elementos, así hay menos pruebas que fallan al azar que con Selenium. |
+| E2E | Cucumber-JVM (Gherkin con palabras clave en inglés y texto en español) + Playwright Java + JUnit 5, con Maven | Mismo stack que conoce la persona a cargo (Java, Maven, data-testid). Espera sola a los elementos, así hay menos pruebas que fallan al azar que con Selenium. |
 | Capas de test | Unitarias (servicios) → API (MockMvc) → E2E (flujos críticos) → Vitest (front) | Pirámide de tests. |
 | Locators | `data-testid="<pantalla>-<elemento>[-<id>]"` (`docs/v2/locators.md`) | Contrato entre UX, front y QA. |
 | Nombres | El negocio en español; los sufijos de Spring en inglés | Decisión de la persona a cargo. |

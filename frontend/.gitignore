@@ -1,0 +1,4 @@
+# Node que baja frontend-maven-plugin y dependencias de npm
+node/
+node_modules/
+*.tsbuildinfo

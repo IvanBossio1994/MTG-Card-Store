@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/* Tokens del sistema de diseño (docs/v2/ux/sistema-diseno.md). Se usan como clases: bg-arena, text-acento, border-borde… */
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-arena: #faf7f2;
+  --color-tinta: #292524;
+  --color-suave: #78716c;
+  --color-borde: #e7e2d9;
+  --color-campo: #d6d0c4;
+
+  --color-acento: #2b5fa6;
+  --color-acento-hover: #214b85;
+  --color-acento-suave: #eaf1fa;
+
+  --color-exito: #0a6b3d;
+  --color-exito-suave: #ecf8f1;
+  --color-exito-borde: #bfe6cf;
+
+  --color-aviso: #7a4b00;
+  --color-aviso-suave: #fff6dc;
+  --color-aviso-borde: #f1dca0;
+
+  --color-error: #b3261e;
+  --color-error-suave: #fdeceb;
+  --color-error-borde: #f3c3bf;
+
+  --color-rareza-common: #1c1917;
+  --color-rareza-uncommon: #a3acb5;
+  --color-rareza-rare: #c8a03a;
+  --color-rareza-mythic: #e2711d;
+  --color-rareza-tierra: #7b8f85;
+
+  --shadow-tarjeta: 0 1px 2px rgba(41, 37, 36, 0.04), 0 6px 20px rgba(41, 37, 36, 0.05);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Foco visible: anillo de 3 px del acento (igual que el prototipo de referencia) */
+  a:focus-visible,
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(43, 95, 166, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

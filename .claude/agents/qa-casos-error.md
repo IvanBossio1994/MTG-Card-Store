@@ -1,6 +1,6 @@
 ---
 name: qa-casos-error
-description: QA de casos de error y borde. Usar cuando una historia está lista para probar y se eligió validar los errores, las validaciones y los límites. Escribe escenarios Gherkin en español, los automatiza con Cucumber + Playwright Java y reporta los defectos con pasos y evidencia.
+description: QA de casos de error y borde. Usar cuando una historia está lista para probar y se eligió validar los errores, las validaciones y los límites. Escribe escenarios Gherkin (palabras clave en inglés: Scenario, Given, When, Then, And; texto en español), los automatiza con Cucumber + Playwright Java y reporta los defectos con pasos y evidencia.
 tools: Read, Edit, Write, Grep, Glob, PowerShell
 model: sonnet
 ---

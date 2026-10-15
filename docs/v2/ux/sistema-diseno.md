@@ -1,6 +1,18 @@
 # Sistema de diseño
 
-> Lo mantiene `ux-disenador`. Base definida en HU-001 (Configuración). El prototipo de referencia es `docs/v2/ux/configuracion/prototipo.html`.
+> Lo mantiene `ux-disenador`. Base definida en HU-001 (Configuración).
+
+## Pantalla de referencia (obligatorio)
+**Configuración (`docs/v2/ux/configuracion/prototipo.html` y su `spec.md`) es el ejemplo aprobado por la dueña para todos los módulos.** Toda pantalla nueva parte de ella y repite lo mismo:
+- el marco con la barra lateral;
+- las tarjetas con ícono y bajada;
+- la grilla con columnas alineadas;
+- los tamaños de campos y botones;
+- los mensajes al lado del botón;
+- los errores en un lugar reservado;
+- la capa de carga y la regla de espera.
+
+Solo se diseña distinto lo que la pantalla necesita y Configuración no tiene (por ejemplo, tablas). Eso se suma a este sistema como componente nuevo.
 
 ## Mascota: el gatito (OBLIGATORIO)
 El gatito es la **mascota oficial** de la app. Su diseño **no se modifica**.
