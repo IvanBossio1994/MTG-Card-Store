@@ -90,8 +90,10 @@ Aplican al agente principal. De "Ahorro", los subagentes siguen solo lo que les 
 - ≥ 85%: solo terminar la tarea en curso.
 - ≥ 90%: cerrar. Nota de traspaso (qué se hizo, qué falta, próximo paso, archivos clave) en el archivo de la historia en curso, o en `docs/consumo-tokens.md` si no hay; ofrecer el commit, sin hacerlo hasta que se pida. Después, parar.
 
-#### Presupuesto semanal (hoy es el límite que manda)
-- Presupuesto del día = (100 − % semana) ÷ días que faltan para el reinicio. Al alcanzarlo, avisar y proponer cortar.
+**Manda la ventana de 5 h ("Current session"):** es el límite que se prioriza para decidir si se arranca o se corta.
+
+#### Presupuesto semanal (solo como dato)
+- Presupuesto del día = (100 − % semana) ÷ días que faltan para el reinicio. Al alcanzarlo, avisar como dato, sin proponer cortar por eso.
 - Próximo reinicio semanal: martes 20/10, 10:00 (Buenos Aires). Actualizar la fecha cada semana.
 
 #### Ahorro

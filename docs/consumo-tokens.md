@@ -18,7 +18,9 @@ Se mide **una vez por tipo**: `/usage` al lanzar la primera tarea de ese agente 
 | `frontend` | HU-007, tarea 1 (textos de toda la pantalla + bloque del Sheet + 3 endpoints + Vitest) | 232k | 16 | 2 |
 | líder | HU-007, verificación en Chrome con la app levantada (+ 1 arreglo chico y `mvn test`) | — | 3 | 1 |
 | `analista-funcional` | próxima llamada | pendiente | pendiente | pendiente |
-| `qa-camino-feliz` / `qa-casos-error` | HU-008 | pendiente | pendiente | pendiente |
+| `backend-java` | HU-008, tarea 1 (arnés E2E desde cero + smoke) | 157k | 14 | 2 |
+| `qa-camino-feliz` | HU-008, tarea 2 (11 escenarios + ajuste por el límite de Google) | 161k (Sonnet) | 7 | 1 |
+| `qa-casos-error` | próxima llamada | pendiente | pendiente | pendiente |
 
 ## Mediciones
 
@@ -34,3 +36,6 @@ Se mide **una vez por tipo**: `/usage` al lanzar la primera tarea de ese agente 
 | 15/10 (antes de HU-007) | 39 | 63 | Inicio de sesión: brief de HU-007 | Punto de partida para medir `frontend` |
 | 15/10 (fin de HU-007 tarea 1) | 55 | 65 | Fin: frontend (232k) + armado de la HU | **Programar frontend (1 bloque grande + textos) ≈ 16 puntos de ventana, 2 de semana**. Inicio de la verificación del líder |
 | 15/10 (fin de la verificación de HU-007) | 58 | 66 | Fin: líder en Chrome con la app levantada | **Verificación del líder en Chrome ≈ 3 puntos de ventana, 1 de semana**. Día: 58 → 66 = 8 puntos (presupuesto del día alcanzado) |
+| 15/10 (antes de HU-008) | 60 | 66 | Inicio de sesión: brief de HU-008 (QA E2E) | Punto de partida para medir el arnés (`backend-java`) |
+| 15/10 (fin de HU-008 tarea 1) | 74 | 68 | Fin: backend-java arnés E2E (157k) + smoke del líder | **Arnés E2E desde cero ≈ 14 puntos de ventana, 2 de semana**. Inicio de `qa-camino-feliz` |
+| 15/10 (fin de HU-008 tarea 2) | 81 | 69 | Fin: qa-camino-feliz (161k, Sonnet) + ajuste de `data-testid` y verificación del líder | **QA camino feliz (11 escenarios) ≈ 7 puntos de ventana, 1 de semana**. Se cierra HU-008; casos de error para otra ventana |

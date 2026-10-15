@@ -68,3 +68,4 @@ Es un contrato entre UX, que los define, frontend, que los pone, y QA, que los u
 | `app-enlace-caja` | app | Menú lateral: Caja | HU-001 |
 | `app-enlace-movimientos` | app | Menú lateral: Movimientos | HU-001 |
 | `app-enlace-configuracion` | app | Menú lateral: Configuración (activo, `aria-current="page"`) | HU-001 |
+| `app-capa-carga` | app | Capa de carga con el gatito (tapa la pantalla mientras carga o habla con Google) | HU-008 |

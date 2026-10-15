@@ -37,9 +37,10 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 | [HU-005](../historias/HU-005-diseno-textos-y-pestanas.md) | Configuración v2 · diseño: tono impersonal y en singular de toda la biblioteca de textos, y bloque del Sheet con "crear pestaña" y "renombrar pestaña" (lista desplegable + nombre nuevo) por separado, y "Traer cartas de" | aceptada | HU-004 |
 | [HU-006](../historias/HU-006-configuracion-backend-pestanas.md) | Configuración v2 · backend: contrato y endpoints para listar pestañas (con `sugerida` y `?idOLink` opcional, confirmado) y renombrar una pestaña; `PUT /sheet` con `traerCartasDe`: al crear la pestaña del inventario trae las cartas de la de origen en el formato de la app (columnas por alias, desconocidas al final; la de origen no se toca) y responde `cartasTraidas`; `PUT /sheet` deja de renombrar; textos del back con el tono nuevo. Base: `spec.md` 7.1 | aceptada | HU-005 |
 | [HU-007](../historias/HU-007-configuracion-frontend-pestanas.md) | Configuración v2 · frontend: textos nuevos y bloque del Sheet rediseñado, contra la API de HU-006 | aceptada | HU-005, HU-006 |
-| HU-008 | Configuración v2 · QA E2E. **Cubre** HU-002 a HU-007: arnés Cucumber + Playwright (`PantallaBase`, `MarcoApp`; carpetas `features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), smoke `@critico` y escenarios de los flujos CFG, contra el Sheet de QA | planificada | HU-007 |
+| [HU-008](../historias/HU-008-configuracion-qa-e2e.md) | Configuración v2 · QA E2E. **Cubre** HU-002 a HU-007: arnés Cucumber + Playwright (`PantallaBase`, `MarcoApp`; carpetas `features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), smoke `@critico` y escenarios de los flujos CFG, contra el Sheet de QA | aceptada | HU-007 |
+| HU-009 | Configuración v2 · QA E2E de **casos de error** (`qa-casos-error`). **Cubre** HU-004 y HU-007, con CFG-A01 a A09: sesión de Google vencida, Sheet sin permiso, validaciones. Reusa el arnés de HU-008 (ver el límite de Google en `qa-guia.md`) | planificada | HU-008 |
 
-**Progreso:** 7 de 8 historias aceptadas.
+**Progreso:** 8 de 9 historias aceptadas.
 
 > 2026-10-15: al probar HU-004 la dueña pidió el tono impersonal de los textos y separar "crear" y "renombrar" pestaña. Se suman HU-005 (diseño), HU-006 (backend) y HU-007 (frontend); el QA pasa de HU-005 a **HU-008**, al final, para probar todo junto.
 
@@ -54,7 +55,7 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 - 2026-10-14: QA E2E en su propia historia (HU-005), contra el Sheet de QA. HU-003 se valida con tests de API y con Postman de la dueña; HU-004, en el navegador sobre su Sheet de pruebas.
 
 ## Para retomar
-Sigue: **HU-008** (QA E2E, planificada; falta el archivo: brief + OK). HU-007 aceptada el 2026-10-15: pantalla con textos nuevos y bloque del Sheet en dos filas ("Traer cartas de" y renombrar); todos los flujos CFG están `vigente` (documento funcional 0.5.0).
+Sigue: **HU-009** (QA de casos de error, planificada; falta el archivo: brief + OK). HU-008 aceptada el 2026-10-15: arnés E2E (Cucumber + Playwright) y 11 escenarios del camino feliz en verde contra el Sheet de QA. Antes, HU-007: pantalla con textos nuevos y bloque del Sheet en dos filas; todos los flujos CFG están `vigente` (documento funcional 0.5.0).
 - **Tono aprobado (2026-10-15):** impersonal, en singular, sin hablarle al usuario; sigue diciendo cómo va el campo. Ej.: "El nombre de la tienda es obligatorio.", "El logo no debe superar los 2 MB.", "No se pudo cargar la configuración.", "Se acepta la URL completa o solo el ID.".
 - **Bloque del Sheet aprobado en idea:** arriba "ID o URL del Sheet" + "Pestaña del inventario" (se crea si no existe; la primera, si el Sheet no tiene ninguna); abajo "Pestaña a renombrar" (lista desplegable con las pestañas del Sheet) + "Nombre nuevo" con su botón.
 - **Flujos:** CFG-F01..F06 y CFG-A01..A09 están `vigente` (HU-004). HU-005 llama al analista para ajustar CFG-F02, CFG-F03 y CFG-A07 y sumar el flujo de renombrar.

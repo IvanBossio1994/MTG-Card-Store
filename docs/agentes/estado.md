@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-15 (HU-007 aceptada). Sigue: HU-008 (EP-001, QA E2E de toda la épica).
+> Última actualización: 2026-10-15 (HU-008 aceptada: arnés E2E + camino feliz de Configuración). Sigue: HU-009 (EP-001, QA de casos de error).
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -19,7 +19,7 @@
 | Configuración y Google | `GET /configuracion` → `store.html`; OAuth en `/configuracion/google/oauth/*` |
 | Tutorial | `/tutorial/completar`, `/tutorial/reset` |
 | App de escritorio | `DesktopLauncher`, `desktop-shell/` (C#), `scripts/build-windows-app.ps1` |
-| **v2 (en construcción)** | `/app` (React, marco con barra lateral), `GET /api/v1/estado-app`, `/swagger-ui`, perfil `e2e`. Épica en curso: `docs/agentes/epicas/EP-001-configuracion-v2.md` |
+| **v2 (en construcción)** | `/app` (React, marco con barra lateral), `GET /api/v1/estado-app`, `/swagger-ui`, perfil `e2e`, E2E Cucumber + Playwright (`mvn.cmd -q test "-Dcucumber.filter.tags=@critico"`, guía en `qa-guia.md`). Épica en curso: `docs/agentes/epicas/EP-001-configuracion-v2.md` |
 
 **Pestañas del Sheet:**
 - **Inventario** (A:L): Cantidad, Nombre, Código de set, Set Name, Card Number, Condición, Printing, Idioma, Precio Local, Precio CK USD, Acción.

@@ -20,6 +20,7 @@
 
 ## Criterios de aceptación
 Escritos para que QA los pase directo a Gherkin: palabras clave en inglés, en tercera persona y con el texto visible entre comillas (ver "Cómo se escribe el Gherkin" en `docs/agentes/qa-guia.md`).
+**HU de QA:** no copia los CA de las historias que cubre; los referencia (archivo y tag `@HU-XXX` de origen), y QA los lee de ahí para saber qué probar (en el `.feature` los puede reescribir si hace falta). Solo suma los CA propios, como el arnés o la limpieza de datos.
 
 **CA1: <nombre>**
 - **Given** <estado inicial, ej.: visualiza el módulo de "Configuración">

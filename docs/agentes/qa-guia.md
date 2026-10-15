@@ -10,9 +10,35 @@ La usan `qa-camino-feliz` y `qa-casos-error`, siempre dentro de la **HU de QA** 
   - Se accede con la cuenta de servicio (`config/google-service-account.json`), sin login de Gmail.
   - **Nunca** se usa el Sheet del local ni el de pruebas de la dueña.
   - Cada escenario deja el Sheet de QA como lo encontró, o lo prepara en el `Background`.
-- Los escenarios que no necesitan Google pueden correr con el perfil `e2e` (datos en memoria), que es más rápido.
-- Comando: `.tools\apache-maven-3.9.16\bin\mvn.cmd -q test`, filtrando por tag (`-Dcucumber.filter.tags="@HU-003 or @HU-004"`).
 - **Si la rama todavía no tiene el arnés** (Cucumber y Playwright en `pom.xml`, runner, hooks y `PantallaBase`), avisale al líder: armarlo es la primera tarea de la HU de QA y la hace `backend-java`.
+
+## Cómo correr los E2E (arnés armado en HU-008)
+- **Comando:** `.tools\apache-maven-3.9.16\bin\mvn.cmd -q test "-Dcucumber.filter.tags=@critico"` (smoke). Para otras corridas, cambiar el filtro: `"-Dcucumber.filter.tags=@HU-008 or @critico"`, `"-Dcucumber.filter.tags=@regresion"`. En PowerShell, todo el `-D...` va entre comillas.
+- **Los E2E corren solo si se pasa `-Dcucumber.filter.tags`.** Ese parámetro activa el perfil Maven `escenarios-e2e`, que corre únicamente el runner `e2e/soporte/EscenariosE2ETest` (ni los tests de back ni Vitest, pero sí compila el frontend). Sin el parámetro, `mvn.cmd -q test` corre back y Vitest como siempre, sin E2E.
+- **Arranque:** no hay que levantar la app. Los hooks (`e2e/soporte/GanchosE2E`) la levantan una vez por corrida, en un puerto libre y en el mismo proceso, con el perfil `e2e` (sin la v1 ni el login de Gmail; sesión simulada "prueba@tcg-inventory.local") pero con el **Sheet de QA real** vía la cuenta de servicio. La configuración se guarda en `target/e2e-datos` (nunca en `data/`) y arranca con el Sheet de QA y la pestaña "Inventario".
+- **Navegador:** por defecto usa el **Chrome instalado** (canal `chrome`), sin ventana y **sin descargar nada**. La primera corrida igual baja de Maven el jar de Playwright (~200 MB, una sola vez). Opciones:
+  - `-De2e.ver-navegador=true`: muestra el navegador en pantalla.
+  - `-De2e.navegador=chromium`: usa el Chromium de Playwright (para una PC sin Chrome); la primera vez lo descarga solo a `%LOCALAPPDATA%\ms-playwright` (unos 150 MB, necesita internet).
+- **Requisito:** la clave `config/google-service-account.json` tiene que existir (no se abre). Si falta, la corrida frena al arrancar con un mensaje que lo dice.
+- **Evidencias:** si un escenario falla, quedan la captura (`target/evidencias/<escenario>.png`, también adjunta al reporte) y la traza de Playwright (`<escenario>-traza.zip`, se abre con `npx playwright show-trace` o en trace.playwright.dev). Reporte HTML de la corrida: `target/evidencias/reporte-e2e.html`.
+
+### Sheet de QA limpio (CA2 de HU-008)
+- Al arrancar la corrida, `SheetDeQa` saca una foto del Sheet de QA (pestañas, orden y valores). **Después de cada escenario, pase o falle**, lo devuelve a esa foto en una sola escritura: borra las pestañas nuevas, devuelve nombres y orden, recrea las borradas y reescribe solo las pestañas cuyos valores cambiaron. Los formatos de celda no se tocan.
+- Además, antes de cada escenario se borra la configuración guardada de la app: cada escenario arranca con los valores por defecto ("Inventory Manager", Sheet de QA, pestaña "Inventario"). Ningún escenario depende de otro.
+- Hoy la foto del Sheet de QA es **una sola pestaña "Hoja 1" vacía** (un Sheet "nuevo"). Si un escenario necesita otro punto de partida, lo arma en el `Background` o en un `Given`, y la limpieza lo deshace.
+- En los pasos, `SheetDeQa` se recibe por constructor (Cucumber lo inyecta) y ofrece:
+  - `pestanas()`: nombres en orden.
+  - `valores(pestana)` y `encabezados(pestana)`: lo que hay en la pestaña, como lo lee la app.
+  - `dejarConPestanas(mapa)`: deja el Sheet exactamente con esas pestañas y valores (por ejemplo, `Map.of("Hoja 1", List.of())`).
+  - Constantes `SheetDeQa.ID` y `SheetDeQa.LINK` para pegar en Configuración.
+
+### Piezas del arnés
+- `e2e/soporte/`: `EscenariosE2ETest` (runner), `GanchosE2E` (hooks), `AppParaE2E` (app), `NavegadorE2E` (Playwright; se inyecta en pantallas y pasos) y `SheetDeQa`.
+- `e2e/compartido/`: `PantallaBase` (abrir el módulo, esperar que esté lista, `leerMensajeDeBloque`, `leerErrorDeCampo`), `MarcoApp` (menú lateral) y `CapaCarga`.
+- Inyección: las clases de pasos y las pantallas reciben por constructor lo que necesitan (`NavegadorE2E`, `SheetDeQa`, `<Modulo>Pantalla`); Cucumber crea una instancia nueva por escenario (picocontainer).
+- Pasos comunes ya hechos (`pasos/AppPasos`): `abre la app`, `elige "<módulo>" en el menú`, `visualiza el módulo de "<módulo>"`.
+- La capa de carga se ubica por `app-capa-carga` (`CapaCarga`).
+- **Límite de Google:** 60 lecturas por minuto por proyecto, compartidas entre la app y la restauración del Sheet de QA. Por eso `SheetDeQa` reintenta ante un 429 y cada escenario dura al menos 15 s (`GanchosE2E`). Un 429 suelto no es un defecto de la app. La corrida de Configuración tarda unos 2,5 min.
 
 ## Estructura
 ```
