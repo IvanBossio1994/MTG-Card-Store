@@ -126,7 +126,7 @@ public class GoogleOAuthService implements SesionGoogle {
     /**
      * Verifica que la sesión del Gmail siga vigente (renueva el token si está por vencer) y devuelve el Gmail.
      * Ejemplo: token vigente → {@code Optional.of("tienda@gmail.com")}; Google responde {@code invalid_grant} → 401
-     * "Tu sesión de Google venció."; sesiones sin permiso {@code email} → {@code Optional.empty()}.
+     * "La sesión de Google venció."; sesiones sin permiso {@code email} → {@code Optional.empty()}.
      */
     @Override
     public Optional<String> gmailConectado() {

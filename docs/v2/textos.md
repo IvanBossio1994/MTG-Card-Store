@@ -129,6 +129,7 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `configuracion.sheet.renombrar.error.nombre-largo` | El nombre no debe superar los 100 caracteres. | error de campo | CFG-F03 | `configuracion-mensaje-error-nombre-nuevo` |
 | `configuracion.sheet.renombrar.error.nombre-igual` | El nombre nuevo es igual al actual. | error de campo | CFG-F03 | `configuracion-mensaje-error-nombre-nuevo` |
 | `configuracion.sheet.renombrar.error.nombre-repetido` | Ya existe una pestaña con ese nombre. | error de campo | CFG-F03 | `configuracion-mensaje-error-nombre-nuevo` |
+| `configuracion.sheet.renombrar.error.fija` | Esa pestaña la usa la app y no se puede renombrar. | error de campo (Movimientos, Caja, Reservas y Clientes; HU-006, D1) | CFG-F03 | `configuracion-mensaje-error-pestana-a-renombrar` |
 | `configuracion.sheet.renombrar.error.pestana-inexistente` | La pestaña ya no existe en el Sheet. Se actualizó la lista. | error de bloque | CFG-F03 | `configuracion-mensaje-error-renombrar` |
 | (sin permiso, sesión vencida, inesperado en la fila de renombrar) | → `configuracion.sheet.error.sin-permiso`, `general.error.sesion-vencida`, `general.error.inesperado` | error de bloque | CFG-F03 | `configuracion-mensaje-error-renombrar` |
 | **Precios** | | | | |

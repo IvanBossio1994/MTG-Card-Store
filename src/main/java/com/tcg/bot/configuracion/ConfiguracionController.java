@@ -4,9 +4,11 @@ import com.tcg.bot.configuracion.ConfiguracionRepository.LogoTienda;
 import com.tcg.bot.configuracion.ConfiguracionRepository.PreciosBulk;
 import com.tcg.bot.configuracion.ConfiguracionRepository.ReglaDePrecios;
 import com.tcg.bot.configuracion.ConfiguracionService.Configuracion;
+import com.tcg.bot.configuracion.ConfiguracionService.PestanaDelSheet;
 import com.tcg.bot.configuracion.ConfiguracionService.PreciosGuardados;
 import com.tcg.bot.configuracion.ConfiguracionService.SheetConectado;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.List;
 
 /**
  * API de Configuración: leer la configuración y guardar cada bloque por separado (tienda, logo, Sheet, precios, puntos).
@@ -44,10 +47,18 @@ public class ConfiguracionController {
     static final String RUTA_LOGO = "/api/v1/configuracion/tienda/logo";
     private static final String EJEMPLO_ERROR_VALIDACION = "{\"type\":\"about:blank\",\"title\":\"Datos inválidos\",\"status\":400,"
             + "\"detail\":\"Hay datos para corregir.\",\"instance\":\"/api/v1/configuracion/tienda\","
-            + "\"errores\":{\"nombre\":\"Ingresá el nombre de la tienda.\"}}";
+            + "\"errores\":{\"nombre\":\"El nombre de la tienda es obligatorio.\"}}";
     private static final String EJEMPLO_SESION_VENCIDA = "{\"type\":\"about:blank\",\"title\":\"Sesión de Google vencida\","
-            + "\"status\":401,\"detail\":\"Tu sesión de Google venció.\",\"instance\":\"/api/v1/configuracion\","
+            + "\"status\":401,\"detail\":\"La sesión de Google venció.\",\"instance\":\"/api/v1/configuracion\","
             + "\"accion\":\"volver-a-iniciar-sesion\",\"urlInicioSesion\":\"/configuracion/google/oauth/iniciar\"}";
+    private static final String EJEMPLO_ORIGEN_INEXISTENTE = "{\"type\":\"about:blank\",\"title\":\"Datos inválidos\",\"status\":400,"
+            + "\"detail\":\"Hay datos para corregir.\",\"instance\":\"/api/v1/configuracion/sheet\","
+            + "\"errores\":{\"traerCartasDe\":\"La pestaña de origen ya no existe en el Sheet. Se actualizó la lista.\"},"
+            + "\"campo\":\"traer-cartas-de\",\"codigo\":\"ORIGEN_INEXISTENTE\"}";
+    private static final String EJEMPLO_NOMBRE_REPETIDO = "{\"type\":\"about:blank\",\"title\":\"Datos inválidos\",\"status\":400,"
+            + "\"detail\":\"Hay datos para corregir.\",\"instance\":\"/api/v1/configuracion/sheet/pestanas/renombrar\","
+            + "\"errores\":{\"nombreNuevo\":\"Ya existe una pestaña con ese nombre.\"},"
+            + "\"campo\":\"nombre-nuevo\",\"codigo\":\"NOMBRE_REPETIDO\"}";
 
     private final ConfiguracionService servicio;
 
@@ -73,7 +84,7 @@ public class ConfiguracionController {
         var sheet = configuracion.sheet();
         return new ConfiguracionRespuesta(
                 new BloqueTienda(configuracion.nombreTienda(), logoUrl(configuracion.versionLogo())),
-                BloqueSheet.de(sheet.sheetId(), sheet.pestanaInventario(), configuracion.gmail(), null),
+                BloqueSheet.de(sheet.sheetId(), sheet.pestanaInventario(), configuracion.gmail(), null, false, null),
                 BloquePrecios.de(configuracion.precios(), null),
                 new BloquePuntos(configuracion.pesosPorPunto()));
     }
@@ -126,30 +137,100 @@ public class ConfiguracionController {
     }
 
     /**
-     * Conecta el Google Sheet y deja lista la pestaña del inventario (la renombra o la crea, según el caso).
-     * Ejemplo: PUT /sheet {@code {"sheet":"https://docs.google.com/spreadsheets/d/1vSk…/edit","pestanaInventario":"Inventario"}}
-     * con un Sheet de una sola pestaña "Hoja 1" → 200 con {@code "aviso":"La pestaña «Hoja 1» se renombró a «Inventario»."}.
+     * Conecta el Google Sheet y deja lista la pestaña del inventario: la usa si existe; si no, la crea (con las cartas de
+     * {@code traerCartasDe}, si viene) o usa la pestaña vacía de un Sheet nuevo. No renombra pestañas con datos.
+     * Ejemplo: PUT /sheet {@code {"sheet":"1vSk…","pestanaInventario":"Stock 2026","traerCartasDe":"stock viejo"}} →
+     * 200 con {@code "pestanaCreada":true,"cartasTraidas":{"origen":"stock viejo","cantidad":128,"hayColumnasExtra":true}}.
      */
     @PutMapping(path = "/sheet", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Conectar el Google Sheet",
-            description = "Verifica la sesión y el acceso de la cuenta de servicio, renombra la pestaña única o crea la pedida, "
-                    + "crea Movimientos, Caja, Reservas y Clientes si faltan, y guarda (CFG-F02, CFG-F03, CFG-A03, CFG-A04, CFG-A05, CFG-A07).")
+            description = "Verifica la sesión y el acceso de la cuenta de servicio; si la pestaña del inventario no existe la crea "
+                    + "(trayendo las cartas de otra pestaña si se pide, en una sola escritura) o usa la pestaña vacía de un Sheet nuevo; "
+                    + "crea Movimientos, Caja, Reservas y Clientes si faltan, y guarda (CFG-F02, CFG-A03, CFG-A04, CFG-A05, CFG-A07).")
     @ApiResponse(responseCode = "200", description = "Sheet conectado",
             content = @Content(schema = @Schema(implementation = BloqueSheet.class),
                     examples = @ExampleObject(value = "{\"sheetId\":\"1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ\","
                             + "\"link\":\"https://docs.google.com/spreadsheets/d/1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ/edit\","
-                            + "\"pestanaInventario\":\"Inventario\",\"gmail\":\"tienda@gmail.com\","
-                            + "\"aviso\":\"La pestaña «Hoja 1» se renombró a «Inventario».\"}")))
-    @ApiResponse(responseCode = "400", description = "Link o pestaña inválidos",
-            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+                            + "\"pestanaInventario\":\"Stock 2026\",\"gmail\":\"tienda@gmail.com\",\"aviso\":null,\"pestanaCreada\":true,"
+                            + "\"cartasTraidas\":{\"origen\":\"stock viejo\",\"cantidad\":128,\"hayColumnasExtra\":true}}")))
+    @ApiResponse(responseCode = "400", description = "Link o pestaña inválidos, o la pestaña de origen ya no existe (ORIGEN_INEXISTENTE)",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class),
+                    examples = @ExampleObject(value = EJEMPLO_ORIGEN_INEXISTENTE)))
     @ApiResponse(responseCode = "401", description = "Venció la sesión de Google",
             content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class),
                     examples = @ExampleObject(value = EJEMPLO_SESION_VENCIDA)))
     @ApiResponse(responseCode = "403", description = "El Sheet no está compartido con la cuenta de servicio",
             content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
     public BloqueSheet conectarSheet(@Valid @RequestBody SheetPedido pedido) {
-        SheetConectado conectado = servicio.conectarSheet(pedido.sheet(), pedido.pestanaInventario());
-        return BloqueSheet.de(conectado.sheetId(), conectado.pestanaInventario(), conectado.gmail(), conectado.aviso());
+        SheetConectado conectado = servicio.conectarSheet(pedido.sheet(), pedido.pestanaInventario(), pedido.traerCartasDe());
+        var traidas = conectado.cartasTraidas();
+        return BloqueSheet.de(conectado.sheetId(), conectado.pestanaInventario(), conectado.gmail(), conectado.aviso(),
+                conectado.pestanaCreada(),
+                traidas == null ? null : new CartasTraidasRespuesta(traidas.origen(), traidas.cantidad(), traidas.hayColumnasExtra()));
+    }
+
+    /**
+     * Lista las pestañas del Sheet guardado o, con {@code idOLink}, las de otro Sheet (aunque no esté guardado).
+     * Ejemplo: GET /sheet/pestanas → 200 {@code {"sheetGuardado":true,"pestanas":[{"nombre":"Inventario","enUso":true,"sugerida":true,"fija":false}]}}.
+     */
+    @GetMapping("/sheet/pestanas")
+    @Operation(summary = "Ver las pestañas del Sheet",
+            description = "Para las listas \"Pestaña a renombrar\" y \"Traer cartas de\" (CFG-F02, CFG-F03). Solo lee. Sin Sheet guardado "
+                    + "y sin idOLink responde sheetGuardado=false sin llamar a Google.")
+    @ApiResponse(responseCode = "200", description = "Pestañas en el orden del Sheet",
+            content = @Content(schema = @Schema(implementation = ListaPestanasRespuesta.class),
+                    examples = @ExampleObject(value = "{\"sheetGuardado\":true,\"pestanas\":["
+                            + "{\"nombre\":\"Inventario\",\"enUso\":true,\"sugerida\":true,\"fija\":false},"
+                            + "{\"nombre\":\"stock viejo\",\"enUso\":false,\"sugerida\":true,\"fija\":false},"
+                            + "{\"nombre\":\"Caja\",\"enUso\":false,\"sugerida\":false,\"fija\":true}]}")))
+    @ApiResponse(responseCode = "400", description = "idOLink no es un link ni un ID de Google Sheets (LINK_INVALIDO)",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "401", description = "Venció la sesión de Google",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class),
+                    examples = @ExampleObject(value = EJEMPLO_SESION_VENCIDA)))
+    @ApiResponse(responseCode = "403", description = "El Sheet no está compartido con la cuenta de servicio",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    public ListaPestanasRespuesta verPestanas(
+            @Parameter(description = "Link o ID de otro Sheet (opcional). Sin él, se listan las del Sheet guardado.",
+                    example = "https://docs.google.com/spreadsheets/d/1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ/edit")
+            @RequestParam(name = "idOLink", required = false) String idOLink) {
+        var lista = servicio.listarPestanas(idOLink);
+        return new ListaPestanasRespuesta(lista.sheetGuardado(), pestanasRespuesta(lista.pestanas()));
+    }
+
+    /**
+     * Renombra una pestaña del Sheet guardado; si es la del inventario, guarda también el nombre nuevo.
+     * Ejemplo: PUT /sheet/pestanas/renombrar {@code {"nombreActual":"Hoja 1","nombreNuevo":"Stock 2026"}} →
+     * 200 {@code {"nombreAnterior":"Hoja 1","nombreNuevo":"Stock 2026","eraPestanaInventario":false,...}}.
+     */
+    @PutMapping(path = "/sheet/pestanas/renombrar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Renombrar una pestaña del Sheet",
+            description = "Cambia el nombre en el Sheet en el momento (CFG-F03). Si es la del inventario, guarda el nombre nuevo en "
+                    + "la configuración. Movimientos, Caja, Reservas y Clientes no se pueden renombrar.")
+    @ApiResponse(responseCode = "200", description = "Pestaña renombrada, con la lista actualizada",
+            content = @Content(schema = @Schema(implementation = PestanaRenombradaRespuesta.class),
+                    examples = @ExampleObject(value = "{\"nombreAnterior\":\"Inventario\",\"nombreNuevo\":\"Stock 2026\","
+                            + "\"eraPestanaInventario\":true,\"nombrePestanaInventario\":\"Stock 2026\",\"pestanas\":["
+                            + "{\"nombre\":\"Stock 2026\",\"enUso\":true,\"sugerida\":true,\"fija\":false},"
+                            + "{\"nombre\":\"Caja\",\"enUso\":false,\"sugerida\":false,\"fija\":true}]}")))
+    @ApiResponse(responseCode = "400", description = "Validación (PESTANA_VACIA, PESTANA_FIJA, NOMBRE_VACIO, NOMBRE_LARGO, "
+            + "NOMBRE_IGUAL, NOMBRE_REPETIDO) o sin Sheet guardado (SIN_SHEET_GUARDADO)",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class),
+                    examples = @ExampleObject(value = EJEMPLO_NOMBRE_REPETIDO)))
+    @ApiResponse(responseCode = "401", description = "Venció la sesión de Google",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class),
+                    examples = @ExampleObject(value = EJEMPLO_SESION_VENCIDA)))
+    @ApiResponse(responseCode = "403", description = "El Sheet no está compartido con la cuenta de servicio",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "404", description = "La pestaña ya no existe en el Sheet (PESTANA_INEXISTENTE)",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "500", description = "Error inesperado (si falló guardar la configuración, se deshace el renombrado)",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    public PestanaRenombradaRespuesta renombrarPestana(@RequestBody RenombrarPestanaPedido pedido) {
+        var renombrada = servicio.renombrarPestana(pedido.nombreActual(), pedido.nombreNuevo());
+        return new PestanaRenombradaRespuesta(renombrada.nombreAnterior(), renombrada.nombreNuevo(),
+                renombrada.eraPestanaInventario(), renombrada.nombrePestanaInventario(),
+                pestanasRespuesta(renombrada.pestanas()));
     }
 
     /**
@@ -188,30 +269,49 @@ public class ConfiguracionController {
         return version == null ? null : RUTA_LOGO + "?version=" + version;
     }
 
+    private static List<PestanaRespuesta> pestanasRespuesta(List<PestanaDelSheet> pestanas) {
+        return pestanas.stream()
+                .map(pestana -> new PestanaRespuesta(pestana.nombre(), pestana.enUso(), pestana.sugerida(), pestana.fija()))
+                .toList();
+    }
+
     // ---- Pedidos (request) ----
 
     /** Pedido de PUT /tienda. Ejemplo: {@code {"nombre":"Codex Live Store","quitarLogo":false}}. */
     @Schema(description = "Datos de la tienda")
     public record TiendaPedido(
             @Schema(description = "Nombre de la tienda", example = "Codex Live Store", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotBlank(message = "Ingresá el nombre de la tienda.")
+            @NotBlank(message = "El nombre de la tienda es obligatorio.")
             String nombre,
             @Schema(description = "true para quitar el logo actual", example = "false", defaultValue = "false")
             Boolean quitarLogo
     ) {
     }
 
-    /** Pedido de PUT /sheet. Ejemplo: {@code {"sheet":"https://docs.google.com/spreadsheets/d/1vSk…/edit","pestanaInventario":"Inventario"}}. */
+    /** Pedido de PUT /sheet. Ejemplo: {@code {"sheet":"https://docs.google.com/spreadsheets/d/1vSk…/edit","pestanaInventario":"Stock 2026","traerCartasDe":"stock viejo"}}. */
     @Schema(description = "Sheet de la tienda y pestaña del inventario")
     public record SheetPedido(
             @Schema(description = "Link completo del Google Sheet o solo su ID",
                     example = "https://docs.google.com/spreadsheets/d/1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ/edit",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotBlank(message = "Pegá el ID o la URL del Sheet.")
+            @NotBlank(message = "El ID o la URL del Sheet es obligatorio.")
             String sheet,
-            @Schema(description = "Nombre de la pestaña del inventario", example = "Inventario", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotBlank(message = "Ingresá el nombre de la pestaña.")
-            String pestanaInventario
+            @Schema(description = "Nombre de la pestaña del inventario", example = "Stock 2026", requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = "El nombre de la pestaña es obligatorio.")
+            String pestanaInventario,
+            @Schema(description = "Pestaña de la que traer las cartas si la del inventario no existe. Null o vacío = no traer cartas",
+                    example = "stock viejo", nullable = true)
+            String traerCartasDe
+    ) {
+    }
+
+    /** Pedido de PUT /sheet/pestanas/renombrar. Ejemplo: {@code {"nombreActual":"Inventario","nombreNuevo":"Stock 2026"}}. */
+    @Schema(description = "Pestaña a renombrar y su nombre nuevo (lo valida el servicio, con campo y código)")
+    public record RenombrarPestanaPedido(
+            @Schema(description = "Nombre actual de la pestaña", example = "Inventario", requiredMode = Schema.RequiredMode.REQUIRED)
+            String nombreActual,
+            @Schema(description = "Nombre nuevo, hasta 100 caracteres", example = "Stock 2026", requiredMode = Schema.RequiredMode.REQUIRED)
+            String nombreNuevo
     ) {
     }
 
@@ -219,15 +319,15 @@ public class ConfiguracionController {
     @Schema(description = "Regla de precio")
     public record PreciosPedido(
             @Schema(description = "ARS por USD de Card Kingdom", example = "1350", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá la cotización del dólar.")
-            @Positive(message = "La cotización tiene que ser mayor a 0.")
+            @NotNull(message = "La cotización del dólar es obligatoria.")
+            @Positive(message = "La cotización debe ser mayor a 0.")
             Double cotizacion,
             @Schema(description = "Múltiplo al que se redondea el precio", example = "500", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el múltiplo para redondear.")
-            @Positive(message = "El múltiplo tiene que ser mayor a 0.")
+            @NotNull(message = "El múltiplo para redondear es obligatorio.")
+            @Positive(message = "El múltiplo debe ser mayor a 0.")
             Integer redondeo,
             @Schema(description = "Precio bulk por rareza", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el precio.")
+            @NotNull(message = "El precio es obligatorio.")
             @Valid
             BulkPedido bulk,
             @Schema(description = "Carpeta de la cache de Card Kingdom. Vacío o null = la de siempre", example = "D:/TCG/cache", nullable = true)
@@ -239,24 +339,24 @@ public class ConfiguracionController {
     @Schema(description = "Precio bulk por rareza, en pesos y sin centavos")
     public record BulkPedido(
             @Schema(example = "50", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
+            @NotNull(message = "El precio es obligatorio.") @Positive(message = "Debe ser mayor a 0.")
+            @Digits(integer = 12, fraction = 0, message = "El precio debe ser un número entero, sin centavos.")
             Double common,
             @Schema(example = "100", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
+            @NotNull(message = "El precio es obligatorio.") @Positive(message = "Debe ser mayor a 0.")
+            @Digits(integer = 12, fraction = 0, message = "El precio debe ser un número entero, sin centavos.")
             Double uncommon,
             @Schema(example = "150", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
+            @NotNull(message = "El precio es obligatorio.") @Positive(message = "Debe ser mayor a 0.")
+            @Digits(integer = 12, fraction = 0, message = "El precio debe ser un número entero, sin centavos.")
             Double rare,
             @Schema(example = "150", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
+            @NotNull(message = "El precio es obligatorio.") @Positive(message = "Debe ser mayor a 0.")
+            @Digits(integer = 12, fraction = 0, message = "El precio debe ser un número entero, sin centavos.")
             Double mythic,
             @Schema(example = "200", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
+            @NotNull(message = "El precio es obligatorio.") @Positive(message = "Debe ser mayor a 0.")
+            @Digits(integer = 12, fraction = 0, message = "El precio debe ser un número entero, sin centavos.")
             Double tierraBasica
     ) {
     }
@@ -266,8 +366,8 @@ public class ConfiguracionController {
     public record PuntosPedido(
             @Schema(description = "Pesos que tiene que gastar un cliente para sumar un punto", example = "500",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotNull(message = "Ingresá cuántos pesos vale un punto.")
-            @Positive(message = "Tiene que ser mayor a 0.")
+            @NotNull(message = "Los pesos por punto son obligatorios.")
+            @Positive(message = "Debe ser mayor a 0.")
             Double pesosPorPunto
     ) {
     }
@@ -306,15 +406,61 @@ public class ConfiguracionController {
             @Schema(description = "Gmail con el que se inició sesión, o null si Google no lo informa", example = "tienda@gmail.com",
                     nullable = true)
             String gmail,
-            @Schema(description = "Solo en PUT /sheet: aviso de pestaña renombrada o creada", example = "Se creó la pestaña «Inventario».",
-                    nullable = true)
-            String aviso
+            @Schema(description = "Solo en PUT /sheet: aviso si se creó la pestaña del inventario sin traer cartas",
+                    example = "Se creó la pestaña «Inventario».", nullable = true)
+            String aviso,
+            @Schema(description = "Solo en PUT /sheet: true si la pestaña del inventario no existía y se creó. En el GET, false",
+                    example = "true")
+            boolean pestanaCreada,
+            @Schema(description = "Solo en PUT /sheet, si se creó la pestaña trayendo cartas; si no, null", nullable = true)
+            CartasTraidasRespuesta cartasTraidas
     ) {
-        /** Arma el bloque con el link del Sheet. Ejemplo: {@code de("1Abc…", "Inventario", null, null)}. */
-        static BloqueSheet de(String sheetId, String pestana, String gmail, String aviso) {
+        /** Arma el bloque con el link del Sheet. Ejemplo: {@code de("1Abc…", "Inventario", null, null, false, null)}. */
+        static BloqueSheet de(String sheetId, String pestana, String gmail, String aviso, boolean pestanaCreada,
+                              CartasTraidasRespuesta cartasTraidas) {
             String link = sheetId == null ? null : "https://docs.google.com/spreadsheets/d/" + sheetId + "/edit";
-            return new BloqueSheet(sheetId, link, pestana, gmail, aviso);
+            return new BloqueSheet(sheetId, link, pestana, gmail, aviso, pestanaCreada, cartasTraidas);
         }
+    }
+
+    /** Cartas traídas al crear la pestaña del inventario. Ejemplo: {@code {"origen":"stock viejo","cantidad":128,"hayColumnasExtra":true}}. */
+    @Schema(description = "Cartas copiadas de otra pestaña")
+    public record CartasTraidasRespuesta(
+            @Schema(description = "Pestaña de origen", example = "stock viejo") String origen,
+            @Schema(description = "Cartas (filas) copiadas", example = "128") int cantidad,
+            @Schema(description = "true si quedaron al final columnas que la app no usa", example = "true") boolean hayColumnasExtra
+    ) {
+    }
+
+    /** Respuesta de GET /sheet/pestanas. Ejemplo: {@code {"sheetGuardado":false,"pestanas":[]}}. */
+    @Schema(description = "Pestañas de un Sheet")
+    public record ListaPestanasRespuesta(
+            @Schema(description = "false solo si no vino idOLink y no hay Sheet guardado", example = "true") boolean sheetGuardado,
+            @Schema(description = "En el orden del Sheet; vacía si sheetGuardado es false") List<PestanaRespuesta> pestanas
+    ) {
+    }
+
+    /** Una pestaña. Ejemplo: {@code {"nombre":"Caja","enUso":false,"sugerida":false,"fija":true}}. */
+    @Schema(description = "Pestaña del Sheet")
+    public record PestanaRespuesta(
+            @Schema(example = "Inventario") String nombre,
+            @Schema(description = "true si es la pestaña del inventario del Sheet guardado", example = "true") boolean enUso,
+            @Schema(description = "true si su fila 1 tiene encabezados de inventario", example = "true") boolean sugerida,
+            @Schema(description = "true si es Movimientos, Caja, Reservas o Clientes (no se puede renombrar)", example = "false")
+            boolean fija
+    ) {
+    }
+
+    /** Respuesta de PUT /sheet/pestanas/renombrar. Ejemplo: {@code {"nombreAnterior":"Hoja 1","nombreNuevo":"Stock 2026",...}}. */
+    @Schema(description = "Pestaña renombrada")
+    public record PestanaRenombradaRespuesta(
+            @Schema(example = "Inventario") String nombreAnterior,
+            @Schema(example = "Stock 2026") String nombreNuevo,
+            @Schema(description = "true si era la del inventario: la configuración ya quedó guardada con el nombre nuevo", example = "true")
+            boolean eraPestanaInventario,
+            @Schema(description = "Pestaña del inventario después del cambio", example = "Stock 2026") String nombrePestanaInventario,
+            @Schema(description = "Lista actualizada") List<PestanaRespuesta> pestanas
+    ) {
     }
 
     /** Bloque precios. Ejemplo: {@code {"cotizacion":1350.0,"redondeo":500,"bulk":{...},"carpetaCache":null,"aviso":null}}. */
@@ -325,7 +471,7 @@ public class ConfiguracionController {
             BloqueBulk bulk,
             @Schema(description = "null si se usa la carpeta de siempre", example = "D:/TCG/cache", nullable = true) String carpetaCache,
             @Schema(description = "Solo en PUT /precios: aviso si falló la sincronización con Card Kingdom",
-                    example = "Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde.", nullable = true)
+                    example = "Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde.", nullable = true)
             String aviso
     ) {
         /** Arma el bloque desde la regla guardada. Ejemplo: {@code de(regla, null)}. */

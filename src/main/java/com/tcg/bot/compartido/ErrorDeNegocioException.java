@@ -2,6 +2,7 @@ package com.tcg.bot.compartido;
 
 import org.springframework.http.HttpStatus;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -26,24 +27,52 @@ public class ErrorDeNegocioException extends RuntimeException {
 
     /**
      * Igual que el anterior, con datos extra que viajan como propiedades del ProblemDetail.
-     * Ejemplo: {@code new ErrorDeNegocioException(UNAUTHORIZED, "Sesión vencida", "Tu sesión...", Map.of("accion", "volver-a-iniciar-sesion"))}.
+     * Ejemplo: {@code new ErrorDeNegocioException(UNAUTHORIZED, "Sesión vencida", "La sesión...", Map.of("accion", "volver-a-iniciar-sesion"))}.
      */
     public ErrorDeNegocioException(HttpStatus estado, String titulo, String detalle, Map<String, Object> propiedades) {
         super(detalle);
         this.estado = estado;
         this.titulo = titulo;
-        this.propiedades = Map.copyOf(propiedades);
+        // Admite valores null (por ejemplo "campo": null en los errores de bloque).
+        this.propiedades = Collections.unmodifiableMap(new LinkedHashMap<>(propiedades));
     }
 
     /**
      * Error 400 de un solo campo, con la misma forma que la validación con {@code @Valid}.
-     * Ejemplo: {@code campoInvalido("archivo", "Usá un logo de hasta 2 MB.")} → 400 {@code errores: {"archivo": "Usá un logo de hasta 2 MB."}}.
+     * Ejemplo: {@code campoInvalido("archivo", "El logo no debe superar los 2 MB.")} → 400 {@code errores: {"archivo": "El logo no debe superar los 2 MB."}}.
      */
     public static ErrorDeNegocioException campoInvalido(String campo, String mensaje) {
         Map<String, String> errores = new LinkedHashMap<>();
         errores.put(campo, mensaje);
         return new ErrorDeNegocioException(HttpStatus.BAD_REQUEST, ManejadorErroresApi.TITULO_DATOS_INVALIDOS,
                 ManejadorErroresApi.DETALLE_DATOS_INVALIDOS, Map.of("errores", errores));
+    }
+
+    /**
+     * Error 400 de validación con {@code errores} (campo del JSON → mensaje) más el campo de la pantalla y un código fijo,
+     * para que el front marque el campo sin comparar textos.
+     * Ejemplo: {@code datosInvalidos({"nombreNuevo": "Ya existe una pestaña con ese nombre."}, "nombre-nuevo", "NOMBRE_REPETIDO")}
+     * → 400 con {@code errores}, {@code campo: "nombre-nuevo"} y {@code codigo: "NOMBRE_REPETIDO"}.
+     */
+    public static ErrorDeNegocioException datosInvalidos(Map<String, String> errores, String campoPantalla, String codigo) {
+        Map<String, Object> propiedades = new LinkedHashMap<>();
+        propiedades.put("errores", new LinkedHashMap<>(errores));
+        propiedades.put("campo", campoPantalla);
+        propiedades.put("codigo", codigo);
+        return new ErrorDeNegocioException(HttpStatus.BAD_REQUEST, ManejadorErroresApi.TITULO_DATOS_INVALIDOS,
+                ManejadorErroresApi.DETALLE_DATOS_INVALIDOS, propiedades);
+    }
+
+    /**
+     * Error de bloque (no de un campo) con código fijo y {@code campo: null}.
+     * Ejemplo: {@code deBloque(NOT_FOUND, "Pestaña inexistente", "La pestaña ya no existe en el Sheet. Se actualizó la lista.", "PESTANA_INEXISTENTE")}
+     * → 404 con {@code campo: null} y {@code codigo: "PESTANA_INEXISTENTE"}.
+     */
+    public static ErrorDeNegocioException deBloque(HttpStatus estado, String titulo, String detalle, String codigo) {
+        Map<String, Object> propiedades = new LinkedHashMap<>();
+        propiedades.put("campo", null);
+        propiedades.put("codigo", codigo);
+        return new ErrorDeNegocioException(estado, titulo, detalle, propiedades);
     }
 
     /**

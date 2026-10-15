@@ -35,11 +35,11 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 | [HU-003](../historias/HU-003-configuracion-backend.md) | Configuración v2 · backend: contrato `docs/v2/api/configuracion.md`, `ConfiguracionController`, arreglo de la pestaña (renombrar o crear) y sesión vencida (401) | aceptada | HU-002 |
 | [HU-004](../historias/HU-004-configuracion-frontend.md) | Configuración v2 · frontend: pantalla según el prototipo, contra la API de HU-003. Se prueba en el navegador sobre el Sheet de pruebas de la dueña | aceptada | HU-001, HU-003 |
 | [HU-005](../historias/HU-005-diseno-textos-y-pestanas.md) | Configuración v2 · diseño: tono impersonal y en singular de toda la biblioteca de textos, y bloque del Sheet con "crear pestaña" y "renombrar pestaña" (lista desplegable + nombre nuevo) por separado, y "Traer cartas de" | aceptada | HU-004 |
-| HU-006 | Configuración v2 · backend: contrato y endpoints para listar pestañas (con `sugerida` y `?idOLink` opcional, a confirmar) y renombrar una pestaña; `PUT /sheet` con `traerCartasDe`: al crear la pestaña del inventario trae las cartas de la de origen en el formato de la app (columnas por alias, desconocidas al final; la de origen no se toca) y responde `cartasTraidas`; `PUT /sheet` deja de renombrar; textos del back con el tono nuevo. Base: `spec.md` 7.1 | planificada | HU-005 |
+| [HU-006](../historias/HU-006-configuracion-backend-pestanas.md) | Configuración v2 · backend: contrato y endpoints para listar pestañas (con `sugerida` y `?idOLink` opcional, confirmado) y renombrar una pestaña; `PUT /sheet` con `traerCartasDe`: al crear la pestaña del inventario trae las cartas de la de origen en el formato de la app (columnas por alias, desconocidas al final; la de origen no se toca) y responde `cartasTraidas`; `PUT /sheet` deja de renombrar; textos del back con el tono nuevo. Base: `spec.md` 7.1 | aceptada | HU-005 |
 | HU-007 | Configuración v2 · frontend: textos nuevos y bloque del Sheet rediseñado, contra la API de HU-006 | planificada | HU-005, HU-006 |
 | HU-008 | Configuración v2 · QA E2E. **Cubre** HU-002 a HU-007: arnés Cucumber + Playwright (`PantallaBase`, `MarcoApp`; carpetas `features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), smoke `@critico` y escenarios de los flujos CFG, contra el Sheet de QA | planificada | HU-007 |
 
-**Progreso:** 5 de 8 historias aceptadas.
+**Progreso:** 6 de 8 historias aceptadas.
 
 > 2026-10-15: al probar HU-004 la dueña pidió el tono impersonal de los textos y separar "crear" y "renombrar" pestaña. Se suman HU-005 (diseño), HU-006 (backend) y HU-007 (frontend); el QA pasa de HU-005 a **HU-008**, al final, para probar todo junto.
 
@@ -54,7 +54,7 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 - 2026-10-14: QA E2E en su propia historia (HU-005), contra el Sheet de QA. HU-003 se valida con tests de API y con Postman de la dueña; HU-004, en el navegador sobre su Sheet de pruebas.
 
 ## Para retomar
-Sigue: **HU-006** (backend, planificada; falta el archivo de la historia: brief + OK). Después HU-007 (frontend) y HU-008 (QA). HU-005 aceptada el 2026-10-15: spec, prototipo, `textos.md` y `locators.md` listos; flujos CFG-F02, F03, A03, A07 y A10 a A14 en `propuesto · HU-005`.
+Sigue: **HU-007** (frontend, planificada; falta el archivo de la historia: brief + OK). Después HU-008 (QA). HU-006 aceptada el 2026-10-15: API de pestañas y "Traer cartas de" en `docs/v2/api/configuracion.md` (campos nuevos `fija`, `pestanaCreada`, `cartasTraidas`, `traerCartasDe`; Caja, Movimientos, Reservas y Clientes no se renombran: el front las deshabilita en la lista). El front todavía tiene los textos viejos en `textos.ts` y `tiposApi.ts`. Flujos CFG-F02, F03, A03, A07 y A10 a A14 siguen en `propuesto · HU-005` hasta HU-007.
 - **Tono aprobado (2026-10-15):** impersonal, en singular, sin hablarle al usuario; sigue diciendo cómo va el campo. Ej.: "El nombre de la tienda es obligatorio.", "El logo no debe superar los 2 MB.", "No se pudo cargar la configuración.", "Se acepta la URL completa o solo el ID.".
 - **Bloque del Sheet aprobado en idea:** arriba "ID o URL del Sheet" + "Pestaña del inventario" (se crea si no existe; la primera, si el Sheet no tiene ninguna); abajo "Pestaña a renombrar" (lista desplegable con las pestañas del Sheet) + "Nombre nuevo" con su botón.
 - **Flujos:** CFG-F01..F06 y CFG-A01..A09 están `vigente` (HU-004). HU-005 llama al analista para ajustar CFG-F02, CFG-F03 y CFG-A07 y sumar el flujo de renombrar.

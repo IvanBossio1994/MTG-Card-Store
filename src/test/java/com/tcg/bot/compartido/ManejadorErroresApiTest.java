@@ -65,7 +65,7 @@ class ManejadorErroresApiTest {
         mockMvc.perform(post("/api/v1/prueba").contentType(MediaType.APPLICATION_JSON).content("{nombre:"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Pedido inválido"))
-                .andExpect(jsonPath("$.detail").value("Revisá los datos enviados: el pedido no se pudo leer."));
+                .andExpect(jsonPath("$.detail").value("El pedido no se pudo leer. Los datos enviados no tienen el formato esperado."));
     }
 
     @Test
@@ -88,7 +88,7 @@ class ManejadorErroresApiTest {
         mockMvc.perform(get("/api/v1/prueba/falla"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.title").value("Error interno"))
-                .andExpect(jsonPath("$.detail").value("Ocurrió un error inesperado. Probá de nuevo en unos minutos."));
+                .andExpect(jsonPath("$.detail").value("Ocurrió un error inesperado. Se puede reintentar en un momento."));
     }
 
     record PedidoDePrueba(

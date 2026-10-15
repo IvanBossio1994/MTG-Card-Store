@@ -10,3 +10,4 @@ Cada historia es un archivo `HU-XXX-<tema>.md` creado desde `../plantilla-histor
 | [HU-003](HU-003-configuracion-backend.md) | Configuración v2 · backend | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-003-configuracion-backend` |
 | [HU-004](HU-004-configuracion-frontend.md) | Configuración v2 · frontend | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-004-configuracion-frontend` |
 | [HU-005](HU-005-diseno-textos-y-pestanas.md) | Configuración v2 · diseño: tono de textos y pestañas | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-005-diseno-textos-y-pestanas` |
+| [HU-006](HU-006-configuracion-backend-pestanas.md) | Configuración v2 · backend: pestañas y "Traer cartas de" | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-006-configuracion-backend-pestanas` |

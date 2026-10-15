@@ -20,12 +20,12 @@ Origen: [HU-002](../../agentes/historias/HU-002-base-tecnica-v2.md).
 
   | Código | Cuándo | `title` | `detail` (ejemplo) |
   |---|---|---|---|
-  | 400 | JSON mal formado o falta un dato obligatorio | `Pedido inválido` | `Revisá los datos enviados: el pedido no se pudo leer.` |
+  | 400 | JSON mal formado o falta un dato obligatorio | `Pedido inválido` | `El pedido no se pudo leer. Los datos enviados no tienen el formato esperado.` (tono HU-005, desde HU-006) |
   | 400 | Falla la validación de un DTO (`@Valid`) | `Datos inválidos` | `Hay datos para corregir.` + `errores` |
   | 404 | La ruta no existe bajo `/api/v1` | `Recurso no encontrado` | `No existe la dirección pedida: GET /api/v1/no-existe.` |
   | 405 | La ruta existe pero no acepta ese método | `Método no permitido` | `La dirección /api/v1/estado-app no acepta el método POST.` |
-  | 415 | `Content-Type` no soportado | `Formato no soportado` | `El formato del pedido no es válido. Enviá los datos como JSON.` |
-  | 500 | Error inesperado del servidor | `Error interno` | `Ocurrió un error inesperado. Probá de nuevo en unos minutos.` |
+  | 415 | `Content-Type` no soportado | `Formato no soportado` | `El formato del pedido no es válido. Los datos deben enviarse como JSON.` (tono HU-005, desde HU-006) |
+  | 500 | Error inesperado del servidor | `Error interno` | `Ocurrió un error inesperado. Se puede reintentar en un momento.` (tono HU-005, desde HU-006) |
 
 - Las rutas fuera de `/api/` (v1 en `/`, frontend en `/app`) no usan `ProblemDetail`: siguen con su manejo de errores propio.
 

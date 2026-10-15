@@ -23,21 +23,21 @@ public interface SesionGoogle {
 
     /**
      * Error 401: la sesión de Google venció o no hay sesión iniciada.
-     * Ejemplo: {@code throw SesionGoogle.sesionVencida()} → 401 "Tu sesión de Google venció." con {@code accion: "volver-a-iniciar-sesion"}.
+     * Ejemplo: {@code throw SesionGoogle.sesionVencida()} → 401 "La sesión de Google venció." con {@code accion: "volver-a-iniciar-sesion"}.
      */
     static ErrorDeNegocioException sesionVencida() {
         return new ErrorDeNegocioException(HttpStatus.UNAUTHORIZED, "Sesión de Google vencida",
-                "Tu sesión de Google venció.",
+                "La sesión de Google venció.",
                 Map.of("accion", "volver-a-iniciar-sesion", "urlInicioSesion", URL_INICIO_SESION));
     }
 
     /**
      * Error 500: Windows no deja leer la carpeta donde se guarda la sesión (por ejemplo, quedó a nombre de otro usuario
      * porque la app se abrió como administrador). No es un problema de internet ni de la sesión.
-     * Ejemplo: {@code throw SesionGoogle.sinPermisoEnCarpeta()} → 500 "La app no puede leer tu sesión de Google en esta PC. …".
+     * Ejemplo: {@code throw SesionGoogle.sinPermisoEnCarpeta()} → 500 "La app no puede leer la sesión de Google en esta PC. …".
      */
     static ErrorDeNegocioException sinPermisoEnCarpeta() {
         return new ErrorDeNegocioException(HttpStatus.INTERNAL_SERVER_ERROR, "Sesión de Google ilegible",
-                "La app no puede leer tu sesión de Google en esta PC. Abrila sin permisos de administrador y volvé a iniciar sesión.");
+                "La app no puede leer la sesión de Google en esta PC. Abrirla sin permisos de administrador e iniciar sesión de nuevo.");
     }
 }

@@ -105,26 +105,26 @@ public class ManejadorErroresApi {
 
     /**
      * JSON mal formado, parámetro o archivo faltante, o de tipo incorrecto → 400.
-     * Ejemplo: cuerpo "{nombre:" → 400 "Revisá los datos enviados: el pedido no se pudo leer."
+     * Ejemplo: cuerpo "{nombre:" → 400 "El pedido no se pudo leer. Los datos enviados no tienen el formato esperado."
      */
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class,
             MissingServletRequestPartException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ProblemDetail> pedidoInvalido(Exception ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
         return problema(HttpStatus.BAD_REQUEST, "Pedido inválido",
-                "Revisá los datos enviados: el pedido no se pudo leer.", request);
+                "El pedido no se pudo leer. Los datos enviados no tienen el formato esperado.", request);
     }
 
     /**
      * Content-Type no soportado → 415.
-     * Ejemplo: POST con text/plain → 415 "El formato del pedido no es válido. Enviá los datos como JSON."
+     * Ejemplo: POST con text/plain → 415 "El formato del pedido no es válido. Los datos deben enviarse como JSON."
      */
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ProblemDetail> formatoNoSoportado(HttpMediaTypeNotSupportedException ex,
                                                             HttpServletRequest request) throws Exception {
         soloApi(ex, request);
         return problema(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Formato no soportado",
-                "El formato del pedido no es válido. Enviá los datos como JSON.", request);
+                "El formato del pedido no es válido. Los datos deben enviarse como JSON.", request);
     }
 
     /**
@@ -158,14 +158,14 @@ public class ManejadorErroresApi {
 
     /**
      * Cualquier otro error inesperado → 500 con un mensaje genérico (el detalle técnico va al log).
-     * Ejemplo: NullPointerException en un servicio → 500 "Ocurrió un error inesperado. Probá de nuevo en unos minutos."
+     * Ejemplo: NullPointerException en un servicio → 500 "Ocurrió un error inesperado. Se puede reintentar en un momento."
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> errorInesperado(Exception ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
         log.error("Error inesperado en {} {}", request.getMethod(), request.getRequestURI(), ex);
         return problema(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
-                "Ocurrió un error inesperado. Probá de nuevo en unos minutos.", request);
+                "Ocurrió un error inesperado. Se puede reintentar en un momento.", request);
     }
 
     /** Si el pedido no es de la API, relanza la excepción original para que Spring siga como siempre. */

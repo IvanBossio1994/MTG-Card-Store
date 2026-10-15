@@ -28,6 +28,8 @@ public class ModoPruebaConfig {
 
     static final List<String> PAQUETES_EXCLUIDOS = List.of("com.tcg.bot.legacy.", "com.tcg.bot.google.");
     static final String GMAIL_DE_PRUEBA = "prueba@tcg-inventory.local";
+    static final String SHEET_CON_INVENTARIO = "1PruebaSheetConInventario000000000000000000";
+    static final String SHEET_CON_STOCK_VIEJO = "1PruebaSheetConStockViejo00000000000000000";
 
     /**
      * Registra el filtro que quita los beans de v1 y Google.
@@ -44,10 +46,21 @@ public class ModoPruebaConfig {
      */
     @Bean
     public AccesoSheet accesoSheetDePrueba() {
+        List<Object> encabezadosInventario = List.of("Cantidad", "Nombre", "Codigo de set", "Nombre del set",
+                "Numero de carta", "Condicion", "Printing (foil/no foil)", "Idioma", "Precio Local", "Precio CK USD", "Accion");
         return new AccesoSheetEnMemoria()
-                .compartir("1PruebaSheetConInventario000000000000000000", "Inventario")
+                .compartir(SHEET_CON_INVENTARIO, "Inventario")
+                .cargarFilas(SHEET_CON_INVENTARIO, "Inventario", List.of(encabezadosInventario))
                 .compartir("1PruebaSheetConPestanaUnica0000000000000000", "Hoja 1")
-                .compartir("1PruebaSheetConVariasPestanas00000000000000", "Hoja 1", "Ventas");
+                .compartir("1PruebaSheetConVariasPestanas00000000000000", "Hoja 1", "Ventas")
+                .compartir(SHEET_CON_STOCK_VIEJO, "Inventario", "stock viejo")
+                .cargarFilas(SHEET_CON_STOCK_VIEJO, "Inventario", List.of(encabezadosInventario))
+                .cargarFilas(SHEET_CON_STOCK_VIEJO, "stock viejo", List.of(
+                        List.of("Carta", "Stock", "Set", "Precio", "Notas"),
+                        List.of("Sol Ring", 4, "Commander Masters", 1500, "firmada"),
+                        List.of("", "", "", "", ""),
+                        List.of("Opt", 2, "Dominaria", 300, ""),
+                        List.of("Counterspell", 1, "Mystery Booster", 800, "")));
     }
 
     /**
