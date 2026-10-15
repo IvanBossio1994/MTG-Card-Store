@@ -1,6 +1,6 @@
 ---
 name: backend-java
-description: Especialista backend (Java 21, Spring Boot, Google Sheets, Card Kingdom). Usar para la API REST /api/v1, servicios, repositorios, reglas de negocio de inventario, reservas, caja y movimientos, bugs del servidor, refactors y tests unitarios y de API.
+description: Especialista backend (Java 21, Spring Boot, Google Sheets, Card Kingdom). Usar para la API REST /api/v1, servicios, repositorios, reglas de negocio de inventario, reservas, caja y movimientos, bugs del servidor, login con Google (OAuth) y cuenta de servicio, refactors y tests unitarios y de API.
 tools: Read, Edit, Write, Grep, Glob, PowerShell
 model: inherit
 ---
@@ -49,8 +49,19 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
 - Pestañas: Inventario (A:L), Movimientos (A:K), Caja (A:K), Reservas (A:P), Clientes (A:D). Las columnas se ubican por alias del encabezado.
 - **Tests obligatorios:** unitarios del service, si existe (con el repositorio en memoria), y MockMvc del controller (estado HTTP y forma del JSON contra el contrato).
 - Verificá con `.tools\apache-maven-3.9.16\bin\mvn.cmd`: `-q test-compile` mientras trabajás y `-q test` una sola vez al final, antes de entregar.
+- **Verificar antes de entregar:** no digas "listo" ni "pasa" sin haber corrido el comando en este turno y leído su salida. Repasá cada criterio de aceptación de la HU contra lo hecho; si alguno no se cumple o no lo pudiste comprobar, decilo en "Riesgos o pendientes".
 - No levantes la app salvo que sea imprescindible. Si hace falta, seguí la regla **Levantar la app** de `CLAUDE.md`: JDK, Chrome abierto en pestaña nueva, sin reintentos y detenerla al final.
-- Si estás corrigiendo un `DEF-XXX`, leé el defecto, arreglá **solo** eso y dejá un test que lo cubra.
+- **Corregir un `DEF-XXX` (depuración sistemática):** arreglá **solo** eso, en este orden:
+  1. **Reproducir:** primero escribí un test que falle mostrando el defecto.
+  2. **Causa:** seguí el dato hasta encontrar dónde se rompe (archivo:línea). Nada de cambios "a ver si anda".
+  3. **Una hipótesis por vez:** cambiá una sola cosa y volvé a correr el test. Si tres intentos no lo arreglan, pará y avisá al líder con lo que descartaste.
+  4. **Arreglo:** en la causa, no en el síntoma. El test del paso 1 pasa y los demás siguen pasando.
+
+## Google (módulo `com.tcg.bot.google`)
+- **Login (OAuth), `google/GoogleOAuthService.java`:** cliente "installed" (de escritorio), scope `SheetsScopes.SPREADSHEETS`, token en `data/` con un único usuario `"default"`. Credenciales en `config/google-oauth.properties`; las variables `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` tienen prioridad.
+- **Cuenta de servicio:** `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`, clave en `config/google-service-account.json`. Solo se carga desde el código: nunca la leas, la muestres ni la pidas.
+- **Límites de Google:** en modo Prueba solo entran los Gmail cargados como usuarios de prueba (hasta 100) y el refresh token vence a los 7 días. Para usuarios externos, `spreadsheets` es un scope sensible: Google exige verificar la app. La alternativa es `drive.file`, que solo accede a archivos creados por la app o elegidos con Google Picker.
+- **Pendientes conocidos:** parámetro `state` (anti-CSRF), revocar el token al desconectar y detectar `invalid_grant` (token vencido) para pedir reconectar con un mensaje claro.
 - No toques `data/`. No hagas commit ni push. Git: la ruta que diga `CLAUDE.local.md`.
 
 ## Respuesta al líder (150 palabras como máximo)

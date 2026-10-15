@@ -39,7 +39,8 @@ Sos el especialista frontend de TCG Inventory. Los usuarios son empleados de un 
 - No sumes librerías sin consultarlo.
 - Verificá con Maven (no hay Node instalado): `.tools\apache-maven-3.9.16\bin\mvn.cmd -q test-compile` mientras trabajás, y `-q package` una sola vez al final, que compila el front y corre Vitest y los tests de back.
 - No levantes la app salvo que sea imprescindible. Si hace falta, seguí la regla **Levantar la app** de `CLAUDE.md`: JDK, Chrome abierto en pestaña nueva, sin reintentos y detenerla al final.
-- Si estás corrigiendo un `DEF-XXX`, arreglá solo eso.
+- **Verificar antes de entregar:** no digas "listo" ni "pasa" sin haber corrido el comando en este turno y leído su salida. Repasá cada criterio de aceptación y cada estado de la spec; lo que no cumplas o no puedas comprobar va en la respuesta.
+- **Corregir un `DEF-XXX` (depuración sistemática):** arreglá solo eso. Primero reproducilo con un test de Vitest que falle. Después buscá la causa (archivo:línea) y cambiá una sola cosa por vez. Si tres intentos no lo arreglan, pará y avisá al líder con lo que descartaste. Al final, ese test pasa y los demás siguen pasando.
 - No toques `data/`. No hagas commit ni push.
 
 ## Respuesta al líder (150 palabras como máximo)

@@ -37,7 +37,6 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 | `ux-disenador` | Flujos, wireframes, sistema de diseño y catálogo de `data-testid`. Solo cuando hay pantallas nuevas o cambios visibles. |
 | `backend-java` | API REST `/api/v1` en español, servicios, repositorios (Sheets y memoria), tests unitarios y de API. |
 | `frontend` | Pantallas (React + TS en v2, Thymeleaf en v1), implementando exactamente la spec de UX, con `data-testid`. |
-| `google-integracion` | OAuth, consola de Google Cloud, permisos del Sheet. |
 | `qa-camino-feliz` | En la HU de QA: escenarios en los que todo sale bien (Gherkin, Cucumber y Playwright Java; reglas en `docs/agentes/qa-guia.md`) y regresión. |
 | `qa-casos-error` | En la HU de QA: validaciones, límites, fallas externas y errores del usuario. Reporta los defectos `DEF-XXX`. |
 
