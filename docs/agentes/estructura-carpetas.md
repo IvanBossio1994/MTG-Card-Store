@@ -45,9 +45,11 @@ src/test/java/com/tcg/bot/
   <modulo>/                  v2 · tests unitarios y de API, en el mismo paquete que la clase
   e2e/soporte/               v2 · hooks, arranque de la app y del navegador (ver qa-guia.md)
   e2e/compartido/            v2 · PantallaBase y piezas comunes (MarcoApp, CapaCarga)
-  e2e/<modulo>/              v2 · por módulo: <Modulo>Pasos.java (steps) y <Modulo>Pantalla.java (Page Object)
+  e2e/paginas/               v2 · <Modulo>Pantalla.java, un Page Object por módulo con todos sus métodos
+  e2e/localizadores/         v2 · <Modulo>Localizadores.java, los data-testid de cada módulo
+  e2e/pasos/                 v2 · <Modulo>Pasos.java, los steps de cada módulo (ver qa-guia.md)
   legacy/                    v1 · tests de la versión vieja (se mantienen verdes, no se agregan)
-src/test/resources/features/<modulo>/<modulo>.feature   escenarios Gherkin del módulo
+src/test/resources/features/<modulo>.feature   escenarios Gherkin del módulo
 
 config/        claves locales, ignoradas por git: google-oauth.properties y google-service-account.json · compartido
 docs/          documentación · data/ NO se toca
@@ -60,10 +62,13 @@ docs/          documentación · data/ NO se toca
 3. **Lo que usan las dos versiones** (arranque, `google/`, `config/`, `static/images/`) no se mueve a `legacy`.
 4. **Al migrar un módulo**, lo viejo queda como está hasta el corte. No se borra ni se modifica `legacy` durante el rework, salvo un arreglo urgente que pida la persona a cargo.
 5. **Tests:** cada clase nueva lleva sus tests en `src/test/java/com/tcg/bot/<modulo>/`. Los tests de `legacy/` tienen que seguir pasando.
-6. **Todo se divide por módulo, no por endpoint ni por método** (backend, frontend y QA):
+6. **Todo se divide por módulo, no por endpoint ni por método** (backend, frontend y QA). Primero la carpeta del módulo; adentro, solo las subcarpetas que tienen sentido para esa capa (pedido de la dueña, 2026-10-15):
+   - **Backend:** el paquete del módulo, sin subpaquetes (controller, service y repositorios juntos; `dto/` solo si hace falta, regla 7).
+   - **Frontend:** `modulos/<modulo>/` con la página, `<modulo>Api.ts` y los tests al lado, y `componentes/` para las piezas propias del módulo.
+   - **QA:** al revés que el resto: cuatro carpetas por tipo (`features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`) y, adentro de cada una, un archivo por módulo.
    - **Backend:** un `XController` por módulo, con todos sus endpoints (por ejemplo, `ConfiguracionController` tiene GET y los PUT de tienda, sheet, precios y puntos). No se arma un controller por endpoint.
    - **Frontend:** una carpeta por módulo, con su página, sus componentes y **un único archivo `<modulo>Api.ts`** con todas las llamadas del módulo. No se arma un archivo por llamada ni una página por método.
-   - **QA:** un `.feature` por módulo (los escenarios de cada HU se suman ahí, con sus tags), un archivo de pasos y un Page Object por módulo, con todas las acciones de esa pantalla.
+   - **QA:** un `.feature` por módulo (los escenarios de cada HU se suman ahí, con sus tags), y por módulo un Page Object con todas las acciones de la pantalla, un archivo de localizadores y un archivo de pasos.
    - No hay un límite fijo de líneas. Un archivo se parte solo si hay sub-pantallas de verdad o si el líder lo consulta y la persona a cargo lo aprueba; se decide caso por caso.
 7. **Nada de archivos ni carpetas "porque sí":** cada archivo nuevo tiene que aportar algo.
    - **Service** solo si hay reglas de negocio o datos que buscar. Si el endpoint solo arma una respuesta, la lógica va en el controller (ejemplo: `EstadoAppController`).

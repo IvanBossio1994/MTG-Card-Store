@@ -16,9 +16,11 @@ La usan `qa-camino-feliz` y `qa-casos-error`, siempre dentro de la **HU de QA** 
 
 ## Estructura
 ```
-src/test/resources/features/<modulo>/<modulo>.feature  un feature por módulo; cada HU suma sus escenarios con sus tags
-src/test/java/com/tcg/bot/e2e/<modulo>/<Modulo>Pasos.java     steps del módulo
-src/test/java/com/tcg/bot/e2e/<modulo>/<Modulo>Pantalla.java  Page Object del módulo, con todas sus acciones
+Cuatro carpetas por tipo; adentro, un archivo por módulo (pedido de la dueña, 2026-10-15):
+src/test/resources/features/<modulo>.feature                  escenarios del módulo; cada HU suma los suyos con sus tags
+src/test/java/com/tcg/bot/e2e/paginas/<Modulo>Pantalla.java   Page Object: TODOS los métodos de la pantalla (escribir, guardar, leer mensajes)
+src/test/java/com/tcg/bot/e2e/localizadores/<Modulo>Localizadores.java   los data-testid de la pantalla, como constantes (de docs/v2/locators.md)
+src/test/java/com/tcg/bot/e2e/pasos/<Modulo>Pasos.java        steps del módulo: solo llaman a la Pantalla, sin locators ni lógica
 src/test/java/com/tcg/bot/e2e/compartido/                     PantallaBase (abrir módulo, esperar carga, leer mensajes) y objetos de piezas comunes (MarcoApp, CapaCarga); cada <Modulo>Pantalla extiende PantallaBase
 src/test/java/com/tcg/bot/e2e/soporte/                         hooks, arranque de la app y del navegador, evidencias
 target/evidencias/                                    capturas y trazas de Playwright (no se versionan)

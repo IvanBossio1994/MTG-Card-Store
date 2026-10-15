@@ -8,3 +8,4 @@ Cada historia es un archivo `HU-XXX-<tema>.md` creado desde `../plantilla-histor
 | [HU-001](HU-001-diseno-configuracion.md) | Diseño nuevo de Configuración (v2) | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-001-diseno-configuracion` |
 | [HU-002](HU-002-base-tecnica-v2.md) | Base técnica v2 | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-002-base-tecnica-v2` |
 | [HU-003](HU-003-configuracion-backend.md) | Configuración v2 · backend | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-003-configuracion-backend` |
+| [HU-004](HU-004-configuracion-frontend.md) | Configuración v2 · frontend | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-004-configuracion-frontend` |

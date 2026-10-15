@@ -70,7 +70,7 @@ El estado nunca va solo por color: siempre lleva ícono y texto.
 
 ### Tipografía (Google Fonts)
 - **Toda la app:** Inter. Título de pantalla 28 px bold; título de bloque 18 px semibold; texto 15 px; etiquetas 14 px semibold; ayudas 12-14 px.
-- **Mensajes** (error, aviso, éxito): 12 px en campos, 13 px en bloque, siempre menores que el texto de los campos (15 px).
+- **Mensajes** (error, aviso, éxito): 11 px en campos y 12,5 px en bloque, **sin negrita** (peso normal), siempre menores que el texto de los campos (15 px). El error de campo va en rojo suavizado (`error` al 80 %) (pedido de la dueña, HU-004).
 
 ### Espaciado
 Escala 4 / 8 / 12 / 16 / 24 / 32 / 40 px (`1`, `2`, `3`, `4`, `6`, `8`, `10` de Tailwind). Nada de valores sueltos. Separación entre bloques y entre columnas: 16 px. Padding de tarjeta: 24 px.
@@ -105,7 +105,7 @@ Todos los campos tienen el mismo alto y los botones del mismo tipo, el mismo alt
 | **Marco de app (AppShell)** | Lo reutilizan todas las pantallas. **Barra lateral** fija a la izquierda: 240 px, fondo blanco, borde derecho 1 px `borde`, padding 24/16, sticky a pantalla completa. Arriba, logo de la tienda (40 px) y nombre (16 px semibold). Debajo, menú vertical con separación de 4 px: Inventario (`package`), Reservas (`bookmark`), Caja (`wallet`), Movimientos (`arrow-left-right`), Configuración (`settings-2`). Ítem: 40 px de alto, radio 10, ícono de 20 px + texto 15 px; hover fondo arena; activo con fondo `acento-suave`, texto `acento` semibold y `aria-current="page"`. **Contenido**: ocupa el resto del ancho, alineado a la izquierda junto al menú, padding 32 px; formularios hasta 720 px. Locators `app-enlace-<modulo>`. | Todas las pantallas |
 | **Índice de secciones** | Para pantallas largas con secciones. Columna de 176 px a la izquierda del contenido, sticky. Ítems de 36 px (ícono 16 px + texto 14 px); clic hace scroll suave a la sección (`scroll-margin` para no quedar tapada); la sección visible se marca con fondo `acento-suave`, texto `acento` y `aria-current="true"`. Al llegar al final de la página se marca la última. Formularios a la derecha, apilados, ancho máximo 720 px. **Usarlo solo si la pantalla es realmente larga**, con más de 5 o 6 secciones. | Ninguna por ahora (se sacó de Configuración, que es corta) |
 | **Bloque (card)** | Tarjeta blanca, borde 1 px `borde`, radio 16, sombra suave, padding 24. Título con ícono Lucide de 20 px en un cuadradito de 32 px (radio 10, fondo `acento-suave`, ícono `acento`), ayuda, contenido, pie con botón y mensaje. | Configuración |
-| **Campo** | Etiqueta arriba (semibold), input de 42 px con borde 1 px `campo`, ayuda opcional y error opcional debajo (12 px). Con error: borde y fondo rojo suave, ícono `circle-alert` junto al texto. | Configuración |
+| **Campo** | Etiqueta arriba (semibold), input de 42 px con borde 1 px `campo`, ayuda opcional y error opcional debajo (11 px, peso normal). Con error: borde y fondo rojo suave, ícono `circle-alert` junto al texto. | Configuración |
 | **Botón primario** | Fondo `acento`, texto blanco, ícono Lucide opcional. Hover más oscuro. Mientras guarda: deshabilitado, el contenido pasa a spinner `loader-2` + "Guardando…" dentro del mismo botón (mínimo 160 px). | Guardar |
 | **Etiqueta con rareza** | Etiqueta de campo con puntito de rareza (10 px, 8 px de separación) antes del texto. | Precios bulk |
 | **Botón secundario** | Fondo blanco, borde 1 px `campo`. | Subir logo, Salir igual |

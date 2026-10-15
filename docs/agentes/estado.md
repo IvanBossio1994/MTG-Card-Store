@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-15 (HU-003 aceptada). Próxima: HU-004 (EP-001, frontend de Configuración).
+> Última actualización: 2026-10-15 (HU-004 aceptada). En curso: HU-005 (EP-001, diseño: tono de textos y pestañas). QA de la épica: HU-008.
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -90,6 +90,9 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 - 2026-10-15: revisión de coherencia de `CLAUDE.md`, agentes, skills, plantillas y guías. Gherkin en tercera persona con nombre `[Pantalla] acción` y `Scenario Outline` con el parámetro en el nombre (`qa-guia.md`).
 - 2026-10-15: **la v1 es solo machete** (decisión de la dueña): lo que tiene que funcionar es la v2; la v1 sirve para entender cómo era cada flujo y no se le hacen arreglos de convivencia. Si se guarda la configuración en la v2, la v1 la ve recién al reiniciar la app (HU-003). Hoy nadie usa la app en el local porque no está completa.
 - 2026-10-15: **HU-003 aceptada:** API `/api/v1/configuracion` (contrato en `docs/v2/api/configuracion.md`), acceso al Sheet con la cuenta de servicio, arreglo de la pestaña (renombrar o crear), errores 400/401/403/500. Probada contra el Sheet de pruebas, que pasa a ser el configurado en esta PC. `TcgBotApplication` arranca en el 8765. Costó 197 mil tokens de agentes (una sola tarea).
+- 2026-10-15: **HU-004 aceptada:** pantalla Configuración v2 en `/app` (React), con `configuracionApi.ts` y piezas comunes en `frontend/src/compartido/` (Tarjeta, Campo, Boton, MensajeBloque, CapaCarga, AvisoSalirSinGuardar, `useGuardarBloque`, `clienteApi`). Costó 305 mil tokens en 2 tareas (171 + 134 mil). Reglas nuevas de textos: los errores dicen cómo va el campo, todo campo lleva su ejemplo ("Ej.: …") y los errores van en letra chica sin negrita. Documento funcional 0.4.0.
+- 2026-10-15: **Textos en tono impersonal y en singular** (pedido de la dueña): nada de "Ingresá…", "la creamos" ni "No pudimos…". Se reescribe toda la biblioteca en HU-005.
+- 2026-10-15: **Carpetas de QA por tipo** (`features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), con un archivo por módulo en cada una. Front y back siguen por módulo.
 - 2026-10-15: **HU de backend en tareas:** contrato y riesgos primero (revisión de la dueña), infraestructura nueva aparte, hasta 6 endpoints por tarea (`CLAUDE.md`, ciclo, paso 3).
 - 2026-10-14: el proyecto requiere JDK 21 (Temurin). La ruta de cada PC va en `CLAUDE.local.md`.
 - 2026-10-15: **otra PC u otro usuario:** la primera vez, `/agente-lider` aplica `preparar-entorno`. Revisa e instala, con OK, JDK 21, Git y Maven (`.tools\`, que git no versiona). Verifica que estén las 2 claves de `config/` (la persona a cargo las pasa por un canal privado) y crea `CLAUDE.local.md`. Se usan los mismos usuarios de Google; `data/` no se pasa y cada uno inicia sesión una vez.

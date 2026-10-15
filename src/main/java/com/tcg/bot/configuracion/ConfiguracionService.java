@@ -34,10 +34,10 @@ public class ConfiguracionService {
     private static final Logger log = LoggerFactory.getLogger(ConfiguracionService.class);
 
     static final long PESO_MAXIMO_LOGO = 2L * 1024L * 1024L;
-    static final String MENSAJE_LOGO_PESADO = "El logo pesa más de 2 MB.";
-    static final String MENSAJE_LOGO_FORMATO = "El archivo no es PNG, JPG ni WEBP.";
-    static final String MENSAJE_SHEET_INVALIDO = "Ese link no es de un Google Sheet.";
-    static final String MENSAJE_CARPETA = "No encontramos esa carpeta.";
+    static final String MENSAJE_LOGO_PESADO = "Usá un logo de hasta 2 MB.";
+    static final String MENSAJE_LOGO_FORMATO = "Usá un PNG, JPG o WEBP.";
+    static final String MENSAJE_SHEET_INVALIDO = "Pegá una URL de Google Sheets o solo el ID.";
+    static final String MENSAJE_CARPETA = "Esa carpeta no existe. Elegí otra o dejala vacía.";
     static final String AVISO_FALLA_CARD_KINGDOM = "Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde.";
 
     private static final Pattern LINK_DE_SHEET =
@@ -94,7 +94,7 @@ public class ConfiguracionService {
 
     /**
      * Valida y guarda el logo nuevo (PNG, JPG o WEBP, hasta 2 MB, según su contenido). Devuelve su versión.
-     * Ejemplo: PNG de 500 KB → {@code 1760550000000}; archivo de 3 MB → 400 "El logo pesa más de 2 MB.".
+     * Ejemplo: PNG de 500 KB → {@code 1760550000000}; archivo de 3 MB → 400 "Usá un logo de hasta 2 MB.".
      */
     public long guardarLogo(byte[] contenido) {
         if (contenido.length > PESO_MAXIMO_LOGO) {
@@ -114,10 +114,11 @@ public class ConfiguracionService {
     }
 
     /**
-     * Conecta el Sheet: verifica la sesión y el acceso, deja lista la pestaña del inventario (la renombra si es la
-     * única, la crea si hay varias y falta), crea las pestañas fijas que falten y recién ahí guarda.
-     * Ejemplo: Sheet con solo "Hoja 1" + pestaña "Inventario" → {@code SheetConectado(id, "Inventario", gmail,
-     * "La pestaña «Hoja 1» se renombró a «Inventario».")}.
+     * Conecta el Sheet: verifica la sesión y el acceso, deja lista la pestaña del inventario, crea las pestañas fijas
+     * que falten y recién ahí guarda. Si la pestaña pedida no existe: renombra la del inventario de antes (mismo Sheet,
+     * así no se pierden los datos), o la única pestaña del Sheet; si no hay ninguna de las dos, la crea (CFG-F03, CFG-A07).
+     * Ejemplo: Sheet con "Inventario", "Caja"… guardado con "Inventario" + pestaña "Inventario Test" →
+     * {@code SheetConectado(id, "Inventario Test", gmail, "La pestaña «Inventario» se renombró a «Inventario Test».")}.
      */
     public SheetConectado conectarSheet(String referenciaSheet, String pestanaPedida) {
         String sheetId = idDeSheet(referenciaSheet);
@@ -127,8 +128,8 @@ public class ConfiguracionService {
         List<String> pestanas = accesoSheet.listarPestanas(sheetId);
         String aviso = null;
         if (!pestanas.contains(pestana)) {
-            if (pestanas.size() == 1) {
-                String anterior = pestanas.get(0);
+            String anterior = pestanaARenombrar(sheetId, pestanas);
+            if (anterior != null) {
                 accesoSheet.renombrarPestana(sheetId, anterior, pestana);
                 aviso = "La pestaña «" + anterior + "» se renombró a «" + pestana + "».";
             } else {
@@ -149,9 +150,24 @@ public class ConfiguracionService {
     }
 
     /**
+     * Qué pestaña renombrar cuando la pedida no existe: la del inventario guardada antes, si es el mismo Sheet y sigue
+     * ahí (nunca una fija, como "Caja"); si no, la única pestaña del Sheet; si no, ninguna ({@code null}: se crea).
+     * Ejemplo: guardado ("1vSk…", "Inventario") y el Sheet tiene "Inventario" y "Caja" → "Inventario".
+     */
+    private String pestanaARenombrar(String sheetId, List<String> pestanas) {
+        SheetGuardado guardado = repositorio.leerSheet();
+        if (guardado != null && sheetId.equals(guardado.sheetId()) && guardado.pestanaInventario() != null
+                && pestanas.contains(guardado.pestanaInventario())
+                && !PESTANAS_FIJAS.containsKey(guardado.pestanaInventario())) {
+            return guardado.pestanaInventario();
+        }
+        return pestanas.size() == 1 ? pestanas.get(0) : null;
+    }
+
+    /**
      * Valida la carpeta de cache, guarda la regla de precio y después intenta sincronizar con Card Kingdom.
      * Ejemplo: cotización 1350 y CK caído → {@code PreciosGuardados(regla, "Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde.")};
-     * carpeta inexistente → 400 "No encontramos esa carpeta." y no guarda nada.
+     * carpeta inexistente → 400 "Esa carpeta no existe. Elegí otra o dejala vacía." y no guarda nada.
      */
     public PreciosGuardados guardarPrecios(ReglaDePrecios pedido) {
         String carpeta = carpetaCacheValida(pedido.carpetaCache());

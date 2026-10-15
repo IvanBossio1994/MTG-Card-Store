@@ -207,7 +207,7 @@ public class ConfiguracionController {
             @Schema(description = "Link completo del Google Sheet o solo su ID",
                     example = "https://docs.google.com/spreadsheets/d/1vSk7YvkaEKOsomY7hnRGpuAK6Fm8T_ObkPKxZGnd5vQ/edit",
                     requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotBlank(message = "Pegá el link o el ID del Sheet.")
+            @NotBlank(message = "Pegá el ID o la URL del Sheet.")
             String sheet,
             @Schema(description = "Nombre de la pestaña del inventario", example = "Inventario", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotBlank(message = "Ingresá el nombre de la pestaña.")
@@ -240,23 +240,23 @@ public class ConfiguracionController {
     public record BulkPedido(
             @Schema(example = "50", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Sin centavos.")
+            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
             Double common,
             @Schema(example = "100", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Sin centavos.")
+            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
             Double uncommon,
             @Schema(example = "150", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Sin centavos.")
+            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
             Double rare,
             @Schema(example = "150", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Sin centavos.")
+            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
             Double mythic,
             @Schema(example = "200", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotNull(message = "Ingresá el precio.") @Positive(message = "Tiene que ser mayor a 0.")
-            @Digits(integer = 12, fraction = 0, message = "Sin centavos.")
+            @Digits(integer = 12, fraction = 0, message = "Usá un entero, sin centavos.")
             Double tierraBasica
     ) {
     }

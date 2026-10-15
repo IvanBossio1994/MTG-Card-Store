@@ -14,13 +14,15 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 - **Mensajes de error: específicos, no genéricos.** Siguen la práctica actual (GOV.UK, Nielsen Norman Group): dicen **qué pasó en ese campo y qué hacer**, sin culpar al usuario. Hay un mensaje por cada causa:
   - **vacío** → "Ingresá {qué}." (ej.: "Ingresá la cotización del dólar.")
   - **valor fuera de rango** → "{Campo} tiene que ser mayor a 0."
-  - **formato** → qué formato se espera (ej.: "Sin centavos.", "Ese link no es de un Google Sheet.")
+  - **formato** → qué formato se espera y qué usar (ej.: "Usá un entero, sin centavos.", "Pegá una URL de Google Sheets o solo el ID.")
   - **falla externa** → qué pasó y cómo se resuelve (ej.: "Tu cuenta no tiene acceso a este Sheet. Compartilo con {gmail} como editor.")
   - **Prohibido** el "Revisá X" o el "Valor inválido" sueltos, que no dicen qué está mal.
-- El error de un campo tiene que entrar **en una línea del ancho del campo**. En campos angostos (los bulk, por ejemplo) se usa la forma corta ("Sin centavos.").
+  - **Siempre dicen cómo va el campo**, en pocas palabras y sin exagerar (pedido de la dueña, HU-004): "Usá un logo de hasta 2 MB." y no "El logo pesa más de 2 MB.".
+- El error de un campo tiene que entrar **en una línea del ancho del campo**. En campos angostos (los bulk) se reservan **dos líneas** debajo del campo, para que el mensaje entre entero sin mover nada (ej.: "Usá un entero, sin centavos.").
+- **Todo campo de texto o número lleva su ejemplo** (`ejemplo`, en gris dentro del campo vacío), con el formato "Ej.: …" (pedido de la dueña, HU-004).
 - Los mensajes terminan con punto. Los títulos, botones y etiquetas no llevan punto.
 - Lo que está entre `{}` se reemplaza por un dato (por ejemplo `{pestana}`).
-- La **clave** es `<pantalla o general>.<tipo>.<nombre>`. Tipos: `titulo`, `bajada`, `etiqueta`, `ayuda`, `boton`, `carga`, `exito`, `aviso`, `error`, `modal`, `texto`.
+- La **clave** es `<pantalla o general>.<tipo>.<nombre>`. Tipos: `titulo`, `bajada`, `etiqueta`, `ayuda`, `ejemplo` (texto gris dentro de un campo vacío), `boton`, `carga`, `exito`, `aviso`, `error`, `modal`, `texto`.
 
 ## Generales (se reutilizan en cualquier pantalla)
 | Clave | Texto | Tipo | Desde |
@@ -29,7 +31,7 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `general.boton.guardando` | Guardando… | botón (en espera) | HU-001 |
 | `general.carga.sincronizando-sheet` | Sincronizando con tu Sheet… | capa de carga | HU-001 |
 | `general.error.mayor-a-cero` | Tiene que ser mayor a 0. | error de campo (forma corta) | HU-001 |
-| `general.error.sin-centavos` | Sin centavos. | error de campo (forma corta) | HU-001 |
+| `general.error.sin-centavos` | Usá un entero, sin centavos. | error de campo | HU-001 (texto cambiado en HU-004, pedido de la dueña: que diga qué usar) |
 | `general.error.corregir-campo` | No se guardó. Corregí el campo marcado en rojo. | error de bloque | HU-001 |
 | `general.error.inesperado` | No pudimos guardar por un error inesperado. Probá de nuevo en un momento. | error de bloque | HU-001 |
 | `general.error.conexion` | Revisá tu conexión a internet e intentá de nuevo. | error | HU-001 |
@@ -70,22 +72,22 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `configuracion.tienda.boton.guardar` | Guardar tienda | botón | CFG-F01 | `configuracion-boton-guardar-tienda` |
 | `configuracion.tienda.exito` | Tienda guardada. | éxito | CFG-F01 | `configuracion-mensaje-exito-tienda` |
 | `configuracion.tienda.error.nombre-vacio` | Ingresá el nombre de la tienda. | error de campo | CFG-A01 | `configuracion-mensaje-error-nombre-tienda` |
-| `configuracion.tienda.error.logo-pesado` | El logo pesa más de 2 MB. | error de campo | CFG-A02 | `configuracion-mensaje-error-logo` |
-| `configuracion.tienda.error.logo-formato` | El archivo no es PNG, JPG ni WEBP. | error de campo | CFG-A02 | `configuracion-mensaje-error-logo` |
+| `configuracion.tienda.error.logo-pesado` | Usá un logo de hasta 2 MB. | error de campo | CFG-A02 | `configuracion-mensaje-error-logo` |
+| `configuracion.tienda.error.logo-formato` | Usá un PNG, JPG o WEBP. | error de campo | CFG-A02 | `configuracion-mensaje-error-logo` |
 | **Sheet** | | | | |
 | `configuracion.sheet.titulo` | Inventario en Google Sheets | título de bloque | CFG-F02 | |
 | `configuracion.sheet.bajada` | Tu Google Sheet es la base de datos de la tienda. | bajada | CFG-F02 | |
 | `configuracion.sheet.texto.conectado` | Conectado como {gmail} | texto | CFG-F02 | `configuracion-texto-gmail-conectado` |
-| `configuracion.sheet.etiqueta.link` | Link o ID del Sheet | etiqueta | CFG-F02 | |
-| `configuracion.sheet.ayuda.link` | Pegá el link completo o solo el ID. | ayuda | CFG-F02 | |
+| `configuracion.sheet.etiqueta.link` | ID o URL del Sheet | etiqueta | CFG-F02 | |
+| `configuracion.sheet.ayuda.link` | Pegá la URL o solo el ID. | ayuda | CFG-F02 | |
 | `configuracion.sheet.etiqueta.pestana` | Pestaña del inventario | etiqueta | CFG-F02 | |
-| `configuracion.sheet.ayuda.pestana` | Si no existe, la creamos. Con una sola pestaña, la renombramos. | ayuda | CFG-F03 | |
+| `configuracion.sheet.ayuda.pestana` | Si cambiás el nombre, renombramos la pestaña actual. Si no hay ninguna, la creamos. | ayuda | CFG-F03 | |
 | `configuracion.sheet.boton.guardar` | Guardar inventario | botón | CFG-F02 | `configuracion-boton-guardar-sheet` |
 | `configuracion.sheet.exito` | Inventario guardado. | éxito | CFG-F02 | `configuracion-mensaje-exito-sheet` |
 | `configuracion.sheet.aviso.renombrada` | La pestaña «{anterior}» se renombró a «{pestana}». | aviso | CFG-F03 | `configuracion-mensaje-aviso-sheet` |
 | `configuracion.sheet.aviso.creada` | Se creó la pestaña «{pestana}». | aviso | CFG-A07 | `configuracion-mensaje-aviso-sheet` |
-| `configuracion.sheet.error.vacio` | Pegá el link o el ID del Sheet. | error de campo | CFG-A03 | `configuracion-mensaje-error-sheet` |
-| `configuracion.sheet.error.invalido` | Ese link no es de un Google Sheet. | error de campo | CFG-A03 | `configuracion-mensaje-error-sheet` |
+| `configuracion.sheet.error.vacio` | Pegá el ID o la URL del Sheet. | error de campo | CFG-A03 | `configuracion-mensaje-error-link-sheet` |
+| `configuracion.sheet.error.invalido` | Pegá una URL de Google Sheets o solo el ID. | error de campo | CFG-A03 | `configuracion-mensaje-error-link-sheet` |
 | `configuracion.sheet.error.sin-permiso` | La app no tiene acceso a este Sheet. Compartilo con {cuenta-servicio} como editor. ({cuenta-servicio} = `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`) | error de bloque | CFG-A04 | `configuracion-mensaje-error-sheet` |
 | `configuracion.sheet.error.pestana-vacia` | Ingresá el nombre de la pestaña. | error de campo | CFG-A07 | `configuracion-mensaje-error-pestana-inventario` |
 | **Precios** | | | | |
@@ -94,6 +96,14 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `configuracion.precios.etiqueta.cotizacion` | Cotización (ARS por USD) | etiqueta | CFG-F04 | |
 | `configuracion.precios.etiqueta.redondeo` | Redondear al múltiplo de ($) | etiqueta | CFG-F04 | |
 | `configuracion.precios.etiqueta.cache` | Carpeta de cache CK (opcional) | etiqueta | CFG-F04 | |
+| `configuracion.precios.ejemplo.cache` | Ej.: C:\TCG-inventory\cache | ejemplo dentro del campo (placeholder) | CFG-F04 | |
+| `configuracion.precios.ejemplo.cotizacion` | Ej.: 1350 | ejemplo | CFG-F04 | |
+| `configuracion.precios.ejemplo.redondeo` | Ej.: 500 | ejemplo | CFG-F04 | |
+| `configuracion.precios.ejemplo.bulk` | Ej.: 50 | ejemplo (los 5 bulk) | CFG-F04 | |
+| `configuracion.tienda.ejemplo.nombre` | Ej.: Mazo Mágico | ejemplo | CFG-F01 | |
+| `configuracion.sheet.ejemplo.link` | Ej.: 1vSk7YvkaEKOsomY7hnRG… o la URL | ejemplo | CFG-F02 | |
+| `configuracion.sheet.ejemplo.pestana` | Ej.: Inventario | ejemplo | CFG-F02 | |
+| `configuracion.puntos.ejemplo.pesos` | Ej.: 1000 | ejemplo | CFG-F05 | |
 | `configuracion.precios.titulo.bulk` | Precio bulk por rareza ($, sin centavos) | subtítulo | CFG-F04 | |
 | `configuracion.precios.etiqueta.common` · `uncommon` · `rare` · `mythic` · `tierra-basica` | Common · Uncommon · Rare · Mythic · Tierra básica | etiquetas | CFG-F04 | |
 | `configuracion.precios.boton.guardar` | Guardar precios | botón | CFG-F04 | `configuracion-boton-guardar-precios` |
@@ -105,7 +115,7 @@ Acá están **todos los textos que ve el usuario**: títulos, etiquetas, ayudas,
 | `configuracion.precios.error.bulk-vacio` | Ingresá el precio. | error de campo (corto) | CFG-A06 | `configuracion-mensaje-error-bulk-<rareza>` |
 | `configuracion.precios.error.bulk-menor` | → `general.error.mayor-a-cero` | error de campo (corto) | CFG-A06 | `configuracion-mensaje-error-bulk-<rareza>` |
 | `configuracion.precios.error.bulk-centavos` | → `general.error.sin-centavos` | error de campo (corto) | CFG-A06 | `configuracion-mensaje-error-bulk-<rareza>` |
-| `configuracion.precios.error.carpeta` | No encontramos esa carpeta. | error de campo | CFG-A08 | `configuracion-mensaje-error-carpeta-cache` |
+| `configuracion.precios.error.carpeta` | Esa carpeta no existe. Elegí otra o dejala vacía. | error de campo | CFG-A08 | `configuracion-mensaje-error-carpeta-cache` |
 | `configuracion.precios.aviso.falla-ck` | Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde. | aviso | CFG-A09 | `configuracion-mensaje-aviso-precios` |
 | **Puntos** | | | | |
 | `configuracion.puntos.titulo` | Puntos de clientes | título de bloque | CFG-F05 | |

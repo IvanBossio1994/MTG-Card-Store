@@ -88,7 +88,7 @@ El contenido ocupa todo el ancho junto al menú (padding de 32 px, tope de 1600 
 
 ### Error de campo
 ```
- Link o ID del Sheet
+ ID o URL del Sheet
  [https://mal...____________]   <- borde rojo grueso
  (!) Revisá el link del Sheet.
 ```
@@ -154,7 +154,7 @@ Catálogo completo en `docs/v2/locators.md` (Desde = HU-001). Se suman los enlac
 | data-testid | Elemento | Para qué |
 |---|---|---|
 | `configuracion-campo-nombre-tienda` | Nombre de la tienda | Escribir el nombre |
-| `configuracion-campo-sheet` | Link o ID del Sheet | Pegar el link |
+| `configuracion-campo-sheet` | ID o URL del Sheet | Pegar el link |
 | `configuracion-campo-pestana-inventario` | Pestaña del inventario | Escribir la pestaña |
 | `configuracion-campo-cotizacion` / `-redondeo` | Cotización y múltiplo | Regla de precio |
 | `configuracion-campo-bulk-<rareza>` | `common`, `uncommon`, `rare`, `mythic`, `tierra-basica` | Precio bulk |

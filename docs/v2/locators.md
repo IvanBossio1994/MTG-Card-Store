@@ -45,7 +45,7 @@ Es un contrato entre UX, que los define, frontend, que los pone, y QA, que los u
 | `configuracion-mensaje-exito-<bloque>` | configuracion | Éxito junto al bloque | HU-001 |
 | `configuracion-mensaje-aviso-<bloque>` | configuracion | Aviso no bloqueante (pestaña renombrada o creada, falla de Card Kingdom) | HU-001 |
 | `configuracion-mensaje-error-<bloque>` | configuracion | Error de todo el bloque (sin permiso, sesión vencida, 5xx) | HU-001 |
-| `configuracion-mensaje-error-<campo>` | configuracion | Error junto a un campo (`nombre-tienda`, `logo`, `sheet`, `pestana-inventario`, `cotizacion`, `redondeo`, `bulk-<rareza>`, `carpeta-cache`, `pesos-por-punto`) | HU-001 |
+| `configuracion-mensaje-error-<campo>` | configuracion | Error junto a un campo (`nombre-tienda`, `logo`, `link-sheet` (el campo del link; `sheet` a secas es el error del bloque), `pestana-inventario`, `cotizacion`, `redondeo`, `bulk-<rareza>`, `carpeta-cache`, `pesos-por-punto`) | HU-001 |
 | `configuracion-texto-gmail-conectado` | configuracion | "Conectado como ..." en el bloque Inventario | HU-001 |
 | `configuracion-texto-ejemplo-puntos` | configuracion | Ejemplo en vivo: "Una compra de $25.000 suma N puntos." | HU-001 |
 | `configuracion-boton-seguir-editando` | configuracion | Cerrar el modal y seguir editando | HU-001 |

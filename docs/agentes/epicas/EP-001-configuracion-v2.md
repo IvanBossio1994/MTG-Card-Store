@@ -33,10 +33,15 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 | [HU-001](../historias/HU-001-diseno-configuracion.md) | Diseño nuevo de Configuración | aceptada | — |
 | [HU-002](../historias/HU-002-base-tecnica-v2.md) | Base técnica v2 (React en Maven, OpenAPI, errores, perfil e2e, arnés Cucumber + Playwright con 1 smoke) | aceptada | — |
 | [HU-003](../historias/HU-003-configuracion-backend.md) | Configuración v2 · backend: contrato `docs/v2/api/configuracion.md`, `ConfiguracionController`, arreglo de la pestaña (renombrar o crear) y sesión vencida (401) | aceptada | HU-002 |
-| HU-004 | Configuración v2 · frontend: pantalla según el prototipo, contra la API de HU-003. Se prueba en el navegador sobre el Sheet de pruebas de la dueña | planificada | HU-001, HU-003 |
-| HU-005 | Configuración v2 · QA E2E. **Cubre** HU-002, HU-003 y HU-004: arnés Cucumber + Playwright (`PantallaBase`, `MarcoApp`), smoke `@critico` (heredado de HU-002) y escenarios de los flujos CFG-F01..F06 y CFG-A01..A09, contra el Sheet de QA | planificada | HU-004 |
+| [HU-004](../historias/HU-004-configuracion-frontend.md) | Configuración v2 · frontend: pantalla según el prototipo, contra la API de HU-003. Se prueba en el navegador sobre el Sheet de pruebas de la dueña | aceptada | HU-001, HU-003 |
+| [HU-005](../historias/HU-005-diseno-textos-y-pestanas.md) | Configuración v2 · diseño: tono impersonal y en singular de toda la biblioteca de textos, y bloque del Sheet con "crear pestaña" y "renombrar pestaña" (lista desplegable + nombre nuevo) por separado | en desarrollo | HU-004 |
+| HU-006 | Configuración v2 · backend: contrato y endpoints para listar y renombrar pestañas, y textos del back con el tono nuevo | planificada | HU-005 |
+| HU-007 | Configuración v2 · frontend: textos nuevos y bloque del Sheet rediseñado, contra la API de HU-006 | planificada | HU-005, HU-006 |
+| HU-008 | Configuración v2 · QA E2E. **Cubre** HU-002 a HU-007: arnés Cucumber + Playwright (`PantallaBase`, `MarcoApp`; carpetas `features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), smoke `@critico` y escenarios de los flujos CFG, contra el Sheet de QA | planificada | HU-007 |
 
-**Progreso:** 3 de 5 historias aceptadas.
+**Progreso:** 4 de 8 historias aceptadas.
+
+> 2026-10-15: al probar HU-004 la dueña pidió el tono impersonal de los textos y separar "crear" y "renombrar" pestaña. Se suman HU-005 (diseño), HU-006 (backend) y HU-007 (frontend); el QA pasa de HU-005 a **HU-008**, al final, para probar todo junto.
 
 > 2026-10-14: QA pasa a su propia historia (HU-005). Se puede postergar sin trabar la épica.
 
@@ -49,8 +54,7 @@ Flujos detallados: `docs/funcional/documento-funcional.md`, sección CFG (CFG-F0
 - 2026-10-14: QA E2E en su propia historia (HU-005), contra el Sheet de QA. HU-003 se valida con tests de API y con Postman de la dueña; HU-004, en el navegador sobre su Sheet de pruebas.
 
 ## Para retomar
-La próxima es **HU-004** (Configuración · frontend). Con `/agente-lider continuar HU-004`, el líder arma el brief desde esta épica, espera el OK, crea la rama `v2/feature/HU-004-<tema>` desde `v2/dev` y llama a `frontend`.
-- **Contrato:** `docs/v2/api/configuracion.md` (HU-003). `aviso`, `gmail` y `logoUrl` vienen siempre (en `null` si no hay); el logo se ve con `GET /tienda/logo`.
-- **Flujos:** CFG-F01 a F06 y CFG-A01 a A09 (`diseñado · HU-001 → HU-004`). Pasan a `vigente` al aceptar HU-004.
-- **Validación de HU-004:** Vitest y la dueña en el navegador sobre su Sheet de pruebas (`1vSk7…`), que ya es el configurado en la app.
-- **Ojo:** la rama de HU-003 todavía no está mergeada a `v2/dev`; HU-004 necesita ese código.
+En curso: **HU-005** (diseño: tono de los textos y bloque del Sheet). Después HU-006 (backend), HU-007 (frontend) y HU-008 (QA).
+- **Tono aprobado (2026-10-15):** impersonal, en singular, sin hablarle al usuario; sigue diciendo cómo va el campo. Ej.: "El nombre de la tienda es obligatorio.", "El logo no debe superar los 2 MB.", "No se pudo cargar la configuración.", "Se acepta la URL completa o solo el ID.".
+- **Bloque del Sheet aprobado en idea:** arriba "ID o URL del Sheet" + "Pestaña del inventario" (se crea si no existe; la primera, si el Sheet no tiene ninguna); abajo "Pestaña a renombrar" (lista desplegable con las pestañas del Sheet) + "Nombre nuevo" con su botón.
+- **Flujos:** CFG-F01..F06 y CFG-A01..A09 están `vigente` (HU-004). HU-005 llama al analista para ajustar CFG-F02, CFG-F03 y CFG-A07 y sumar el flujo de renombrar.

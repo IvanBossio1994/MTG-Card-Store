@@ -158,7 +158,7 @@ Se repiten en `GET /api/v1/configuracion` y en la respuesta de cada `PUT`.
 
 | Parte | Tipo | Obligatorio | Validación | Mensaje si falla |
 |---|---|---|---|---|
-| `archivo` | archivo | sí | PNG, JPG o WEBP (se mira el contenido del archivo, no solo la extensión). Hasta 2 MB (2.097.152 bytes). | Formato: `El archivo no es PNG, JPG ni WEBP.` (`configuracion.tienda.error.logo-formato`) · Peso: `El logo pesa más de 2 MB.` (`configuracion.tienda.error.logo-pesado`) |
+| `archivo` | archivo | sí | PNG, JPG o WEBP (se mira el contenido del archivo, no solo la extensión). Hasta 2 MB (2.097.152 bytes). | Formato: `Usá un PNG, JPG o WEBP.` (`configuracion.tienda.error.logo-formato`) · Peso: `Usá un logo de hasta 2 MB.` (`configuracion.tienda.error.logo-pesado`) |
 
 **Respuesta 200:**
 ```json
@@ -166,7 +166,7 @@ Se repiten en `GET /api/v1/configuracion` y en la respuesta de cada `PUT`.
 ```
 
 **Errores:**
-- 400 con `errores.archivo` = `El logo pesa más de 2 MB.` o `El archivo no es PNG, JPG ni WEBP.` (CFG-A02). El logo anterior no cambia.
+- 400 con `errores.archivo` = `Usá un logo de hasta 2 MB.` o `Usá un PNG, JPG o WEBP.` (CFG-A02). El logo anterior no cambia.
 - 400 `Pedido inválido` si falta la parte `archivo`.
 
 **HU de origen:** HU-003 (CA4).
@@ -192,8 +192,9 @@ Se repiten en `GET /api/v1/configuracion` y en la respuesta de cada `PUT`.
 2. Verifica que la cuenta de servicio tenga acceso al Sheet (403 si no).
 3. Pestaña del inventario:
    - si ya existe, no la toca (sin aviso);
-   - si el Sheet tiene **una sola pestaña** con otro nombre, la **renombra** al pedido → aviso `La pestaña «{anterior}» se renombró a «{pestana}».` (`configuracion.sheet.aviso.renombrada`);
-   - si tiene **varias** y ninguna se llama como la pedida, **crea** la pestaña nueva y no toca las demás → aviso `Se creó la pestaña «{pestana}».` (`configuracion.sheet.aviso.creada`).
+   - si en ese mismo Sheet sigue estando la **pestaña del inventario guardada antes** (y no es una fija), la **renombra** al pedido, para no perder los datos → aviso `La pestaña «{anterior}» se renombró a «{pestana}».` (`configuracion.sheet.aviso.renombrada`). Cambio de HU-004, pedido de la dueña;
+   - si no, y el Sheet tiene **una sola pestaña** con otro nombre, la **renombra** → mismo aviso;
+   - si no, **crea** la pestaña nueva y no toca las demás → aviso `Se creó la pestaña «{pestana}».` (`configuracion.sheet.aviso.creada`).
 4. Crea las pestañas que falten (`Movimientos`, `Caja`, `Reservas`, `Clientes`) con sus encabezados (los mismos de la v1).
 5. Encabezados: solo se escriben en la fila 1 de una pestaña si está **vacía**. Si la fila 1 ya tiene datos, no se toca (el Sheet también se edita a mano).
 6. Recién al final guarda el Sheet y la pestaña en la configuración. Si algo falla antes, lo guardado no cambia.
@@ -204,7 +205,7 @@ La comparación del nombre de la pestaña es exacta (respeta mayúsculas y espac
 
 | Campo | Tipo | Obligatorio | Validación | Mensaje si falla |
 |---|---|---|---|---|
-| `sheet` | string | sí | Link completo (`https://docs.google.com/spreadsheets/d/<ID>/...`) o solo el ID (letras, números, `-` y `_`, al menos 20 caracteres). | Vacío: `Pegá el link o el ID del Sheet.` (`configuracion.sheet.error.vacio`) · Otro formato: `Ese link no es de un Google Sheet.` (`configuracion.sheet.error.invalido`) |
+| `sheet` | string | sí | Link completo (`https://docs.google.com/spreadsheets/d/<ID>/...`) o solo el ID (letras, números, `-` y `_`, al menos 20 caracteres). | Vacío: `Pegá el ID o la URL del Sheet.` (`configuracion.sheet.error.vacio`) · Otro formato: `Pegá una URL de Google Sheets o solo el ID.` (`configuracion.sheet.error.invalido`) |
 | `pestanaInventario` | string | sí | No vacío ni solo espacios. | `Ingresá el nombre de la pestaña.` (`configuracion.sheet.error.pestana-vacia`) |
 
 ```json
@@ -245,8 +246,8 @@ La comparación del nombre de la pestaña es exacta (respeta mayúsculas y espac
 | `cotizacion` | número | sí | Mayor a 0. | Vacío: `Ingresá la cotización del dólar.` · ≤ 0: `La cotización tiene que ser mayor a 0.` |
 | `redondeo` | entero | sí | Mayor a 0. | Vacío: `Ingresá el múltiplo para redondear.` · ≤ 0: `El múltiplo tiene que ser mayor a 0.` |
 | `bulk` | objeto | sí | Los cinco precios. | Si falta el objeto: `errores.bulk` = `Ingresá el precio.` |
-| `bulk.common` · `bulk.uncommon` · `bulk.rare` · `bulk.mythic` · `bulk.tierraBasica` | número | sí | Mayor a 0 y sin centavos. | Vacío: `Ingresá el precio.` · ≤ 0: `Tiene que ser mayor a 0.` · Con centavos: `Sin centavos.` |
-| `carpetaCache` | string | no | Si viene, tiene que ser una carpeta que exista. Vacío o `null` = la de siempre. | `No encontramos esa carpeta.` (`configuracion.precios.error.carpeta`) |
+| `bulk.common` · `bulk.uncommon` · `bulk.rare` · `bulk.mythic` · `bulk.tierraBasica` | número | sí | Mayor a 0 y sin centavos. | Vacío: `Ingresá el precio.` · ≤ 0: `Tiene que ser mayor a 0.` · Con centavos: `Usá un entero, sin centavos.` |
+| `carpetaCache` | string | no | Si viene, tiene que ser una carpeta que exista. Vacío o `null` = la de siempre. | `Esa carpeta no existe. Elegí otra o dejala vacía.` (`configuracion.precios.error.carpeta`) |
 
 Las claves de `errores` para los bulk son `bulk.common`, `bulk.uncommon`, `bulk.rare`, `bulk.mythic` y `bulk.tierraBasica`.
 
@@ -281,7 +282,7 @@ Si se guardó pero no se pudo sincronizar con Card Kingdom, igual responde 200, 
   "status": 400,
   "detail": "Hay datos para corregir.",
   "instance": "/api/v1/configuracion/precios",
-  "errores": { "cotizacion": "La cotización tiene que ser mayor a 0.", "bulk.rare": "Sin centavos." }
+  "errores": { "cotizacion": "La cotización tiene que ser mayor a 0.", "bulk.rare": "Usá un entero, sin centavos." }
 }
 ```
 

@@ -37,7 +37,7 @@ public class ErrorDeNegocioException extends RuntimeException {
 
     /**
      * Error 400 de un solo campo, con la misma forma que la validación con {@code @Valid}.
-     * Ejemplo: {@code campoInvalido("archivo", "El logo pesa más de 2 MB.")} → 400 {@code errores: {"archivo": "El logo pesa más de 2 MB."}}.
+     * Ejemplo: {@code campoInvalido("archivo", "Usá un logo de hasta 2 MB.")} → 400 {@code errores: {"archivo": "Usá un logo de hasta 2 MB."}}.
      */
     public static ErrorDeNegocioException campoInvalido(String campo, String mensaje) {
         Map<String, String> errores = new LinkedHashMap<>();

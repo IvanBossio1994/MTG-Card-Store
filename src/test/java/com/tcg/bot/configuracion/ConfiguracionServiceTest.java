@@ -127,14 +127,14 @@ class ConfiguracionServiceTest {
         long anterior = servicio.guardarLogo(png(100));
 
         assertThatThrownBy(() -> servicio.guardarLogo(png((int) ConfiguracionService.PESO_MAXIMO_LOGO + 1)))
-                .satisfies(error -> assertThat(errores(error)).containsEntry("archivo", "El logo pesa más de 2 MB."));
+                .satisfies(error -> assertThat(errores(error)).containsEntry("archivo", "Usá un logo de hasta 2 MB."));
         assertThat(servicio.leerLogo().version()).isEqualTo(anterior);
     }
 
     @Test
     void unArchivoQueNoEsImagenSeRechaza() {
         assertThatThrownBy(() -> servicio.guardarLogo("hola".getBytes()))
-                .satisfies(error -> assertThat(errores(error)).containsEntry("archivo", "El archivo no es PNG, JPG ni WEBP."));
+                .satisfies(error -> assertThat(errores(error)).containsEntry("archivo", "Usá un PNG, JPG o WEBP."));
         assertThat(repositorio.leerLogo()).isEmpty();
     }
 
@@ -209,6 +209,28 @@ class ConfiguracionServiceTest {
         assertThat(sheets.leerEncabezados(SHEET_VARIAS, "Hoja 1")).isEmpty();
     }
 
+    @Test
+    void conVariasPestanasCambiarElNombreRenombraLaDelInventarioDeAntesSinPerderDatos() {
+        servicio.conectarSheet(SHEET_VARIAS, "Inventario");
+
+        var conectado = servicio.conectarSheet(SHEET_VARIAS, "Inventario Test");
+
+        assertThat(conectado.aviso()).isEqualTo("La pestaña «Inventario» se renombró a «Inventario Test».");
+        assertThat(sheets.listarPestanas(SHEET_VARIAS)).contains("Inventario Test").doesNotContain("Inventario");
+        assertThat(sheets.leerEncabezados(SHEET_VARIAS, "Inventario Test")).isEqualTo(ConfiguracionService.ENCABEZADOS_INVENTARIO);
+        assertThat(repositorio.leerSheet().pestanaInventario()).isEqualTo("Inventario Test");
+    }
+
+    @Test
+    void siLaPestanaPedidaYaExisteLaUsaSinRenombrarLaDeAntes() {
+        servicio.conectarSheet(SHEET_VARIAS, "Inventario");
+
+        var conectado = servicio.conectarSheet(SHEET_VARIAS, "Ventas");
+
+        assertThat(conectado.aviso()).isNull();
+        assertThat(sheets.listarPestanas(SHEET_VARIAS)).contains("Inventario", "Ventas");
+    }
+
     // ---- CA8 ----
 
     @Test
@@ -217,7 +239,7 @@ class ConfiguracionServiceTest {
 
         for (String link : List.of("https://example.com/hoja", "hola", "https://docs.google.com/document/d/" + SHEET_INVENTARIO)) {
             assertThatThrownBy(() -> servicio.conectarSheet(link, "Inventario"))
-                    .satisfies(error -> assertThat(errores(error)).containsEntry("sheet", "Ese link no es de un Google Sheet."));
+                    .satisfies(error -> assertThat(errores(error)).containsEntry("sheet", "Pegá una URL de Google Sheets o solo el ID."));
         }
         assertThat(repositorio.leerSheet()).isEqualTo(antes);
     }
@@ -276,7 +298,7 @@ class ConfiguracionServiceTest {
         String inexistente = carpeta.resolve("no-existe").toString();
 
         assertThatThrownBy(() -> servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, inexistente)))
-                .satisfies(error -> assertThat(errores(error)).containsEntry("carpetaCache", "No encontramos esa carpeta."));
+                .satisfies(error -> assertThat(errores(error)).containsEntry("carpetaCache", "Esa carpeta no existe. Elegí otra o dejala vacía."));
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 

@@ -173,14 +173,14 @@ class ConfiguracionControllerTest {
     @Test
     void postLogoDeMasDe2MbDa400() throws Exception {
         esErrorDeCampo(subirLogo(ConfiguracionServiceTest.png(2 * 1024 * 1024 + 1), "image/png"),
-                "archivo", "El logo pesa más de 2 MB.");
+                "archivo", "Usá un logo de hasta 2 MB.");
         assertThat(repositorio.leerLogo()).isEmpty();
     }
 
     @Test
     void postLogoQueNoEsImagenDa400() throws Exception {
         esErrorDeCampo(subirLogo("no soy una imagen".getBytes(), "image/png"),
-                "archivo", "El archivo no es PNG, JPG ni WEBP.");
+                "archivo", "Usá un PNG, JPG o WEBP.");
     }
 
     @Test
@@ -233,12 +233,12 @@ class ConfiguracionControllerTest {
 
     @Test
     void putSheetConLinkVacioDa400() throws Exception {
-        esErrorDeCampo(putSheet("", "Inventario"), "sheet", "Pegá el link o el ID del Sheet.");
+        esErrorDeCampo(putSheet("", "Inventario"), "sheet", "Pegá el ID o la URL del Sheet.");
     }
 
     @Test
     void putSheetConLinkQueNoEsDeGoogleDa400YNoCambiaLoGuardado() throws Exception {
-        esErrorDeCampo(putSheet("https://example.com/planilla", "Inventario"), "sheet", "Ese link no es de un Google Sheet.");
+        esErrorDeCampo(putSheet("https://example.com/planilla", "Inventario"), "sheet", "Pegá una URL de Google Sheets o solo el ID.");
         assertThat(repositorio.leerSheet().sheetId()).isEqualTo(SHEET_INVENTARIO);
     }
 
@@ -335,7 +335,7 @@ class ConfiguracionControllerTest {
         esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"mythic\":150", "\"mythic\":0")),
                 "bulk.mythic", "Tiene que ser mayor a 0.");
         esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"common\":50", "\"common\":50.5")),
-                "bulk.common", "Sin centavos.");
+                "bulk.common", "Usá un entero, sin centavos.");
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 
@@ -343,7 +343,7 @@ class ConfiguracionControllerTest {
     void putPreciosConCarpetaQueNoExisteDa400() throws Exception {
         esErrorDeCampo(putJson("/api/v1/configuracion/precios",
                         PRECIOS_VALIDOS.replace("\"carpetaCache\":null", "\"carpetaCache\":\"Z:/no/existe/esta/carpeta\"")),
-                "carpetaCache", "No encontramos esa carpeta.");
+                "carpetaCache", "Esa carpeta no existe. Elegí otra o dejala vacía.");
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 

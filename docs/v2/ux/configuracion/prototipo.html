@@ -204,15 +204,15 @@ tailwind.config={theme:{extend:{
           <p class="text-[13px] mb-4 inline-flex items-center gap-1 font-semibold text-exito" data-testid="configuracion-texto-gmail-conectado"><i data-lucide="plug-zap" class="w-4 h-4"></i>Conectado como tienda@gmail.com</p>
           <div class="grid2">
             <div class="campo" id="c-sheet">
-              <label for="sheet" class="lbl">Link o ID del Sheet</label>
+              <label for="sheet" class="lbl">ID o URL del Sheet</label>
               <input id="sheet" class="in" value="https://docs.google.com/spreadsheets/d/1AbC…xyz/edit" data-testid="configuracion-campo-sheet" autocomplete="off">
-              <div class="ayuda">Pegá el link completo o solo el ID.</div>
+              <div class="ayuda">Pegá la URL o solo el ID.</div>
               <div class="err oculto" data-testid="configuracion-mensaje-error-sheet"></div>
             </div>
             <div class="campo" id="c-pestana">
               <label for="pestana" class="lbl">Pestaña del inventario</label>
               <input id="pestana" class="in" value="Inventario" data-testid="configuracion-campo-pestana-inventario" autocomplete="off">
-              <div class="ayuda">Si no existe, la creamos. Con una sola pestaña, la renombramos.</div>
+              <div class="ayuda">Si cambiás el nombre, renombramos la pestaña actual. Si no hay ninguna, la creamos.</div>
               <div class="err oculto" data-testid="configuracion-mensaje-error-pestana-inventario"></div>
             </div>
           </div>
@@ -235,7 +235,7 @@ tailwind.config={theme:{extend:{
               <div class="err oculto" data-testid="configuracion-mensaje-error-redondeo"></div></div>
             <div class="campo" id="c-cache">
               <label for="cache" class="lbl">Carpeta de cache CK (opcional)</label>
-              <input id="cache" class="in" value="" placeholder="Ej: C:\TCG\cache" data-testid="configuracion-campo-carpeta-cache">
+              <input id="cache" class="in" value="" placeholder="Ej.: C:\TCG-inventory\cache" data-testid="configuracion-campo-carpeta-cache">
               <div class="err oculto" data-testid="configuracion-mensaje-error-carpeta-cache"></div>
             </div>
           </div>
@@ -356,7 +356,7 @@ function guardar(b){
   limpiarBloque(b);
   if(b==='tienda' && !$('#nombre').value.trim()){errorCampo(b,'nombre','Ingresá el nombre de la tienda.');return;}
   if(b==='sheet'){
-    if(!$('#sheet').value.trim()){errorCampo(b,'sheet','Pegá el link o el ID del Sheet.');return;}
+    if(!$('#sheet').value.trim()){errorCampo(b,'sheet','Pegá el ID o la URL del Sheet.');return;}
     if(!$('#pestana').value.trim()){errorCampo(b,'pestana','Ingresá el nombre de la pestaña.');return;}
   }
   if(b==='precios'){
@@ -364,7 +364,7 @@ function guardar(b){
     const ERR={
       cotizacion:{vacio:'Ingresá la cotización del dólar.',menor:'La cotización tiene que ser mayor a 0.'},
       redondeo:{vacio:'Ingresá el múltiplo para redondear.',menor:'El múltiplo tiene que ser mayor a 0.'},
-      bulk:{vacio:'Ingresá el precio.',menor:'Tiene que ser mayor a 0.',centavos:'Sin centavos.'}
+      bulk:{vacio:'Ingresá el precio.',menor:'Tiene que ser mayor a 0.',centavos:'Usá un entero, sin centavos.'}
     };
     const ids={cotizacion:'cotizacion',redondeo:'redondeo','b-common':'bulk','b-uncommon':'bulk','b-rare':'bulk','b-mythic':'bulk','b-tierra':'bulk'};
     let primero=null;
@@ -388,8 +388,8 @@ function guardar(b){
 function logoElegido(inp){
   limpiarBloque('tienda');
   const f=inp.files[0]; if(!f)return;
-  if(!/image\/(png|jpeg|webp)/.test(f.type)){logoError('El archivo no es PNG, JPG ni WEBP.');return;}
-  if(f.size>2*1024*1024){logoError('El logo pesa más de 2 MB.');return;}
+  if(!/image\/(png|jpeg|webp)/.test(f.type)){logoError('Usá un PNG, JPG o WEBP.');return;}
+  if(f.size>2*1024*1024){logoError('Usá un logo de hasta 2 MB.');return;}
   const r=new FileReader(); r.onload=e=>{$('#vista-logo').src=e.target.result}; r.readAsDataURL(f);
 }
 function logoError(t){ponerErr($('#c-logo'),t);}
@@ -407,14 +407,14 @@ function sim(caso){
       msg('sheet','aviso','La pestaña «Hoja 1» se renombró a «Inventario».'); break;
     case 'creada': $('#pestana').value='Stock 2026';
       msg('sheet','aviso','Se creó la pestaña «Stock 2026».'); break;
-    case 'sheet-invalido': errorCampo('sheet','sheet','Ese link no es de un Google Sheet.'); break;
+    case 'sheet-invalido': errorCampo('sheet','sheet','Pegá una URL de Google Sheets o solo el ID.'); break;
     case 'sin-permiso': msg('sheet','error','Tu cuenta no tiene acceso a este Sheet. Compartilo con tienda@gmail.com como editor.'); break;
     case 'sesion': msg('sheet','error','Tu sesión de Google venció.',
         ' <a href="#" class="underline font-bold" data-testid="configuracion-enlace-iniciar-sesion-google" onclick="return false">Volver a iniciar sesión</a>'); break;
     case 'numero':
       $('#cotizacion').value='0'; $('#b-rare').value='300,50'; $('#b-mythic').value='';
       guardar('precios'); break;
-    case 'logo': logoError('El logo pesa más de 2 MB.'); break;
+    case 'logo': logoError('Usá un logo de hasta 2 MB.'); break;
     case 'ck': msg('precios','aviso','Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde.'); break;
   }
 }
