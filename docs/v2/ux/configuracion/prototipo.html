@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo - Configuración (HU-001)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+tailwind.config={theme:{extend:{
+  colors:{
+    arena:'#faf7f2',       // fondo
+    tinta:'#292524',       // texto
+    suave:'#78716c',       // texto secundario (4.7:1 sobre arena)
+    borde:'#e7e2d9',       // bordes de tarjeta
+    campo:'#d6d0c4',       // borde de campos
+    acento:{DEFAULT:'#2b5fa6',hover:'#214b85',suave:'#eaf1fa'},  // azul calmo
+    exito:{DEFAULT:'#0a6b3d',suave:'#ecf8f1',borde:'#bfe6cf'},
+    aviso:{DEFAULT:'#7a4b00',suave:'#fff6dc',borde:'#f1dca0'},
+    error:{DEFAULT:'#b3261e',suave:'#fdeceb',borde:'#f3c3bf'}
+  },
+  fontFamily:{sans:['Inter','system-ui','sans-serif']},
+  boxShadow:{tarjeta:'0 1px 2px rgba(41,37,36,.04), 0 6px 20px rgba(41,37,36,.05)'}
+}}}
+</script>
+<style>
+  :root{--simh:44px;
+    --r-common:#1c1917;--r-uncommon:#a3acb5;--r-rare:#c8a03a;--r-mythic:#e2711d;--r-tierra:#7b8f85}
+  .oculto{display:none!important}
+  .esqueleto{background:linear-gradient(90deg,#f1ece2,#f8f5ee,#f1ece2)}
+  @keyframes g{to{transform:rotate(360deg)}} .girar{animation:g .8s linear infinite}
+  @keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} .entra{animation:entra .18s ease-out}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+  html{scroll-behavior:smooth}
+  /* Tamaños fijos: campos 42px; primario 42x160 mín; secundario y texto 42x120 mín */
+  .lbl{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin-bottom:4px}
+  .ayuda{font-size:12px;color:#78716c;margin-top:4px}
+  .err{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:12px;font-weight:600;color:#b3261e}
+  .err{height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* El error de campo tiene su lugar reservado debajo de la ayuda: aparece sin mover nada. La ayuda queda siempre visible. */
+  .campo .err.oculto{display:flex!important;visibility:hidden}
+  .in{height:42px;width:100%;padding:0 12px;border:1px solid #d6d0c4;border-radius:10px;background:#fff;font-size:15px;color:#292524;transition:border-color .15s ease, box-shadow .15s ease}
+  .in:hover{border-color:#b8b1a3}
+  .in:focus-visible{outline:none;border-color:#2b5fa6;box-shadow:0 0 0 3px rgba(43,95,166,.2)}
+  .in::placeholder{color:#a8a29e}
+  .campo-err .in{border-color:#b3261e;background:#fdeceb}
+  .campo-err .in:focus-visible{box-shadow:0 0 0 3px rgba(179,38,30,.18)}
+  .btn{height:42px;white-space:nowrap;flex:none;border-radius:10px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background .15s ease, box-shadow .15s ease, transform .1s ease}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .btn:focus-visible,a:focus-visible,button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(43,95,166,.3)}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .btn.cargando:disabled{opacity:.85;cursor:progress}
+  /* "Guardar" y "Guardando…" ocupan la misma celda: el botón siempre mide lo del texto más largo y no cambia de tamaño */
+  .btn:has(.l-g){display:inline-grid}
+  .btn .l-n,.btn .l-g{grid-area:1/1;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn .l-g{visibility:hidden}
+  .btn.cargando .l-n{visibility:hidden}
+  .btn.cargando .l-g{visibility:visible}
+  .btn-pri{min-width:160px;padding:0 16px;background:#2b5fa6;color:#fff;border:1px solid #2b5fa6}
+  .btn-pri:hover:not(:disabled){background:#214b85}
+  .btn-sec{min-width:120px;padding:0 16px;background:#fff;color:#292524;border:1px solid #d6d0c4}
+  .btn-sec:hover{background:#f5f1e9}
+  .btn-txt{height:42px;white-space:nowrap;flex:none;min-width:120px;padding:0 8px;background:none;border:none;color:#2b5fa6;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border-radius:10px;transition:background .15s ease}
+  .btn-txt:hover{background:#eaf1fa}
+  .card{background:#fff;border:1px solid #e7e2d9;border-radius:16px;box-shadow:0 1px 2px rgba(41,37,36,.04),0 6px 20px rgba(41,37,36,.05);padding:24px;transition:box-shadow .2s ease, border-color .2s ease}
+  section.card:hover{border-color:#ddd6c9;box-shadow:0 1px 2px rgba(41,37,36,.05),0 10px 28px rgba(41,37,36,.07)}
+  .card h2{font-size:18px;font-weight:600;display:flex;align-items:center;gap:12px;letter-spacing:-.01em}
+  .ico-t{width:32px;height:32px;border-radius:10px;background:#eaf1fa;color:#2b5fa6;display:inline-flex;align-items:center;justify-content:center;flex:none}
+  .sub{color:#78716c;font-size:14px;margin:4px 0 16px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;align-items:start}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+  .pie{display:flex;align-items:center;gap:16px;margin-top:16px}
+  .grid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;align-items:start}
+  /* Grilla de 2 columnas iguales: Tienda | Sheet, abajo Precios | Puntos (bordes alineados) */
+  #vista-normal{display:grid;gap:16px;align-items:start;grid-template-columns:repeat(6,minmax(0,1fr))}
+  /* Las 4 tarjetas: misma altura por fila y Guardar siempre al pie, alineado con su vecina */
+  #vista-normal>section{grid-column:span 3;align-self:stretch;display:flex;flex-direction:column}
+  #vista-normal>section .pie{margin-top:auto;padding-top:16px}
+  @media (max-width:1500px){#b-precios .grid5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media (max-width:1100px){#vista-normal{grid-template-columns:minmax(0,720px)} #vista-normal>section{grid-column:auto} .grid5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .sim{background:#292524;color:#fff}
+  .sim button{padding:4px 10px;border-radius:8px;background:#44403c;font-size:13px}
+  .sim button:hover{background:#57534e}
+  /* Marco de la app */
+  .lateral{width:240px;flex:none;background:#fff;border-right:1px solid #e7e2d9;position:sticky;top:var(--simh);height:calc(100vh - var(--simh));align-self:flex-start;padding:24px 16px;display:flex;flex-direction:column;gap:24px}
+  .menu-item{display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:10px;font-size:15px;font-weight:500;color:#57534e;transition:background .15s ease,color .15s ease}
+  .menu-item:hover{background:#f5f1e9;color:#292524}
+  .menu-item[aria-current="page"]{background:#eaf1fa;color:#2b5fa6;font-weight:600}
+  .indice{position:sticky;top:calc(var(--simh) + 40px);display:flex;flex-direction:column;gap:4px}
+  .ind-item{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:10px;font-size:14px;font-weight:500;color:#78716c;transition:background .15s ease,color .15s ease}
+  .ind-item:hover{background:#f5f1e9;color:#292524}
+  .ind-item[aria-current="true"]{background:#eaf1fa;color:#2b5fa6;font-weight:600}
+  section[id^="b-"]{scroll-margin-top:calc(var(--simh) + 24px)}
+  /* Rareza */
+  .dot{width:10px;height:10px;border-radius:9999px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+</style>
+</head>
+<body class="bg-arena text-tinta font-sans text-[15px] leading-snug min-h-screen antialiased">
+
+<!-- Controles del prototipo (no son parte de la pantalla) -->
+<div id="sim" class="sim sticky top-0 z-30 px-6 py-2 flex flex-wrap items-center justify-center gap-2 text-[13px]" aria-label="Controles del prototipo">
+  <b class="mr-2">Prototipo:</b>
+  <button onclick="pantalla('cargando')">Cargando</button>
+  <button onclick="pantalla('normal')">Normal</button>
+  <button onclick="pantalla('falla')">Falla al cargar</button>
+  <span class="w-px h-5 bg-stone-500 mx-2"></span><b class="mr-2">Simular al guardar:</b>
+  <button onclick="sim('guardando')">Guardando</button>
+  <button onclick="sim('sincronizando')">Sincronizando Sheet</button>
+  <button onclick="sim('guardado')">Guardado</button>
+  <button onclick="sim('renombrada')">Pestaña renombrada</button>
+  <button onclick="sim('creada')">Pestaña creada</button>
+  <button onclick="sim('sheet-invalido')">Link inválido</button>
+  <button onclick="sim('sin-permiso')">Sin permiso</button>
+  <button onclick="sim('sesion')">Sesión vencida</button>
+  <button onclick="sim('numero')">Número inválido</button>
+  <button onclick="sim('logo')">Logo muy pesado</button>
+  <button onclick="sim('ck')">Falla Card Kingdom</button>
+  <button onclick="sim('limpiar')">Limpiar mensajes</button>
+  <button onclick="salir()">Salir con cambios</button>
+</div>
+
+<div class="flex">
+  <!-- MARCO DE APP: barra lateral fija -->
+  <aside class="lateral" aria-label="Menú principal">
+    <div class="flex items-center gap-3 px-2">
+      <img class="w-10 h-10 object-contain rounded-xl border border-borde bg-white p-1" src="../../../../src/main/resources/static/images/tcg-default-logo.png" alt="">
+      <span class="font-semibold text-[16px] leading-tight">Mazo Mágico</span>
+    </div>
+    <nav class="flex flex-col gap-1">
+      <a href="#" class="menu-item" data-testid="app-enlace-inventario" onclick="return false"><i data-lucide="package" class="w-5 h-5"></i>Inventario</a>
+      <a href="#" class="menu-item" data-testid="app-enlace-reservas" onclick="return false"><i data-lucide="bookmark" class="w-5 h-5"></i>Reservas</a>
+      <a href="#" class="menu-item" data-testid="app-enlace-caja" onclick="return false"><i data-lucide="wallet" class="w-5 h-5"></i>Caja</a>
+      <a href="#" class="menu-item" data-testid="app-enlace-movimientos" onclick="return false"><i data-lucide="arrow-left-right" class="w-5 h-5"></i>Movimientos</a>
+      <a href="#" class="menu-item" data-testid="app-enlace-configuracion" aria-current="page" onclick="return false"><i data-lucide="settings-2" class="w-5 h-5"></i>Configuración</a>
+    </nav>
+  </aside>
+
+  <!-- Contenido: ocupa el resto del ancho -->
+  <div class="flex-1 min-w-0">
+  <main class="w-full max-w-[1600px] px-8 py-10">
+    <header class="mb-8">
+      <h1 class="text-[28px] font-bold tracking-tight">Configuración</h1>
+      <p class="text-suave mt-1">Cada bloque se guarda por separado. Lo que escribas en los otros no se pierde.</p>
+    </header>
+
+    <!-- CARGANDO: capa sobre la pantalla con blur detrás (único lugar con el gatito) -->
+    <div id="vista-cargando" class="oculto fixed inset-x-0 bottom-0 z-40 flex items-center justify-center p-6" style="top:var(--simh);background:rgba(250,247,242,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)" role="status">
+      <div class="card w-full max-w-[420px] text-center entra" style="box-shadow:0 20px 50px rgba(41,37,36,.15)">
+        <img class="mx-auto w-[180px] h-auto" src="../../../../src/main/resources/static/images/cat-card-loader.gif" alt="">
+        <h2 class="justify-center mt-2" id="carga-titulo">Cargando la configuración…</h2>
+      </div>
+    </div>
+
+    <!-- FALLA AL CARGAR -->
+    <div id="vista-falla" class="oculto card text-center max-w-[720px]">
+      <i data-lucide="wifi-off" class="w-9 h-9 mx-auto text-error"></i>
+      <h2 class="justify-center mt-2">No pudimos cargar la configuración</h2>
+      <p class="sub">Revisá tu conexión e intentá de nuevo.</p>
+      <button class="btn btn-pri" data-testid="configuracion-boton-reintentar" onclick="pantalla('normal')"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Reintentar</button>
+    </div>
+
+    <!-- NORMAL: grilla 2x2 pegada al menú lateral (Tienda | Sheet arriba, Precios | Puntos abajo) -->
+    <div id="vista-normal">
+
+        <!-- Tienda -->
+        <section class="card" id="b-tienda" aria-labelledby="t-tienda">
+          <h2 id="t-tienda"><span class="ico-t"><i data-lucide="store" class="w-5 h-5"></i></span>Tu tienda</h2>
+          <p class="sub">El nombre y el logo se ven en toda la app.</p>
+          <div class="grid2">
+            <div class="campo" id="c-nombre">
+              <label for="nombre" class="lbl">Nombre de la tienda</label>
+              <input id="nombre" class="in" value="Mazo Mágico" data-testid="configuracion-campo-nombre-tienda" autocomplete="off">
+              <div class="err oculto" data-testid="configuracion-mensaje-error-nombre-tienda"></div>
+            </div>
+            <div class="campo" id="c-logo">
+              <span class="lbl">Logo</span>
+              <div class="flex items-center gap-4">
+                <img class="w-[72px] h-[72px] object-contain border border-borde rounded-xl bg-white p-1" src="../../../../src/main/resources/static/images/tcg-default-logo.png" alt="Logo actual" id="vista-logo">
+                <div class="flex flex-col items-start gap-1">
+                  <div class="flex items-center gap-2">
+                    <button class="btn btn-sec" type="button" data-testid="configuracion-boton-subir-logo" onclick="document.getElementById('archivo').click()"><i data-lucide="upload" class="w-4 h-4"></i>Subir logo</button>
+                    <button class="btn-txt" type="button" data-testid="configuracion-boton-quitar-logo" onclick="quitarLogo()"><i data-lucide="trash-2" class="w-4 h-4"></i>Quitar</button>
+                  </div>
+                  <input type="file" id="archivo" accept="image/png,image/jpeg,image/webp" hidden onchange="logoElegido(this)">
+                  <div class="ayuda">PNG, JPG o WEBP, hasta 2 MB.</div>
+                </div>
+              </div>
+              <div class="err oculto" data-testid="configuracion-mensaje-error-logo"></div>
+            </div>
+          </div>
+          <div class="pie">
+            <button class="btn btn-pri" data-testid="configuracion-boton-guardar-tienda" onclick="guardar('tienda')"><span class="l-n"><i data-lucide="save" class="w-4 h-4"></i>Guardar tienda</span><span class="l-g"><i data-lucide="loader-2" class="w-4 h-4 girar"></i>Guardando…</span></button>
+            <div class="msg oculto" role="status"></div>
+          </div>
+        </section>
+
+        <!-- Sheet -->
+        <section class="card" id="b-sheet" aria-labelledby="t-sheet">
+          <h2 id="t-sheet"><span class="ico-t"><i data-lucide="table-2" class="w-5 h-5"></i></span>Inventario en Google Sheets</h2>
+          <p class="sub" style="margin-bottom:4px">Tu Google Sheet es la base de datos de la tienda.</p>
+          <p class="text-[13px] mb-4 inline-flex items-center gap-1 font-semibold text-exito" data-testid="configuracion-texto-gmail-conectado"><i data-lucide="plug-zap" class="w-4 h-4"></i>Conectado como tienda@gmail.com</p>
+          <div class="grid2">
+            <div class="campo" id="c-sheet">
+              <label for="sheet" class="lbl">Link o ID del Sheet</label>
+              <input id="sheet" class="in" value="https://docs.google.com/spreadsheets/d/1AbC…xyz/edit" data-testid="configuracion-campo-sheet" autocomplete="off">
+              <div class="ayuda">Pegá el link completo o solo el ID.</div>
+              <div class="err oculto" data-testid="configuracion-mensaje-error-sheet"></div>
+            </div>
+            <div class="campo" id="c-pestana">
+              <label for="pestana" class="lbl">Pestaña del inventario</label>
+              <input id="pestana" class="in" value="Inventario" data-testid="configuracion-campo-pestana-inventario" autocomplete="off">
+              <div class="ayuda">Si no existe, la creamos. Con una sola pestaña, la renombramos.</div>
+              <div class="err oculto" data-testid="configuracion-mensaje-error-pestana-inventario"></div>
+            </div>
+          </div>
+          <div class="pie">
+            <button class="btn btn-pri" data-testid="configuracion-boton-guardar-sheet" onclick="guardar('sheet')"><span class="l-n"><i data-lucide="save" class="w-4 h-4"></i>Guardar inventario</span><span class="l-g"><i data-lucide="loader-2" class="w-4 h-4 girar"></i>Guardando…</span></button>
+            <div class="msg oculto" role="status"></div>
+          </div>
+        </section>
+
+        <!-- Precios -->
+        <section class="card" id="b-precios" aria-labelledby="t-precios">
+          <h2 id="t-precios"><span class="ico-t"><i data-lucide="badge-dollar-sign" class="w-5 h-5"></i></span>Regla de precio</h2>
+          <p class="sub">Cómo se pasa el precio de Card Kingdom (USD) a pesos.</p>
+          <div class="grid3">
+            <div class="campo"><label for="cotizacion" class="lbl">Cotización (ARS por USD)</label>
+              <input id="cotizacion" class="in" inputmode="decimal" value="1450" data-testid="configuracion-campo-cotizacion">
+              <div class="err oculto" data-testid="configuracion-mensaje-error-cotizacion"></div></div>
+            <div class="campo"><label for="redondeo" class="lbl">Redondear al múltiplo de ($)</label>
+              <input id="redondeo" class="in" inputmode="decimal" value="50" data-testid="configuracion-campo-redondeo">
+              <div class="err oculto" data-testid="configuracion-mensaje-error-redondeo"></div></div>
+            <div class="campo" id="c-cache">
+              <label for="cache" class="lbl">Carpeta de cache CK (opcional)</label>
+              <input id="cache" class="in" value="" placeholder="Ej: C:\TCG\cache" data-testid="configuracion-campo-carpeta-cache">
+              <div class="err oculto" data-testid="configuracion-mensaje-error-carpeta-cache"></div>
+            </div>
+          </div>
+          <h3 class="font-semibold text-[14px] mt-6 mb-2">Precio bulk por rareza ($, sin centavos)</h3>
+          <div class="grid5">
+            <div class="campo"><label for="b-common" class="lbl"><span class="dot" style="background:var(--r-common)" aria-hidden="true"></span>Common</label><input id="b-common" class="in" inputmode="numeric" value="100" data-testid="configuracion-campo-bulk-common"><div class="err oculto" data-testid="configuracion-mensaje-error-bulk-common"></div></div>
+            <div class="campo"><label for="b-uncommon" class="lbl"><span class="dot" style="background:var(--r-uncommon)" aria-hidden="true"></span>Uncommon</label><input id="b-uncommon" class="in" inputmode="numeric" value="150" data-testid="configuracion-campo-bulk-uncommon"><div class="err oculto" data-testid="configuracion-mensaje-error-bulk-uncommon"></div></div>
+            <div class="campo"><label for="b-rare" class="lbl"><span class="dot" style="background:var(--r-rare)" aria-hidden="true"></span>Rare</label><input id="b-rare" class="in" inputmode="numeric" value="300" data-testid="configuracion-campo-bulk-rare"><div class="err oculto" data-testid="configuracion-mensaje-error-bulk-rare"></div></div>
+            <div class="campo"><label for="b-mythic" class="lbl"><span class="dot" style="background:var(--r-mythic)" aria-hidden="true"></span>Mythic</label><input id="b-mythic" class="in" inputmode="numeric" value="500" data-testid="configuracion-campo-bulk-mythic"><div class="err oculto" data-testid="configuracion-mensaje-error-bulk-mythic"></div></div>
+            <div class="campo"><label for="b-tierra" class="lbl"><span class="dot" style="background:var(--r-tierra)" aria-hidden="true"></span>Tierra básica</label><input id="b-tierra" class="in" inputmode="numeric" value="50" data-testid="configuracion-campo-bulk-tierra-basica"><div class="err oculto" data-testid="configuracion-mensaje-error-bulk-tierra-basica"></div></div>
+          </div>
+          <div class="pie">
+            <button class="btn btn-pri" data-testid="configuracion-boton-guardar-precios" onclick="guardar('precios')"><span class="l-n"><i data-lucide="save" class="w-4 h-4"></i>Guardar precios</span><span class="l-g"><i data-lucide="loader-2" class="w-4 h-4 girar"></i>Guardando…</span></button>
+            <div class="msg oculto" role="status"></div>
+          </div>
+        </section>
+
+        <!-- Puntos -->
+        <section class="card" id="b-puntos" aria-labelledby="t-puntos">
+          <h2 id="t-puntos"><span class="ico-t"><i data-lucide="star" class="w-5 h-5"></i></span>Puntos de clientes</h2>
+          <p class="sub">Cuánto tiene que gastar un cliente para sumar un punto.</p>
+          <div class="grid2">
+            <div class="campo"><label for="pesos" class="lbl">Pesos por punto ($)</label>
+              <input id="pesos" class="in" inputmode="decimal" value="1000" data-testid="configuracion-campo-pesos-por-punto" oninput="ejemploPuntos()">
+              <div class="err oculto" data-testid="configuracion-mensaje-error-pesos-por-punto"></div></div>
+            <!-- Ejemplo en vivo: ayuda a entender la regla y le da cuerpo a la tarjeta -->
+            <div class="rounded-xl bg-[#eaf1fa] text-[#214b85] px-4 py-3 text-[13px] self-start" style="margin-top:22px">
+              <div class="flex items-center gap-2 font-semibold"><i data-lucide="lightbulb" class="w-4 h-4"></i>Ejemplo</div>
+              <p class="mt-1" data-testid="configuracion-texto-ejemplo-puntos" id="ej-puntos">Una compra de $25.000 suma 25 puntos.</p>
+            </div>
+          </div>
+          <div class="pie">
+            <button class="btn btn-pri" data-testid="configuracion-boton-guardar-puntos" onclick="guardar('puntos')"><span class="l-n"><i data-lucide="save" class="w-4 h-4"></i>Guardar puntos</span><span class="l-g"><i data-lucide="loader-2" class="w-4 h-4 girar"></i>Guardando…</span></button>
+            <div class="msg oculto" role="status"></div>
+          </div>
+        </section>
+    </div>
+
+    <p class="text-[12px] text-suave text-center mt-10">Prototipo de HU-001. Los botones oscuros de arriba solo sirven para mirar estados. Tailwind, Lucide y la fuente cargan por internet.</p>
+  </main>
+  </div>
+</div>
+
+<!-- Modal salir -->
+<div id="modal" class="oculto fixed inset-0 z-40 bg-stone-900/40 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="m-t">
+  <div class="card w-full max-w-[420px] text-center entra" style="box-shadow:0 20px 50px rgba(41,37,36,.2)">
+    <i data-lucide="triangle-alert" class="w-9 h-9 mx-auto text-aviso"></i>
+    <h2 id="m-t" class="justify-center mt-2">Tenés cambios sin guardar</h2>
+    <p class="sub">¿Salir igual?</p>
+    <div class="flex items-center justify-center gap-4">
+      <button class="btn btn-pri" id="m-quedar" data-testid="configuracion-boton-seguir-editando" onclick="cerrarModal()">Seguir editando</button>
+      <button class="btn btn-sec" data-testid="configuracion-boton-salir-igual" onclick="cerrarModal();sucios.clear()">Salir igual</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toasts estilo Sonner -->
+<div id="toasts" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2" aria-live="polite"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const bloques=['tienda','sheet','precios','puntos'];
+const OK={tienda:'Tienda guardada.',sheet:'Inventario guardado.',precios:'Precios guardados. Se recalculan.',puntos:'Puntos guardados.'};
+const ESTILO={
+  exito:{ico:'check-circle-2',cls:'bg-exito-suave text-exito border-exito-borde',t:'text-exito'},
+  aviso:{ico:'triangle-alert',cls:'bg-aviso-suave text-aviso border-aviso-borde',t:'text-aviso'},
+  error:{ico:'circle-alert',cls:'bg-error-suave text-error border-error-borde',t:'text-error'}
+};
+function iconos(){lucide.createIcons();}
+
+function toast(tipo,texto){
+  const t=document.createElement('div');
+  t.className='entra flex items-center gap-2 px-4 py-3 rounded-xl border border-borde bg-white text-[14px] font-medium min-w-[240px]';
+  t.style.boxShadow='0 8px 24px rgba(41,37,36,.12)';
+  t.innerHTML=`<i data-lucide="${ESTILO[tipo].ico}" class="w-5 h-5 ${ESTILO[tipo].t}"></i><span>${texto}</span>`;
+  $('#toasts').appendChild(t); iconos();
+  setTimeout(()=>t.remove(),3500);
+}
+function ejemploPuntos(){
+  const v=parseFloat(String($('#pesos').value).replace(',','.'));
+  $('#ej-puntos').textContent = v>0 ? 'Una compra de $25.000 suma '+Math.floor(25000/v).toLocaleString('es-AR')+' puntos.' : 'Escribí cuántos pesos vale un punto.';
+}
+function capaCarga(texto){ $('#carga-titulo').textContent=texto; $('#vista-cargando').classList.remove('oculto'); }
+function cerrarCapaCarga(){ $('#vista-cargando').classList.add('oculto'); $('#carga-titulo').textContent='Cargando la configuración…'; }
+function pantalla(p){
+  if(p==='cargando') $('#carga-titulo').textContent='Cargando la configuración…';
+  $('#vista-cargando').classList.toggle('oculto',p!=='cargando');
+  $('#vista-falla').classList.toggle('oculto',p!=='falla');
+  $('#vista-normal').classList.toggle('oculto',p==='falla');
+}
+function limpiarBloque(b){
+  const sec=$('#b-'+b);
+  sec.querySelectorAll('.err').forEach(e=>{e.classList.add('oculto');e.textContent='';});
+  sec.querySelectorAll('.campo').forEach(c=>c.classList.remove('campo-err'));
+  const m=sec.querySelector('.msg'); m.className='msg oculto'; m.innerHTML=''; m.removeAttribute('data-testid');
+  const bt=sec.querySelector('.btn-pri'); bt.classList.remove('cargando'); bt.disabled=false;
+}
+function msg(b,tipo,texto,extra){
+  const m=$('#b-'+b+' .msg');
+  m.className='msg entra flex-1 min-w-0 flex items-center gap-2 rounded-xl border px-3 py-2 text-[13px] font-semibold '+ESTILO[tipo].cls;
+  m.setAttribute('data-testid',tipo==='error'?'configuracion-mensaje-error-'+b:tipo==='aviso'?'configuracion-mensaje-aviso-'+b:'configuracion-mensaje-exito-'+b);
+  m.setAttribute('role',tipo==='error'?'alert':'status');
+  m.innerHTML=`<i data-lucide="${ESTILO[tipo].ico}" class="w-4 h-4 shrink-0"></i><span>${texto}${extra||''}</span>`;
+  iconos();
+}
+function ponerErr(c,texto){
+  c.classList.add('campo-err');
+  const e=c.querySelector('.err'); e.classList.remove('oculto');
+  e.innerHTML=`<i data-lucide="circle-alert" class="w-3.5 h-3.5 shrink-0"></i><span>${texto}</span>`;
+  iconos();
+}
+function errorCampo(b,id,texto){ponerErr(document.getElementById(id).closest('.campo'),texto);document.getElementById(id).focus();}
+function guardando(b){
+  limpiarBloque(b);
+  const bt=$('#b-'+b+' .btn-pri'); bt.classList.add('cargando'); bt.disabled=true;
+}
+function guardar(b){
+  limpiarBloque(b);
+  if(b==='tienda' && !$('#nombre').value.trim()){errorCampo(b,'nombre','Ingresá el nombre de la tienda.');return;}
+  if(b==='sheet'){
+    if(!$('#sheet').value.trim()){errorCampo(b,'sheet','Pegá el link o el ID del Sheet.');return;}
+    if(!$('#pestana').value.trim()){errorCampo(b,'pestana','Ingresá el nombre de la pestaña.');return;}
+  }
+  if(b==='precios'){
+    // Cada campo dice qué pasó y qué hacer, según la causa (vacío, cero o negativo, con centavos)
+    const ERR={
+      cotizacion:{vacio:'Ingresá la cotización del dólar.',menor:'La cotización tiene que ser mayor a 0.'},
+      redondeo:{vacio:'Ingresá el múltiplo para redondear.',menor:'El múltiplo tiene que ser mayor a 0.'},
+      bulk:{vacio:'Ingresá el precio.',menor:'Tiene que ser mayor a 0.',centavos:'Sin centavos.'}
+    };
+    const ids={cotizacion:'cotizacion',redondeo:'redondeo','b-common':'bulk','b-uncommon':'bulk','b-rare':'bulk','b-mythic':'bulk','b-tierra':'bulk'};
+    let primero=null;
+    for(const id in ids){const t=String(document.getElementById(id).value).trim(); const v=Number(t.replace(',','.')); const e=ERR[ids[id]];
+      const causa=!t?'vacio':!(v>0)?'menor':(ids[id]==='bulk'&&!Number.isInteger(v))?'centavos':null;
+      if(causa){ ponerErr(document.getElementById(id).closest('.campo'),e[causa]); primero=primero||id;}}
+    if(primero){document.getElementById(primero).focus();msg(b,'error','No se guardó. Corregí el campo marcado en rojo.');return;}
+  }
+  if(b==='puntos'){const t=String($('#pesos').value).trim(); const v=parseFloat(t.replace(',','.'));
+    if(!t){errorCampo(b,'pesos','Ingresá cuántos pesos vale un punto.');return;}
+    if(!(v>0)){errorCampo(b,'pesos','Tiene que ser mayor a 0.');return;}}
+  // Regla: lo que tarda (sincronizar con el Sheet) usa la capa de carga; lo rápido, la ruedita del botón.
+  if(b==='sheet'){
+    capaCarga('Sincronizando con tu Sheet…');
+    setTimeout(()=>{ cerrarCapaCarga(); limpiarBloque(b); sucios.delete(b); msg(b,'exito',OK[b]); },2500);
+    return;
+  }
+  guardando(b);
+  setTimeout(()=>{ limpiarBloque(b); sucios.delete(b); msg(b,'exito',OK[b]); },900);
+}
+function logoElegido(inp){
+  limpiarBloque('tienda');
+  const f=inp.files[0]; if(!f)return;
+  if(!/image\/(png|jpeg|webp)/.test(f.type)){logoError('El archivo no es PNG, JPG ni WEBP.');return;}
+  if(f.size>2*1024*1024){logoError('El logo pesa más de 2 MB.');return;}
+  const r=new FileReader(); r.onload=e=>{$('#vista-logo').src=e.target.result}; r.readAsDataURL(f);
+}
+function logoError(t){ponerErr($('#c-logo'),t);}
+function quitarLogo(){$('#vista-logo').src='../../../../src/main/resources/static/images/tcg-default-logo.png';}
+
+function sim(caso){
+  pantalla('normal');
+  bloques.forEach(limpiarBloque);
+  switch(caso){
+    case 'limpiar': break;
+    case 'guardando': guardando('precios'); break;
+    case 'sincronizando': capaCarga('Sincronizando con tu Sheet…'); break;
+    case 'guardado': bloques.forEach(b=>msg(b,'exito',OK[b])); break;
+    case 'renombrada': $('#pestana').value='Inventario';
+      msg('sheet','aviso','La pestaña «Hoja 1» se renombró a «Inventario».'); break;
+    case 'creada': $('#pestana').value='Stock 2026';
+      msg('sheet','aviso','Se creó la pestaña «Stock 2026».'); break;
+    case 'sheet-invalido': errorCampo('sheet','sheet','Ese link no es de un Google Sheet.'); break;
+    case 'sin-permiso': msg('sheet','error','Tu cuenta no tiene acceso a este Sheet. Compartilo con tienda@gmail.com como editor.'); break;
+    case 'sesion': msg('sheet','error','Tu sesión de Google venció.',
+        ' <a href="#" class="underline font-bold" data-testid="configuracion-enlace-iniciar-sesion-google" onclick="return false">Volver a iniciar sesión</a>'); break;
+    case 'numero':
+      $('#cotizacion').value='0'; $('#b-rare').value='300,50'; $('#b-mythic').value='';
+      guardar('precios'); break;
+    case 'logo': logoError('El logo pesa más de 2 MB.'); break;
+    case 'ck': msg('precios','aviso','Guardado, pero no se pudo sincronizar con Card Kingdom. Probá más tarde.'); break;
+  }
+}
+const sucios=new Set();
+bloques.forEach(b=>$('#b-'+b).addEventListener('input',()=>sucios.add(b)));
+function salir(){ if(sucios.size===0){ sucios.add('tienda'); $('#nombre').value+=' (editado)'; } $('#modal').classList.remove('oculto'); $('#m-quedar').focus(); }
+function cerrarModal(){ $('#modal').classList.add('oculto'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarModal(); });
+window.addEventListener('beforeunload',e=>{ if(sucios.size){ e.preventDefault(); e.returnValue=''; } });
+
+function medirSim(){document.documentElement.style.setProperty('--simh',$('#sim').offsetHeight+'px');}
+window.addEventListener('resize',medirSim);
+
+pantalla('normal'); iconos(); medirSim(); $('#nombre').focus({preventScroll:true});
+</script>
+</body>
+</html>

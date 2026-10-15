@@ -1,6 +1,7 @@
 # HU-XXX: <título corto>
 
 - **Estado:** borrador | aprobada | en desarrollo | en QA | en corrección | aceptada
+- **Épica:** EP-XXX (o `—` si es una historia suelta)
 - **Tipo:** funcionalidad | bugfix (DEF-XXX) | mejora técnica
 - **Módulo:** inventario | precios | reservas | caja | movimientos | importacion | configuracion | google
 - **Rama:** `v2/feature/HU-XXX-<tema>` (igual al nombre de este archivo sin `.md`; ej.: `v2/feature/HU-000-documento-funcional-base`)
@@ -49,6 +50,12 @@ Escritos para que QA los pase directo a Gherkin.
 | 2 | backend-java | ... | Compila y pasan los tests unitarios y de API |
 | 3 | frontend | ... | Build y tests OK, locators puestos |
 | 4 | qa-* | Escenarios según el QA elegido | Veredicto y defectos reportados |
+
+## Consumo
+| Agente | Llamada | Tokens |
+|---|---|---|
+| ... | ... | ... |
+| **Total** | | |
 
 ## Registro
 | Fecha | Paso | Resultado |

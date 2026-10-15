@@ -24,6 +24,14 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
   - DTOs `record` en `dto/` con campos en español y validación (`@Valid`, `@NotBlank`, `@Positive`).
   - Errores: `@RestControllerAdvice` que devuelve `ProblemDetail` con un mensaje en español claro para el usuario.
   - Documentar con springdoc-openapi (`@Operation`, `@Schema` con ejemplo), porque el front genera sus tipos desde ese contrato.
+  - **Contrato escrito, antes de programar:** cada endpoint nuevo o modificado se documenta en `docs/v2/api/<modulo>.md` (por ejemplo `docs/v2/api/configuracion.md`). Por endpoint: método y ruta, para qué sirve, request (campos, tipo, obligatorio, validación) con ejemplo JSON, respuestas OK y de error (código, cuándo pasa, ejemplo `ProblemDetail`) y la HU de origen. QA lo usa para armar sus pruebas, así que tiene que coincidir con lo implementado: si cambia el código, se actualiza el contrato.
+- **Javadoc en todo método público nuevo o modificado:** corto, una o dos líneas que digan qué hace (en español), más un ejemplo de uso o de entrada y salida. Ejemplo:
+  ```java
+  /**
+   * Renombra la pestaña única del Sheet al nombre pedido, si no existe ya.
+   * Ejemplo: Sheet con "Hoja 1" + pedido "Inventario" → devuelve RENOMBRADA y la pestaña pasa a llamarse "Inventario".
+   */
+  ```
 - **Nombres:** el negocio en español (`entregarReserva`, `cantidadDisponible`). Los sufijos de Spring quedan en inglés.
 
 ## Reglas de datos

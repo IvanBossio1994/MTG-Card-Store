@@ -1,0 +1,9 @@
+# Épicas
+
+Cuando un pedido se parte en varias historias, primero se arma una **épica**, con su caso de uso y la lista de historias. Cada historia indica a qué épica pertenece. Así se ve cuántas historias tiene cada épica y cuánto falta.
+
+Plantilla: `../plantilla-epica.md`. Archivos: `EP-XXX-<tema>.md`.
+
+| Épica | Título | Estado | Historias | Progreso |
+|---|---|---|---|---|
+| [EP-001](EP-001-configuracion-v2.md) | Configuración v2 | abierta | HU-001, HU-002, HU-003 | 1 de 3 |

@@ -1,7 +1,8 @@
 # Historias de usuario
 
-Cada historia es un archivo `HU-XXX-<tema>.md` creado desde `../plantilla-historia.md`. El estado de cada historia vive en su propio archivo; este índice sirve para encontrarlas rápido.
+Cada historia es un archivo `HU-XXX-<tema>.md` creado desde `../plantilla-historia.md`. El estado de cada historia vive en su propio archivo; este índice sirve para encontrarlas rápido. Las historias que salen de un mismo pedido grande se agrupan en una épica (`../epicas/`).
 
-| HU | Título | Estado | Rama |
-|---|---|---|---|
-| [HU-000](HU-000-documento-funcional-base.md) | Documento funcional base + credenciales de Google | aceptada | `v2/feature/HU-000-documento-funcional-base` |
+| HU | Título | Épica | Estado | Rama |
+|---|---|---|---|---|
+| [HU-000](HU-000-documento-funcional-base.md) | Documento funcional base + credenciales de Google | — | aceptada | `v2/feature/HU-000-documento-funcional-base` |
+| [HU-001](HU-001-diseno-configuracion.md) | Diseño nuevo de Configuración (v2) | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-001-diseno-configuracion` |

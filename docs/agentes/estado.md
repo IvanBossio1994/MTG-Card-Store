@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-14 (diagnóstico inicial).
+> Última actualización: 2026-10-14 (cierre de HU-001).
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -36,11 +36,16 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 4. **Modo Prueba:** solo pueden entrar los Gmail cargados como testers, y la sesión vence a los 7 días.
 5. **Para varios comercios:** publicar sin verificar (tope de 100 usuarios), verificar `spreadsheets` o migrar a `drive.file` con Google Picker (sección 8 de la guía). Decisión pendiente.
 6. El login de Google no se puede automatizar en E2E: se usa el token guardado en `data/`.
+7. **Cuenta de servicio (dato de la dueña, 2026-10-14):** `tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com`, que sería la editora del Sheet y haría todo lo que hace la app. **Hoy el código no la usa:** entra solo por OAuth con el Gmail del comercio. Decisión pendiente para HU-003, con `google-integracion`:
+   - **OAuth:** como hoy.
+   - **Cuenta de servicio:** el comercio comparte el Sheet con ese mail. No vence ni hace falta verificar la app, pero la clave dentro de la app instalada expone los Sheets de todos los comercios.
+   - **Mixto.**
 
 ## Backlog
 | Prio | Tema | Detalle |
 |---|---|---|
 | P1 | Documento funcional base | Documentar los módulos de la v1 que faltan (INV, PRE, RES, CAJ, MOV, IMP, CFG) para llegar a 1.0.0. |
+| P1 | OAuth o cuenta de servicio | Definir en HU-003 cómo se conecta la app al Sheet (ver Google, punto 7). Afecta el mensaje "sin permiso" y el texto "Conectado como" del diseño de Configuración. |
 | P2 | Publicar la app | Decidir opción A/B/C de la guía de Google para abrir a otros comercios. |
 | P1 | Escritura por fila | `GoogleSheetsService.updateQuantity` (~240-268) escribe por `rowIndex` sin verificar que la fila siga siendo esa carta. Si alguien ordena o borra filas a mano, escribe en otra carta. Lectura y escritura sin lock. |
 | P1 | Cache Card Kingdom | La descarga no está sincronizada y la escritura no es atómica (`CardKingdomApiService`). Si hay más de un resultado posible para una carta, devuelve `null` y no actualiza el precio. |
@@ -62,6 +67,11 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 - 2026-10-14: UX trabaja con spec y prototipos HTML, sin Figma. El gatito es la mascota oficial y no se modifica.
 - 2026-10-14: locators con `data-testid="<pantalla>-<elemento>[-<id>]"` (`docs/v2/locators.md`).
 - 2026-10-14: HU-000 aceptada. Credenciales de Google en archivo local ignorado; login con `TCGStorehelper@gmail.com` funcionando. Commits sin co-autoría del agente.
+- 2026-10-14: **Reglas de código y contratos** (pedido de la dueña): Javadoc corto con ejemplo en todo método público (TSDoc en el front) y contrato escrito de cada endpoint en `docs/v2/api/<modulo>.md`, que lo hace backend antes de programar y lo usa QA. Está en los agentes `backend-java`, `frontend` y `qa-*`.
+- 2026-10-14: **HU-001 aceptada:** diseño de Configuración v2, primera historia de la épica EP-001. Próximas: HU-002 (base técnica) y HU-003 (Configuración funcionando).
+  - Quedan en `docs/v2/ux/configuracion/` (spec y prototipo), el sistema de diseño, `docs/v2/textos.md` y `docs/v2/locators.md`.
+  - Reglas de diseño: estilo cozy con acento azul y barra lateral; nada se mueve; columnas alineadas; tamaños fijos; regla de espera; errores específicos.
+  - Reglas del equipo: épicas, consumo de tokens por HU, agente nuevo para cada vuelta de cambios, cuándo no usar agente y revisar los prototipos en Chrome con `jwebserver`.
 - 2026-10-14: JDK 21 (Temurin) en `C:\Users\sofii\.jdks\temurin-21.0.12.1`. El proyecto compila.
 
 ## Glosario
@@ -70,4 +80,6 @@ El glosario se movió a `docs/funcional/documento-funcional.md`, sección "Glosa
 ## Aprendizajes
 _(Anotar acá lo que se descubra trabajando: trampas del Sheet, comportamientos raros, preferencias de la persona a cargo del proyecto.)_
 - 2026-10-14: `spring-boot:run` arranca `DesktopLauncher`: abre una ventana propia en un puerto al azar (no 8080) y Windows pide permiso de firewall para Java la primera vez.
+- 2026-10-14: la extensión de Chrome no abre `file://`. Para ver un prototipo se sirve el repo con `jwebserver` del JDK (puerto 8765).
+- 2026-10-14: HU-001 costó 349 mil tokens; el 92 % se fue en retomar al mismo agente UX en cada vuelta. Con un agente nuevo por vuelta y los ajustes chicos hechos por el líder, las últimas 8 vueltas no sumaron tokens de agentes.
 - 2026-10-14: estado base. `mvn -q test` pasa (exit 0). `BackendApplicationTests` levanta el contexto completo y descarga la pricelist real de Card Kingdom, así que necesita internet.
