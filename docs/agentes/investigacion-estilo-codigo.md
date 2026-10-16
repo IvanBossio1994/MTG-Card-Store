@@ -1,6 +1,6 @@
 # Investigación: estilo de código común (back, front y QA)
 
-> Estado: **investigación** (15/10, sesión al 87-88%). No se tocó código. Próximo paso: brief de una épica o HU de **base técnica** con `/agente-lider` → "Historia nueva".
+> Estado: **investigación** (15/10, sesión al 87-88%). No se tocó código. **Próximo paso:** hacer la sección "Pendiente de investigar" (back y front). Después, el brief de una épica o HU de **base técnica** con `/agente-lider` → "Historia nueva". **QA queda postergado** hasta que la persona a cargo pase su estilo: no incluirlo por ahora.
 > Objetivo de la persona a cargo (QA automation sr): **acortar, modernizar y unificar** el código antes de seguir con otras épicas, y dejar una guía con ejemplos para todos los desarrollos.
 
 ## 1. Cómo está hoy (lo que se miró)
@@ -74,13 +74,12 @@ Pendiente decidir: ¿se mantienen las clases `<Modulo>Localizadores` o los locat
 Estimación: guía ~3-5 puntos (líder) · herramientas ~10-15 (backend-java) · cada refactor ~10-17 (un agente por área).
 
 ## Pendiente de investigar (próxima sesión)
-- Estilo de QA: con el ejemplo de la persona a cargo (pasos, BasePage, página).
 - Tests de back (`ConfiguracionControllerTest`, tests del service) y de front (Vitest): ver cuánto se acortan con `MockMvcTester` y Testing Library.
 - Repositorios y acceso al Sheet (`ConfiguracionArchivosRepository`, `AccesoSheetCuentaServicio`): no se revisaron.
 - Confirmar F3 (link con `/u/0/`) con una prueba antes de abrir el `DEF`.
 
 ## 4. Preguntas para la persona a cargo (antes del brief)
-1. **Ejemplo propio:** pasar un archivo de pasos, una BasePage y una página de su código de QA para copiar el estilo (es lo más rápido para no adivinar).
+1. *(Postergado, QA)* **Ejemplo propio:** pasar un archivo de pasos, una BasePage y una página de su código de QA para copiar el estilo (es lo más rápido para no adivinar).
 2. **Imports con `*`:** ¿en todo el código o solo en QA?
 3. **Locators:** ¿campos `Locator` en la pantalla (propuesta) o clase aparte de locators como hoy?
 4. **Librerías nuevas en el front:** ¿TanStack Query y React Hook Form + Zod, o seguir sin librerías?
