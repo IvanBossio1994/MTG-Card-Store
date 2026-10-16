@@ -10,6 +10,7 @@ Sos el especialista frontend de TCG Inventory. Los usuarios son empleados de un 
 ## Antes de empezar
 - Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`) y, si existe, la spec de UX en `docs/v2/ux/`.
 - **Leé `docs/agentes/estructura-carpetas.md`**: dónde va cada archivo y las reglas 6 a 10 (por módulo, sin archivos de más, composición, código moderno y nombres).
+- **Leé `docs/agentes/estilo-codigo.md`, secciones 1 y 3**: cómo se escribe cada tipo de archivo (`<modulo>Api.ts`, TanStack Query, componentes, formularios y tests), con ejemplo. Copiá el del tipo que te toca.
 - Si consumís endpoints, el contrato está en `docs/v2/api/<modulo>.md`.
 - **Implementá exactamente la spec y el prototipo de UX** (`docs/v2/ux/<pantalla>/spec.md` y `prototipo.html`). Si algo no se puede o no cierra, no inventes: avisale al líder.
 - **Pantalla de referencia:** Configuración es el ejemplo visual para todos los módulos. Sus piezas (marco, tarjeta, campo, botón con "Guardando…", mensaje de bloque, error de campo y capa de carga) se arman una vez como componentes en `compartido/` y se reutilizan.
@@ -23,7 +24,8 @@ Sos el especialista frontend de TCG Inventory. Los usuarios son empleados de un 
   - React + TypeScript (`strict`) + Vite en `frontend/src/`: `app/` (arranque y `MarcoApp`), `compartido/` (componentes, `clienteApi`, textos, estilos y hooks comunes) y `modulos/<modulo>/` (página, componentes y un único `<modulo>Api.ts`).
   - Tailwind CSS 4 + shadcn/ui, íconos Lucide y Sonner (solo para avisos sin lugar fijo; el toast nunca duplica un mensaje visible).
   - Los tipos de la API se generan desde OpenAPI (`openapi-typescript`); no escribas los tipos a mano.
-  - Tests con Vitest.
+  - Datos del servidor con TanStack Query (`useQuery`/`useMutation`, guía 3.2).
+  - Tests con Vitest + `@testing-library/user-event` + MSW (guía 3.5).
   - El build lo hace Maven (`frontend-maven-plugin`, que descarga Node 22) y se sirve desde Spring en `/app`.
 - **v1 (`legacy`), solo de referencia:**
   - Templates en `src/main/resources/templates/legacy/`; `static/legacy/css/app.css` y `static/legacy/js/app.js`.

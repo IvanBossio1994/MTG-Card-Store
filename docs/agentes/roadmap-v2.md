@@ -27,7 +27,7 @@
 ```
 compartido/    errores (ProblemDetail), utilidades, configuración OpenAPI
 google/        OAuth + cliente de Sheets de bajo nivel
-inventario/    InventarioController, InventarioService, InventarioRepository (+Sheets, +EnMemoria), dto/
+inventario/    InventarioController, InventarioService, InventarioRepository (+Sheets, +EnMemoria), records
 precios/       Card Kingdom (cache sincronizado y escrito de forma atómica)
 reservas/      reservas, retiros, pedido masivo, clientes
 caja/          ventas y reportes mensuales

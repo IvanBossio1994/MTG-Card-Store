@@ -11,3 +11,4 @@ Cada defecto es un archivo `DEF-XXX-<tema>.md` (formato en `../qa-guia.md`). QA 
 
 | DEF | Título | HU | Severidad | Área | Estado |
 |---|---|---|---|---|---|
+| [DEF-001](DEF-001-link-sheet-u0.md) | Con un link del Sheet con `/u/0/` no se carga "Traer cartas de" | HU-007 (se arregla en HU-013) | alta | frontend | abierto |

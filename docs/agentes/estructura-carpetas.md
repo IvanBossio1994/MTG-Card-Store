@@ -15,7 +15,7 @@ src/main/java/com/tcg/bot/
   precios/              XController   (@RestController, /api/v1/..., uno por módulo)
   reservas/             XService      (solo si hay reglas de negocio)
   caja/                 XRepository   (interfaz) + XSheetsRepository + XEnMemoriaRepository
-  movimientos/          dto/          (solo si un record lo usa más de una clase; si no, va adentro del controller)
+  movimientos/          records       (de un solo uso: adentro del controller; compartidos: en su archivo, en el paquete)
   importacion/
   configuracion/
   legacy/          v1 · SOLO REFERENCIA (controller, service, model, dto, config)
@@ -63,7 +63,7 @@ docs/          documentación · data/ NO se toca
 4. **Al migrar un módulo**, lo viejo queda como está hasta el corte. No se borra ni se modifica `legacy` durante el rework, salvo un arreglo urgente que pida la persona a cargo.
 5. **Tests:** cada clase nueva lleva sus tests en `src/test/java/com/tcg/bot/<modulo>/`. Los tests de `legacy/` tienen que seguir pasando.
 6. **Todo se divide por módulo, no por endpoint ni por método** (backend, frontend y QA). Primero la carpeta del módulo; adentro, solo las subcarpetas que tienen sentido para esa capa (pedido de la dueña, 2026-10-15):
-   - **Backend:** el paquete del módulo, sin subpaquetes (controller, service y repositorios juntos; `dto/` solo si hace falta, regla 7).
+   - **Backend:** el paquete del módulo, sin subpaquetes (controller, service, repositorios y records juntos, regla 7).
    - **Frontend:** `modulos/<modulo>/` con la página, `<modulo>Api.ts` y los tests al lado, y `componentes/` para las piezas propias del módulo.
    - **QA:** al revés que el resto: cuatro carpetas por tipo (`features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`) y, adentro de cada una, un archivo por módulo.
    - **Backend:** un `XController` por módulo, con todos sus endpoints (por ejemplo, `ConfiguracionController` tiene GET y los PUT de tienda, sheet, precios y puntos). No se arma un controller por endpoint.
@@ -72,7 +72,7 @@ docs/          documentación · data/ NO se toca
    - No hay un límite fijo de líneas. Un archivo se parte solo si hay sub-pantallas de verdad o si el líder lo consulta y la persona a cargo lo aprueba; se decide caso por caso.
 7. **Nada de archivos ni carpetas "porque sí":** cada archivo nuevo tiene que aportar algo.
    - **Service** solo si hay reglas de negocio o datos que buscar. Si el endpoint solo arma una respuesta, la lógica va en el controller (ejemplo: `EstadoAppController`).
-   - **DTO en `dto/`** solo si lo usa más de una clase. Si lo usa un solo endpoint, va como `record` adentro del controller.
+   - **Records:** si lo usa un solo endpoint, va adentro del controller; si lo usan varias clases, en su propio archivo dentro del paquete del módulo (sin subcarpeta `dto/`).
    - **Frontend:** nada de archivos que solo envuelven a otro componente. Un hook, una función o un componente va en su propio archivo solo si se reutiliza; si no, queda en el archivo que lo usa.
    - **Carpetas:** se crean cuando entra el primer archivo, nunca vacías "para después".
    - Los tests de una clase van juntos en un solo archivo de test.
@@ -86,7 +86,8 @@ docs/          documentación · data/ NO se toca
      - lo común va en piezas centrales (`ManejadorErroresApi`, `ErrorDeNegocioException`);
      - la **única** base es la del acceso al Sheet (`compartido/` o `google/`): leer columnas por encabezado, verificar la clave de la fila antes de escribir y usar lock. Todos los `XSheetsRepository` la usan.
 9. **Código moderno:**
-   - **Java 21:** `record` para datos, inyección por constructor, `switch` con patrones, `Optional` en lugar de devolver `null`, `var` cuando el tipo es obvio y excepciones específicas (nunca `catch (Exception)` genérico).
-   - **React + TS:** solo componentes de función con hooks, TypeScript `strict` sin `any`, tipos generados desde OpenAPI y estado local antes que librerías globales.
+   - **Java 21:** `record` para datos, inyección por constructor, `switch` con patrones, `Optional` en lugar de devolver `null` (solo como retorno, nunca como parámetro ni campo), `var` cuando el tipo es obvio y excepciones específicas (nunca `catch (Exception)` genérico).
+   - **React + TS:** solo componentes de función con hooks, TypeScript `strict` sin `any`, tipos generados desde OpenAPI y estado local antes que librerías globales. Lo que viene del servidor va con TanStack Query (es la copia local de los datos del servidor, no estado global).
+   - **Cómo se escribe cada tipo de archivo, con ejemplo:** `estilo-codigo.md`.
    - **QA:** Playwright con `getByTestId` y esperas automáticas; nunca `Thread.sleep`.
 10. **Nombres que se entiendan:** archivos, clases, componentes y funciones con nombres en español que digan qué son o qué hacen (`BloqueTienda`, `guardarPrecios`, `CapaCarga`). Nada de `Utils`, `Helper`, `Manager`, `data2` ni abreviaturas.

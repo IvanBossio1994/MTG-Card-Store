@@ -19,7 +19,8 @@ Analizá lo justo:
 | ... | ... | ... | ... | ... |
 
 - Una fila por tema, frases cortas, sin jerga.
-- Si el pedido es grande, proponé partirlo en varias HU y mostralas en la tabla. Esas HU forman una **épica**.
+- **Revisá las épicas abiertas** (`docs/agentes/epicas/README.md`): si el pedido sirve al mismo objetivo que una, la HU se suma a esa épica (regla "Épica" de `CLAUDE.md`).
+- Si el pedido es grande, proponé partirlo en varias HU y mostralas en la tabla. Esas HU forman una **épica**. Si es una HU suelta que ahora necesita otra relacionada, proponé convertirla en épica.
 - **Una HU = un tipo de trabajo** (diseño, backend, frontend, QA, base técnica o bugfix), en el orden de la tabla "Épicas y tipos de historia" de `CLAUDE.md`. Nunca se mezclan. La HU de QA es una sola por épica, al final, con el campo **Cubre** (ej.: `HU-003, HU-004`).
 - Si el pedido es una HU que ya está planificada en una épica abierta (`docs/agentes/epicas/`), partí de lo que dice la épica.
 - Cerrá con: **"¿Apruebo y armo la historia?"** y **esperá la respuesta**.
@@ -28,7 +29,7 @@ Analizá lo justo:
 - **Si el pedido se partió en varias HU, primero creá la épica.**
   - Archivo `docs/agentes/epicas/EP-XXX-<tema>.md`, desde `docs/agentes/plantilla-epica.md`, con el objetivo, el caso de uso, el alcance y la tabla de historias. La que se arma ahora va `aprobada`; las demás, `planificada`.
   - Sumá la fila al índice `epicas/README.md`.
-  - Si es una sola HU suelta, no hace falta épica (campo Épica: `—`).
+  - Si es una sola HU suelta y no se relaciona con ninguna épica abierta, no hace falta épica (campo Épica: `—`).
 - Número: el siguiente al último de `docs/agentes/historias/README.md`.
 - En el campo **Épica** de la HU poné `EP-XXX` y, en la épica, actualizá el estado de esa HU.
 - Creá `docs/agentes/historias/HU-XXX-<tema>.md` desde `docs/agentes/plantilla-historia.md`, con estado `aprobada`. En el campo **Rama** poné `v2/feature/` + el nombre del archivo sin `.md`.

@@ -46,7 +46,9 @@ El líder y cada agente trabajan como **senior de su rol** (líder técnico, ana
 | `qa-casos-error` | En la HU de QA: validaciones, límites, fallas externas y errores del usuario. Reporta los defectos `DEF-XXX`. |
 
 ### Épicas y tipos de historia
-- **Épica:** si un pedido se parte en varias historias, primero se arma una épica en `docs/agentes/epicas/EP-XXX-<tema>.md`, con el caso de uso y la lista de historias. Cada historia indica su épica, y la épica muestra cuántas tiene y cuántas están aceptadas.
+- **Épica:** dos o más HU que sirven al **mismo objetivo** (de negocio o técnico) van en una épica, aunque se pidan en momentos distintos. Se arma antes de la primera HU en `docs/agentes/epicas/EP-XXX-<tema>.md`, con el caso de uso y la lista de historias. Cada historia indica su épica, y la épica muestra cuántas tiene y cuántas están aceptadas.
+  - Antes de crear algo, revisar las épicas abiertas: si se relaciona con una, la HU se suma ahí (aunque quede `planificada` esperando algo). Un `DEF` anota dónde nació y dónde se arregla.
+  - HU suelta (`Épica: —`) solo si no se relaciona con ninguna épica abierta y alcanza con una. Si después necesita otra relacionada, se convierte en épica y queda adentro.
 - **Una HU = un tipo de trabajo**, nunca mezclados. Orden dentro de una épica (cada una sale después de aceptar la anterior):
 
 | Orden | Tipo | Agente | Se valida con |

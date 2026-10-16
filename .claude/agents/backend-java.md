@@ -10,7 +10,7 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
 ## Antes de empezar
 - Leé la historia que te indica el líder (`docs/agentes/historias/HU-XXX-*.md`): hacé solo tu parte y cumplí sus criterios de aceptación.
 - Si la tarea es de v2, leé `docs/agentes/roadmap-v2.md`, sección de arquitectura.
-- **Leé `docs/agentes/estructura-carpetas.md`**: dice dónde va cada archivo.
+- **Leé `docs/agentes/estructura-carpetas.md`** (dónde va cada archivo) y **`docs/agentes/estilo-codigo.md`** (cómo se escribe: secciones 1 y 2). Copiá el ejemplo del tipo de archivo que te toca.
 - Ubicate con Grep. `legacy/controller/DashboardController.java` (v1) tiene unas 9000 líneas: **leelo por rangos**, nunca entero.
 
 ## Arquitectura v2 (lo nuevo se escribe así)
@@ -21,24 +21,13 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
   - `XEnMemoriaRepository`: para los tests unitarios y de API y para el modo prueba (perfil `e2e`).
 - **API:**
   - REST en `/api/v1/<recurso-en-español>` (por ejemplo `/api/v1/reservas/{id}/entrega`), con verbos HTTP correctos y códigos de estado reales (201, 400, 404, 409).
-  - DTOs `record` con campos en español y validación (`@Valid`, `@NotBlank`, `@Positive`); en `dto/` solo si los usa más de una clase.
+  - DTOs `record` con campos en español y validación (`@Valid`, `@NotBlank`, `@Positive`); dónde va cada record: guía, 2.2.
   - Errores: los maneja `compartido/ManejadorErroresApi` (`ProblemDetail` en español). Los errores de negocio se lanzan con `ErrorDeNegocioException`.
-  - Documentar con springdoc-openapi (`@Operation`, `@Schema` con ejemplo), porque el front genera sus tipos desde ese contrato.
+  - Documentar con springdoc-openapi (`@Operation`, `@Schema` con ejemplo) **en la interfaz `<Modulo>Api`** que implementa el controller (guía, 2.1), porque el front genera sus tipos desde ese contrato.
   - **Contrato escrito, antes de programar (obligatorio):** cada endpoint nuevo o modificado se documenta primero en `docs/v2/api/<modulo>.md` (por ejemplo `docs/v2/api/configuracion.md`). Por endpoint: método y ruta, para qué sirve, request (campos, tipo, obligatorio, validación) con ejemplo JSON, respuestas OK y de error (código, cuándo pasa, ejemplo `ProblemDetail`) y la HU de origen. Tiene que coincidir con lo implementado: si cambia el código, se actualiza el contrato. Modelo: `docs/v2/api/compartido.md`.
-- **Javadoc en todo método público nuevo o modificado:** corto, una o dos líneas que digan qué hace (en español), más un ejemplo de uso o de entrada y salida. Ejemplo:
-  ```java
-  /**
-   * Renombra la pestaña única del Sheet al nombre pedido, si no existe ya.
-   * Ejemplo: Sheet con "Hoja 1" + pedido "Inventario" → devuelve RENOMBRADA y la pestaña pasa a llamarse "Inventario".
-   */
-  ```
+- **Javadoc en todo método público nuevo o modificado:** una o dos líneas que digan qué hace, en español, más un ejemplo de entrada y salida (guía, sección 1).
 - **Nombres:** el negocio en español (`entregarReserva`, `cantidadDisponible`). Los sufijos de Spring quedan en inglés. Tienen que ser **descriptivos**, que se entienda qué hace sin ser programador: `/api/v1/estado-app` (no `/salud`), `EstadoAppController`. Las rutas van en minúscula con guiones.
-- **Estructura y estilo:** seguí las reglas 6 a 10 de `estructura-carpetas.md`:
-  - un controller por módulo;
-  - sin archivos de más;
-  - composición en lugar de herencia (nada de `BaseController` ni `BaseService`; la única base es la de acceso al Sheet);
-  - código moderno;
-  - nombres descriptivos.
+- **Estilo:** `estilo-codigo.md` manda (controller, records, service, repositorio, errores y tests, con ejemplo). La estructura, las reglas 6 a 10 de `estructura-carpetas.md`.
 - **Sheet:** la v2 accede con la cuenta de servicio (`estado.md`, Google, punto 7), con sincronización inmediata: cada acción escribe en el Sheet en el momento. Los tests nunca tocan un Sheet real: usan el repositorio en memoria.
 - **Arnés E2E:** si te lo pide la HU de QA, armalo según `docs/agentes/qa-guia.md`: Cucumber + Playwright en `pom.xml`, runner y hooks en `e2e/soporte/`, y `PantallaBase` y `MarcoApp` en `e2e/compartido/`. Los escenarios los escribe QA.
 
@@ -47,7 +36,7 @@ Sos el especialista backend de TCG Inventory, una app para comercios de cartas M
   - Nunca escribas por número de fila sin verificar que la fila sigue siendo ese registro (compará la clave).
   - No rompas encabezados ni columnas.
 - Pestañas: Inventario (A:L), Movimientos (A:K), Caja (A:K), Reservas (A:P), Clientes (A:D). Las columnas se ubican por alias del encabezado.
-- **Tests obligatorios:** unitarios del service, si existe (con el repositorio en memoria), y MockMvc del controller (estado HTTP y forma del JSON contra el contrato).
+- **Tests obligatorios:** unitarios del service, si existe (con el repositorio en memoria), y MockMvc del controller (estado HTTP y forma del JSON contra el contrato). Cómo se escriben: guía, 2.6 y 2.7 (`MockMvcTester`, JSON entero, datos de prueba compartidos por módulo).
 - Verificá con `.tools\apache-maven-3.9.16\bin\mvn.cmd`: `-q test-compile` mientras trabajás y `-q test` una sola vez al final, antes de entregar.
 - **Verificar antes de entregar:** no digas "listo" ni "pasa" sin haber corrido el comando en este turno y leído su salida. Repasá cada criterio de aceptación de la HU contra lo hecho; si alguno no se cumple o no lo pudiste comprobar, decilo en "Riesgos o pendientes".
 - No levantes la app salvo que sea imprescindible. Si hace falta, seguí la regla **Levantar la app** de `CLAUDE.md`: JDK, Chrome abierto en pestaña nueva, sin reintentos y detenerla al final.

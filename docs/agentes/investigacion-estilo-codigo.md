@@ -1,6 +1,6 @@
 # Investigación: estilo de código común (back, front y QA)
 
-> Estado: **investigación terminada** (15/10). No se tocó código. **Próximo paso:** que la persona a cargo responda las preguntas 4 y 5 (y qué hacer con F3). Después, el brief de una épica o HU de **base técnica** con `/agente-lider` → "Historia nueva". **QA queda postergado** hasta que la persona a cargo pase su estilo: no incluirlo por ahora.
+> Estado: **cerrada** (15/10). Pasó a la épica **EP-002** (`epicas/EP-002-estilo-codigo.md`), que tiene las decisiones finales; F3 es **DEF-001**. Este archivo queda como respaldo de los hallazgos. **QA queda postergado** hasta que la persona a cargo pase su estilo: no incluirlo por ahora.
 > Objetivo de la persona a cargo (QA automation sr): **acortar, modernizar y unificar** el código antes de seguir con otras épicas, y dejar una guía con ejemplos para todos los desarrollos.
 
 ## 1. Cómo está hoy (lo que se miró)

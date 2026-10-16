@@ -1,7 +1,7 @@
 # Estado del proyecto: memoria del equipo de agentes
 
 > Todos los agentes leen este archivo al empezar. El líder lo actualiza cuando termina cada tarea: backlog, decisiones y aprendizajes.
-> Última actualización: 2026-10-15 (HU-008 aceptada: arnés E2E + camino feliz de Configuración). Sigue: HU-009 (EP-001, QA de casos de error).
+> Última actualización: 2026-10-15 (HU-010 aceptada: guía `docs/agentes/estilo-codigo.md`). Sigue: HU-011 (EP-002, herramientas). HU-009 (EP-001, QA de casos de error) queda para después del estilo de QA.
 
 ## Producto
 - **Qué es:** app local, en Windows, para comercios de cartas Magic: The Gathering. Es la "cara" del Google Sheet del comercio, y el Sheet sigue siendo la fuente de verdad.
@@ -99,6 +99,8 @@ Las columnas se ubican por alias del encabezado (`GoogleSheetsService.java` ~252
 - 2026-10-15: **la v1 puede romperse** (la dueña): lo que importa es la v2; si algo queda raro, se arregla para mejor en la v2 sin arreglos de convivencia.
 - 2026-10-15: **Carpetas de QA por tipo** (`features/`, `e2e/paginas/`, `e2e/localizadores/`, `e2e/pasos/`), con un archivo por módulo en cada una. Front y back siguen por módulo.
 - 2026-10-15: **HU de backend en tareas:** contrato y riesgos primero (revisión de la dueña), infraestructura nueva aparte, hasta 6 endpoints por tarea (`CLAUDE.md`, ciclo, paso 3).
+- 2026-10-15: **EP-002 · estilo de código común** (back y front; QA postergado hasta el ejemplo de la dueña): guía (HU-010) → herramientas (HU-011) → refactor de back (HU-012) → refactor de front (HU-013, con DEF-001); estilo de QA en HU-014 (planificada, espera el ejemplo). Front: TanStack Query sí; React Hook Form + Zod no (el front valida solo vacíos, el resto el back). Solo la v2.
+- 2026-10-15: **regla de épicas ampliada** (`CLAUDE.md`): mismo objetivo = misma épica, aunque se pida en otro momento; antes de crear algo se revisan las épicas abiertas; una HU suelta que necesita otra se convierte en épica.
 - 2026-10-14: el proyecto requiere JDK 21 (Temurin). La ruta de cada PC va en `CLAUDE.local.md`.
 - 2026-10-15: **otra PC u otro usuario:** la primera vez, `/agente-lider` aplica `preparar-entorno`. Revisa e instala, con OK, JDK 21, Git y Maven (`.tools\`, que git no versiona). Verifica que estén las 2 claves de `config/` (la persona a cargo las pasa por un canal privado) y crea `CLAUDE.local.md`. Se usan los mismos usuarios de Google; `data/` no se pasa y cada uno inicia sesión una vez.
 
