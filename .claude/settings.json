@@ -1,11 +1,25 @@
 {
   "permissions": {
+    "allow": [
+      "PowerShell(playwright-cli *)"
+    ],
+    "ask": [
+      "PowerShell(*git.exe* commit*)",
+      "PowerShell(*git.exe* push*)"
+    ],
     "deny": [
       "Read(./target/**)",
       "Read(./dist/**)",
       "Read(./.tools/**)",
       "Read(./data/**)",
-      "Read(./.idea/**)"
+      "Read(./.idea/**)",
+      "Read(./config/google-oauth.properties)",
+      "Read(./config/*service-account*.json)",
+      "Edit(./config/google-oauth.properties)",
+      "Edit(./config/*service-account*.json)",
+      "PowerShell(*google-oauth.properties*)",
+      "PowerShell(*service-account*.json*)",
+      "PowerShell(*git.exe* commit*-m *)"
     ]
   }
 }

@@ -153,12 +153,12 @@ Aplican al agente principal. De "Ahorro", los subagentes siguen solo lo que les 
   - El autor de git es SofiaRiMar (`-c user.name=SofiaRiMar -c user.email=sofiarimar96@gmail.com`), sin trailer `Co-Authored-By`.
   - **El mensaje va siempre en un archivo** (`git commit -F <archivo>` en el scratchpad), nunca con `-m`: PowerShell 5.1 rompe los argumentos con comillas al pasarlos a git (pasó dos veces).
   - **`v2/dev` siempre al día:** al aceptar una HU con commit, merge `--ff-only` a `v2/dev` y push de `v2/dev` y de la rama de la HU. Cada HU nueva sale de `v2/dev` después de un `pull --ff-only`.
-- **Ver un prototipo HTML (obligatorio antes de mostrárselo a la persona a cargo):** el líder lo revisa con sus propios ojos. La extensión de Chrome no abre archivos `file://`, por eso se sirve con el servidor web que ya trae el JDK 21 (no hay que instalar nada):
+- **Ver un prototipo HTML (obligatorio antes de mostrárselo a la persona a cargo):** el líder lo revisa con sus propios ojos, con la skill `playwright-cli` (más barata que Chrome: guarda capturas y snapshots en disco). Se sirve con el servidor web que ya trae el JDK 21:
   1. En segundo plano, desde la raíz del repo: `& "$env:JAVA_HOME\bin\jwebserver.exe" -p 8765 -b 127.0.0.1 -d (Get-Location).Path`. Sirve desde la raíz del repo, así cargan las imágenes del gatito.
-  2. Abrir `http://127.0.0.1:8765/docs/v2/ux/<pantalla>/prototipo.html` en una **pestaña nueva** del Chrome abierto y sacar una captura. Revisar alineación, tamaños, textos cortados y estados de la barra del prototipo.
-  3. Cerrar la pestaña y detener el servidor.
-  4. Recién ahí abrírselo a la persona a cargo (`Start-Process` con la ruta del archivo).
-  Si Chrome falla, no reintentar: avisar que no se pudo revisar.
+  2. `playwright-cli open http://127.0.0.1:8765/docs/v2/ux/<pantalla>/prototipo.html`, `resize 1366 900`, `screenshot --filename=<scratchpad>\<pantalla>.png` y mirar la captura. Para los estados de la barra, `click` sobre el botón y otra captura. Revisar alineación, tamaños, textos cortados y estados.
+  3. `playwright-cli close` y detener el servidor.
+  4. Recién ahí abrírselo a la persona a cargo (`Start-Process` con la ruta del archivo). Si quiere marcar cambios sobre la pantalla: `playwright-cli open <url>` + `playwright-cli show --annotate` (dibuja recuadros y escribe notas; el líder las recibe).
+  Si falla, no reintentar: avisar que no se pudo revisar. Chrome (claude-in-chrome) queda solo para ver la app con el login de Google.
 - **Levantar la app:** solo cuando haga falta ver algo funcionando que no se pueda comprobar compilando ni con los tests. Nunca "por las dudas". Los tests E2E de QA (Playwright) no cuentan, porque arrancan la app por su cuenta. Cuando haga falta:
   1. Arrancarla con el JDK 21, en segundo plano y **sin la ventana de escritorio**. Por defecto arranca `DesktopLauncher`, que abre su propia ventana y apaga la app al cerrarla. Comando:
      `mvn.cmd -q spring-boot:run "-Dapp.clase-principal=com.tcg.bot.TcgBotApplication" "-Dspring-boot.run.arguments=--server.port=8765"`.

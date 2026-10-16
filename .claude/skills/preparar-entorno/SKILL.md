@@ -1,6 +1,6 @@
 ---
 name: preparar-entorno
-description: Primera vez en una PC. Verifica e instala lo que necesita el equipo de agentes TCG (JDK 21, Git, Maven, claves de config/, Chrome) y deja CLAUDE.local.md con las rutas de esa PC. Usar cuando no existe CLAUDE.local.md, cuando falla una herramienta básica o cuando se pide preparar la PC.
+description: Primera vez en una PC. Verifica e instala lo que necesita el equipo de agentes TCG (JDK 21, Git, Maven, Node y Playwright CLI, claves de config/, Chrome, MCP de IntelliJ) y deja CLAUDE.local.md con las rutas de esa PC. Usar cuando no existe CLAUDE.local.md, cuando falla una herramienta básica o cuando se pide preparar la PC.
 ---
 
 # Preparar el entorno (primera vez)
@@ -15,10 +15,12 @@ Corré cada chequeo y armá una tabla `Qué | Estado | Qué hacer`:
 | **JDK 21** | `java -version` o `$env:JAVA_HOME` | `winget install EclipseAdoptium.Temurin.21.JDK`, y después definir `JAVA_HOME` como variable de usuario |
 | **Git** | `git --version`; si no está en el PATH, buscar `C:\Program Files\Git\cmd\git.exe` u otra unidad | `winget install Git.Git`, o pedirle la ruta a la persona |
 | **Maven 3.9.16** | que exista `.tools\apache-maven-3.9.16\bin\mvn.cmd` (git no lo versiona) | Descargarlo de `https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.zip` y descomprimirlo en `.tools\` |
-| **Node** | no hace falta: Maven lo descarga solo | — |
-| **Claves de Google** | que existan `config/google-oauth.properties` y `config/google-service-account.json`. **Solo se mira si existen; nunca se abre su contenido.** | Pedírselas a la persona a cargo del proyecto (ver punto 3) |
+| **Node 24 LTS** | `node --version` (20 o más). El build no lo necesita (Maven baja su propio Node), pero sí `playwright-cli` | `winget install --id OpenJS.NodeJS.LTS --exact --source winget` (pide permiso de administrador una vez). Después, abrir una terminal nueva |
+| **Playwright CLI** | `playwright-cli --version` | `npm install -g @playwright/cli@latest`. La skill ya viene en el repo (`.claude/skills/playwright-cli/`). Sirve para que el líder revise prototipos y pantallas |
+| **Claves de Google** | que existan `config/google-oauth.properties` y `config/google-service-account.json`, **con la herramienta Glob** (patrón `config/*`). Nunca se abre su contenido: `.claude/settings.json` bloquea leerlas y nombrarlas en PowerShell | Pedírselas a la persona a cargo del proyecto (ver punto 3) |
 | **Barra de uso del plan** | que existan `~\.claude\scripts\barra-estado.ps1` y `avisar-uso.ps1`, y que `~\.claude\settings.json` tenga `statusLine` y el hook `UserPromptSubmit` que los llaman | Copiar los dos scripts desde `.claude\scripts\` del repo a `~\.claude\scripts\` y sumar a `~\.claude\settings.json` (sin pisar lo que ya tenga): `statusLine` con el comando `powershell -NoProfile -ExecutionPolicy Bypass -File "<ruta>\barra-estado.ps1"` y un hook `UserPromptSubmit` igual con `avisar-uso.ps1`. Sin esto el líder no ve el % de uso |
-| **Chrome + Claude in Chrome** | `tabs_context_mcp` responde | Opcional: sin la extensión, el líder no puede revisar prototipos con sus propios ojos. Avisarlo |
+| **Chrome + Claude in Chrome** | `tabs_context_mcp` responde | Opcional: solo para ver la app con el login de Google. Los prototipos se revisan con `playwright-cli` |
+| **MCP de IntelliJ** (opcional) | `claude mcp list` muestra el servidor de IntelliJ | En IntelliJ: Settings → Tools → MCP Server → Enable MCP Server → Auto-Configure (Claude Code) y reiniciar Claude Code. Sin esto, los agentes usan Grep |
 
 ## 2. Instalar (solo con el OK)
 - Mostrá la tabla y preguntá: *"¿Instalo lo que falta?"*. Cada descarga o instalación necesita el OK de la persona, con nombre, origen y tamaño aproximado.
