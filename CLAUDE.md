@@ -76,18 +76,27 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 Aplican al agente principal. De "Ahorro", los subagentes siguen solo lo que les toca: todos responden con un resumen corto y trabajan con el contexto que reciben por archivo; backend-java y frontend, además, siguen "Compilar no es testear". El ahorro nunca justifica saltear tests, leer menos de lo que la tarea necesita ni entregar algo sin verificar: primero la calidad.
 
 #### Unidad de medida
-- Medir con el % de `/usage`: "Current session" (ventana de 5 h) y "Current week".
+- Medir con el % de la ventana de 5 h y de la semana. Llega solo, con cada mensaje, en el aviso "Uso del plan" (barra de estado + hook, scripts en `.claude/scripts/`), con un turno de atraso. Si no llega o tiene más de 30 minutos, pedir las dos líneas de `/usage`.
 - No estimar con el $ de `/cost`: es de una sola sesión, y el límite suma todas las sesiones, otros dispositivos y claude.ai. El 15/10 la sesión del IDE marcó $38.71, pero fue ~1/5 de los tokens del día.
 - El registro de mediciones está en `docs/consumo-tokens.md`. Leerlo solo al estimar, no en cada tarea.
 
 #### Checkpoints
-- Al iniciar la sesión y al terminar cada tarea (historia, sub-tarea grande o ronda de subagentes), pedir al usuario las dos líneas de `/usage` y anotar una fila en el registro.
-- Antes de arrancar una tarea, estimar su costo en puntos de % con las filas de tareas parecidas. Si (100 − % ventana) < estimación + 15, no arrancarla y proponer un corte.
+- Al iniciar la sesión y al terminar cada tarea (historia, sub-tarea grande o ronda de subagentes), anotar una fila en el registro con el % del aviso.
+- **Antes de arrancar una tarea, ¿entra?** Estimar su costo en puntos de % con las filas de tareas parecidas y sumarlo al % actual:
+  - si % actual + estimación < 90: arrancar sin preguntar;
+  - si llega a 90 o más: avisar ("esto cuesta ~X puntos, terminaríamos en ~Y%") y que decida el usuario: arrancar, achicar la tarea o dejarla para la próxima ventana;
+  - si pasa de 100: no entra; proponer una parte que sí entre o dejarla para la próxima ventana.
+
+  **Por qué:** un subagente grande gasta 14 a 17 puntos en un solo turno y la barra se entera recién al terminar; si no entra, se corta a mitad de camino y se pierde el trabajo. Las tareas del líder sin agentes cuestan 1 a 3 puntos.
 
 #### Umbrales de la ventana de 5 h
-- ≥ 70%: no arrancar tareas grandes ni lanzar subagentes nuevos sin confirmar con el usuario.
-- ≥ 85%: solo terminar la tarea en curso.
-- ≥ 90%: cerrar. Nota de traspaso (qué se hizo, qué falta, próximo paso, archivos clave) en el archivo de la historia en curso, o en `docs/consumo-tokens.md` si no hay; ofrecer el commit, sin hacerlo hasta que se pida. Después, parar.
+- < 90%: trabajo normal (con la cuenta de "¿entra?" antes de cada tarea).
+- ≥ 90%: avisar y preguntar: ¿continuar, o frenar y guardar el contexto para la próxima sesión?
+- ≥ 95% (o al frenar en el 90%): cerrar sin preguntar. Nota de traspaso (qué se hizo, qué falta, próximo paso, archivos clave) en el archivo de la historia en curso, o en `docs/consumo-tokens.md` si no hay; ofrecer el commit, sin hacerlo hasta que se pida. Después, parar.
+
+#### Cómo decide el líder
+- **Analizar antes de decidir:** antes de quitar o cambiar algo del equipo (un agente, una regla, un flujo), mostrar el análisis en una tabla corta (qué conviene y por qué) y esperar el OK. Nunca decidir primero y explicar después.
+- **Pensar con límite:** si algo se complica, analizarlo las veces necesarias, pero con un tope de vueltas o intentos dicho de antemano; al llegar, frenar y consultar.
 
 **Manda la ventana de 5 h ("Current session"):** es el límite que se prioriza para decidir si se arranca o se corta.
 

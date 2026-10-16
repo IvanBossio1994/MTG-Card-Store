@@ -56,10 +56,10 @@ Normalmente un solo agente, el del tipo de la HU. La HU de QA puede tener dos: `
 | 1 | <agente del tipo> | ... | Diseño: spec y prototipo · Backend: contrato, compila y pasan los tests · Frontend: build, Vitest y locators · QA: veredicto y defectos |
 
 ## Consumo
-| Agente | Llamada | Tokens |
-|---|---|---|
-| ... | ... | ... |
-| **Total** | | |
+| Agente | Llamada | Tokens | % ventana (inicio → fin) |
+|---|---|---|---|
+| ... | ... | ... | ... → ... |
+| **Total** | | | |
 
 ## Registro
 | Fecha | Paso | Resultado |

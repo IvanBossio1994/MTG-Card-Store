@@ -17,6 +17,7 @@ Corré cada chequeo y armá una tabla `Qué | Estado | Qué hacer`:
 | **Maven 3.9.16** | que exista `.tools\apache-maven-3.9.16\bin\mvn.cmd` (git no lo versiona) | Descargarlo de `https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.zip` y descomprimirlo en `.tools\` |
 | **Node** | no hace falta: Maven lo descarga solo | — |
 | **Claves de Google** | que existan `config/google-oauth.properties` y `config/google-service-account.json`. **Solo se mira si existen; nunca se abre su contenido.** | Pedírselas a la persona a cargo del proyecto (ver punto 3) |
+| **Barra de uso del plan** | que existan `~\.claude\scripts\barra-estado.ps1` y `avisar-uso.ps1`, y que `~\.claude\settings.json` tenga `statusLine` y el hook `UserPromptSubmit` que los llaman | Copiar los dos scripts desde `.claude\scripts\` del repo a `~\.claude\scripts\` y sumar a `~\.claude\settings.json` (sin pisar lo que ya tenga): `statusLine` con el comando `powershell -NoProfile -ExecutionPolicy Bypass -File "<ruta>\barra-estado.ps1"` y un hook `UserPromptSubmit` igual con `avisar-uso.ps1`. Sin esto el líder no ve el % de uso |
 | **Chrome + Claude in Chrome** | `tabs_context_mcp` responde | Opcional: sin la extensión, el líder no puede revisar prototipos con sus propios ojos. Avisarlo |
 
 ## 2. Instalar (solo con el OK)

@@ -35,6 +35,6 @@ Si durante el desarrollo cambió el alcance o QA encontró reglas nuevas, llamá
 
 **Después de cada paso:**
 - Anotar una línea en el **Registro** de la historia.
-- Sumar los tokens del agente a la sección **Consumo** de la historia. El dato sale del aviso de fin del agente (`subagent_tokens`) y se anota por llamada, porque retomar un agente que ya trabajó vuelve a cargar todo lo que hizo antes y cada llamada cuesta más que la anterior. El consumo del líder no se puede medir con exactitud, así que no se anota.
+- Sumar los tokens del agente a la sección **Consumo** de la historia. El dato sale del aviso de fin del agente (`subagent_tokens`) y se anota por llamada, porque retomar un agente que ya trabajó vuelve a cargar todo lo que hizo antes y cada llamada cuesta más que la anterior. Además, anotar el % de la ventana de 5 h al empezar y al terminar el paso (sale del aviso "Uso del plan"): así se mide el costo total del paso, incluida la parte del líder.
 - Contarle a la persona a cargo, en 1 o 2 líneas, qué se hizo y cuál es el próximo paso.
 - Preguntar si sigue. Se avanza **un paso por confirmación**, salvo que la persona a cargo diga "seguí hasta el cierre" o algo similar.
