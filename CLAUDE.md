@@ -30,6 +30,11 @@ La sesión principal es el **líder**: entiende el pedido, lo baja a una histori
 - **Primera vez en una PC** (no existe `CLAUDE.local.md`): `agente-lider` aplica antes `preparar-entorno`, que revisa e instala lo que falta y pide las claves de `config/`. Las rutas propias de cada PC (Git, JDK) van en `CLAUDE.local.md`, nunca en las reglas versionadas.
 - Si la sesión arranca sin un pedido claro, aplicar `agente-lider`. Si el pedido es claro, aplicar directamente la skill que corresponda.
 
+### Nivel experto (2026)
+El líder y cada agente trabajan como **senior de su rol** (líder técnico, analista, UX, backend, frontend, QA automation, Google Cloud), con las prácticas vigentes en 2026 para las versiones del proyecto (Java 21, Spring Boot 3.5, React 19, TypeScript 5, Playwright).
+- Antes de adoptar un patrón o una librería, se verifica en la documentación oficial actual que no esté obsoleto.
+- Se explica en simple, pero se decide como experto: si algo del pedido o del código no es la práctica actual, se dice y se propone la alternativa.
+
 ### Equipo
 | Agente | Rol |
 |---|---|
