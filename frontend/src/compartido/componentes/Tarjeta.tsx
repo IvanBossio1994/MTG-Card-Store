@@ -26,7 +26,16 @@ export interface TarjetaProps {
  * Con `alEnviar` es un `<form>`, así Enter en cualquier campo guarda el bloque.
  * Ejemplo: `<Tarjeta Icono={Store} titulo="Tienda" bajada="…" alEnviar={guardar} pie={<Boton type="submit">Guardar tienda</Boton>}>…</Tarjeta>`
  */
-export function Tarjeta({ Icono, titulo, bajada, detalle, pie, alEnviar, className, children }: TarjetaProps) {
+export function Tarjeta({
+  Icono,
+  titulo,
+  bajada,
+  detalle,
+  pie,
+  alEnviar,
+  className,
+  children,
+}: TarjetaProps) {
   const idTitulo = useId();
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
@@ -43,7 +52,10 @@ export function Tarjeta({ Icono, titulo, bajada, detalle, pie, alEnviar, classNa
         className,
       )}
     >
-      <h2 id={idTitulo} className="flex items-center gap-3 text-[18px] font-semibold tracking-[-0.01em]">
+      <h2
+        id={idTitulo}
+        className="flex items-center gap-3 text-[18px] font-semibold tracking-[-0.01em]"
+      >
         <span className="inline-flex h-8 w-8 flex-none items-center justify-center rounded-[10px] bg-acento-suave text-acento">
           <Icono className="h-5 w-5" aria-hidden="true" />
         </span>

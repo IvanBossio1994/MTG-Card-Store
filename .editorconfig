@@ -1,0 +1,35 @@
+# Estilo en el IDE (docs/agentes/estilo-codigo.md, sección 4).
+# El formato final lo dan Spotless + palantir-java-format (Java v2) y Prettier (front).
+# El fin de línea no se fija acá: lo maneja Git (core.autocrlf).
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+# pom.xml usa tabulaciones.
+[pom.xml]
+indent_style = tab
+
+# Java: 4 espacios, 120 columnas, imports con * desde 5 clases del mismo paquete (IntelliJ).
+[*.java]
+indent_size = 4
+max_line_length = 120
+ij_continuation_indent_size = 8
+ij_java_class_count_to_use_import_on_demand = 5
+ij_java_names_count_to_use_import_on_demand = 5
+ij_java_use_single_class_imports = true
+
+# Front (React + TypeScript): 2 espacios, igual que Prettier.
+[frontend/**.{ts,tsx,js,jsx,mjs,cjs,json,css,html}]
+indent_size = 2
+max_line_length = 100
+
+[*.{cmd,bat,ps1}]
+end_of_line = crlf

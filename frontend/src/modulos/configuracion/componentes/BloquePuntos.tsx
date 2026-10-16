@@ -42,7 +42,9 @@ export interface BloquePuntosProps {
  */
 export function BloquePuntos({ puntos, alCambiarSinGuardar }: BloquePuntosProps) {
   const bloque = useGuardarBloque();
-  const [pesos, setPesos] = useState(puntos.pesosPorPunto == null ? '' : String(puntos.pesosPorPunto));
+  const [pesos, setPesos] = useState(
+    puntos.pesosPorPunto == null ? '' : String(puntos.pesosPorPunto),
+  );
   const { sinGuardar } = bloque;
 
   useEffect(() => {
@@ -59,7 +61,9 @@ export function BloquePuntos({ puntos, alCambiarSinGuardar }: BloquePuntosProps)
       bloque.marcarErrores({ pesosPorPunto: textos['general.error.mayor-a-cero'] });
       return;
     }
-    const guardados = await bloque.guardar(() => guardarPuntos(numero), { exito: textos['configuracion.puntos.exito'] });
+    const guardados = await bloque.guardar(() => guardarPuntos(numero), {
+      exito: textos['configuracion.puntos.exito'],
+    });
     if (guardados?.pesosPorPunto != null) {
       setPesos(String(guardados.pesosPorPunto));
     }
@@ -70,10 +74,15 @@ export function BloquePuntos({ puntos, alCambiarSinGuardar }: BloquePuntosProps)
       Icono={Star}
       titulo={textos['configuracion.puntos.titulo']}
       bajada={textos['configuracion.puntos.bajada']}
-      alEnviar={guardar}
+      alEnviar={() => void guardar()}
       pie={
         <>
-          <Boton type="submit" Icono={Save} guardando={bloque.guardando} data-testid="configuracion-boton-guardar-puntos">
+          <Boton
+            type="submit"
+            Icono={Save}
+            guardando={bloque.guardando}
+            data-testid="configuracion-boton-guardar-puntos"
+          >
             {textos['configuracion.puntos.boton.guardar']}
           </Boton>
           <MensajeBloque pantalla="configuracion" bloque="puntos" mensaje={bloque.mensaje} />

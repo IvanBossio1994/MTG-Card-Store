@@ -1,29 +1,5 @@
 package com.tcg.bot.configuracion;
 
-import com.tcg.bot.compartido.AccesoSheet;
-import com.tcg.bot.compartido.AccesoSheetEnMemoria;
-import com.tcg.bot.compartido.SesionGoogle;
-import com.tcg.bot.configuracion.ConfiguracionRepository.PreciosBulk;
-import com.tcg.bot.configuracion.ConfiguracionRepository.ReglaDePrecios;
-import com.tcg.bot.configuracion.ConfiguracionRepository.SheetGuardado;
-import com.tcg.bot.configuracion.ConfiguracionService.SincronizacionCardKingdom;
-import com.tcg.bot.configuracion.ConfiguracionServiceTest.RepositorioQuePuedeFallar;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
@@ -35,6 +11,29 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.tcg.bot.compartido.AccesoSheet;
+import com.tcg.bot.compartido.AccesoSheetEnMemoria;
+import com.tcg.bot.compartido.SesionGoogle;
+import com.tcg.bot.configuracion.ConfiguracionRepository.PreciosBulk;
+import com.tcg.bot.configuracion.ConfiguracionRepository.ReglaDePrecios;
+import com.tcg.bot.configuracion.ConfiguracionRepository.SheetGuardado;
+import com.tcg.bot.configuracion.ConfiguracionService.SincronizacionCardKingdom;
+import com.tcg.bot.configuracion.ConfiguracionServiceTest.RepositorioQuePuedeFallar;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 /** API de Configuración (HU-003 CA1 a CA12; HU-006 CA1 a CA10): códigos HTTP y forma del JSON según docs/v2/api/configuracion.md. */
 @WebMvcTest(ConfiguracionController.class)
@@ -54,10 +53,13 @@ class ConfiguracionControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
     @Autowired
     private RepositorioQuePuedeFallar repositorio;
+
     @Autowired
     private AccesoSheetEnMemoria sheets;
+
     @Autowired
     private Dobles dobles;
 
@@ -113,12 +115,15 @@ class ConfiguracionControllerTest {
                 .compartir(SHEET_VARIAS, "Hoja 1", "Ventas")
                 .compartir(SHEET_STOCK_VIEJO, "Inventario", "stock viejo", "Caja")
                 .cargarFilas(SHEET_STOCK_VIEJO, "Inventario", List.of(encabezados))
-                .cargarFilas(SHEET_STOCK_VIEJO, "stock viejo", List.of(
-                        List.of("Carta", "Stock", "Notas"),
-                        List.of("Sol Ring", 4, "firmada"),
-                        List.of("", "", ""),
-                        List.of("Opt", 2, ""),
-                        List.of("Counterspell", 1, "")));
+                .cargarFilas(
+                        SHEET_STOCK_VIEJO,
+                        "stock viejo",
+                        List.of(
+                                List.of("Carta", "Stock", "Notas"),
+                                List.of("Sol Ring", 4, "firmada"),
+                                List.of("", "", ""),
+                                List.of("Opt", 2, ""),
+                                List.of("Counterspell", 1, "")));
     }
 
     // ---- HU-003 CA1 ----
@@ -131,7 +136,8 @@ class ConfiguracionControllerTest {
                 .andExpect(jsonPath("$.tienda.nombre").value("Codex Live"))
                 .andExpect(jsonPath("$.tienda.logoUrl").value(nullValue()))
                 .andExpect(jsonPath("$.sheet.sheetId").value(SHEET_INVENTARIO))
-                .andExpect(jsonPath("$.sheet.link").value("https://docs.google.com/spreadsheets/d/" + SHEET_INVENTARIO + "/edit"))
+                .andExpect(jsonPath("$.sheet.link")
+                        .value("https://docs.google.com/spreadsheets/d/" + SHEET_INVENTARIO + "/edit"))
                 .andExpect(jsonPath("$.sheet.pestanaInventario").value("Inventario"))
                 .andExpect(jsonPath("$.sheet.gmail").value("tienda@gmail.com"))
                 .andExpect(jsonPath("$.sheet.aviso").value(nullValue()))
@@ -159,8 +165,10 @@ class ConfiguracionControllerTest {
 
     @Test
     void putTiendaConNombreVacioDa400YNoGuarda() throws Exception {
-        esErrorDeCampo(putJson("/api/v1/configuracion/tienda", "{\"nombre\":\"  \"}"),
-                "nombre", "El nombre de la tienda es obligatorio.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/tienda", "{\"nombre\":\"  \"}"),
+                "nombre",
+                "El nombre de la tienda es obligatorio.");
         assertThat(repositorio.leerNombreTienda()).isEqualTo("Codex Live");
     }
 
@@ -184,20 +192,23 @@ class ConfiguracionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_PNG));
         mockMvc.perform(get("/api/v1/configuracion"))
-                .andExpect(jsonPath("$.tienda.logoUrl").value(startsWith("/api/v1/configuracion/tienda/logo?version=")));
+                .andExpect(
+                        jsonPath("$.tienda.logoUrl").value(startsWith("/api/v1/configuracion/tienda/logo?version=")));
     }
 
     @Test
     void postLogoDeMasDe2MbDa400() throws Exception {
-        esErrorDeCampo(subirLogo(ConfiguracionServiceTest.png(2 * 1024 * 1024 + 1), "image/png"),
-                "archivo", "El logo no debe superar los 2 MB.");
+        esErrorDeCampo(
+                subirLogo(ConfiguracionServiceTest.png(2 * 1024 * 1024 + 1), "image/png"),
+                "archivo",
+                "El logo no debe superar los 2 MB.");
         assertThat(repositorio.leerLogo()).isEmpty();
     }
 
     @Test
     void postLogoQueNoEsImagenDa400() throws Exception {
-        esErrorDeCampo(subirLogo("no soy una imagen".getBytes(), "image/png"),
-                "archivo", "El logo debe ser PNG, JPG o WEBP.");
+        esErrorDeCampo(
+                subirLogo("no soy una imagen".getBytes(), "image/png"), "archivo", "El logo debe ser PNG, JPG o WEBP.");
     }
 
     @Test
@@ -289,7 +300,8 @@ class ConfiguracionControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Datos inválidos"))
                 .andExpect(jsonPath("$.detail").value("Hay datos para corregir."))
-                .andExpect(jsonPath("$.errores.traerCartasDe").value("La pestaña de origen ya no existe en el Sheet. Se actualizó la lista."))
+                .andExpect(jsonPath("$.errores.traerCartasDe")
+                        .value("La pestaña de origen ya no existe en el Sheet. Se actualizó la lista."))
                 .andExpect(jsonPath("$.campo").value("traer-cartas-de"))
                 .andExpect(jsonPath("$.codigo").value("ORIGEN_INEXISTENTE"));
         assertThat(sheets.listarPestanas(SHEET_STOCK_VIEJO)).doesNotContain("Stock 2026");
@@ -303,14 +315,17 @@ class ConfiguracionControllerTest {
 
     @Test
     void putSheetConLinkQueNoEsDeGoogleDa400YNoCambiaLoGuardado() throws Exception {
-        esErrorDeCampo(putSheet("https://example.com/planilla", "Inventario", null), "sheet",
+        esErrorDeCampo(
+                putSheet("https://example.com/planilla", "Inventario", null),
+                "sheet",
                 "Debe ser una URL de Google Sheets o solo el ID.");
         assertThat(repositorio.leerSheet().sheetId()).isEqualTo(SHEET_INVENTARIO);
     }
 
     @Test
     void putSheetConPestanaVaciaDa400() throws Exception {
-        esErrorDeCampo(putSheet(SHEET_UNICA, " ", null), "pestanaInventario", "El nombre de la pestaña es obligatorio.");
+        esErrorDeCampo(
+                putSheet(SHEET_UNICA, " ", null), "pestanaInventario", "El nombre de la pestaña es obligatorio.");
         assertThat(sheets.listarPestanas(SHEET_UNICA)).containsExactly("Hoja 1");
     }
 
@@ -324,13 +339,15 @@ class ConfiguracionControllerTest {
     void conLaSesionVencidaGetPutSheetListarYRenombrarDan401ConVolverAIniciarSesion() throws Exception {
         dobles.sesionVencida.set(true);
 
-        for (ResultActions respuesta : new ResultActions[]{
-                mockMvc.perform(get("/api/v1/configuracion")),
-                putSheet(SHEET_UNICA, "Inventario", null),
-                mockMvc.perform(get(RUTA_PESTANAS)),
-                mockMvc.perform(get(RUTA_PESTANAS).param("idOLink", SHEET_VARIAS)),
-                renombrar("Inventario", "Stock 2026")}) {
-            respuesta.andExpect(status().isUnauthorized())
+        for (ResultActions respuesta : new ResultActions[] {
+            mockMvc.perform(get("/api/v1/configuracion")),
+            putSheet(SHEET_UNICA, "Inventario", null),
+            mockMvc.perform(get(RUTA_PESTANAS)),
+            mockMvc.perform(get(RUTA_PESTANAS).param("idOLink", SHEET_VARIAS)),
+            renombrar("Inventario", "Stock 2026")
+        }) {
+            respuesta
+                    .andExpect(status().isUnauthorized())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                     .andExpect(jsonPath("$.title").value("Sesión de Google vencida"))
                     .andExpect(jsonPath("$.detail").value("La sesión de Google venció."))
@@ -349,8 +366,9 @@ class ConfiguracionControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Sesión de Google ilegible"))
-                .andExpect(jsonPath("$.detail").value("La app no puede leer la sesión de Google en esta PC. "
-                        + "Abrirla sin permisos de administrador e iniciar sesión de nuevo."));
+                .andExpect(jsonPath("$.detail")
+                        .value("La app no puede leer la sesión de Google en esta PC. "
+                                + "Abrirla sin permisos de administrador e iniciar sesión de nuevo."));
     }
 
     // ---- GET /sheet/pestanas (HU-006 CA1 a CA3, CA10) ----
@@ -444,17 +462,41 @@ class ConfiguracionControllerTest {
         sheets.crearPestana(SHEET_INVENTARIO, "Caja");
         sheets.crearPestana(SHEET_INVENTARIO, "Hoja 1");
 
-        esErrorDeRenombrar(renombrar(null, "Stock 2026"), "nombreActual", "pestana-a-renombrar", "PESTANA_VACIA",
+        esErrorDeRenombrar(
+                renombrar(null, "Stock 2026"),
+                "nombreActual",
+                "pestana-a-renombrar",
+                "PESTANA_VACIA",
                 "La pestaña a renombrar es obligatoria.");
-        esErrorDeRenombrar(renombrar("Caja", "Ventas 2026"), "nombreActual", "pestana-a-renombrar", "PESTANA_FIJA",
+        esErrorDeRenombrar(
+                renombrar("Caja", "Ventas 2026"),
+                "nombreActual",
+                "pestana-a-renombrar",
+                "PESTANA_FIJA",
                 "Esa pestaña la usa la app y no se puede renombrar.");
-        esErrorDeRenombrar(renombrar("Hoja 1", " "), "nombreNuevo", "nombre-nuevo", "NOMBRE_VACIO",
+        esErrorDeRenombrar(
+                renombrar("Hoja 1", " "),
+                "nombreNuevo",
+                "nombre-nuevo",
+                "NOMBRE_VACIO",
                 "El nombre nuevo es obligatorio.");
-        esErrorDeRenombrar(renombrar("Hoja 1", "x".repeat(101)), "nombreNuevo", "nombre-nuevo", "NOMBRE_LARGO",
+        esErrorDeRenombrar(
+                renombrar("Hoja 1", "x".repeat(101)),
+                "nombreNuevo",
+                "nombre-nuevo",
+                "NOMBRE_LARGO",
                 "El nombre no debe superar los 100 caracteres.");
-        esErrorDeRenombrar(renombrar("Hoja 1", "Hoja 1"), "nombreNuevo", "nombre-nuevo", "NOMBRE_IGUAL",
+        esErrorDeRenombrar(
+                renombrar("Hoja 1", "Hoja 1"),
+                "nombreNuevo",
+                "nombre-nuevo",
+                "NOMBRE_IGUAL",
                 "El nombre nuevo es igual al actual.");
-        esErrorDeRenombrar(renombrar("Hoja 1", "INVENTARIO"), "nombreNuevo", "nombre-nuevo", "NOMBRE_REPETIDO",
+        esErrorDeRenombrar(
+                renombrar("Hoja 1", "INVENTARIO"),
+                "nombreNuevo",
+                "nombre-nuevo",
+                "NOMBRE_REPETIDO",
                 "Ya existe una pestaña con ese nombre.");
         assertThat(sheets.listarPestanas(SHEET_INVENTARIO)).containsExactly("Inventario", "Caja", "Hoja 1");
     }
@@ -496,7 +538,8 @@ class ConfiguracionControllerTest {
         renombrar("Inventario", "Stock 2026")
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.title").value("Error interno"))
-                .andExpect(jsonPath("$.detail").value("No se pudo guardar por un error inesperado. Se puede reintentar en un momento."));
+                .andExpect(jsonPath("$.detail")
+                        .value("No se pudo guardar por un error inesperado. Se puede reintentar en un momento."));
         assertThat(sheets.listarPestanas(SHEET_INVENTARIO)).containsExactly("Inventario");
         assertThat(repositorio.leerSheet().pestanaInventario()).isEqualTo("Inventario");
     }
@@ -521,37 +564,61 @@ class ConfiguracionControllerTest {
 
     @Test
     void putPreciosConCotizacionVaciaOMenorACeroDa400YNoGuarda() throws Exception {
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"cotizacion\":1350", "\"cotizacion\":null")),
-                "cotizacion", "La cotización del dólar es obligatoria.");
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"cotizacion\":1350", "\"cotizacion\":0")),
-                "cotizacion", "La cotización debe ser mayor a 0.");
+        esErrorDeCampo(
+                putJson(
+                        "/api/v1/configuracion/precios",
+                        PRECIOS_VALIDOS.replace("\"cotizacion\":1350", "\"cotizacion\":null")),
+                "cotizacion",
+                "La cotización del dólar es obligatoria.");
+        esErrorDeCampo(
+                putJson(
+                        "/api/v1/configuracion/precios",
+                        PRECIOS_VALIDOS.replace("\"cotizacion\":1350", "\"cotizacion\":0")),
+                "cotizacion",
+                "La cotización debe ser mayor a 0.");
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 
     @Test
     void putPreciosConRedondeoInvalidoDa400() throws Exception {
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"redondeo\":500,", "")),
-                "redondeo", "El múltiplo para redondear es obligatorio.");
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"redondeo\":500", "\"redondeo\":-5")),
-                "redondeo", "El múltiplo debe ser mayor a 0.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"redondeo\":500,", "")),
+                "redondeo",
+                "El múltiplo para redondear es obligatorio.");
+        esErrorDeCampo(
+                putJson(
+                        "/api/v1/configuracion/precios",
+                        PRECIOS_VALIDOS.replace("\"redondeo\":500", "\"redondeo\":-5")),
+                "redondeo",
+                "El múltiplo debe ser mayor a 0.");
     }
 
     @Test
     void putPreciosConBulkInvalidoDa400ConElCampoDeLaRareza() throws Exception {
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"rare\":150", "\"rare\":null")),
-                "bulk.rare", "El precio es obligatorio.");
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"mythic\":150", "\"mythic\":0")),
-                "bulk.mythic", "Debe ser mayor a 0.");
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"common\":50", "\"common\":50.5")),
-                "bulk.common", "El precio debe ser un número entero, sin centavos.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"rare\":150", "\"rare\":null")),
+                "bulk.rare",
+                "El precio es obligatorio.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"mythic\":150", "\"mythic\":0")),
+                "bulk.mythic",
+                "Debe ser mayor a 0.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS.replace("\"common\":50", "\"common\":50.5")),
+                "bulk.common",
+                "El precio debe ser un número entero, sin centavos.");
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 
     @Test
     void putPreciosConCarpetaQueNoExisteDa400() throws Exception {
-        esErrorDeCampo(putJson("/api/v1/configuracion/precios",
-                        PRECIOS_VALIDOS.replace("\"carpetaCache\":null", "\"carpetaCache\":\"Z:/no/existe/esta/carpeta\"")),
-                "carpetaCache", "La carpeta no existe. Se puede indicar otra o dejar el campo vacío.");
+        esErrorDeCampo(
+                putJson(
+                        "/api/v1/configuracion/precios",
+                        PRECIOS_VALIDOS.replace(
+                                "\"carpetaCache\":null", "\"carpetaCache\":\"Z:/no/existe/esta/carpeta\"")),
+                "carpetaCache",
+                "La carpeta no existe. Se puede indicar otra o dejar el campo vacío.");
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 
@@ -562,7 +629,10 @@ class ConfiguracionControllerTest {
         putJson("/api/v1/configuracion/precios", PRECIOS_VALIDOS)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cotizacion").value(1350.0))
-                .andExpect(jsonPath("$.aviso").value("Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde."));
+                .andExpect(
+                        jsonPath("$.aviso")
+                                .value(
+                                        "Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde."));
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1350);
     }
 
@@ -576,8 +646,14 @@ class ConfiguracionControllerTest {
 
     @Test
     void putPuntosVacioOMenorACeroDa400YNoGuarda() throws Exception {
-        esErrorDeCampo(putJson("/api/v1/configuracion/puntos", "{}"), "pesosPorPunto", "Los pesos por punto son obligatorios.");
-        esErrorDeCampo(putJson("/api/v1/configuracion/puntos", "{\"pesosPorPunto\":0}"), "pesosPorPunto", "Debe ser mayor a 0.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/puntos", "{}"),
+                "pesosPorPunto",
+                "Los pesos por punto son obligatorios.");
+        esErrorDeCampo(
+                putJson("/api/v1/configuracion/puntos", "{\"pesosPorPunto\":0}"),
+                "pesosPorPunto",
+                "Debe ser mayor a 0.");
         assertThat(repositorio.leerPesosPorPunto()).isEqualTo(1000);
     }
 
@@ -589,8 +665,10 @@ class ConfiguracionControllerTest {
 
     private ResultActions putSheet(String sheet, String pestana, String traerCartasDe) throws Exception {
         String traer = traerCartasDe == null ? "null" : "\"" + traerCartasDe + "\"";
-        return putJson("/api/v1/configuracion/sheet",
-                "{\"sheet\":\"" + sheet + "\",\"pestanaInventario\":\"" + pestana + "\",\"traerCartasDe\":" + traer + "}");
+        return putJson(
+                "/api/v1/configuracion/sheet",
+                "{\"sheet\":\"" + sheet + "\",\"pestanaInventario\":\"" + pestana + "\",\"traerCartasDe\":" + traer
+                        + "}");
     }
 
     private ResultActions renombrar(String nombreActual, String nombreNuevo) throws Exception {
@@ -604,27 +682,31 @@ class ConfiguracionControllerTest {
     }
 
     private static void esErrorDeCampo(ResultActions respuesta, String campo, String mensaje) throws Exception {
-        respuesta.andExpect(status().isBadRequest())
+        respuesta
+                .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Datos inválidos"))
                 .andExpect(jsonPath("$.detail").value("Hay datos para corregir."))
                 .andExpect(jsonPath("$.errores['" + campo + "']").value(mensaje));
     }
 
-    private static void esErrorDeRenombrar(ResultActions respuesta, String claveJson, String campo, String codigo,
-                                           String mensaje) throws Exception {
+    private static void esErrorDeRenombrar(
+            ResultActions respuesta, String claveJson, String campo, String codigo, String mensaje) throws Exception {
         esErrorDeCampo(respuesta, claveJson, mensaje);
-        respuesta.andExpect(jsonPath("$.campo").value(campo))
+        respuesta
+                .andExpect(jsonPath("$.campo").value(campo))
                 .andExpect(jsonPath("$.codigo").value(codigo))
                 .andExpect(jsonPath("$.instance").value(RUTA_RENOMBRAR));
     }
 
     private static void esSinAcceso(ResultActions respuesta, String ruta) throws Exception {
-        respuesta.andExpect(status().isForbidden())
+        respuesta
+                .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Sin acceso al Sheet"))
-                .andExpect(jsonPath("$.detail").value("La app no tiene acceso a este Sheet. Compartirlo con "
-                        + "tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com como editor."))
+                .andExpect(jsonPath("$.detail")
+                        .value("La app no tiene acceso a este Sheet. Compartirlo con "
+                                + "tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com como editor."))
                 .andExpect(jsonPath("$.cuentaServicio").value(AccesoSheet.CUENTA_SERVICIO))
                 .andExpect(jsonPath("$.instance").value(ruta));
     }

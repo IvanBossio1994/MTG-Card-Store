@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { ArrowLeftRight, Bookmark, Package, Settings2, Wallet, type LucideIcon } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Bookmark,
+  Package,
+  Settings2,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/compartido/estilos/combinarClases';
 import { textos, type ClaveTexto } from '@/compartido/textos/textos';
 
@@ -39,7 +46,12 @@ export interface MarcoAppProps {
  * y el contenido a la derecha, pegado al menú (igual a docs/v2/ux/configuracion/prototipo.html).
  * Ejemplo: `<MarcoApp nombreTienda="Mazo Mágico" moduloActivo="configuracion"><ConfiguracionPagina /></MarcoApp>`
  */
-export function MarcoApp({ nombreTienda, logoTienda = LOGO_POR_DEFECTO, moduloActivo, children }: MarcoAppProps) {
+export function MarcoApp({
+  nombreTienda,
+  logoTienda = LOGO_POR_DEFECTO,
+  moduloActivo,
+  children,
+}: MarcoAppProps) {
   return (
     <div className="flex">
       <aside
@@ -67,7 +79,8 @@ export function MarcoApp({ nombreTienda, logoTienda = LOGO_POR_DEFECTO, moduloAc
                   'flex h-10 items-center gap-3 rounded-[10px] px-3 text-[15px] font-medium text-[#57534e]',
                   'transition-[background-color,color] duration-150 ease-[ease]',
                   'hover:bg-[#f5f1e9] hover:text-tinta',
-                  activo && 'bg-acento-suave font-semibold text-acento hover:bg-acento-suave hover:text-acento',
+                  activo &&
+                    'bg-acento-suave font-semibold text-acento hover:bg-acento-suave hover:text-acento',
                 )}
               >
                 <Icono className="h-5 w-5" aria-hidden="true" />

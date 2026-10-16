@@ -22,10 +22,16 @@
 		     Para levantarla sin ventana: -Dapp.clase-principal=com.tcg.bot.TcgBotApplication -->
 		<app.clase-principal>com.tcg.bot.DesktopLauncher</app.clase-principal>
 		<frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
-		<node.version>v22.12.0</node.version>
+		<!-- ESLint 10 pide Node 22.13 o más nuevo. -->
+		<node.version>v22.20.0</node.version>
 		<!-- E2E (docs/agentes/qa-guia.md). Cucumber 7.23 usa JUnit 5.12, la misma versión que trae Spring Boot 3.5. -->
 		<cucumber.version>7.23.0</cucumber.version>
 		<playwright.version>1.63.0</playwright.version>
+		<!-- Estilo del Java de la v2 (docs/agentes/estilo-codigo.md, sección 4). -->
+		<spotless.version>3.10.4</spotless.version>
+		<palantir-java-format.version>2.102.0</palantir-java-format.version>
+		<!-- Test de estructura de la v2 (ArquitecturaV2Test). -->
+		<archunit.version>1.5.1</archunit.version>
 	</properties>
 
 	<dependencyManagement>
@@ -98,6 +104,12 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<version>${archunit.version}</version>
+			<scope>test</scope>
+		</dependency>
 
 		<!-- E2E: Cucumber (Gherkin) + Playwright para Java. Corren solo con -Dcucumber.filter.tags (perfil escenarios-e2e). -->
 		<dependency>
@@ -149,6 +161,49 @@
 				</configuration>
 			</plugin>
 
+			<!-- v2: formato del Java con palantir-java-format (4 espacios, 120 columnas), solo la v2 (legacy queda afuera).
+			     - apply: corrige el formato antes de compilar (process-sources), así que corre en test-compile, test y package.
+			     - check: revisa el formato en verify. Para que falle si algo no está formateado (como en CI):
+			       mvn.cmd verify "-Dspotless.apply.skip=true"  o  mvn.cmd spotless:check -->
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>${spotless.version}</version>
+				<configuration>
+					<java>
+						<includes>
+							<include>src/main/java/com/tcg/bot/**/*.java</include>
+							<include>src/test/java/com/tcg/bot/**/*.java</include>
+						</includes>
+						<excludes>
+							<exclude>src/main/java/com/tcg/bot/legacy/**</exclude>
+							<exclude>src/test/java/com/tcg/bot/legacy/**</exclude>
+						</excludes>
+						<palantirJavaFormat>
+							<version>${palantir-java-format.version}</version>
+							<style>PALANTIR</style>
+						</palantirJavaFormat>
+						<removeUnusedImports/>
+					</java>
+				</configuration>
+				<executions>
+					<execution>
+						<id>formatear-java-v2</id>
+						<goals>
+							<goal>apply</goal>
+						</goals>
+						<phase>process-sources</phase>
+					</execution>
+					<execution>
+						<id>revisar-formato-java-v2</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<phase>verify</phase>
+					</execution>
+				</executions>
+			</plugin>
+
 			<!-- v2: compila el frontend (frontend/) con su propio Node, sin tener Node instalado.
 			     El build de Vite queda en target/classes/static/app y se sirve en /app.
 			     Los tests de Vitest corren en la fase test (se saltean con -DskipTests). -->
@@ -177,6 +232,28 @@
 						<phase>generate-resources</phase>
 						<configuration>
 							<arguments>ci --no-audit --no-fund</arguments>
+						</configuration>
+					</execution>
+					<!-- Estilo del front (docs/agentes/estilo-codigo.md, sección 4): Prettier corrige el formato
+					     y ESLint hace fallar el build si hay un error. Corren antes de vite build. -->
+					<execution>
+						<id>formatear-frontend</id>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<phase>generate-resources</phase>
+						<configuration>
+							<arguments>run format</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>revisar-frontend</id>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<phase>generate-resources</phase>
+						<configuration>
+							<arguments>run lint</arguments>
 						</configuration>
 					</execution>
 					<execution>

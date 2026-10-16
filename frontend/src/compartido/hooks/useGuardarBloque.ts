@@ -57,7 +57,9 @@ export function useGuardarBloque() {
    * Con `avisarBloque`, suma el error de bloque "No se guardó. Hay un campo con error, marcado en rojo.".
    */
   const marcarErrores = useCallback((nuevos: Record<string, string>, avisarBloque = false) => {
-    setMensaje(avisarBloque ? { tipo: 'error', texto: textos['general.error.corregir-campo'] } : null);
+    setMensaje(
+      avisarBloque ? { tipo: 'error', texto: textos['general.error.corregir-campo'] } : null,
+    );
     setErrores(nuevos);
     const primero = [...campos.current.keys()].find((nombre) => nuevos[nombre]);
     if (primero) {
@@ -73,7 +75,7 @@ export function useGuardarBloque() {
 
   /** Ejecuta el guardado (ignora un segundo clic mientras guarda) y muestra el resultado en el bloque. */
   const guardar = useCallback(
-    async <T,>(accion: () => Promise<T>, opciones: OpcionesGuardar<T>): Promise<T | undefined> => {
+    async <T>(accion: () => Promise<T>, opciones: OpcionesGuardar<T>): Promise<T | undefined> => {
       if (enCurso.current) {
         return undefined;
       }
@@ -84,11 +86,13 @@ export function useGuardarBloque() {
       try {
         const resultado = await accion();
         const aviso = opciones.aviso?.(resultado);
-        const exito = typeof opciones.exito === 'function' ? opciones.exito(resultado) : opciones.exito;
+        const exito =
+          typeof opciones.exito === 'function' ? opciones.exito(resultado) : opciones.exito;
         setMensaje(aviso ? { tipo: 'aviso', texto: aviso } : { tipo: 'exito', texto: exito });
         setSinGuardar(false);
         return resultado;
       } catch (error) {
+        // eslint-disable-next-line react-hooks/immutability -- HU-013: mostrarError se declara después; el guardado pasa a useMutation
         mostrarError(error, opciones.avisarErroresDeCampo ?? false);
         opciones.alFallar?.(error);
         return undefined;
@@ -97,7 +101,7 @@ export function useGuardarBloque() {
         setGuardando(false);
       }
     },
-    // mostrarError solo usa refs y funciones estables: no hace falta recrear guardar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- HU-013: mostrarError solo usa refs y funciones estables; el guardado pasa a useMutation
     [],
   );
 
@@ -108,7 +112,9 @@ export function useGuardarBloque() {
     }
     const todos = Object.entries(error.errores);
     const deCampos = Object.fromEntries(todos.filter(([nombre]) => campos.current.has(nombre)));
-    const sueltos = todos.filter(([nombre]) => !campos.current.has(nombre)).map(([, texto]) => texto);
+    const sueltos = todos
+      .filter(([nombre]) => !campos.current.has(nombre))
+      .map(([, texto]) => texto);
     const hayDeCampos = Object.keys(deCampos).length > 0;
     if (hayDeCampos) {
       marcarErrores(deCampos, avisarErroresDeCampo);
@@ -120,5 +126,15 @@ export function useGuardarBloque() {
     }
   }
 
-  return { guardando, mensaje, errores, sinGuardar, registrarCampo, limpiar, marcarErrores, marcarEditado, guardar };
+  return {
+    guardando,
+    mensaje,
+    errores,
+    sinGuardar,
+    registrarCampo,
+    limpiar,
+    marcarErrores,
+    marcarEditado,
+    guardar,
+  };
 }

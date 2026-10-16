@@ -1,6 +1,9 @@
 package com.tcg.bot.compartido;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
@@ -23,10 +26,6 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.net.URI;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Convierte los errores de la API v2 ({@code /api/**}) en {@code ProblemDetail} con mensajes en español.
@@ -51,8 +50,11 @@ public class ManejadorErroresApi {
     @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
     public ResponseEntity<ProblemDetail> rutaInexistente(Exception ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
-        return problema(HttpStatus.NOT_FOUND, "Recurso no encontrado",
-                "No existe la dirección pedida: " + request.getMethod() + " " + request.getRequestURI() + ".", request);
+        return problema(
+                HttpStatus.NOT_FOUND,
+                "Recurso no encontrado",
+                "No existe la dirección pedida: " + request.getMethod() + " " + request.getRequestURI() + ".",
+                request);
     }
 
     /**
@@ -60,12 +62,16 @@ public class ManejadorErroresApi {
      * Ejemplo: POST /api/v1/estado-app → 405 "La dirección /api/v1/estado-app no acepta el método POST."
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ProblemDetail> metodoNoPermitido(HttpRequestMethodNotSupportedException ex,
-                                                           HttpServletRequest request) throws Exception {
+    public ResponseEntity<ProblemDetail> metodoNoPermitido(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
-        ResponseEntity<ProblemDetail> respuesta = problema(HttpStatus.METHOD_NOT_ALLOWED, "Método no permitido",
-                "La dirección " + request.getRequestURI() + " no acepta el método " + ex.getMethod() + ".", request);
-        if (ex.getSupportedHttpMethods() != null && !ex.getSupportedHttpMethods().isEmpty()) {
+        ResponseEntity<ProblemDetail> respuesta = problema(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "Método no permitido",
+                "La dirección " + request.getRequestURI() + " no acepta el método " + ex.getMethod() + ".",
+                request);
+        if (ex.getSupportedHttpMethods() != null
+                && !ex.getSupportedHttpMethods().isEmpty()) {
             return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                     .allow(ex.getSupportedHttpMethods().toArray(new org.springframework.http.HttpMethod[0]))
                     .contentType(MediaType.APPLICATION_PROBLEM_JSON)
@@ -79,8 +85,8 @@ public class ManejadorErroresApi {
      * Ejemplo: {"nombre": ""} → 400 {@code errores: {"nombre": "no debe estar vacío"}}.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ProblemDetail> datosInvalidos(MethodArgumentNotValidException ex,
-                                                        HttpServletRequest request) throws Exception {
+    public ResponseEntity<ProblemDetail> datosInvalidos(MethodArgumentNotValidException ex, HttpServletRequest request)
+            throws Exception {
         soloApi(ex, request);
         Map<String, String> errores = new LinkedHashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
@@ -97,8 +103,8 @@ public class ManejadorErroresApi {
      * Ejemplo: GET /api/v1/reservas/-1 → 400 "Hay datos para corregir."
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<ProblemDetail> parametrosInvalidos(HandlerMethodValidationException ex,
-                                                             HttpServletRequest request) throws Exception {
+    public ResponseEntity<ProblemDetail> parametrosInvalidos(
+            HandlerMethodValidationException ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
         return problema(HttpStatus.BAD_REQUEST, TITULO_DATOS_INVALIDOS, DETALLE_DATOS_INVALIDOS, request);
     }
@@ -107,12 +113,19 @@ public class ManejadorErroresApi {
      * JSON mal formado, parámetro o archivo faltante, o de tipo incorrecto → 400.
      * Ejemplo: cuerpo "{nombre:" → 400 "El pedido no se pudo leer. Los datos enviados no tienen el formato esperado."
      */
-    @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class,
-            MissingServletRequestPartException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MissingServletRequestParameterException.class,
+        MissingServletRequestPartException.class,
+        MethodArgumentTypeMismatchException.class
+    })
     public ResponseEntity<ProblemDetail> pedidoInvalido(Exception ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
-        return problema(HttpStatus.BAD_REQUEST, "Pedido inválido",
-                "El pedido no se pudo leer. Los datos enviados no tienen el formato esperado.", request);
+        return problema(
+                HttpStatus.BAD_REQUEST,
+                "Pedido inválido",
+                "El pedido no se pudo leer. Los datos enviados no tienen el formato esperado.",
+                request);
     }
 
     /**
@@ -120,11 +133,14 @@ public class ManejadorErroresApi {
      * Ejemplo: POST con text/plain → 415 "El formato del pedido no es válido. Los datos deben enviarse como JSON."
      */
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ResponseEntity<ProblemDetail> formatoNoSoportado(HttpMediaTypeNotSupportedException ex,
-                                                            HttpServletRequest request) throws Exception {
+    public ResponseEntity<ProblemDetail> formatoNoSoportado(
+            HttpMediaTypeNotSupportedException ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
-        return problema(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Formato no soportado",
-                "El formato del pedido no es válido. Los datos deben enviarse como JSON.", request);
+        return problema(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Formato no soportado",
+                "El formato del pedido no es válido. Los datos deben enviarse como JSON.",
+                request);
     }
 
     /**
@@ -132,8 +148,8 @@ public class ManejadorErroresApi {
      * Ejemplo: {@code ErrorDeNegocioException(CONFLICT, "Sin stock", "No queda stock.")} → 409 con ese detalle.
      */
     @ExceptionHandler(ErrorDeNegocioException.class)
-    public ResponseEntity<ProblemDetail> errorDeNegocio(ErrorDeNegocioException ex,
-                                                        HttpServletRequest request) throws Exception {
+    public ResponseEntity<ProblemDetail> errorDeNegocio(ErrorDeNegocioException ex, HttpServletRequest request)
+            throws Exception {
         soloApi(ex, request);
         ResponseEntity<ProblemDetail> respuesta = problema(ex.getEstado(), ex.getTitulo(), ex.getMessage(), request);
         ex.getPropiedades().forEach(respuesta.getBody()::setProperty);
@@ -145,8 +161,8 @@ public class ManejadorErroresApi {
      * Ejemplo: {@code new ResponseStatusException(NOT_FOUND, "No existe la carta.")} → 404 "No existe la carta."
      */
     @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ProblemDetail> conEstado(ResponseStatusException ex,
-                                                   HttpServletRequest request) throws Exception {
+    public ResponseEntity<ProblemDetail> conEstado(ResponseStatusException ex, HttpServletRequest request)
+            throws Exception {
         soloApi(ex, request);
         HttpStatus estado = HttpStatus.resolve(ex.getStatusCode().value());
         if (estado == null) {
@@ -164,8 +180,11 @@ public class ManejadorErroresApi {
     public ResponseEntity<ProblemDetail> errorInesperado(Exception ex, HttpServletRequest request) throws Exception {
         soloApi(ex, request);
         log.error("Error inesperado en {} {}", request.getMethod(), request.getRequestURI(), ex);
-        return problema(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
-                "Ocurrió un error inesperado. Se puede reintentar en un momento.", request);
+        return problema(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error interno",
+                "Ocurrió un error inesperado. Se puede reintentar en un momento.",
+                request);
     }
 
     /** Si el pedido no es de la API, relanza la excepción original para que Spring siga como siempre. */
@@ -176,11 +195,13 @@ public class ManejadorErroresApi {
         }
     }
 
-    private ResponseEntity<ProblemDetail> problema(HttpStatus estado, String titulo, String detalle,
-                                                   HttpServletRequest request) {
+    private ResponseEntity<ProblemDetail> problema(
+            HttpStatus estado, String titulo, String detalle, HttpServletRequest request) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, detalle);
         problema.setTitle(titulo);
         problema.setInstance(URI.create(request.getRequestURI()));
-        return ResponseEntity.status(estado).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(problema);
+        return ResponseEntity.status(estado)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problema);
     }
 }

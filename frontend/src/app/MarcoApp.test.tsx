@@ -16,7 +16,10 @@ describe('MarcoApp', () => {
       'Configuración',
     ]);
     expect(screen.getByTestId('app-enlace-inventario')).toHaveAttribute('href', '/app/inventario');
-    expect(screen.getByTestId('app-enlace-configuracion')).toHaveAttribute('href', '/app/configuracion');
+    expect(screen.getByTestId('app-enlace-configuracion')).toHaveAttribute(
+      'href',
+      '/app/configuracion',
+    );
   });
 
   it('marca solo el módulo activo con aria-current="page"', () => {

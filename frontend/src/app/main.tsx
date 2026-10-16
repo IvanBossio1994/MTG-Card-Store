@@ -27,7 +27,9 @@ function Aplicacion() {
 
   return (
     <MarcoApp nombreTienda={tienda.nombre} logoTienda={tienda.logo} moduloActivo={moduloActivo}>
-      {moduloActivo === 'configuracion' && <ConfiguracionPagina alCambiarTienda={actualizarTienda} />}
+      {moduloActivo === 'configuracion' && (
+        <ConfiguracionPagina alCambiarTienda={actualizarTienda} />
+      )}
     </MarcoApp>
   );
 }

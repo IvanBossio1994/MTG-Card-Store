@@ -1,14 +1,13 @@
 package com.tcg.bot.compartido;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /** /app sirve archivos existentes y cae a index.html en las rutas de React. */
 class FrontendConfigTest {

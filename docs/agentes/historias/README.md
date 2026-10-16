@@ -14,3 +14,4 @@ Cada historia es un archivo `HU-XXX-<tema>.md` creado desde `../plantilla-histor
 | [HU-007](HU-007-configuracion-frontend-pestanas.md) | Configuración v2 · frontend: textos nuevos y bloque del Sheet | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-007-configuracion-frontend-pestanas` |
 | [HU-008](HU-008-configuracion-qa-e2e.md) | Configuración v2 · QA E2E (arnés + camino feliz) | [EP-001](../epicas/EP-001-configuracion-v2.md) | aceptada | `v2/feature/HU-008-configuracion-qa-e2e` |
 | [HU-010](HU-010-guia-estilo-codigo.md) | Guía de estilo de código (back y front) | [EP-002](../epicas/EP-002-estilo-codigo.md) | aceptada | `v2/feature/HU-010-guia-estilo-codigo` |
+| [HU-011](HU-011-herramientas-estilo.md) | Herramientas de estilo en el build | [EP-002](../epicas/EP-002-estilo-codigo.md) | aceptada | `v2/feature/HU-011-herramientas-estilo` |

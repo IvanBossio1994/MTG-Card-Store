@@ -9,7 +9,11 @@ import { BloquePrecios } from './componentes/BloquePrecios';
 import { BloquePuntos } from './componentes/BloquePuntos';
 import { BloqueSheet } from './componentes/BloqueSheet';
 import { BloqueTienda } from './componentes/BloqueTienda';
-import { leerConfiguracion, type BloqueTienda as DatosTienda, type Configuracion } from './configuracionApi';
+import {
+  leerConfiguracion,
+  type BloqueTienda as DatosTienda,
+  type Configuracion,
+} from './configuracionApi';
 
 /** Bloques de la pantalla, en orden: cada uno se guarda por separado. */
 export type BloqueConfiguracion = 'tienda' | 'sheet' | 'precios' | 'puntos';
@@ -37,6 +41,7 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
   // Bloques con cambios sin guardar: los usa el aviso al salir de la pantalla.
   const bloquesSinGuardar = useRef(new Set<BloqueConfiguracion>());
   const avisarTienda = useRef(alCambiarTienda);
+  // eslint-disable-next-line react-hooks/refs -- HU-013: guardar el último valor en un ref durante el render; pasar a useEffectEvent
   avisarTienda.current = alCambiarTienda;
 
   const cargar = useCallback(async () => {
@@ -57,6 +62,7 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- HU-013: la carga inicial pasa a useQuery
     void cargar();
   }, [cargar]);
 
@@ -70,7 +76,7 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
 
   const hayCambiosSinGuardar = useCallback(() => bloquesSinGuardar.current.size > 0, []);
 
-  const tiendaGuardada =useCallback((tienda: DatosTienda) => avisarTienda.current?.(tienda), []);
+  const tiendaGuardada = useCallback((tienda: DatosTienda) => avisarTienda.current?.(tienda), []);
 
   return (
     <>
@@ -82,7 +88,10 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
       {estado.tipo === 'cargando' && (
         <>
           <CapaCarga texto={textos['configuracion.carga']} />
-          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-[minmax(0,720px)]" aria-hidden="true">
+          <div
+            className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-[minmax(0,720px)]"
+            aria-hidden="true"
+          >
             {[1, 2, 3, 4].map((numero) => (
               <div key={numero} className="esqueleto h-[280px] rounded-2xl border border-borde" />
             ))}
@@ -111,7 +120,11 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
               </>
             )}
           </p>
-          <Boton Icono={RefreshCw} onClick={() => void cargar()} data-testid="configuracion-boton-reintentar">
+          <Boton
+            Icono={RefreshCw}
+            onClick={() => void cargar()}
+            data-testid="configuracion-boton-reintentar"
+          >
             {textos['general.boton.reintentar']}
           </Boton>
         </div>
@@ -125,9 +138,18 @@ export function ConfiguracionPagina({ alCambiarTienda }: ConfiguracionPaginaProp
             alGuardar={tiendaGuardada}
             alCambiarSinGuardar={marcarSinGuardar}
           />
-          <BloquePuntos puntos={estado.configuracion.puntos ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
-          <BloqueSheet sheet={estado.configuracion.sheet ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
-          <BloquePrecios precios={estado.configuracion.precios ?? {}} alCambiarSinGuardar={marcarSinGuardar} />
+          <BloquePuntos
+            puntos={estado.configuracion.puntos ?? {}}
+            alCambiarSinGuardar={marcarSinGuardar}
+          />
+          <BloqueSheet
+            sheet={estado.configuracion.sheet ?? {}}
+            alCambiarSinGuardar={marcarSinGuardar}
+          />
+          <BloquePrecios
+            precios={estado.configuracion.precios ?? {}}
+            alCambiarSinGuardar={marcarSinGuardar}
+          />
         </div>
       )}
 

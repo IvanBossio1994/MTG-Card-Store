@@ -1,10 +1,9 @@
 package com.tcg.bot.compartido;
 
-import org.springframework.http.HttpStatus;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 /**
  * Base común de acceso al Google Sheet de la tienda (v2). La usan todos los módulos por composición.
@@ -74,7 +73,8 @@ public interface AccesoSheet {
      * (nunca pisa encabezados existentes, porque el Sheet también se edita a mano). Devuelve si tuvo que crearla.
      * Ejemplo: Sheet sin "Caja" → crea "Caja" con sus encabezados y devuelve {@code true}.
      */
-    default boolean asegurarPestana(String sheetId, List<String> pestanasActuales, String pestana, List<String> encabezados) {
+    default boolean asegurarPestana(
+            String sheetId, List<String> pestanasActuales, String pestana, List<String> encabezados) {
         boolean creada = !pestanasActuales.contains(pestana);
         if (creada) {
             crearPestana(sheetId, pestana);
@@ -90,7 +90,9 @@ public interface AccesoSheet {
      * Ejemplo: {@code throw AccesoSheet.sinAcceso()} → 403 "La app no tiene acceso a este Sheet. Compartirlo con … como editor."
      */
     static ErrorDeNegocioException sinAcceso() {
-        return new ErrorDeNegocioException(HttpStatus.FORBIDDEN, "Sin acceso al Sheet",
+        return new ErrorDeNegocioException(
+                HttpStatus.FORBIDDEN,
+                "Sin acceso al Sheet",
                 "La app no tiene acceso a este Sheet. Compartirlo con " + CUENTA_SERVICIO + " como editor.",
                 Map.of("cuentaServicio", CUENTA_SERVICIO));
     }
@@ -100,7 +102,9 @@ public interface AccesoSheet {
      * Ejemplo: {@code throw AccesoSheet.sinConexion()} → 503 "No hay conexión a internet. Se puede reintentar cuando se restablezca."
      */
     static ErrorDeNegocioException sinConexion() {
-        return new ErrorDeNegocioException(HttpStatus.SERVICE_UNAVAILABLE, "Sin conexión",
+        return new ErrorDeNegocioException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Sin conexión",
                 "No hay conexión a internet. Se puede reintentar cuando se restablezca.");
     }
 
@@ -110,8 +114,11 @@ public interface AccesoSheet {
      * con {@code codigo: "PESTANA_INEXISTENTE"}.
      */
     static ErrorDeNegocioException pestanaInexistente() {
-        return ErrorDeNegocioException.deBloque(HttpStatus.NOT_FOUND, "Pestaña inexistente",
-                "La pestaña ya no existe en el Sheet. Se actualizó la lista.", "PESTANA_INEXISTENTE");
+        return ErrorDeNegocioException.deBloque(
+                HttpStatus.NOT_FOUND,
+                "Pestaña inexistente",
+                "La pestaña ya no existe en el Sheet. Se actualizó la lista.",
+                "PESTANA_INEXISTENTE");
     }
 
     /**
@@ -119,7 +126,9 @@ public interface AccesoSheet {
      * Ejemplo: {@code throw AccesoSheet.errorInesperado()} → 500 "No se pudo guardar por un error inesperado. Se puede reintentar en un momento."
      */
     static ErrorDeNegocioException errorInesperado() {
-        return new ErrorDeNegocioException(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
+        return new ErrorDeNegocioException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error interno",
                 "No se pudo guardar por un error inesperado. Se puede reintentar en un momento.");
     }
 }

@@ -1,9 +1,8 @@
 package com.tcg.bot.configuracion;
 
+import java.util.Optional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
-
-import java.util.Optional;
 
 /**
  * Configuración en memoria, para los tests y el modo prueba (perfil {@code e2e}). Se pierde al reiniciar.

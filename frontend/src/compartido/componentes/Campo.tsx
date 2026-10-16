@@ -48,7 +48,10 @@ export function ErrorCampo({
     >
       {mensaje && (
         <>
-          <CircleAlert className={cn('h-3.5 w-3.5 shrink-0', lineas === 2 && 'mt-[2px]')} aria-hidden="true" />
+          <CircleAlert
+            className={cn('h-3.5 w-3.5 shrink-0', lineas === 2 && 'mt-[2px]')}
+            aria-hidden="true"
+          />
           <span className={lineas === 1 ? 'truncate' : 'line-clamp-2'}>
             {mensaje}
             {accion && ' '}
@@ -77,7 +80,16 @@ export interface CampoProps extends ComponentProps<'input'> {
  * Campo del sistema de diseño: etiqueta, input de 42 px, ayuda opcional y error en su lugar reservado.
  * Ejemplo: `<Campo id="pestana" etiqueta="Pestaña del inventario" value={pestana} onChange={…} error={errores.pestanaInventario} testIdError="configuracion-mensaje-error-pestana-inventario" data-testid="configuracion-campo-pestana-inventario" />`
  */
-export function Campo({ id, etiqueta, ayuda, error, testIdError, lineasError, className, ...props }: CampoProps) {
+export function Campo({
+  id,
+  etiqueta,
+  ayuda,
+  error,
+  testIdError,
+  lineasError,
+  className,
+  ...props
+}: CampoProps) {
   const idError = `${id}-error`;
   return (
     <div>

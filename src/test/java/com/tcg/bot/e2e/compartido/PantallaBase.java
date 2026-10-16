@@ -1,11 +1,11 @@
 package com.tcg.bot.e2e.compartido;
 
+import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.tcg.bot.e2e.compartido.MarcoApp.Modulo;
 import com.tcg.bot.e2e.soporte.NavegadorE2E;
-
-import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 /**
  * Base liviana de todas las {@code <Modulo>Pantalla} (regla 8 de estructura-carpetas.md): abrir el módulo, esperar que
@@ -16,7 +16,9 @@ public abstract class PantallaBase {
 
     /** Tipo de mensaje de un bloque, como en el locator {@code <pantalla>-mensaje-<tipo>-<bloque>}. */
     public enum TipoMensaje {
-        EXITO, AVISO, ERROR;
+        EXITO,
+        AVISO,
+        ERROR;
 
         String enLocator() {
             return name().toLowerCase();

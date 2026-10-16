@@ -1,5 +1,8 @@
 package com.tcg.bot.configuracion;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.tcg.bot.compartido.AccesoSheet;
 import com.tcg.bot.compartido.AccesoSheetEnMemoria;
 import com.tcg.bot.compartido.ErrorDeNegocioException;
@@ -11,21 +14,17 @@ import com.tcg.bot.configuracion.ConfiguracionRepository.SheetGuardado;
 import com.tcg.bot.configuracion.ConfiguracionService.CartasTraidas;
 import com.tcg.bot.configuracion.ConfiguracionService.PestanaDelSheet;
 import com.tcg.bot.configuracion.ConfiguracionService.SincronizacionCardKingdom;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpStatus;
-
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Reglas de Configuración (HU-003 CA1 a CA12; HU-006 CA1 a CA10) con el repositorio y los Sheets en memoria. */
 class ConfiguracionServiceTest {
@@ -65,11 +64,14 @@ class ConfiguracionServiceTest {
                 .compartir(SHEET_VARIAS, "Hoja 1", "Ventas")
                 .compartir(SHEET_STOCK_VIEJO, "Inventario", "stock viejo", "Caja")
                 .cargarFilas(SHEET_STOCK_VIEJO, "Inventario", List.of(ENCABEZADOS))
-                .cargarFilas(SHEET_STOCK_VIEJO, "stock viejo", List.of(
-                        List.of("Carta", "Stock", "Set", "Precio", "Notas"),
-                        List.of("Sol Ring", 4, "Commander Masters", 1500, "firmada"),
-                        List.of("", "", "", "", ""),
-                        List.of("Opt", 2, "Dominaria", 300, "")))
+                .cargarFilas(
+                        SHEET_STOCK_VIEJO,
+                        "stock viejo",
+                        List.of(
+                                List.of("Carta", "Stock", "Set", "Precio", "Notas"),
+                                List.of("Sol Ring", 4, "Commander Masters", 1500, "firmada"),
+                                List.of("", "", "", "", ""),
+                                List.of("Opt", 2, "Dominaria", 300, "")))
                 .cargarFilas(SHEET_STOCK_VIEJO, "Caja", List.of(List.of("Fecha", "Total")));
         servicio = servicioCon(Optional.empty());
     }
@@ -91,8 +93,8 @@ class ConfiguracionServiceTest {
         var configuracion = servicio.leerConfiguracion();
 
         assertThat(configuracion.nombreTienda()).isEqualTo("Codex Live");
-        assertThat(configuracion.sheet()).isEqualTo(
-                new SheetGuardado(ConfiguracionEnMemoriaRepository.SHEET_DE_EJEMPLO, "Inventario"));
+        assertThat(configuracion.sheet())
+                .isEqualTo(new SheetGuardado(ConfiguracionEnMemoriaRepository.SHEET_DE_EJEMPLO, "Inventario"));
         assertThat(configuracion.gmail()).isEqualTo("tienda@gmail.com");
         assertThat(configuracion.precios().cotizacion()).isEqualTo(1200);
         assertThat(configuracion.pesosPorPunto()).isEqualTo(1000);
@@ -141,9 +143,10 @@ class ConfiguracionServiceTest {
 
     @Test
     void reconoceJpgYWebpPorSuContenido() {
-        assertThat(ConfiguracionService.formatoDe(new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00}))
+        assertThat(ConfiguracionService.formatoDe(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00}))
                 .contains(FormatoLogo.JPG);
-        assertThat(ConfiguracionService.formatoDe("RIFF\0\0\0\0WEBPVP8 ".getBytes())).contains(FormatoLogo.WEBP);
+        assertThat(ConfiguracionService.formatoDe("RIFF\0\0\0\0WEBPVP8 ".getBytes()))
+                .contains(FormatoLogo.WEBP);
         assertThat(ConfiguracionService.formatoDe("GIF89a".getBytes())).isEmpty();
     }
 
@@ -152,21 +155,24 @@ class ConfiguracionServiceTest {
         long anterior = servicio.guardarLogo(png(100));
 
         assertThatThrownBy(() -> servicio.guardarLogo(png((int) ConfiguracionService.PESO_MAXIMO_LOGO + 1)))
-                .satisfies(error -> assertThat(errores(error)).containsEntry("archivo", "El logo no debe superar los 2 MB."));
+                .satisfies(error ->
+                        assertThat(errores(error)).containsEntry("archivo", "El logo no debe superar los 2 MB."));
         assertThat(servicio.leerLogo().version()).isEqualTo(anterior);
     }
 
     @Test
     void unArchivoQueNoEsImagenSeRechaza() {
         assertThatThrownBy(() -> servicio.guardarLogo("hola".getBytes()))
-                .satisfies(error -> assertThat(errores(error)).containsEntry("archivo", "El logo debe ser PNG, JPG o WEBP."));
+                .satisfies(error ->
+                        assertThat(errores(error)).containsEntry("archivo", "El logo debe ser PNG, JPG o WEBP."));
         assertThat(repositorio.leerLogo()).isEmpty();
     }
 
     @Test
     void sinLogoLeerLogoDa404() {
         assertThatThrownBy(() -> servicio.leerLogo())
-                .isInstanceOfSatisfying(ErrorDeNegocioException.class,
+                .isInstanceOfSatisfying(
+                        ErrorDeNegocioException.class,
                         error -> assertThat(error.getEstado()).isEqualTo(HttpStatus.NOT_FOUND));
     }
 
@@ -204,11 +210,13 @@ class ConfiguracionServiceTest {
     @Test
     void aceptaElIdSoloYElLinkCompleto() {
         assertThat(ConfiguracionService.idDeSheet(SHEET_INVENTARIO)).isEqualTo(SHEET_INVENTARIO);
-        assertThat(ConfiguracionService.idDeSheet(" https://docs.google.com/spreadsheets/d/" + SHEET_INVENTARIO + "/edit "))
+        assertThat(ConfiguracionService.idDeSheet(
+                        " https://docs.google.com/spreadsheets/d/" + SHEET_INVENTARIO + "/edit "))
                 .isEqualTo(SHEET_INVENTARIO);
         assertThat(ConfiguracionService.idDeSheet("https://docs.google.com/spreadsheets/u/0/d/" + SHEET_INVENTARIO))
                 .isEqualTo(SHEET_INVENTARIO);
-        assertThat(ConfiguracionService.idDeSheet(SHEET_INVENTARIO + "/edit?gid=0#gid=0")).isEqualTo(SHEET_INVENTARIO);
+        assertThat(ConfiguracionService.idDeSheet(SHEET_INVENTARIO + "/edit?gid=0#gid=0"))
+                .isEqualTo(SHEET_INVENTARIO);
     }
 
     // ---- PUT /sheet sin renombrar (HU-006 CA8) ----
@@ -220,7 +228,8 @@ class ConfiguracionServiceTest {
         assertThat(conectado.aviso()).isEqualTo("Se creó la pestaña «Inventario».");
         assertThat(conectado.pestanaCreada()).isTrue();
         assertThat(sheets.listarPestanas(SHEET_UNICA)).startsWith("Inventario").doesNotContain("Hoja 1");
-        assertThat(sheets.leerEncabezados(SHEET_UNICA, "Inventario")).isEqualTo(ConfiguracionService.ENCABEZADOS_INVENTARIO);
+        assertThat(sheets.leerEncabezados(SHEET_UNICA, "Inventario"))
+                .isEqualTo(ConfiguracionService.ENCABEZADOS_INVENTARIO);
         assertThat(repositorio.leerSheet().pestanaInventario()).isEqualTo("Inventario");
     }
 
@@ -245,7 +254,8 @@ class ConfiguracionServiceTest {
         assertThat(conectado.aviso()).isEqualTo("Se creó la pestaña «Inventario».");
         assertThat(conectado.cartasTraidas()).isNull();
         assertThat(sheets.listarPestanas(SHEET_VARIAS)).startsWith("Hoja 1", "Ventas", "Inventario");
-        assertThat(sheets.leerEncabezados(SHEET_VARIAS, "Inventario")).isEqualTo(ConfiguracionService.ENCABEZADOS_INVENTARIO);
+        assertThat(sheets.leerEncabezados(SHEET_VARIAS, "Inventario"))
+                .isEqualTo(ConfiguracionService.ENCABEZADOS_INVENTARIO);
         assertThat(sheets.leerEncabezados(SHEET_VARIAS, "Ventas")).containsExactly("Fecha", "Total");
         assertThat(sheets.leerEncabezados(SHEET_VARIAS, "Hoja 1")).isEmpty();
     }
@@ -274,8 +284,12 @@ class ConfiguracionServiceTest {
         assertThat(conectado.cartasTraidas()).isEqualTo(new CartasTraidas("stock viejo", 2, true));
         var filas = sheets.leerValores(SHEET_STOCK_VIEJO, "Stock 2026");
         assertThat(filas).hasSize(3);
-        assertThat(filas.get(0)).startsWith(ENCABEZADOS.toArray()).endsWith("Notas").hasSize(12);
-        assertThat(filas.get(1)).containsExactly(4, "Sol Ring", "", "Commander Masters", "", "", "", "", 1500, "", "", "firmada");
+        assertThat(filas.get(0))
+                .startsWith(ENCABEZADOS.toArray())
+                .endsWith("Notas")
+                .hasSize(12);
+        assertThat(filas.get(1))
+                .containsExactly(4, "Sol Ring", "", "Commander Masters", "", "", "", "", 1500, "", "", "firmada");
         assertThat(filas.get(2)).containsExactly(2, "Opt", "", "Dominaria", "", "", "", "", 300, "", "", "");
         assertThat(sheets.leerValores(SHEET_STOCK_VIEJO, "stock viejo")).isEqualTo(origenAntes);
         assertThat(sheets.listarPestanas(SHEET_STOCK_VIEJO)).contains("Movimientos", "Reservas", "Clientes");
@@ -301,8 +315,11 @@ class ConfiguracionServiceTest {
                     assertThat(error.getPropiedades())
                             .containsEntry("campo", "traer-cartas-de")
                             .containsEntry("codigo", "ORIGEN_INEXISTENTE")
-                            .containsEntry("errores", Map.of("traerCartasDe",
-                                    "La pestaña de origen ya no existe en el Sheet. Se actualizó la lista."));
+                            .containsEntry(
+                                    "errores",
+                                    Map.of(
+                                            "traerCartasDe",
+                                            "La pestaña de origen ya no existe en el Sheet. Se actualizó la lista."));
                 });
         assertThat(sheets.listarPestanas(SHEET_STOCK_VIEJO)).containsExactly("Inventario", "stock viejo", "Caja");
         assertThat(repositorio.leerSheet()).isEqualTo(antes);
@@ -314,9 +331,11 @@ class ConfiguracionServiceTest {
     void unLinkQueNoEsDeGoogleSheetsDa400YNoCambiaLoGuardado() {
         var antes = repositorio.leerSheet();
 
-        for (String link : List.of("https://example.com/hoja", "hola", "https://docs.google.com/document/d/" + SHEET_INVENTARIO)) {
+        for (String link :
+                List.of("https://example.com/hoja", "hola", "https://docs.google.com/document/d/" + SHEET_INVENTARIO)) {
             assertThatThrownBy(() -> servicio.conectarSheet(link, "Inventario", null))
-                    .satisfies(error -> assertThat(errores(error)).containsEntry("sheet", "Debe ser una URL de Google Sheets o solo el ID."));
+                    .satisfies(error -> assertThat(errores(error))
+                            .containsEntry("sheet", "Debe ser una URL de Google Sheets o solo el ID."));
         }
         assertThat(repositorio.leerSheet()).isEqualTo(antes);
     }
@@ -328,8 +347,9 @@ class ConfiguracionServiceTest {
         assertThatThrownBy(() -> servicio.conectarSheet(SHEET_NO_COMPARTIDO, "Inventario", null))
                 .isInstanceOfSatisfying(ErrorDeNegocioException.class, error -> {
                     assertThat(error.getEstado()).isEqualTo(HttpStatus.FORBIDDEN);
-                    assertThat(error.getMessage()).isEqualTo("La app no tiene acceso a este Sheet. Compartirlo con "
-                            + "tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com como editor.");
+                    assertThat(error.getMessage())
+                            .isEqualTo("La app no tiene acceso a este Sheet. Compartirlo con "
+                                    + "tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com como editor.");
                     assertThat(error.getPropiedades()).containsEntry("cuentaServicio", AccesoSheet.CUENTA_SERVICIO);
                 });
         assertThat(repositorio.leerSheet()).isEqualTo(antes);
@@ -341,7 +361,8 @@ class ConfiguracionServiceTest {
         var antes = repositorio.leerSheet();
 
         assertThatThrownBy(() -> servicio.conectarSheet(SHEET_STOCK_VIEJO, "Stock 2026", "stock viejo"))
-                .isInstanceOfSatisfying(ErrorDeNegocioException.class,
+                .isInstanceOfSatisfying(
+                        ErrorDeNegocioException.class,
                         error -> assertThat(error.getEstado()).isEqualTo(HttpStatus.UNAUTHORIZED));
         assertThat(sheets.listarPestanas(SHEET_STOCK_VIEJO)).doesNotContain("Stock 2026");
         assertThat(repositorio.leerSheet()).isEqualTo(antes);
@@ -356,10 +377,11 @@ class ConfiguracionServiceTest {
         var lista = servicio.listarPestanas(null);
 
         assertThat(lista.sheetGuardado()).isTrue();
-        assertThat(lista.pestanas()).containsExactly(
-                new PestanaDelSheet("Inventario", true, true, false),
-                new PestanaDelSheet("stock viejo", false, true, false),
-                new PestanaDelSheet("Caja", false, false, true));
+        assertThat(lista.pestanas())
+                .containsExactly(
+                        new PestanaDelSheet("Inventario", true, true, false),
+                        new PestanaDelSheet("stock viejo", false, true, false),
+                        new PestanaDelSheet("Caja", false, false, true));
     }
 
     @Test
@@ -369,7 +391,9 @@ class ConfiguracionServiceTest {
         var lista = servicio.listarPestanas("https://docs.google.com/spreadsheets/d/" + SHEET_STOCK_VIEJO + "/edit");
 
         assertThat(lista.sheetGuardado()).isTrue();
-        assertThat(lista.pestanas()).extracting(PestanaDelSheet::nombre).containsExactly("Inventario", "stock viejo", "Caja");
+        assertThat(lista.pestanas())
+                .extracting(PestanaDelSheet::nombre)
+                .containsExactly("Inventario", "stock viejo", "Caja");
         assertThat(lista.pestanas()).noneMatch(PestanaDelSheet::enUso);
     }
 
@@ -392,7 +416,8 @@ class ConfiguracionServiceTest {
                     assertThat(error.getPropiedades())
                             .containsEntry("campo", "link-sheet")
                             .containsEntry("codigo", "LINK_INVALIDO")
-                            .containsEntry("errores", Map.of("idOLink", "Debe ser una URL de Google Sheets o solo el ID."));
+                            .containsEntry(
+                                    "errores", Map.of("idOLink", "Debe ser una URL de Google Sheets o solo el ID."));
                 });
     }
 
@@ -401,14 +426,16 @@ class ConfiguracionServiceTest {
         sesionVencida.set(true);
 
         assertThatThrownBy(() -> servicio.listarPestanas(SHEET_STOCK_VIEJO))
-                .isInstanceOfSatisfying(ErrorDeNegocioException.class,
+                .isInstanceOfSatisfying(
+                        ErrorDeNegocioException.class,
                         error -> assertThat(error.getEstado()).isEqualTo(HttpStatus.UNAUTHORIZED));
     }
 
     @Test
     void listarUnSheetNoCompartidoDa403() {
         assertThatThrownBy(() -> servicio.listarPestanas(SHEET_NO_COMPARTIDO))
-                .isInstanceOfSatisfying(ErrorDeNegocioException.class,
+                .isInstanceOfSatisfying(
+                        ErrorDeNegocioException.class,
                         error -> assertThat(error.getEstado()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
@@ -449,20 +476,27 @@ class ConfiguracionServiceTest {
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', nullValues = "NULO", value = {
-            "NULO        | Stock 2026 | nombreActual | pestana-a-renombrar | PESTANA_VACIA   | La pestaña a renombrar es obligatoria.",
-            "Caja        | Stock 2026 | nombreActual | pestana-a-renombrar | PESTANA_FIJA    | Esa pestaña la usa la app y no se puede renombrar.",
-            "Hoja 1      | '  '       | nombreNuevo  | nombre-nuevo        | NOMBRE_VACIO    | El nombre nuevo es obligatorio.",
-            "Hoja 1      | Hoja 1     | nombreNuevo  | nombre-nuevo        | NOMBRE_IGUAL    | El nombre nuevo es igual al actual.",
-            "Hoja 1      | ventas     | nombreNuevo  | nombre-nuevo        | NOMBRE_REPETIDO | Ya existe una pestaña con ese nombre."})
-    void erroresDeValidacionAlRenombrar(String actual, String nuevo, String claveJson, String campo, String codigo, String mensaje) {
+    @CsvSource(
+            delimiter = '|',
+            nullValues = "NULO",
+            value = {
+                "NULO        | Stock 2026 | nombreActual | pestana-a-renombrar | PESTANA_VACIA   | La pestaña a renombrar es obligatoria.",
+                "Caja        | Stock 2026 | nombreActual | pestana-a-renombrar | PESTANA_FIJA    | Esa pestaña la usa la app y no se puede renombrar.",
+                "Hoja 1      | '  '       | nombreNuevo  | nombre-nuevo        | NOMBRE_VACIO    | El nombre nuevo es obligatorio.",
+                "Hoja 1      | Hoja 1     | nombreNuevo  | nombre-nuevo        | NOMBRE_IGUAL    | El nombre nuevo es igual al actual.",
+                "Hoja 1      | ventas     | nombreNuevo  | nombre-nuevo        | NOMBRE_REPETIDO | Ya existe una pestaña con ese nombre."
+            })
+    void erroresDeValidacionAlRenombrar(
+            String actual, String nuevo, String claveJson, String campo, String codigo, String mensaje) {
         repositorio.guardarSheet(new SheetGuardado(SHEET_VARIAS, "Ventas"));
         sheets.crearPestana(SHEET_VARIAS, "Caja");
 
         assertThatThrownBy(() -> servicio.renombrarPestana(actual, nuevo))
                 .isInstanceOfSatisfying(ErrorDeNegocioException.class, error -> {
                     assertThat(error.getEstado()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(error.getPropiedades()).containsEntry("campo", campo).containsEntry("codigo", codigo);
+                    assertThat(error.getPropiedades())
+                            .containsEntry("campo", campo)
+                            .containsEntry("codigo", codigo);
                     assertThat(errores(error)).containsEntry(claveJson, mensaje);
                 });
         assertThat(sheets.listarPestanas(SHEET_VARIAS)).containsExactly("Hoja 1", "Ventas", "Caja");
@@ -471,16 +505,21 @@ class ConfiguracionServiceTest {
     @Test
     void unNombreDeMasDe100CaracteresDa400NombreLargo() {
         assertThatThrownBy(() -> servicio.renombrarPestana("Hoja 1", "x".repeat(101)))
-                .isInstanceOfSatisfying(ErrorDeNegocioException.class, error ->
-                        assertThat(error.getPropiedades()).containsEntry("codigo", "NOMBRE_LARGO")
-                                .containsEntry("errores", Map.of("nombreNuevo", "El nombre no debe superar los 100 caracteres.")));
+                .isInstanceOfSatisfying(
+                        ErrorDeNegocioException.class,
+                        error -> assertThat(error.getPropiedades())
+                                .containsEntry("codigo", "NOMBRE_LARGO")
+                                .containsEntry(
+                                        "errores",
+                                        Map.of("nombreNuevo", "El nombre no debe superar los 100 caracteres.")));
     }
 
     @Test
     void siFallanLosDosCamposRespondeConElPrimeroYTraeAmbosErrores() {
         assertThatThrownBy(() -> servicio.renombrarPestana("", ""))
                 .isInstanceOfSatisfying(ErrorDeNegocioException.class, error -> {
-                    assertThat(error.getPropiedades()).containsEntry("campo", "pestana-a-renombrar")
+                    assertThat(error.getPropiedades())
+                            .containsEntry("campo", "pestana-a-renombrar")
                             .containsEntry("codigo", "PESTANA_VACIA");
                     assertThat(errores(error)).containsOnlyKeys("nombreActual", "nombreNuevo");
                 });
@@ -493,8 +532,11 @@ class ConfiguracionServiceTest {
         assertThatThrownBy(() -> servicio.renombrarPestana("Borrada", "Stock 2026"))
                 .isInstanceOfSatisfying(ErrorDeNegocioException.class, error -> {
                     assertThat(error.getEstado()).isEqualTo(HttpStatus.NOT_FOUND);
-                    assertThat(error.getMessage()).isEqualTo("La pestaña ya no existe en el Sheet. Se actualizó la lista.");
-                    assertThat(error.getPropiedades()).containsEntry("codigo", "PESTANA_INEXISTENTE").containsEntry("campo", null);
+                    assertThat(error.getMessage())
+                            .isEqualTo("La pestaña ya no existe en el Sheet. Se actualizó la lista.");
+                    assertThat(error.getPropiedades())
+                            .containsEntry("codigo", "PESTANA_INEXISTENTE")
+                            .containsEntry("campo", null);
                 });
     }
 
@@ -517,7 +559,8 @@ class ConfiguracionServiceTest {
         sesionVencida.set(true);
 
         assertThatThrownBy(() -> servicio.renombrarPestana("Hoja 1", "Stock 2026"))
-                .isInstanceOfSatisfying(ErrorDeNegocioException.class,
+                .isInstanceOfSatisfying(
+                        ErrorDeNegocioException.class,
                         error -> assertThat(error.getEstado()).isEqualTo(HttpStatus.UNAUTHORIZED));
         assertThat(sheets.listarPestanas(SHEET_VARIAS)).containsExactly("Hoja 1", "Ventas");
     }
@@ -531,7 +574,8 @@ class ConfiguracionServiceTest {
                 .isInstanceOfSatisfying(ErrorDeNegocioException.class, error -> {
                     assertThat(error.getEstado()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
                     assertThat(error.getMessage())
-                            .isEqualTo("No se pudo guardar por un error inesperado. Se puede reintentar en un momento.");
+                            .isEqualTo(
+                                    "No se pudo guardar por un error inesperado. Se puede reintentar en un momento.");
                 });
         assertThat(sheets.listarPestanas(SHEET_STOCK_VIEJO)).containsExactly("Inventario", "stock viejo", "Caja");
         assertThat(repositorio.leerSheet()).isEqualTo(new SheetGuardado(SHEET_STOCK_VIEJO, "Inventario"));
@@ -553,7 +597,8 @@ class ConfiguracionServiceTest {
     void guardaUnaCarpetaDeCacheQueExiste(@TempDir Path carpeta) {
         var guardados = servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, carpeta.toString()));
 
-        assertThat(guardados.precios().carpetaCache()).isEqualTo(carpeta.normalize().toString());
+        assertThat(guardados.precios().carpetaCache())
+                .isEqualTo(carpeta.normalize().toString());
     }
 
     @Test
@@ -561,8 +606,9 @@ class ConfiguracionServiceTest {
         String inexistente = carpeta.resolve("no-existe").toString();
 
         assertThatThrownBy(() -> servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, inexistente)))
-                .satisfies(error -> assertThat(errores(error)).containsEntry("carpetaCache",
-                        "La carpeta no existe. Se puede indicar otra o dejar el campo vacío."));
+                .satisfies(error -> assertThat(errores(error))
+                        .containsEntry(
+                                "carpetaCache", "La carpeta no existe. Se puede indicar otra o dejar el campo vacío."));
         assertThat(repositorio.leerPrecios().cotizacion()).isEqualTo(1200);
     }
 
@@ -583,7 +629,8 @@ class ConfiguracionServiceTest {
             throw new IllegalStateException("CK caído");
         }));
 
-        assertThat(servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, null)).aviso())
+        assertThat(servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, null))
+                        .aviso())
                 .isEqualTo(ConfiguracionService.AVISO_FALLA_CARD_KINGDOM);
     }
 
@@ -591,7 +638,9 @@ class ConfiguracionServiceTest {
     void siCardKingdomSincronizaNoHayAviso() {
         servicio = servicioCon(Optional.of(() -> true));
 
-        assertThat(servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, null)).aviso()).isNull();
+        assertThat(servicio.guardarPrecios(new ReglaDePrecios(1350, 500, BULK, null))
+                        .aviso())
+                .isNull();
     }
 
     @Test

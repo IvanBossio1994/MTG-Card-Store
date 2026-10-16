@@ -66,7 +66,9 @@ public class AccesoSheetEnMemoria implements AccesoSheet {
     @Override
     public synchronized List<String> leerEncabezados(String sheetId, String pestana) {
         List<List<Object>> filas = sheet(sheetId).getOrDefault(pestana, List.of());
-        return filas.isEmpty() ? List.of() : filas.get(0).stream().map(String::valueOf).toList();
+        return filas.isEmpty()
+                ? List.of()
+                : filas.get(0).stream().map(String::valueOf).toList();
     }
 
     @Override

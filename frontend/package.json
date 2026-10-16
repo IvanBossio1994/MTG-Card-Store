@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
+    "lint": "eslint --max-warnings=0 .",
+    "format": "prettier --write .",
+    "format:revisar": "prettier --check .",
     "generar-tipos-api": "openapi-typescript http://localhost:8080/v3/api-docs -o src/compartido/api/tiposApi.ts"
   },
   "dependencies": {
@@ -19,6 +22,8 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.1.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -27,10 +32,16 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "jsdom": "^26.1.0",
     "openapi-typescript": "^7.8.0",
+    "prettier": "^3.9.10",
     "tailwindcss": "^4.1.11",
     "typescript": "~5.8.3",
+    "typescript-eslint": "^8.71.2",
     "vite": "^6.3.5",
     "vitest": "^3.2.4"
   }

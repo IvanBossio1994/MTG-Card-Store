@@ -43,7 +43,8 @@ export function BloqueTienda({ tienda, alGuardar, alCambiarSinGuardar }: BloqueT
     alCambiarSinGuardar?.('tienda', sinGuardar);
   }, [alCambiarSinGuardar, sinGuardar]);
 
-  const logoVisible = vistaPrevia ?? (quitarLogo || !logoGuardado ? LOGO_POR_DEFECTO : logoGuardado);
+  const logoVisible =
+    vistaPrevia ?? (quitarLogo || !logoGuardado ? LOGO_POR_DEFECTO : logoGuardado);
 
   function elegirLogo(evento: ChangeEvent<HTMLInputElement>) {
     const archivo = evento.target.files?.[0];
@@ -113,10 +114,15 @@ export function BloqueTienda({ tienda, alGuardar, alCambiarSinGuardar }: BloqueT
       Icono={Store}
       titulo={textos['configuracion.tienda.titulo']}
       bajada={textos['configuracion.tienda.bajada']}
-      alEnviar={guardar}
+      alEnviar={() => void guardar()}
       pie={
         <>
-          <Boton type="submit" Icono={Save} guardando={bloque.guardando} data-testid="configuracion-boton-guardar-tienda">
+          <Boton
+            type="submit"
+            Icono={Save}
+            guardando={bloque.guardando}
+            data-testid="configuracion-boton-guardar-tienda"
+          >
             {textos['configuracion.tienda.boton.guardar']}
           </Boton>
           <MensajeBloque pantalla="configuracion" bloque="tienda" mensaje={bloque.mensaje} />
@@ -158,7 +164,12 @@ export function BloqueTienda({ tienda, alGuardar, alCambiarSinGuardar }: BloqueT
                 >
                   {textos['configuracion.tienda.boton.subir-logo']}
                 </Boton>
-                <Boton variante="texto" Icono={Trash2} onClick={quitar} data-testid="configuracion-boton-quitar-logo">
+                <Boton
+                  variante="texto"
+                  Icono={Trash2}
+                  onClick={quitar}
+                  data-testid="configuracion-boton-quitar-logo"
+                >
                   {textos['configuracion.tienda.boton.quitar-logo']}
                 </Boton>
               </div>

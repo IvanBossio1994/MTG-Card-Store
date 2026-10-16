@@ -47,7 +47,10 @@ export class ErrorApi extends Error {
 export async function pedirApi<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
   let respuesta: Response;
   try {
-    respuesta = await fetch(ruta, { ...opciones, headers: { Accept: 'application/json', ...opciones.headers } });
+    respuesta = await fetch(ruta, {
+      ...opciones,
+      headers: { Accept: 'application/json', ...opciones.headers },
+    });
   } catch {
     throw new ErrorApi(0, textos['general.error.conexion']);
   }

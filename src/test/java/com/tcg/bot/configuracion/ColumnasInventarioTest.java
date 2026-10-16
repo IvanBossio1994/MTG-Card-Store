@@ -1,10 +1,9 @@
 package com.tcg.bot.configuracion;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /** Alias de columnas y conversión de "Traer cartas de" (HU-006 CA1 y CA7). */
 class ColumnasInventarioTest {
@@ -28,9 +27,12 @@ class ColumnasInventarioTest {
 
     @Test
     void esDeInventarioSiTieneNombreYOtraColumnaDeLaApp() {
-        assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of("Carta", "Stock", "Notas"))).isTrue();
-        assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of("Nombre"))).isFalse();
-        assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of("Stock", "Precio"))).isFalse();
+        assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of("Carta", "Stock", "Notas")))
+                .isTrue();
+        assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of("Nombre")))
+                .isFalse();
+        assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of("Stock", "Precio")))
+                .isFalse();
         assertThat(ColumnasInventario.tieneEncabezadosDeInventario(List.of())).isFalse();
     }
 
@@ -47,7 +49,8 @@ class ColumnasInventarioTest {
         var filas = convertidas.filas();
         // Extras en el orden del origen: "Notas", el "Nombre" duplicado y la columna sin encabezado pero con datos.
         assertThat(filas.get(0)).hasSize(14).endsWith("Notas", "Nombre", "");
-        assertThat(filas.get(1)).containsExactly(4, "Sol Ring", "", "", "", "", "", "", "", "", "", "firmada", "Anillo", "x");
+        assertThat(filas.get(1))
+                .containsExactly(4, "Sol Ring", "", "", "", "", "", "", "", "", "", "firmada", "Anillo", "x");
         assertThat(filas.get(2)).containsExactly(2, "Opt", "", "", "", "", "", "", "", "", "", "", "", "");
     }
 

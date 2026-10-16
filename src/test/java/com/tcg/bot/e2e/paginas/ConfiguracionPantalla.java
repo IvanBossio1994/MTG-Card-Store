@@ -1,5 +1,7 @@
 package com.tcg.bot.e2e.paginas;
 
+import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.options.AriaRole;
@@ -8,11 +10,8 @@ import com.tcg.bot.e2e.compartido.MarcoApp.Modulo;
 import com.tcg.bot.e2e.compartido.PantallaBase;
 import com.tcg.bot.e2e.localizadores.ConfiguracionLocalizadores;
 import com.tcg.bot.e2e.soporte.NavegadorE2E;
-
 import java.util.Map;
 import java.util.regex.Pattern;
-
-import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 /**
  * Page Object de Configuración: todas las acciones y lecturas de la pantalla (qa-guia.md). Los pasos hablan con el texto
@@ -90,20 +89,26 @@ public class ConfiguracionPantalla extends PantallaBase {
     /** Espera un éxito o un aviso que contenga el texto. Ejemplo: {@code esperarMensaje("Tienda guardada.")}. */
     public void esperarMensaje(String mensaje) {
         try {
-            assertThat(pagina().getByTestId(Pattern.compile("^configuracion-mensaje-(exito|aviso)-")).filter(
-                    new Locator.FilterOptions().setHasText(mensaje)).first())
+            assertThat(pagina().getByTestId(Pattern.compile("^configuracion-mensaje-(exito|aviso)-"))
+                            .filter(new Locator.FilterOptions().setHasText(mensaje))
+                            .first())
                     .isVisible(new LocatorAssertions.IsVisibleOptions().setTimeout(PLAZO_GOOGLE_MS));
         } catch (AssertionError falla) {
             // Dice qué mensajes había en pantalla, para distinguir un texto distinto de un mensaje que no apareció.
-            throw new AssertionError("Se esperaba el mensaje \"" + mensaje + "\" y en pantalla había: "
-                    + pagina().getByTestId(Pattern.compile("^configuracion-mensaje-")).allInnerTexts(), falla);
+            throw new AssertionError(
+                    "Se esperaba el mensaje \"" + mensaje + "\" y en pantalla había: "
+                            + pagina().getByTestId(Pattern.compile("^configuracion-mensaje-"))
+                                    .allInnerTexts(),
+                    falla);
         }
     }
 
     /** Espera un error (de campo o de bloque) que contenga el texto. */
     public void esperarError(String mensaje) {
-        assertThat(pagina().getByTestId(Pattern.compile("^configuracion-mensaje-error-")).filter(
-                new Locator.FilterOptions().setHasText(mensaje)).first()).isVisible();
+        assertThat(pagina().getByTestId(Pattern.compile("^configuracion-mensaje-error-"))
+                        .filter(new Locator.FilterOptions().setHasText(mensaje))
+                        .first())
+                .isVisible();
     }
 
     /** Ejemplo: {@code esperarValorDelCampo("Pestaña del inventario", "Stock 2026")}. Sirve para listas (valor = opción). */
@@ -119,17 +124,25 @@ public class ConfiguracionPantalla extends PantallaBase {
     /** Espera que la opción de la lista se vea, pero no se pueda elegir. */
     public void esperarOpcionDeshabilitada(String opcion, String lista) {
         try {
-            assertThat(campo(lista).locator("option", new Locator.LocatorOptions()
-                    .setHasText(opcion)).first()).isDisabled();
+            assertThat(campo(lista)
+                            .locator("option", new Locator.LocatorOptions().setHasText(opcion))
+                            .first())
+                    .isDisabled();
         } catch (AssertionError falla) {
-            throw new AssertionError("Se esperaba la opción \"" + opcion + "\" deshabilitada y la lista tiene: "
-                    + campo(lista).locator("option").allInnerTexts(), falla);
+            throw new AssertionError(
+                    "Se esperaba la opción \"" + opcion + "\" deshabilitada y la lista tiene: "
+                            + campo(lista).locator("option").allInnerTexts(),
+                    falla);
         }
     }
 
     /** Espera el título de un bloque de la pantalla. Ejemplo: {@code esperarBloque("Regla de precio")}. */
     public void esperarBloque(String titulo) {
-        assertThat(pagina().getByRole(AriaRole.HEADING, new com.microsoft.playwright.Page.GetByRoleOptions().setName(titulo).setExact(true)))
+        assertThat(pagina().getByRole(
+                                AriaRole.HEADING,
+                                new com.microsoft.playwright.Page.GetByRoleOptions()
+                                        .setName(titulo)
+                                        .setExact(true)))
                 .isVisible();
     }
 

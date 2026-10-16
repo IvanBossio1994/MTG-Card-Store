@@ -1,9 +1,5 @@
 package com.tcg.bot.configuracion;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Repository;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -18,6 +14,9 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Repository;
 
 /**
  * Configuración guardada en los mismos archivos y claves que la v1, dentro de {@code app.storage-dir}:
@@ -87,7 +86,8 @@ public class ConfiguracionArchivosRepository implements ConfiguracionRepository 
     public SheetGuardado leerSheet() {
         Properties propiedades = leer(archivoTienda);
         String sheetId = propiedades.getProperty(CLAVE_SHEET, sheetPorDefecto);
-        return new SheetGuardado(sheetId == null || sheetId.isBlank() ? null : sheetId,
+        return new SheetGuardado(
+                sheetId == null || sheetId.isBlank() ? null : sheetId,
                 propiedades.getProperty(CLAVE_PESTANA, PESTANA_INVENTARIO_POR_DEFECTO));
     }
 
@@ -121,15 +121,21 @@ public class ConfiguracionArchivosRepository implements ConfiguracionRepository 
         modificar(archivoPrecios, propiedades -> {
             propiedades.setProperty(CLAVE_COTIZACION, Double.toString(precios.cotizacion()));
             propiedades.setProperty(CLAVE_REDONDEO, Integer.toString(precios.redondeo()));
-            propiedades.setProperty(CLAVE_BULK_COMMON, Double.toString(precios.bulk().common()));
-            propiedades.setProperty(CLAVE_BULK_UNCOMMON, Double.toString(precios.bulk().uncommon()));
-            propiedades.setProperty(CLAVE_BULK_RARE, Double.toString(precios.bulk().rare()));
-            propiedades.setProperty(CLAVE_BULK_MYTHIC, Double.toString(precios.bulk().mythic()));
-            propiedades.setProperty(CLAVE_BULK_TIERRA_BASICA, Double.toString(precios.bulk().tierraBasica()));
+            propiedades.setProperty(
+                    CLAVE_BULK_COMMON, Double.toString(precios.bulk().common()));
+            propiedades.setProperty(
+                    CLAVE_BULK_UNCOMMON, Double.toString(precios.bulk().uncommon()));
+            propiedades.setProperty(
+                    CLAVE_BULK_RARE, Double.toString(precios.bulk().rare()));
+            propiedades.setProperty(
+                    CLAVE_BULK_MYTHIC, Double.toString(precios.bulk().mythic()));
+            propiedades.setProperty(
+                    CLAVE_BULK_TIERRA_BASICA, Double.toString(precios.bulk().tierraBasica()));
             // La v1 espera siempre esta clave: si no estaba, se deja el valor por defecto.
             propiedades.putIfAbsent(CLAVE_PESOS_POR_PUNTO, Double.toString(pesosPorPuntoPorDefecto));
         });
-        String carpeta = precios.carpetaCache() == null ? carpetaCachePorDefecto().toString() : precios.carpetaCache();
+        String carpeta =
+                precios.carpetaCache() == null ? carpetaCachePorDefecto().toString() : precios.carpetaCache();
         modificar(archivoTienda, propiedades -> propiedades.setProperty(CLAVE_CARPETA_CACHE, carpeta));
     }
 
@@ -140,7 +146,9 @@ public class ConfiguracionArchivosRepository implements ConfiguracionRepository 
 
     @Override
     public void guardarPesosPorPunto(double pesosPorPunto) {
-        modificar(archivoPrecios, propiedades -> propiedades.setProperty(CLAVE_PESOS_POR_PUNTO, Double.toString(pesosPorPunto)));
+        modificar(
+                archivoPrecios,
+                propiedades -> propiedades.setProperty(CLAVE_PESOS_POR_PUNTO, Double.toString(pesosPorPunto)));
     }
 
     @Override
@@ -152,7 +160,9 @@ public class ConfiguracionArchivosRepository implements ConfiguracionRepository 
             return Optional.empty();
         }
         try {
-            return Optional.of(new LogoTienda(Files.readAllBytes(archivo), formato.get(),
+            return Optional.of(new LogoTienda(
+                    Files.readAllBytes(archivo),
+                    formato.get(),
                     Files.getLastModifiedTime(archivo).toMillis()));
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo leer el logo de la tienda.", e);
@@ -234,7 +244,8 @@ public class ConfiguracionArchivosRepository implements ConfiguracionRepository 
             Properties propiedades = leer(archivo);
             cambio.accept(propiedades);
             Files.createDirectories(carpetaDatos);
-            Path temporal = Files.createTempFile(carpetaDatos, archivo.getFileName().toString(), ".tmp");
+            Path temporal =
+                    Files.createTempFile(carpetaDatos, archivo.getFileName().toString(), ".tmp");
             try (OutputStream salida = Files.newOutputStream(temporal)) {
                 propiedades.store(salida, "Configuracion local de la tienda");
             }

@@ -20,7 +20,6 @@ import com.google.api.services.sheets.v4.model.UpdateSheetPropertiesRequest;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -31,7 +30,6 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,8 +53,8 @@ public class SheetDeQa {
     public static final String LINK = "https://docs.google.com/spreadsheets/d/" + ID + "/edit";
 
     /** Clave de la cuenta de servicio (la misma que usa la app; nunca se abre a mano ni se muestra). */
-    static final Path ARCHIVO_CLAVE = Paths.get(
-            System.getProperty("google.cuenta-servicio.archivo", "config/google-service-account.json"));
+    static final Path ARCHIVO_CLAVE =
+            Paths.get(System.getProperty("google.cuenta-servicio.archivo", "config/google-service-account.json"));
 
     private static final String RENDER_CON_FORMULAS = "FORMULA";
     private static final String RENDER_SIN_FORMATO = "UNFORMATTED_VALUE";
@@ -94,7 +92,8 @@ public class SheetDeQa {
      * Ejemplo: {@code pestanas()} → {@code ["Inventario", "Movimientos", "Caja", "Reservas", "Clientes"]}.
      */
     public List<String> pestanas() {
-        return conGoogle(() -> propiedades().stream().map(SheetProperties::getTitle).toList());
+        return conGoogle(
+                () -> propiedades().stream().map(SheetProperties::getTitle).toList());
     }
 
     /**
@@ -102,8 +101,13 @@ public class SheetDeQa {
      * Ejemplo: {@code valores("Inventario")} → {@code [["Cantidad", "Nombre", …], [4, "Sol Ring", …]]}; pestaña vacía → {@code []}.
      */
     public List<List<Object>> valores(String pestana) {
-        return conGoogle(() -> copiar(cliente().spreadsheets().values().get(ID, rango(pestana))
-                .setValueRenderOption(RENDER_SIN_FORMATO).execute().getValues()));
+        return conGoogle(() -> copiar(cliente()
+                .spreadsheets()
+                .values()
+                .get(ID, rango(pestana))
+                .setValueRenderOption(RENDER_SIN_FORMATO)
+                .execute()
+                .getValues()));
     }
 
     /**
@@ -112,7 +116,9 @@ public class SheetDeQa {
      */
     public List<String> encabezados(String pestana) {
         List<List<Object>> filas = valores(pestana);
-        return filas.isEmpty() ? List.of() : filas.get(0).stream().map(String::valueOf).toList();
+        return filas.isEmpty()
+                ? List.of()
+                : filas.get(0).stream().map(String::valueOf).toList();
     }
 
     /**
@@ -149,20 +155,20 @@ public class SheetDeQa {
     }
 
     /** Foto del Sheet: pestañas en orden, con su ID, nombre y valores (fórmulas como fórmula). */
-    record Foto(List<PestanaGuardada> pestanas) {
-    }
+    record Foto(List<PestanaGuardada> pestanas) {}
 
     /** Una pestaña de la foto. */
-    record PestanaGuardada(int id, String titulo, List<List<Object>> valores) {
-    }
+    record PestanaGuardada(int id, String titulo, List<List<Object>> valores) {}
 
     private static Foto tomarFoto() {
         return conGoogle(() -> {
             List<SheetProperties> propiedades = propiedades();
-            List<List<List<Object>>> valores = valoresDe(propiedades.stream().map(SheetProperties::getTitle).toList());
+            List<List<List<Object>>> valores = valoresDe(
+                    propiedades.stream().map(SheetProperties::getTitle).toList());
             List<PestanaGuardada> pestanas = new ArrayList<>();
             for (int i = 0; i < propiedades.size(); i++) {
-                pestanas.add(new PestanaGuardada(propiedades.get(i).getSheetId(), propiedades.get(i).getTitle(), valores.get(i)));
+                pestanas.add(new PestanaGuardada(
+                        propiedades.get(i).getSheetId(), propiedades.get(i).getTitle(), valores.get(i)));
             }
             return new Foto(pestanas);
         });
@@ -203,10 +209,16 @@ public class SheetDeQa {
                     estructura.add(borrarPestana(id));
                 }
             }
-            // 3. Nombres y orden: primero un nombre provisorio a las renombradas (para que no choquen), después el original.
-            List<Integer> ordenEsperado = foto.pestanas().stream().map(pestana -> idFinalPorIdDeFoto.get(pestana.id())).toList();
+            // 3. Nombres y orden: primero un nombre provisorio a las renombradas (para que no choquen), después el
+            // original.
+            List<Integer> ordenEsperado = foto.pestanas().stream()
+                    .map(pestana -> idFinalPorIdDeFoto.get(pestana.id()))
+                    .toList();
             boolean nombresUOrdenCambiaron = !recreadas.isEmpty()
-                    || !ordenActual.stream().filter(idsDeLaFoto::contains).toList().equals(ordenEsperado);
+                    || !ordenActual.stream()
+                            .filter(idsDeLaFoto::contains)
+                            .toList()
+                            .equals(ordenEsperado);
             for (PestanaGuardada pestana : foto.pestanas()) {
                 String actual = tituloActualPorId.get(pestana.id());
                 if (actual != null && !actual.equals(pestana.titulo())) {
@@ -216,15 +228,18 @@ public class SheetDeQa {
             }
             if (nombresUOrdenCambiaron) {
                 for (int i = 0; i < foto.pestanas().size(); i++) {
-                    estructura.add(cambiarNombreYOrden(ordenEsperado.get(i), foto.pestanas().get(i).titulo(), i));
+                    estructura.add(cambiarNombreYOrden(
+                            ordenEsperado.get(i), foto.pestanas().get(i).titulo(), i));
                 }
             }
 
             // 4. Valores: se reescriben solo las pestañas que cambiaron (o las recreadas).
             List<PestanaGuardada> existentes = foto.pestanas().stream()
-                    .filter(pestana -> tituloActualPorId.containsKey(pestana.id())).toList();
+                    .filter(pestana -> tituloActualPorId.containsKey(pestana.id()))
+                    .toList();
             List<List<List<Object>>> valoresActuales = valoresDe(existentes.stream()
-                    .map(pestana -> tituloActualPorId.get(pestana.id())).toList());
+                    .map(pestana -> tituloActualPorId.get(pestana.id()))
+                    .toList());
             List<Request> valores = new ArrayList<>();
             for (PestanaGuardada pestana : foto.pestanas()) {
                 int indice = existentes.indexOf(pestana);
@@ -245,19 +260,27 @@ public class SheetDeQa {
     private static void ejecutar(List<Request> pedidos) throws IOException, GeneralSecurityException {
         if (!pedidos.isEmpty()) {
             // Un solo batchUpdate: Google lo aplica todo o nada.
-            cliente().spreadsheets().batchUpdate(ID, new BatchUpdateSpreadsheetRequest().setRequests(pedidos)).execute();
+            cliente()
+                    .spreadsheets()
+                    .batchUpdate(ID, new BatchUpdateSpreadsheetRequest().setRequests(pedidos))
+                    .execute();
         }
     }
 
-    private static List<List<List<Object>>> valoresDe(List<String> titulos) throws IOException, GeneralSecurityException {
+    private static List<List<List<Object>>> valoresDe(List<String> titulos)
+            throws IOException, GeneralSecurityException {
         List<List<List<Object>>> resultado = new ArrayList<>();
         if (titulos.isEmpty()) {
             return resultado;
         }
-        List<ValueRange> rangos = cliente().spreadsheets().values().batchGet(ID)
+        List<ValueRange> rangos = cliente()
+                .spreadsheets()
+                .values()
+                .batchGet(ID)
                 .setRanges(titulos.stream().map(SheetDeQa::rango).toList())
                 .setValueRenderOption(RENDER_CON_FORMULAS)
-                .execute().getValueRanges();
+                .execute()
+                .getValueRanges();
         for (int i = 0; i < titulos.size(); i++) {
             ValueRange rango = rangos != null && i < rangos.size() ? rangos.get(i) : null;
             resultado.add(copiar(rango == null ? null : rango.getValues()));
@@ -266,7 +289,11 @@ public class SheetDeQa {
     }
 
     private static List<SheetProperties> propiedades() throws IOException, GeneralSecurityException {
-        var sheet = cliente().spreadsheets().get(ID).setFields("sheets.properties(sheetId,title,index)").execute();
+        var sheet = cliente()
+                .spreadsheets()
+                .get(ID)
+                .setFields("sheets.properties(sheetId,title,index)")
+                .execute();
         List<SheetProperties> propiedades = new ArrayList<>();
         if (sheet.getSheets() != null) {
             for (Sheet pestana : sheet.getSheets()) {
@@ -277,7 +304,9 @@ public class SheetDeQa {
     }
 
     private static Request crearPestana(int id, String titulo) {
-        return new Request().setAddSheet(new AddSheetRequest().setProperties(new SheetProperties().setSheetId(id).setTitle(titulo)));
+        return new Request()
+                .setAddSheet(new AddSheetRequest()
+                        .setProperties(new SheetProperties().setSheetId(id).setTitle(titulo)));
     }
 
     private static Request borrarPestana(int id) {
@@ -285,29 +314,42 @@ public class SheetDeQa {
     }
 
     private static Request cambiarNombre(int id, String titulo) {
-        return new Request().setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
-                .setProperties(new SheetProperties().setSheetId(id).setTitle(titulo)).setFields("title"));
+        return new Request()
+                .setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
+                        .setProperties(new SheetProperties().setSheetId(id).setTitle(titulo))
+                        .setFields("title"));
     }
 
     private static Request cambiarNombreYOrden(int id, String titulo, int indice) {
-        return new Request().setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
-                .setProperties(new SheetProperties().setSheetId(id).setTitle(titulo).setIndex(indice)).setFields("title,index"));
+        return new Request()
+                .setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
+                        .setProperties(new SheetProperties()
+                                .setSheetId(id)
+                                .setTitle(titulo)
+                                .setIndex(indice))
+                        .setFields("title,index"));
     }
 
     /** Sin filas y con el campo userEnteredValue: Google borra los valores de toda la pestaña (no los formatos). */
     private static Request vaciarPestana(int id) {
-        return new Request().setUpdateCells(new UpdateCellsRequest()
-                .setRange(new GridRange().setSheetId(id)).setFields("userEnteredValue"));
+        return new Request()
+                .setUpdateCells(new UpdateCellsRequest()
+                        .setRange(new GridRange().setSheetId(id))
+                        .setFields("userEnteredValue"));
     }
 
     private static List<Request> escribirValores(int id, List<List<Object>> filas) {
         if (filas.isEmpty()) {
             return List.of();
         }
-        return List.of(new Request().setUpdateCells(new UpdateCellsRequest()
-                .setStart(new GridCoordinate().setSheetId(id).setRowIndex(0).setColumnIndex(0))
-                .setRows(filas.stream().map(SheetDeQa::filaDeCeldas).toList())
-                .setFields("userEnteredValue")));
+        return List.of(new Request()
+                .setUpdateCells(new UpdateCellsRequest()
+                        .setStart(new GridCoordinate()
+                                .setSheetId(id)
+                                .setRowIndex(0)
+                                .setColumnIndex(0))
+                        .setRows(filas.stream().map(SheetDeQa::filaDeCeldas).toList())
+                        .setFields("userEnteredValue")));
     }
 
     /** Cada valor vuelve con su tipo: fórmula ("=…"), número, verdadero/falso o texto (sin convertir "001" en 1). */
@@ -350,13 +392,19 @@ public class SheetDeQa {
     private static synchronized Sheets cliente() throws IOException, GeneralSecurityException {
         if (cliente == null) {
             if (!Files.isRegularFile(ARCHIVO_CLAVE)) {
-                throw new IllegalStateException("Falta la clave de la cuenta de servicio en " + ARCHIVO_CLAVE.toAbsolutePath()
-                        + ". Los E2E la necesitan para usar el Sheet de QA (docs/agentes/qa-guia.md).");
+                throw new IllegalStateException(
+                        "Falta la clave de la cuenta de servicio en " + ARCHIVO_CLAVE.toAbsolutePath()
+                                + ". Los E2E la necesitan para usar el Sheet de QA (docs/agentes/qa-guia.md).");
             }
             try (InputStream clave = Files.newInputStream(ARCHIVO_CLAVE)) {
-                GoogleCredentials credenciales = GoogleCredentials.fromStream(clave).createScoped(SheetsScopes.SPREADSHEETS);
-                cliente = new Sheets.Builder(GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance(),
-                        new HttpCredentialsAdapter(credenciales)).setApplicationName("TCG Inventory E2E").build();
+                GoogleCredentials credenciales =
+                        GoogleCredentials.fromStream(clave).createScoped(SheetsScopes.SPREADSHEETS);
+                cliente = new Sheets.Builder(
+                                GoogleNetHttpTransport.newTrustedTransport(),
+                                GsonFactory.getDefaultInstance(),
+                                new HttpCredentialsAdapter(credenciales))
+                        .setApplicationName("TCG Inventory E2E")
+                        .build();
             }
         }
         return cliente;

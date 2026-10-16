@@ -76,28 +76,24 @@ public interface ConfiguracionRepository {
      * Sheet de la tienda. {@code sheetId} es {@code null} si todavía no se conectó ninguno.
      * Ejemplo: {@code new SheetGuardado("1vSk7Y…", "Inventario")}.
      */
-    record SheetGuardado(String sheetId, String pestanaInventario) {
-    }
+    record SheetGuardado(String sheetId, String pestanaInventario) {}
 
     /**
      * Regla de precio. {@code carpetaCache} es {@code null} si se usa la de siempre ({@code <app.storage-dir>/cache}).
      * Ejemplo: {@code new ReglaDePrecios(1350, 500, new PreciosBulk(50, 100, 150, 150, 200), null)}.
      */
-    record ReglaDePrecios(double cotizacion, int redondeo, PreciosBulk bulk, String carpetaCache) {
-    }
+    record ReglaDePrecios(double cotizacion, int redondeo, PreciosBulk bulk, String carpetaCache) {}
 
     /**
      * Precio bulk por rareza, en pesos. Ejemplo: {@code new PreciosBulk(50, 100, 150, 150, 200)}.
      */
-    record PreciosBulk(double common, double uncommon, double rare, double mythic, double tierraBasica) {
-    }
+    record PreciosBulk(double common, double uncommon, double rare, double mythic, double tierraBasica) {}
 
     /**
      * Logo guardado: contenido, formato y versión (cambia con cada logo nuevo).
      * Ejemplo: {@code new LogoTienda(bytes, FormatoLogo.PNG, 1760550000000L)}.
      */
-    record LogoTienda(byte[] contenido, FormatoLogo formato, long version) {
-    }
+    record LogoTienda(byte[] contenido, FormatoLogo formato, long version) {}
 
     /** Formatos de logo aceptados, con su extensión de archivo y su tipo de contenido. */
     enum FormatoLogo {

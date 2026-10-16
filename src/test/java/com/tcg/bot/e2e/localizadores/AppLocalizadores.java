@@ -16,6 +16,5 @@ public final class AppLocalizadores {
     /** Capa de carga con el gatito ({@code CapaCarga}), que tapa la pantalla mientras se carga o se habla con Google. */
     public static final String CAPA_CARGA = "app-capa-carga";
 
-    private AppLocalizadores() {
-    }
+    private AppLocalizadores() {}
 }

@@ -100,6 +100,9 @@ Scenario Outline: [Configuracion] Rechaza la cotización <cotizacion>
 - `@feliz` o `@error`: tipo de escenario.
 - `@critico`: va en la regresión mínima (smoke).
 - `@regresion`: va en la regresión completa.
+- `@HU-XXX-DEF-YYY`: **bug conocido**. El escenario falla por el defecto `DEF-YYY`, que nació en la funcionalidad de `HU-XXX` (ej.: `@HU-008-DEF-001`). Se agrega al reportar el defecto, si el arreglo no va en la misma HU, y se saca cuando se arregla.
+  - El escenario **se sigue ejecutando**. Si falla, el reporte lo muestra como "bug conocido (DEF-YYY)" y no como falla nueva. Si pasa, avisa que el defecto parece arreglado y que hay que sacar el tag.
+  - Mientras ese aviso no esté en el arnés (llega en HU-014), el escenario falla normal y QA lo informa como bug conocido en su respuesta.
 
 ## Reglas
 - **Un escenario = un comportamiento.** Se escribe como en "Cómo se escribe el Gherkin": tercera persona y texto visible, sin selectores.
@@ -120,9 +123,14 @@ Scenario Outline: [Configuracion] Rechaza la cotización <cotizacion>
 
 ```markdown
 # DEF-XXX: <título corto>
-- **HU de QA:** HU-XXX · **Funcionalidad de:** HU-YYY · **Escenario:** [Pantalla] <nombre> · **Tipo:** feliz | error
+- **Encontrado en:** HU-XXX (la HU de QA, o dónde apareció) · **Nació en:** HU-YYY (la funcionalidad) · **Se arregla en:** HU-ZZZ | a definir
+- **Escenario:** [Pantalla] <nombre> · **Tag:** `@HU-YYY-DEF-XXX` · **Tipo:** feliz | error
 - **Severidad:** crítica | alta | media | baja · **Área:** backend | frontend | google | datos
 - **Estado:** abierto
+## Precondiciones
+- <estado de la app y del Sheet de QA antes de empezar>
+## Datos de prueba
+- <solo si hacen falta: valores cargados, pestañas, links>
 ## Pasos para reproducir
 1. ...
 ## Resultado esperado
@@ -130,11 +138,12 @@ Scenario Outline: [Configuracion] Rechaza la cotización <cotizacion>
 ## Resultado obtenido
 ...
 ## Evidencia
-- Captura o traza: `target/evidencias/...`
+- Captura: `evidencias/DEF-XXX-<paso>.png` (copiada desde `target/evidencias/`)
 - Salida del test (líneas relevantes):
 ```
 
 - Además se agrega una fila al índice `docs/agentes/defectos/README.md`.
+- **Evidencia que se guarda en git:** solo la captura del paso que falla, copiada a `docs/agentes/defectos/evidencias/` (`target/` se borra en cada build). La traza de Playwright no se versiona: pesa varios MB y se vuelve a generar corriendo el escenario. La captura sale del Sheet de QA; si muestra datos personales (un Gmail, por ejemplo), se recorta.
 
 **Severidades:**
 - **Crítica:** se pierden o corrompen datos del Sheet, o el flujo principal no se puede usar.

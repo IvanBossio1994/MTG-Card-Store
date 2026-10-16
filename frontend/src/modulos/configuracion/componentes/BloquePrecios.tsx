@@ -21,10 +21,30 @@ interface DatosRareza {
 }
 
 const RAREZAS: DatosRareza[] = [
-  { rareza: 'common', nombre: 'common', etiqueta: 'configuracion.precios.etiqueta.common', color: 'bg-rareza-common' },
-  { rareza: 'uncommon', nombre: 'uncommon', etiqueta: 'configuracion.precios.etiqueta.uncommon', color: 'bg-rareza-uncommon' },
-  { rareza: 'rare', nombre: 'rare', etiqueta: 'configuracion.precios.etiqueta.rare', color: 'bg-rareza-rare' },
-  { rareza: 'mythic', nombre: 'mythic', etiqueta: 'configuracion.precios.etiqueta.mythic', color: 'bg-rareza-mythic' },
+  {
+    rareza: 'common',
+    nombre: 'common',
+    etiqueta: 'configuracion.precios.etiqueta.common',
+    color: 'bg-rareza-common',
+  },
+  {
+    rareza: 'uncommon',
+    nombre: 'uncommon',
+    etiqueta: 'configuracion.precios.etiqueta.uncommon',
+    color: 'bg-rareza-uncommon',
+  },
+  {
+    rareza: 'rare',
+    nombre: 'rare',
+    etiqueta: 'configuracion.precios.etiqueta.rare',
+    color: 'bg-rareza-rare',
+  },
+  {
+    rareza: 'mythic',
+    nombre: 'mythic',
+    etiqueta: 'configuracion.precios.etiqueta.mythic',
+    color: 'bg-rareza-mythic',
+  },
   {
     rareza: 'tierraBasica',
     nombre: 'tierra-basica',
@@ -80,7 +100,13 @@ export function BloquePrecios({ precios, alCambiarSinGuardar }: BloquePreciosPro
   /** Errores de la validación en pantalla, con las mismas claves que usa la API. */
   function validar(): Record<string, string> {
     const errores: Record<string, string> = {};
-    const revisar = (clave: string, escrito: string, vacio: string, menor: string, entero = false) => {
+    const revisar = (
+      clave: string,
+      escrito: string,
+      vacio: string,
+      menor: string,
+      entero = false,
+    ) => {
       const numero = aNumero(escrito);
       if (!escrito.trim()) {
         errores[clave] = vacio;
@@ -162,10 +188,15 @@ export function BloquePrecios({ precios, alCambiarSinGuardar }: BloquePreciosPro
       titulo={textos['configuracion.precios.titulo']}
       bajada={textos['configuracion.precios.bajada']}
       className="col-span-2 max-[1100px]:col-span-1"
-      alEnviar={guardar}
+      alEnviar={() => void guardar()}
       pie={
         <>
-          <Boton type="submit" Icono={Save} guardando={bloque.guardando} data-testid="configuracion-boton-guardar-precios">
+          <Boton
+            type="submit"
+            Icono={Save}
+            guardando={bloque.guardando}
+            data-testid="configuracion-boton-guardar-precios"
+          >
             {textos['configuracion.precios.boton.guardar']}
           </Boton>
           <MensajeBloque pantalla="configuracion" bloque="precios" mensaje={bloque.mensaje} />
@@ -209,7 +240,9 @@ export function BloquePrecios({ precios, alCambiarSinGuardar }: BloquePreciosPro
           testIdError="configuracion-mensaje-error-carpeta-cache"
         />
       </div>
-      <h3 className="mt-6 mb-2 text-[14px] font-semibold">{textos['configuracion.precios.titulo.bulk']}</h3>
+      <h3 className="mt-6 mb-2 text-[14px] font-semibold">
+        {textos['configuracion.precios.titulo.bulk']}
+      </h3>
       <div className="grid grid-cols-5 items-start gap-4 max-[1100px]:grid-cols-3">
         {RAREZAS.map(({ rareza, nombre, etiqueta, color }) => (
           <Campo

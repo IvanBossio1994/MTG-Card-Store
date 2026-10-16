@@ -1,7 +1,12 @@
 # DEF-001: Con un link del Sheet con `/u/0/` no se carga "Traer cartas de"
-- **HU de QA:** — (lo encontró el líder en la investigación de estilo, F3 de `docs/agentes/investigacion-estilo-codigo.md`) · **Funcionalidad de:** HU-007 · **Escenario:** [Configuración] conectar el Sheet con "Traer cartas de" · **Tipo:** error
+- **Encontrado en:** HU-010 (lo encontró el líder en la investigación de estilo, F3 de `docs/agentes/investigacion-estilo-codigo.md`) · **Nació en:** HU-007 · **Se arregla en:** HU-013 (EP-002)
+- **Escenario:** [Configuración] conectar el Sheet con "Traer cartas de" · **Tag:** `@HU-007-DEF-001` (todavía no hay escenario E2E con este link) · **Tipo:** error
 - **Severidad:** alta · **Área:** frontend
-- **Estado:** abierto (se arregla en HU-013, EP-002)
+- **Estado:** abierto
+## Precondiciones
+- La app está abierta en `/app`, en Configuración.
+## Datos de prueba
+- Un link de un Sheet compartido con la cuenta de servicio, con `/u/0/`: `https://docs.google.com/spreadsheets/u/0/d/<id>/edit`.
 ## Pasos para reproducir
 1. Abrir Configuración en `/app`.
 2. En el bloque del Sheet, pegar un link del tipo `https://docs.google.com/spreadsheets/u/0/d/<id>/edit` (es el que da Google con varias cuentas de Gmail abiertas).

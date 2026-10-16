@@ -43,11 +43,20 @@ public class EstadoAppController {
      * Ejemplo: GET /api/v1/estado-app en modo prueba → 200 {@code {"estado":"ok","version":"0.0.1-SNAPSHOT","modo":"prueba"}}.
      */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Consultar el estado de la app",
-            description = "Devuelve \"ok\" si la app está levantada, la versión del build y el modo: \"prueba\" (sin Google, datos en memoria) o \"normal\" (con el Sheet real).")
-    @ApiResponse(responseCode = "200", description = "La app está levantada",
-            content = @Content(schema = @Schema(implementation = EstadoAppRespuesta.class),
-                    examples = @ExampleObject(value = "{\"estado\":\"ok\",\"version\":\"0.0.1-SNAPSHOT\",\"modo\":\"prueba\"}")))
+    @Operation(
+            summary = "Consultar el estado de la app",
+            description =
+                    "Devuelve \"ok\" si la app está levantada, la versión del build y el modo: \"prueba\" (sin Google, datos en memoria) o \"normal\" (con el Sheet real).")
+    @ApiResponse(
+            responseCode = "200",
+            description = "La app está levantada",
+            content =
+                    @Content(
+                            schema = @Schema(implementation = EstadoAppRespuesta.class),
+                            examples =
+                                    @ExampleObject(
+                                            value =
+                                                    "{\"estado\":\"ok\",\"version\":\"0.0.1-SNAPSHOT\",\"modo\":\"prueba\"}")))
     public EstadoAppRespuesta consultarEstadoApp() {
         String modo = environment.matchesProfiles("e2e") ? MODO_PRUEBA : MODO_NORMAL;
         return new EstadoAppRespuesta("ok", versionLegible(), modo);
@@ -69,10 +78,12 @@ public class EstadoAppController {
     public record EstadoAppRespuesta(
             @Schema(description = "Siempre \"ok\" si la app responde", example = "ok")
             String estado,
+
             @Schema(description = "Versión del build", example = "0.0.1-SNAPSHOT")
             String version,
-            @Schema(description = "\"prueba\": sin Google y con datos en memoria. \"normal\": con el Sheet real.", example = "prueba")
-            String modo
-    ) {
-    }
+
+            @Schema(
+                    description = "\"prueba\": sin Google y con datos en memoria. \"normal\": con el Sheet real.",
+                    example = "prueba")
+            String modo) {}
 }

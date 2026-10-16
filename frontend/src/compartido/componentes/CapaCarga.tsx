@@ -12,7 +12,9 @@ export function CapaCarga({ texto }: { texto: string }) {
     >
       <div className="w-full max-w-[420px] animate-entra rounded-2xl border border-borde bg-white p-6 text-center shadow-flotante">
         <img className="mx-auto h-auto w-[180px]" src="/images/cat-card-loader.gif" alt="" />
-        <h2 className="mt-2 flex justify-center text-[18px] font-semibold tracking-[-0.01em]">{texto}</h2>
+        <h2 className="mt-2 flex justify-center text-[18px] font-semibold tracking-[-0.01em]">
+          {texto}
+        </h2>
       </div>
     </div>
   );

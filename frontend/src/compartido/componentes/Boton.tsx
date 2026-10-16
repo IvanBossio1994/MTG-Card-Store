@@ -18,7 +18,8 @@ export interface BotonProps extends ComponentProps<'button'> {
 }
 
 const CLASES_VARIANTE: Record<VarianteBoton, string> = {
-  primario: 'min-w-[160px] border border-acento bg-acento px-4 text-white hover:not-disabled:bg-acento-hover',
+  primario:
+    'min-w-[160px] border border-acento bg-acento px-4 text-white hover:not-disabled:bg-acento-hover',
   secundario: 'min-w-[120px] border border-campo bg-white px-4 text-tinta hover:bg-[#f5f1e9]',
   texto: 'min-w-[120px] border-0 bg-transparent px-2 text-acento hover:bg-acento-suave',
 };
@@ -30,7 +31,16 @@ const CELDA = 'col-start-1 row-start-1 inline-flex items-center justify-center g
  * así el botón siempre mide lo del texto más largo y nunca se mueve.
  * Ejemplo: `<Boton type="submit" Icono={Save} guardando={guardando} data-testid="configuracion-boton-guardar-tienda">Guardar tienda</Boton>`
  */
-export function Boton({ variante = 'primario', Icono, guardando, className, disabled, children, type = 'button', ...props }: BotonProps) {
+export function Boton({
+  variante = 'primario',
+  Icono,
+  guardando,
+  className,
+  disabled,
+  children,
+  type = 'button',
+  ...props
+}: BotonProps) {
   const contenido = (
     <>
       {Icono && <Icono className="h-4 w-4 shrink-0" aria-hidden="true" />}
@@ -57,10 +67,16 @@ export function Boton({ variante = 'primario', Icono, guardando, className, disa
     >
       {conEspera ? (
         <>
-          <span className={cn(CELDA, guardando && 'invisible')} aria-hidden={guardando || undefined}>
+          <span
+            className={cn(CELDA, guardando && 'invisible')}
+            aria-hidden={guardando || undefined}
+          >
             {contenido}
           </span>
-          <span className={cn(CELDA, !guardando && 'invisible')} aria-hidden={!guardando || undefined}>
+          <span
+            className={cn(CELDA, !guardando && 'invisible')}
+            aria-hidden={!guardando || undefined}
+          >
             <Loader2 className="h-4 w-4 animate-girar" aria-hidden="true" />
             {textos['general.boton.guardando']}
           </span>

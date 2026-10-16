@@ -23,12 +23,12 @@ Base técnica: no lleva HU de QA ni documento funcional. La red de seguridad son
 | HU | Tipo | Título | Estado | Depende de |
 |---|---|---|---|---|
 | HU-010 | base técnica | Guía de estilo de código (back y front), y los agentes apuntan a ella. Líder, sin agente | aceptada | — |
-| HU-011 | base técnica | Herramientas: Spotless (palantir-java-format), ArchUnit, ESLint + Prettier en el build de Maven, `.editorconfig` (imports `*` desde 5 clases). Solo la v2. `backend-java` | planificada | HU-010 |
+| HU-011 | base técnica | Herramientas: Spotless (palantir-java-format), ArchUnit, ESLint + Prettier en el build de Maven, `.editorconfig` (imports `*` desde 5 clases). Solo la v2. `backend-java` ([archivo](../historias/HU-011-herramientas-estilo.md)) | aceptada | HU-010 |
 | HU-012 | base técnica | Refactor del back de Configuración: B1 a B5, T1 a T3, R1 y R2 de `investigacion-estilo-codigo.md`. `backend-java` | planificada | HU-011 |
 | HU-013 | base técnica | Refactor del front de Configuración: TanStack Query (F1, F2), partir `BloqueSheet`, plurales (F4), tests con `user-event` + MSW (T4, T5) y **DEF-001** (F3). `frontend` | planificada | HU-012 |
 | HU-014 | base técnica | Estilo de QA: sección 5 de la guía y refactor del E2E de Configuración (`PantallaBase` con acciones comunes, `Locator` como campo, pasos finos; ver sección 2 de `investigacion-estilo-codigo.md`). Espera el ejemplo de la persona a cargo (Page Object, BasePage y pasos) | planificada | Ejemplo de la persona a cargo |
 
-**Progreso:** 1 de 5 historias aceptadas.
+**Progreso:** 2 de 5 historias aceptadas.
 
 ## Decisiones y pendientes
 - 2026-10-15: orden **guía + herramientas primero, refactor después** (persona a cargo).
@@ -36,7 +36,8 @@ Base técnica: no lleva HU de QA ni documento funcional. La red de seguridad son
 - 2026-10-15: **Spotless no arma imports `*`**; solo ordena y saca los que no se usan. La regla de los 5 o más del mismo paquete va en `.editorconfig` (IntelliJ) y en la guía.
 - 2026-10-15: **DEF-001** (link `/u/0/`, severidad alta) se arregla dentro de HU-013 (persona a cargo).
 - Pendiente: **HU-009** (casos de error de EP-001) conviene hacerla después de definir el estilo de QA, para no escribirla en el estilo viejo.
+- 2026-10-15: **bugs conocidos** (persona a cargo): tag `@HU-XXX-DEF-YYY` en el escenario; se sigue ejecutando y el reporte lo muestra como "bug conocido", y avisa si pasa (sacar el tag). Ficha del `DEF` con precondiciones, datos de prueba, "nació en" y "se arregla en"; en git solo la captura (`defectos/evidencias/`), no la traza. Reglas en `qa-guia.md`. **El aviso en el reporte (hook del arnés) va en HU-014.**
 - 2026-10-15: el estilo de QA entra como **HU-014** (planificada), por la regla nueva de épicas: mismo objetivo, misma épica. Puede ir antes o después de HU-011 a HU-013, cuando llegue el ejemplo.
 
 ## Para retomar
-HU-010 aceptada (guía en `docs/agentes/estilo-codigo.md`). La próxima es **HU-011** (herramientas, `backend-java`, ~10-15 puntos). Con `/agente-lider continuar HU-010`, el líder arma el brief desde esta épica. Investigación de base: `docs/agentes/investigacion-estilo-codigo.md`.
+HU-010 y HU-011 aceptadas (guía y herramientas en el build). La próxima es **HU-012** (refactor del back de Configuración, `backend-java`). Con `/agente-lider continuar HU-012`, el líder arma el brief desde esta épica. Investigación de base: `docs/agentes/investigacion-estilo-codigo.md`.

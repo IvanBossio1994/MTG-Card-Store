@@ -1,8 +1,5 @@
 package com.tcg.bot;
 
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.context.ConfigurableApplicationContext;
-
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -10,6 +7,8 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
 public class DesktopLauncher {
 
@@ -43,7 +42,8 @@ public class DesktopLauncher {
 
             Process edgeProcess = new ProcessBuilder(browser.arguments(url, profileDirectory)).start();
 
-            edgeProcess.onExit()
+            edgeProcess
+                    .onExit()
                     .orTimeout(7, java.util.concurrent.TimeUnit.DAYS)
                     .whenComplete((ignored, error) -> {
                         context.close();
@@ -74,23 +74,28 @@ public class DesktopLauncher {
             return Path.of(appData, APP_NAME, "data").toAbsolutePath().normalize();
         }
 
-        return Path.of(System.getProperty("user.home"), "." + APP_NAME.replace(" ", "-").toLowerCase(), "data")
+        return Path.of(
+                        System.getProperty("user.home"),
+                        "." + APP_NAME.replace(" ", "-").toLowerCase(),
+                        "data")
                 .toAbsolutePath()
                 .normalize();
     }
 
     private static Browser browser() {
         return List.of(
-                        new Browser("edge-profile", "--app=", "--user-data-dir=", paths(
-                                "Microsoft\\Edge\\Application\\msedge.exe"
-                        )),
-                        new Browser("chrome-profile", "--app=", "--user-data-dir=", paths(
-                                "Google\\Chrome\\Application\\chrome.exe"
-                        )),
-                        new Browser("firefox-profile", "--new-window", "-profile", paths(
-                                "Mozilla Firefox\\firefox.exe"
-                        ))
-                )
+                        new Browser(
+                                "edge-profile",
+                                "--app=",
+                                "--user-data-dir=",
+                                paths("Microsoft\\Edge\\Application\\msedge.exe")),
+                        new Browser(
+                                "chrome-profile",
+                                "--app=",
+                                "--user-data-dir=",
+                                paths("Google\\Chrome\\Application\\chrome.exe")),
+                        new Browser(
+                                "firefox-profile", "--new-window", "-profile", paths("Mozilla Firefox\\firefox.exe")))
                 .stream()
                 .filter(Browser::exists)
                 .findFirst()
@@ -100,9 +105,10 @@ public class DesktopLauncher {
     private static List<Path> paths(String relativePath) {
         return List.of(
                 Path.of(System.getenv("ProgramFiles") == null ? "" : System.getenv("ProgramFiles"), relativePath),
-                Path.of(System.getenv("ProgramFiles(x86)") == null ? "" : System.getenv("ProgramFiles(x86)"), relativePath),
-                Path.of(System.getenv("LocalAppData") == null ? "" : System.getenv("LocalAppData"), relativePath)
-        );
+                Path.of(
+                        System.getenv("ProgramFiles(x86)") == null ? "" : System.getenv("ProgramFiles(x86)"),
+                        relativePath),
+                Path.of(System.getenv("LocalAppData") == null ? "" : System.getenv("LocalAppData"), relativePath));
     }
 
     private record Browser(String profileDirectory, String openArgument, String profileArgument, List<Path> paths) {

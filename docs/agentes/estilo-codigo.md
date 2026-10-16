@@ -275,11 +275,23 @@ export const respuestasConfiguracion = [
 |---|---|---|
 | Spotless + palantir-java-format | Formato único del Java de la v2 (4 espacios, 120 columnas), ordena imports y saca los que no se usan | `mvn package` (aplica) y `mvn verify` (revisa) |
 | ArchUnit | Test que hace cumplir `estructura-carpetas.md`: la v2 no usa `legacy`, un controller por módulo, sin inyección por campo, sin nombres `Utils`/`Helper`/`Manager` | Con los tests |
-| ESLint (typescript-eslint + reglas de hooks) | Errores de React y TS que el compilador no ve | Build del front |
-| Prettier | Formato único del front | Build del front |
-| `.editorconfig` | Sangría, fin de línea e imports `*` (5 clases) en el IDE | Al escribir |
+| ESLint 10 (typescript-eslint `recommendedTypeChecked`, react-hooks, eslint-comments) | Errores de React y TS que el compilador no ve; excepciones solo por línea y con motivo | `npm run lint`, desde Maven antes de `vite build` |
+| Prettier 3 | Formato único del front (2 espacios, 100 columnas; `tiposApi.ts` queda afuera porque se genera) | `npm run format`, desde Maven antes de `lint` |
+| `.editorconfig` (raíz) | Sangría, fin de línea e imports `*` (5 clases) en el IDE; coincide con Spotless y Prettier | Al escribir |
+
+**Node:** el front usa Node 22.20 (lo pide ESLint 10). En una PC que ya tenía el Node anterior, borrar `frontend/node` antes de compilar; Maven lo baja de nuevo.
 
 Solo la v2: `legacy` queda afuera de Spotless y de las reglas.
+
+**Formato:** `mvn package`, `test` y `test-compile` lo corrigen solos (Spotless se aplica en `process-sources`). Por eso `mvn verify` a secas no falla por formato: para solo revisar, `mvn spotless:check` o `mvn verify "-Dspotless.apply.skip=true"`.
+
+### Excepciones a una regla
+Una regla se saltea solo si en ese caso no aplica, y nunca a escondidas:
+- **Formato (Spotless, Prettier):** nunca. Lo corrige la herramienta.
+- **ESLint:** solo en esa línea y con el motivo: `// eslint-disable-next-line <regla> -- <motivo>`. Nunca por archivo ni global. ESLint falla si falta el motivo o si la excepción ya no hace falta.
+- **ArchUnit:** la excepción va en el test (`ArquitecturaV2Test`), nombrando la clase y el motivo.
+- **Deuda conocida:** si arreglarlo requiere un refactor, el motivo empieza con la HU que lo arregla (`HU-013: …`).
+- **Entrega:** el agente lista cada excepción nueva en su resumen; el líder las revisa y se muestran en el cierre. Si la misma excepción se repite, se propone cambiar la regla (en esta guía y en la herramienta), no sumar más excepciones.
 
 ## 5. QA (pendiente)
 Se completa en **HU-014** (EP-002) con el ejemplo de la persona a cargo (Page Object, BasePage y pasos). Hasta entonces manda `qa-guia.md`.

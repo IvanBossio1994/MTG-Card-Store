@@ -54,6 +54,5 @@ public final class ConfiguracionLocalizadores {
     public static final String BOTON_SEGUIR_EDITANDO = "configuracion-boton-seguir-editando";
     public static final String BOTON_SALIR_IGUAL = "configuracion-boton-salir-igual";
 
-    private ConfiguracionLocalizadores() {
-    }
+    private ConfiguracionLocalizadores() {}
 }

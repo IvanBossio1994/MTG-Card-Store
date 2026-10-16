@@ -7,11 +7,6 @@ import com.tcg.bot.configuracion.ConfiguracionRepository.FormatoLogo;
 import com.tcg.bot.configuracion.ConfiguracionRepository.LogoTienda;
 import com.tcg.bot.configuracion.ConfiguracionRepository.ReglaDePrecios;
 import com.tcg.bot.configuracion.ConfiguracionRepository.SheetGuardado;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
@@ -23,6 +18,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 
 /**
  * Reglas de negocio de Configuración (CFG-F01 a CFG-F06): validar cada bloque, conectar el Sheet con la cuenta de
@@ -42,7 +41,8 @@ public class ConfiguracionService {
     static final String MENSAJE_CARPETA = "La carpeta no existe. Se puede indicar otra o dejar el campo vacío.";
     static final String AVISO_FALLA_CARD_KINGDOM =
             "Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde.";
-    static final String MENSAJE_ORIGEN_INEXISTENTE = "La pestaña de origen ya no existe en el Sheet. Se actualizó la lista.";
+    static final String MENSAJE_ORIGEN_INEXISTENTE =
+            "La pestaña de origen ya no existe en el Sheet. Se actualizó la lista.";
     static final String MENSAJE_SIN_PESTANA = "La pestaña a renombrar es obligatoria.";
     static final String MENSAJE_PESTANA_FIJA = "Esa pestaña la usa la app y no se puede renombrar.";
     static final String MENSAJE_NOMBRE_VACIO = "El nombre nuevo es obligatorio.";
@@ -51,8 +51,8 @@ public class ConfiguracionService {
     static final String MENSAJE_NOMBRE_REPETIDO = "Ya existe una pestaña con ese nombre.";
     static final String MENSAJE_SIN_SHEET_GUARDADO = "Disponible cuando haya un Sheet guardado.";
 
-    private static final Pattern LINK_DE_SHEET =
-            Pattern.compile("^https?://docs\\.google\\.com/spreadsheets/(?:u/\\d+/)?d/([A-Za-z0-9_-]{20,})(?:[/?#].*)?$");
+    private static final Pattern LINK_DE_SHEET = Pattern.compile(
+            "^https?://docs\\.google\\.com/spreadsheets/(?:u/\\d+/)?d/([A-Za-z0-9_-]{20,})(?:[/?#].*)?$");
     /** ID solo, o el ID con el final de la URL pegado (ej.: {@code 1vSk7…/edit?gid=0#gid=0}). */
     private static final Pattern ID_DE_SHEET = Pattern.compile("^([A-Za-z0-9_-]{20,})(?:[/?#].*)?$");
 
@@ -72,8 +72,11 @@ public class ConfiguracionService {
      * no hay ninguna y guardar precios no sincroniza.
      * Ejemplo: {@code new ConfiguracionService(new ConfiguracionEnMemoriaRepository(), sheets, sesion, Optional.empty())}.
      */
-    public ConfiguracionService(ConfiguracionRepository repositorio, AccesoSheet accesoSheet, SesionGoogle sesionGoogle,
-                                Optional<SincronizacionCardKingdom> sincronizacionCardKingdom) {
+    public ConfiguracionService(
+            ConfiguracionRepository repositorio,
+            AccesoSheet accesoSheet,
+            SesionGoogle sesionGoogle,
+            Optional<SincronizacionCardKingdom> sincronizacionCardKingdom) {
         this.repositorio = repositorio;
         this.accesoSheet = accesoSheet;
         this.sesionGoogle = sesionGoogle;
@@ -87,8 +90,13 @@ public class ConfiguracionService {
      */
     public Configuracion leerConfiguracion() {
         String gmail = sesionGoogle.gmailConectado().orElse(null);
-        return new Configuracion(repositorio.leerNombreTienda(), versionLogo(), repositorio.leerSheet(), gmail,
-                repositorio.leerPrecios(), repositorio.leerPesosPorPunto());
+        return new Configuracion(
+                repositorio.leerNombreTienda(),
+                versionLogo(),
+                repositorio.leerSheet(),
+                gmail,
+                repositorio.leerPrecios(),
+                repositorio.leerPesosPorPunto());
     }
 
     /**
@@ -120,8 +128,10 @@ public class ConfiguracionService {
      * Devuelve el logo guardado. Ejemplo: tienda sin logo → 404 "La tienda no tiene logo.".
      */
     public LogoTienda leerLogo() {
-        return repositorio.leerLogo().orElseThrow(() ->
-                new ErrorDeNegocioException(HttpStatus.NOT_FOUND, "Sin logo", "La tienda no tiene logo."));
+        return repositorio
+                .leerLogo()
+                .orElseThrow(() ->
+                        new ErrorDeNegocioException(HttpStatus.NOT_FOUND, "Sin logo", "La tienda no tiene logo."));
     }
 
     /**
@@ -181,8 +191,9 @@ public class ConfiguracionService {
             }
             sheetId = guardado.sheetId();
         } else {
-            sheetId = extraerIdDeSheet(idOLink).orElseThrow(() -> ErrorDeNegocioException.datosInvalidos(
-                    Map.of("idOLink", MENSAJE_SHEET_INVALIDO), "link-sheet", "LINK_INVALIDO"));
+            sheetId = extraerIdDeSheet(idOLink)
+                    .orElseThrow(() -> ErrorDeNegocioException.datosInvalidos(
+                            Map.of("idOLink", MENSAJE_SHEET_INVALIDO), "link-sheet", "LINK_INVALIDO"));
         }
         sesionGoogle.gmailConectado();
         return new ListaDePestanas(true, pestanasDe(sheetId, guardado));
@@ -202,8 +213,8 @@ public class ConfiguracionService {
 
         SheetGuardado guardado = repositorio.leerSheet();
         if (guardado == null || guardado.sheetId() == null) {
-            throw ErrorDeNegocioException.deBloque(HttpStatus.BAD_REQUEST, "Sin Sheet guardado",
-                    MENSAJE_SIN_SHEET_GUARDADO, "SIN_SHEET_GUARDADO");
+            throw ErrorDeNegocioException.deBloque(
+                    HttpStatus.BAD_REQUEST, "Sin Sheet guardado", MENSAJE_SIN_SHEET_GUARDADO, "SIN_SHEET_GUARDADO");
         }
         String sheetId = guardado.sheetId();
         sesionGoogle.gmailConectado();
@@ -213,8 +224,8 @@ public class ConfiguracionService {
             throw AccesoSheet.pestanaInexistente();
         }
         if (pestanas.stream().anyMatch(otra -> !otra.equals(actual) && otra.equalsIgnoreCase(nuevo))) {
-            throw ErrorDeNegocioException.datosInvalidos(Map.of("nombreNuevo", MENSAJE_NOMBRE_REPETIDO),
-                    "nombre-nuevo", "NOMBRE_REPETIDO");
+            throw ErrorDeNegocioException.datosInvalidos(
+                    Map.of("nombreNuevo", MENSAJE_NOMBRE_REPETIDO), "nombre-nuevo", "NOMBRE_REPETIDO");
         }
 
         accesoSheet.renombrarPestana(sheetId, actual, nuevo);
@@ -224,8 +235,8 @@ public class ConfiguracionService {
             despues = new SheetGuardado(sheetId, nuevo);
             guardarOCompensar(despues, sheetId, actual, nuevo);
         }
-        return new PestanaRenombrada(actual, nuevo, eraPestanaInventario, despues.pestanaInventario(),
-                pestanasDe(sheetId, despues));
+        return new PestanaRenombrada(
+                actual, nuevo, eraPestanaInventario, despues.pestanaInventario(), pestanasDe(sheetId, despues));
     }
 
     /**
@@ -289,8 +300,8 @@ public class ConfiguracionService {
 
     private CartasTraidas crearConCartasDe(String sheetId, List<String> pestanas, String origen, String pestana) {
         if (!pestanas.contains(origen)) {
-            throw ErrorDeNegocioException.datosInvalidos(Map.of("traerCartasDe", MENSAJE_ORIGEN_INEXISTENTE),
-                    "traer-cartas-de", "ORIGEN_INEXISTENTE");
+            throw ErrorDeNegocioException.datosInvalidos(
+                    Map.of("traerCartasDe", MENSAJE_ORIGEN_INEXISTENTE), "traer-cartas-de", "ORIGEN_INEXISTENTE");
         }
         var convertidas = ColumnasInventario.convertir(accesoSheet.leerValores(sheetId, origen));
         accesoSheet.crearPestanaConValores(sheetId, pestana, convertidas.filas());
@@ -312,13 +323,17 @@ public class ConfiguracionService {
     }
 
     private List<PestanaDelSheet> pestanasDe(String sheetId, SheetGuardado guardado) {
-        String pestanaEnUso = guardado != null && sheetId.equals(guardado.sheetId()) ? guardado.pestanaInventario() : null;
+        String pestanaEnUso =
+                guardado != null && sheetId.equals(guardado.sheetId()) ? guardado.pestanaInventario() : null;
         List<PestanaDelSheet> lista = new ArrayList<>();
         accesoSheet.leerEncabezadosDeTodas(sheetId).forEach((nombre, encabezados) -> {
             // Las fijas (Caja, Movimientos…) son de la app: tienen columnas parecidas, pero nunca son origen de cartas.
             boolean fija = PESTANAS_FIJAS.containsKey(nombre);
-            lista.add(new PestanaDelSheet(nombre, nombre.equals(pestanaEnUso),
-                    !fija && ColumnasInventario.tieneEncabezadosDeInventario(encabezados), fija));
+            lista.add(new PestanaDelSheet(
+                    nombre,
+                    nombre.equals(pestanaEnUso),
+                    !fija && ColumnasInventario.tieneEncabezadosDeInventario(encabezados),
+                    fija));
         });
         return List.copyOf(lista);
     }
@@ -366,12 +381,19 @@ public class ConfiguracionService {
         try {
             repositorio.guardarSheet(sheet);
         } catch (RuntimeException falla) {
-            log.error("Se renombró «{}» a «{}» pero no se pudo guardar la configuración; se deshace el renombrado.",
-                    nombreAnterior, nombreNuevo, falla);
+            log.error(
+                    "Se renombró «{}» a «{}» pero no se pudo guardar la configuración; se deshace el renombrado.",
+                    nombreAnterior,
+                    nombreNuevo,
+                    falla);
             try {
                 accesoSheet.renombrarPestana(sheetId, nombreNuevo, nombreAnterior);
             } catch (RuntimeException fallaAlDeshacer) {
-                log.error("No se pudo volver a llamar «{}» a la pestaña «{}».", nombreAnterior, nombreNuevo, fallaAlDeshacer);
+                log.error(
+                        "No se pudo volver a llamar «{}» a la pestaña «{}».",
+                        nombreAnterior,
+                        nombreNuevo,
+                        fallaAlDeshacer);
             }
             throw AccesoSheet.errorInesperado();
         }
@@ -419,16 +441,60 @@ public class ConfiguracionService {
 
     private static Map<String, List<String>> pestanasFijas() {
         Map<String, List<String>> pestanas = new LinkedHashMap<>();
-        pestanas.put("Movimientos", List.of("Fecha", "Hora", "Cantidad", "Nombre", "Nombre del set", "Codigo de set",
-                "Numero de carta", "Printing", "Stock anterior", "Stock nuevo", "Accion", "Condicion", "Cliente", "DNI",
-                "ReservaId"));
-        pestanas.put("Caja", List.of("Fecha", "Hora", "Nombre", "Nombre del set", "Codigo de set", "Numero de carta",
-                "Printing", "Precio Local", "Cantidad", "Total", "Total Dia"));
-        pestanas.put("Reservas", List.of("ID", "Estado", "Nombre", "Nombre del set", "Codigo de set", "Numero de carta",
-                "Printing", "Cantidad", "Cliente", "Telefono", "DNI", "Fecha de reserva", "Fecha de retiro",
-                "Fecha de pago", "Notas", "Condicion"));
-        pestanas.put("Clientes", List.of("Nombre", "Apellido", "DNI", "Telefono", "Email", "Notas", "Puntos",
-                "Actualizado"));
+        pestanas.put(
+                "Movimientos",
+                List.of(
+                        "Fecha",
+                        "Hora",
+                        "Cantidad",
+                        "Nombre",
+                        "Nombre del set",
+                        "Codigo de set",
+                        "Numero de carta",
+                        "Printing",
+                        "Stock anterior",
+                        "Stock nuevo",
+                        "Accion",
+                        "Condicion",
+                        "Cliente",
+                        "DNI",
+                        "ReservaId"));
+        pestanas.put(
+                "Caja",
+                List.of(
+                        "Fecha",
+                        "Hora",
+                        "Nombre",
+                        "Nombre del set",
+                        "Codigo de set",
+                        "Numero de carta",
+                        "Printing",
+                        "Precio Local",
+                        "Cantidad",
+                        "Total",
+                        "Total Dia"));
+        pestanas.put(
+                "Reservas",
+                List.of(
+                        "ID",
+                        "Estado",
+                        "Nombre",
+                        "Nombre del set",
+                        "Codigo de set",
+                        "Numero de carta",
+                        "Printing",
+                        "Cantidad",
+                        "Cliente",
+                        "Telefono",
+                        "DNI",
+                        "Fecha de reserva",
+                        "Fecha de retiro",
+                        "Fecha de pago",
+                        "Notas",
+                        "Condicion"));
+        pestanas.put(
+                "Clientes",
+                List.of("Nombre", "Apellido", "DNI", "Telefono", "Email", "Notas", "Puntos", "Actualizado"));
         return Collections.unmodifiableMap(pestanas);
     }
 
@@ -447,56 +513,62 @@ public class ConfiguracionService {
      * Configuración completa. {@code versionLogo} y {@code gmail} son {@code null} si no hay.
      * Ejemplo: {@code new Configuracion("Codex Live", null, sheet, "tienda@gmail.com", precios, 1000)}.
      */
-    public record Configuracion(String nombreTienda, Long versionLogo, SheetGuardado sheet, String gmail,
-                                ReglaDePrecios precios, double pesosPorPunto) {
-    }
+    public record Configuracion(
+            String nombreTienda,
+            Long versionLogo,
+            SheetGuardado sheet,
+            String gmail,
+            ReglaDePrecios precios,
+            double pesosPorPunto) {}
 
     /**
      * Tienda guardada. Ejemplo: {@code new Tienda("Codex Live Store", null)}.
      */
-    public record Tienda(String nombre, Long versionLogo) {
-    }
+    public record Tienda(String nombre, Long versionLogo) {}
 
     /**
      * Resultado de conectar el Sheet. {@code aviso} solo si se creó la pestaña sin traer cartas; {@code cartasTraidas}
      * solo si se crearon con cartas de otra pestaña.
      * Ejemplo: {@code new SheetConectado("1Abc…", "Inventario", "tienda@gmail.com", "Se creó la pestaña «Inventario».", true, null)}.
      */
-    public record SheetConectado(String sheetId, String pestanaInventario, String gmail, String aviso,
-                                 boolean pestanaCreada, CartasTraidas cartasTraidas) {
-    }
+    public record SheetConectado(
+            String sheetId,
+            String pestanaInventario,
+            String gmail,
+            String aviso,
+            boolean pestanaCreada,
+            CartasTraidas cartasTraidas) {}
 
     /**
      * Cartas copiadas al crear la pestaña del inventario. Ejemplo: {@code new CartasTraidas("stock viejo", 128, true)}.
      */
-    public record CartasTraidas(String origen, int cantidad, boolean hayColumnasExtra) {
-    }
+    public record CartasTraidas(String origen, int cantidad, boolean hayColumnasExtra) {}
 
     /**
      * Pestañas de un Sheet; {@code sheetGuardado} es {@code false} si no había Sheet para listar.
      * Ejemplo: {@code new ListaDePestanas(false, List.of())}.
      */
-    public record ListaDePestanas(boolean sheetGuardado, List<PestanaDelSheet> pestanas) {
-    }
+    public record ListaDePestanas(boolean sheetGuardado, List<PestanaDelSheet> pestanas) {}
 
     /**
      * Una pestaña del Sheet con sus marcas. Ejemplo: {@code new PestanaDelSheet("Caja", false, false, true)}.
      */
-    public record PestanaDelSheet(String nombre, boolean enUso, boolean sugerida, boolean fija) {
-    }
+    public record PestanaDelSheet(String nombre, boolean enUso, boolean sugerida, boolean fija) {}
 
     /**
      * Resultado de renombrar una pestaña, con la lista actualizada.
      * Ejemplo: {@code new PestanaRenombrada("Hoja 1", "Stock 2026", false, "Inventario", pestanas)}.
      */
-    public record PestanaRenombrada(String nombreAnterior, String nombreNuevo, boolean eraPestanaInventario,
-                                    String nombrePestanaInventario, List<PestanaDelSheet> pestanas) {
-    }
+    public record PestanaRenombrada(
+            String nombreAnterior,
+            String nombreNuevo,
+            boolean eraPestanaInventario,
+            String nombrePestanaInventario,
+            List<PestanaDelSheet> pestanas) {}
 
     /**
      * Regla de precio guardada; {@code aviso} es {@code null} si sincronizó bien (o no hay sincronización).
      * Ejemplo: {@code new PreciosGuardados(regla, null)}.
      */
-    public record PreciosGuardados(ReglaDePrecios precios, String aviso) {
-    }
+    public record PreciosGuardados(ReglaDePrecios precios, String aviso) {}
 }

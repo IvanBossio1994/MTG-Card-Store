@@ -58,7 +58,8 @@ public class AppPasos {
         return switch (modulo) {
             case CONFIGURACION -> configuracion;
             case INVENTARIO, RESERVAS, CAJA, MOVIMIENTOS ->
-                    throw new PendingException("El módulo " + modulo.nombreVisible() + " todavía no tiene pantalla en la v2.");
+                throw new PendingException(
+                        "El módulo " + modulo.nombreVisible() + " todavía no tiene pantalla en la v2.");
         };
     }
 }

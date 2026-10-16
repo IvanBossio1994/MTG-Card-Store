@@ -11,8 +11,10 @@ export const textos = {
   'general.error.mayor-a-cero': 'Debe ser mayor a 0.',
   'general.error.sin-centavos': 'El precio debe ser un número entero, sin centavos.',
   'general.error.corregir-campo': 'No se guardó. Hay un campo con error, marcado en rojo.',
-  'general.error.inesperado': 'No se pudo guardar por un error inesperado. Se puede reintentar en un momento.',
-  'general.error.conexion': 'No hay conexión a internet. Se puede reintentar cuando se restablezca.',
+  'general.error.inesperado':
+    'No se pudo guardar por un error inesperado. Se puede reintentar en un momento.',
+  'general.error.conexion':
+    'No hay conexión a internet. Se puede reintentar cuando se restablezca.',
   'general.error.sesion-vencida': 'La sesión de Google venció.',
   'general.boton.volver-a-iniciar-sesion': 'Volver a iniciar sesión',
   'general.error.sesion-ilegible':
@@ -33,7 +35,8 @@ export const textos = {
 
   // Configuración (HU-001, tono y Sheet rediseñados en HU-005)
   'configuracion.titulo': 'Configuración',
-  'configuracion.bajada': 'Cada bloque se guarda por separado. Lo escrito en los otros no se pierde.',
+  'configuracion.bajada':
+    'Cada bloque se guarda por separado. Lo escrito en los otros no se pierde.',
   'configuracion.carga': 'Cargando la configuración…',
   'configuracion.error.cargar-titulo': 'No se pudo cargar la configuración.',
 
@@ -61,25 +64,31 @@ export const textos = {
   'configuracion.sheet.ejemplo.link': 'Ej.: 1vSk7YvkaEKOsomY7hnRG… o la URL',
   'configuracion.sheet.etiqueta.pestana': 'Pestaña del inventario',
   'configuracion.sheet.ejemplo.pestana': 'Ej.: Inventario',
-  'configuracion.sheet.ayuda.pestana': 'Si no existe, se crea. Si el Sheet no tiene ninguna, se crea la primera.',
+  'configuracion.sheet.ayuda.pestana':
+    'Si no existe, se crea. Si el Sheet no tiene ninguna, se crea la primera.',
   'configuracion.sheet.boton.guardar': 'Guardar inventario',
   'configuracion.sheet.exito': 'Inventario guardado.',
   'configuracion.sheet.aviso.creada': 'Se creó la pestaña «{pestana}».',
   'configuracion.sheet.traer.etiqueta': 'Traer cartas de',
-  'configuracion.sheet.traer.ayuda': 'Solo si la pestaña del inventario es nueva. La de origen no se toca.',
+  'configuracion.sheet.traer.ayuda':
+    'Solo si la pestaña del inventario es nueva. La de origen no se toca.',
   'configuracion.sheet.traer.opcion.ninguna': 'No traer cartas',
   'configuracion.sheet.traer.texto.sugerida': 'sugerida',
   'configuracion.sheet.traer.texto.sin-sheet': 'Sin Sheet',
   'configuracion.sheet.traer.ayuda.sin-sheet': 'Disponible cuando se escribe el link del Sheet.',
-  'configuracion.sheet.traer.ayuda.ninguna-reconocida': 'Ninguna pestaña tiene encabezados de inventario.',
+  'configuracion.sheet.traer.ayuda.ninguna-reconocida':
+    'Ninguna pestaña tiene encabezados de inventario.',
   'configuracion.sheet.traer.error.lista': 'No se pudieron cargar las pestañas del Sheet.',
-  'configuracion.sheet.traer.error.origen-inexistente': 'La pestaña de origen ya no existe en el Sheet. Se actualizó la lista.',
+  'configuracion.sheet.traer.error.origen-inexistente':
+    'La pestaña de origen ya no existe en el Sheet. Se actualizó la lista.',
   'configuracion.sheet.traer.carga': 'Trayendo las cartas…',
   'configuracion.sheet.traer.exito': 'Se creó la pestaña «{pestana}» con {n} cartas de «{origen}».',
-  'configuracion.sheet.traer.exito-columnas-extra': 'Las columnas que la app no usa quedaron al final.',
+  'configuracion.sheet.traer.exito-columnas-extra':
+    'Las columnas que la app no usa quedaron al final.',
   'configuracion.sheet.error.vacio': 'El ID o la URL del Sheet es obligatorio.',
   'configuracion.sheet.error.invalido': 'Debe ser una URL de Google Sheets o solo el ID.',
-  'configuracion.sheet.error.sin-permiso': 'La app no tiene acceso a este Sheet. Compartirlo con {cuenta-servicio} como editor.',
+  'configuracion.sheet.error.sin-permiso':
+    'La app no tiene acceso a este Sheet. Compartirlo con {cuenta-servicio} como editor.',
   'configuracion.sheet.error.pestana-vacia': 'El nombre de la pestaña es obligatorio.',
 
   // Configuración · Sheet · fila de renombrar (HU-005)
@@ -103,11 +112,13 @@ export const textos = {
     'La pestaña «{anterior}» se renombró a «{pestana}». También se actualizó la pestaña del inventario.',
   'configuracion.sheet.renombrar.error.sin-pestana': 'La pestaña a renombrar es obligatoria.',
   'configuracion.sheet.renombrar.error.nombre-vacio': 'El nombre nuevo es obligatorio.',
-  'configuracion.sheet.renombrar.error.nombre-largo': 'El nombre no debe superar los 100 caracteres.',
+  'configuracion.sheet.renombrar.error.nombre-largo':
+    'El nombre no debe superar los 100 caracteres.',
   'configuracion.sheet.renombrar.error.nombre-igual': 'El nombre nuevo es igual al actual.',
   'configuracion.sheet.renombrar.error.nombre-repetido': 'Ya existe una pestaña con ese nombre.',
   'configuracion.sheet.renombrar.error.fija': 'Esa pestaña la usa la app y no se puede renombrar.',
-  'configuracion.sheet.renombrar.error.pestana-inexistente': 'La pestaña ya no existe en el Sheet. Se actualizó la lista.',
+  'configuracion.sheet.renombrar.error.pestana-inexistente':
+    'La pestaña ya no existe en el Sheet. Se actualizó la lista.',
 
   // Configuración · Precios
   'configuracion.precios.titulo': 'Regla de precio',
@@ -132,7 +143,8 @@ export const textos = {
   'configuracion.precios.error.redondeo-vacio': 'El múltiplo para redondear es obligatorio.',
   'configuracion.precios.error.redondeo-menor': 'El múltiplo debe ser mayor a 0.',
   'configuracion.precios.error.bulk-vacio': 'El precio es obligatorio.',
-  'configuracion.precios.error.carpeta': 'La carpeta no existe. Se puede indicar otra o dejar el campo vacío.',
+  'configuracion.precios.error.carpeta':
+    'La carpeta no existe. Se puede indicar otra o dejar el campo vacío.',
   'configuracion.precios.aviso.falla-ck':
     'Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde.',
 

@@ -82,13 +82,25 @@ export function ListaDesplegable({
         >
           <option value="">{textoVacio}</option>
           {opciones.map((opcion) => (
-            <option key={opcion.valor} value={opcion.valor} disabled={opcion.deshabilitada} className="text-tinta">
+            <option
+              key={opcion.valor}
+              value={opcion.valor}
+              disabled={opcion.deshabilitada}
+              className="text-tinta"
+            >
               {opcion.texto}
             </option>
           ))}
         </select>
-        <span className="pointer-events-none absolute top-0 right-3 flex h-[42px] items-center text-suave" aria-hidden="true">
-          {cargando ? <Loader2 className="h-4 w-4 animate-girar" /> : <ChevronDown className="h-4 w-4" />}
+        <span
+          className="pointer-events-none absolute top-0 right-3 flex h-[42px] items-center text-suave"
+          aria-hidden="true"
+        >
+          {cargando ? (
+            <Loader2 className="h-4 w-4 animate-girar" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
         </span>
       </div>
       {ayuda && (

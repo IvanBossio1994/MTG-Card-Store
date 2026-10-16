@@ -23,7 +23,11 @@ const CUENTA_SERVICIO = 'tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com';
 
 /** Respuesta falsa de fetch con un JSON. */
 function respuesta(cuerpo: unknown, estado = 200): Response {
-  return { ok: estado >= 200 && estado < 300, status: estado, json: async () => cuerpo } as Response;
+  return {
+    ok: estado >= 200 && estado < 300,
+    status: estado,
+    json: async () => cuerpo,
+  } as Response;
 }
 
 /** Respuesta ProblemDetail de la API. */
@@ -59,11 +63,11 @@ const listarFalso = vi.fn<typeof fetch>();
 
 beforeEach(() => {
   listarFalso.mockImplementation(async () => respuesta(PESTANAS));
-  vi.stubGlobal('fetch', ((ruta: RequestInfo | URL, opciones?: RequestInit) => {
-    const url = String(ruta);
+  vi.stubGlobal('fetch', (ruta: RequestInfo | URL, opciones?: RequestInit) => {
+    const url = ruta instanceof Request ? ruta.url : ruta.toString();
     const esListar = url === RUTA_PESTANAS || url.startsWith(`${RUTA_PESTANAS}?`);
     return esListar ? listarFalso(ruta, opciones) : fetchFalso(ruta, opciones);
-  }) as typeof fetch);
+  });
 });
 
 afterEach(() => {
@@ -90,7 +94,7 @@ async function abrirPantalla(configuracion: Configuracion = CONFIGURACION) {
 /** Cuerpo JSON del último pedido a la API. */
 function ultimoCuerpo(): unknown {
   const [, opciones] = fetchFalso.mock.calls.at(-1)!;
-  return JSON.parse(String(opciones?.body));
+  return JSON.parse(opciones?.body as string);
 }
 
 describe('ConfiguracionPagina · carga (CA1, CA2)', () => {
@@ -106,7 +110,9 @@ describe('ConfiguracionPagina · carga (CA1, CA2)', () => {
 
     expect(screen.queryByText('Cargando la configuración…')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tienda' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Inventario en Google Sheets' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Inventario en Google Sheets' }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('configuracion-campo-nombre-tienda')).toHaveValue('Codex Live');
     expect(screen.getByTestId('configuracion-campo-nombre-tienda')).toHaveFocus();
     expect(screen.getByTestId('configuracion-campo-sheet')).toHaveValue(CONFIGURACION.sheet!.link);
@@ -141,12 +147,16 @@ describe('ConfiguracionPagina · carga (CA1, CA2)', () => {
     fetchFalso.mockResolvedValueOnce(respuesta(CONFIGURACION));
     fireEvent.click(screen.getByTestId('configuracion-boton-reintentar'));
 
-    expect(await screen.findByTestId('configuracion-campo-nombre-tienda')).toHaveValue('Codex Live');
+    expect(await screen.findByTestId('configuracion-campo-nombre-tienda')).toHaveValue(
+      'Codex Live',
+    );
   });
 
   it('con la sesión de Google vencida al cargar, ofrece volver a iniciar sesión', async () => {
     fetchFalso.mockResolvedValueOnce(
-      problema(401, 'La sesión de Google venció.', { urlInicioSesion: '/configuracion/google/oauth/iniciar' }),
+      problema(401, 'La sesión de Google venció.', {
+        urlInicioSesion: '/configuracion/google/oauth/iniciar',
+      }),
     );
     render(<ConfiguracionPagina />);
 
@@ -164,7 +174,9 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
     const espera = pendiente<Response>();
     fetchFalso.mockReturnValueOnce(espera.promesa);
 
-    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-tienda'), { target: { value: 'Codex Live Store' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-tienda'), {
+      target: { value: 'Codex Live Store' },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-tienda'));
 
     const boton = screen.getByTestId('configuracion-boton-guardar-tienda');
@@ -172,10 +184,17 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
     expect(screen.getByRole('button', { name: 'Guardando…' })).toBe(boton);
     expect(ultimoCuerpo()).toEqual({ nombre: 'Codex Live Store', quitarLogo: false });
 
-    await act(async () => espera.resolver(respuesta({ nombre: 'Codex Live Store', logoUrl: null })));
+    await act(async () =>
+      espera.resolver(respuesta({ nombre: 'Codex Live Store', logoUrl: null })),
+    );
 
-    expect(screen.getByTestId('configuracion-mensaje-exito-tienda')).toHaveTextContent('Tienda guardada.');
-    expect(screen.getByTestId('configuracion-mensaje-exito-tienda')).toHaveAttribute('role', 'status');
+    expect(screen.getByTestId('configuracion-mensaje-exito-tienda')).toHaveTextContent(
+      'Tienda guardada.',
+    );
+    expect(screen.getByTestId('configuracion-mensaje-exito-tienda')).toHaveAttribute(
+      'role',
+      'status',
+    );
     expect(boton).toBeEnabled();
     expect(alCambiarTienda).toHaveBeenLastCalledWith({ nombre: 'Codex Live Store', logoUrl: null });
   });
@@ -214,10 +233,16 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
     const pesado = new File(['x'], 'logo.png', { type: 'image/png' });
     Object.defineProperty(pesado, 'size', { value: 2 * 1024 * 1024 + 1 });
     fireEvent.change(selector, { target: { files: [pesado] } });
-    expect(screen.getByTestId('configuracion-mensaje-error-logo')).toHaveTextContent('El logo no debe superar los 2 MB.');
+    expect(screen.getByTestId('configuracion-mensaje-error-logo')).toHaveTextContent(
+      'El logo no debe superar los 2 MB.',
+    );
 
-    fireEvent.change(selector, { target: { files: [new File(['x'], 'logo.gif', { type: 'image/gif' })] } });
-    expect(screen.getByTestId('configuracion-mensaje-error-logo')).toHaveTextContent('El logo debe ser PNG, JPG o WEBP.');
+    fireEvent.change(selector, {
+      target: { files: [new File(['x'], 'logo.gif', { type: 'image/gif' })] },
+    });
+    expect(screen.getByTestId('configuracion-mensaje-error-logo')).toHaveTextContent(
+      'El logo debe ser PNG, JPG o WEBP.',
+    );
     expect(logo()).toBeInTheDocument();
     expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
@@ -225,10 +250,14 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
   it('un logo válido se sube al guardar la tienda, antes del nombre', async () => {
     await abrirPantalla();
     const selector = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    fireEvent.change(selector, { target: { files: [new File(['png'], 'logo.png', { type: 'image/png' })] } });
+    fireEvent.change(selector, {
+      target: { files: [new File(['png'], 'logo.png', { type: 'image/png' })] },
+    });
     fetchFalso
       .mockResolvedValueOnce(respuesta({ logoUrl: '/api/v1/configuracion/tienda/logo?version=2' }))
-      .mockResolvedValueOnce(respuesta({ nombre: 'Codex Live', logoUrl: '/api/v1/configuracion/tienda/logo?version=2' }));
+      .mockResolvedValueOnce(
+        respuesta({ nombre: 'Codex Live', logoUrl: '/api/v1/configuracion/tienda/logo?version=2' }),
+      );
 
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-tienda'));
 
@@ -236,12 +265,17 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
     expect(fetchFalso.mock.calls[1][0]).toBe('/api/v1/configuracion/tienda/logo');
     expect(fetchFalso.mock.calls[1][1]?.body).toBeInstanceOf(FormData);
     expect(fetchFalso.mock.calls[2][0]).toBe('/api/v1/configuracion/tienda');
-    expect(document.querySelector('img[src="/api/v1/configuracion/tienda/logo?version=2"]')).toBeInTheDocument();
+    expect(
+      document.querySelector('img[src="/api/v1/configuracion/tienda/logo?version=2"]'),
+    ).toBeInTheDocument();
   });
 
   it('"Quitar" muestra el logo por defecto y se aplica al guardar', async () => {
     fetchFalso.mockResolvedValueOnce(
-      respuesta({ ...CONFIGURACION, tienda: { nombre: 'Codex Live', logoUrl: '/api/v1/configuracion/tienda/logo?version=1' } }),
+      respuesta({
+        ...CONFIGURACION,
+        tienda: { nombre: 'Codex Live', logoUrl: '/api/v1/configuracion/tienda/logo?version=1' },
+      }),
     );
     render(<ConfiguracionPagina />);
     await screen.findByTestId('configuracion-campo-nombre-tienda');
@@ -258,15 +292,21 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
   it('el error de la API sobre el logo va debajo del logo', async () => {
     await abrirPantalla();
     const selector = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    fireEvent.change(selector, { target: { files: [new File(['x'], 'logo.png', { type: 'image/png' })] } });
+    fireEvent.change(selector, {
+      target: { files: [new File(['x'], 'logo.png', { type: 'image/png' })] },
+    });
     fetchFalso.mockResolvedValueOnce(
-      problema(400, 'Hay datos para corregir.', { errores: { archivo: 'El logo debe ser PNG, JPG o WEBP.' } }),
+      problema(400, 'Hay datos para corregir.', {
+        errores: { archivo: 'El logo debe ser PNG, JPG o WEBP.' },
+      }),
     );
 
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-tienda'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('configuracion-mensaje-error-logo')).toHaveTextContent('El logo debe ser PNG, JPG o WEBP.'),
+      expect(screen.getByTestId('configuracion-mensaje-error-logo')).toHaveTextContent(
+        'El logo debe ser PNG, JPG o WEBP.',
+      ),
     );
     expect(screen.getByTestId('configuracion-boton-subir-logo')).toHaveFocus();
     expect(screen.queryByTestId('configuracion-mensaje-error-tienda')).not.toBeInTheDocument();
@@ -275,12 +315,17 @@ describe('ConfiguracionPagina · bloque Tienda (CA3)', () => {
 
 describe('ConfiguracionPagina · bloque Inventario (CA4, CA5)', () => {
   /** Escribe el Sheet y la pestaña y guarda; la API responde lo que se pase. */
-  async function guardarSheet(respuestaApi: Response, sheet = '1PruebaSheetConPestanaUnica0000000000000000') {
+  async function guardarSheet(
+    respuestaApi: Response,
+    sheet = '1PruebaSheetConPestanaUnica0000000000000000',
+  ) {
     await abrirPantalla();
     const espera = pendiente<Response>();
     fetchFalso.mockReturnValueOnce(espera.promesa);
     fireEvent.change(screen.getByTestId('configuracion-campo-sheet'), { target: { value: sheet } });
-    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), { target: { value: 'Inventario' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), {
+      target: { value: 'Inventario' },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
     expect(screen.getByRole('status')).toHaveTextContent('Sincronizando con el Sheet…');
     expect(screen.getByTestId('configuracion-boton-guardar-sheet')).toBeDisabled();
@@ -300,9 +345,14 @@ describe('ConfiguracionPagina · bloque Inventario (CA4, CA5)', () => {
       }),
     );
 
-    expect(ultimoCuerpo()).toEqual({ sheet: '1PruebaSheetConPestanaUnica0000000000000000', pestanaInventario: 'Inventario' });
+    expect(ultimoCuerpo()).toEqual({
+      sheet: '1PruebaSheetConPestanaUnica0000000000000000',
+      pestanaInventario: 'Inventario',
+    });
     expect(screen.queryByText('Sincronizando con el Sheet…')).not.toBeInTheDocument();
-    expect(screen.getByTestId('configuracion-mensaje-exito-sheet')).toHaveTextContent('Inventario guardado.');
+    expect(screen.getByTestId('configuracion-mensaje-exito-sheet')).toHaveTextContent(
+      'Inventario guardado.',
+    );
     expect(screen.getByTestId('configuracion-campo-sheet')).toHaveValue(
       'https://docs.google.com/spreadsheets/d/1PruebaSheetConPestanaUnica0000000000000000/edit',
     );
@@ -338,7 +388,9 @@ describe('ConfiguracionPagina · bloque Inventario (CA4, CA5)', () => {
 
   it('con la sesión vencida muestra el error con "Volver a iniciar sesión" y no pierde lo escrito en Tienda', async () => {
     await abrirPantalla();
-    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-tienda'), { target: { value: 'Sin guardar' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-tienda'), {
+      target: { value: 'Sin guardar' },
+    });
     fetchFalso.mockResolvedValueOnce(
       problema(401, 'La sesión de Google venció.', {
         accion: 'volver-a-iniciar-sesion',
@@ -367,7 +419,9 @@ describe('ConfiguracionPagina · bloque Inventario (CA4, CA5)', () => {
   it('con los campos vacíos marca los dos y no llama a la API', async () => {
     await abrirPantalla();
     fireEvent.change(screen.getByTestId('configuracion-campo-sheet'), { target: { value: '' } });
-    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), {
+      target: { value: ' ' },
+    });
 
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
 
@@ -427,7 +481,9 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
     const espera = pendiente<Response>();
     fetchFalso.mockReturnValueOnce(espera.promesa);
 
-    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), { target: { value: 'Stock 2026' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), {
+      target: { value: 'Stock 2026' },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
 
     expect(screen.getByRole('status')).toHaveTextContent('Trayendo las cartas…');
@@ -466,7 +522,9 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
       }),
     );
 
-    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), { target: { value: 'Stock 2026' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), {
+      target: { value: 'Stock 2026' },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
 
     expect(await screen.findByTestId('configuracion-mensaje-exito-sheet')).toHaveTextContent(
@@ -479,19 +537,30 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
     const espera = pendiente<Response>();
     fetchFalso.mockReturnValueOnce(espera.promesa);
 
-    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), { target: { value: 'Stock 2026' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), {
+      target: { value: 'Stock 2026' },
+    });
     fireEvent.change(selectorTraer(), { target: { value: '' } });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
 
     expect(screen.getByRole('status')).toHaveTextContent('Sincronizando con el Sheet…');
-    expect(ultimoCuerpo()).toEqual({ sheet: CONFIGURACION.sheet!.link, pestanaInventario: 'Stock 2026' });
+    expect(ultimoCuerpo()).toEqual({
+      sheet: CONFIGURACION.sheet!.link,
+      pestanaInventario: 'Stock 2026',
+    });
     await act(async () =>
       espera.resolver(
-        respuesta({ pestanaInventario: 'Stock 2026', aviso: 'Se creó la pestaña «Stock 2026».', pestanaCreada: true }),
+        respuesta({
+          pestanaInventario: 'Stock 2026',
+          aviso: 'Se creó la pestaña «Stock 2026».',
+          pestanaCreada: true,
+        }),
       ),
     );
 
-    expect(screen.getByTestId('configuracion-mensaje-aviso-sheet')).toHaveTextContent('Se creó la pestaña «Stock 2026».');
+    expect(screen.getByTestId('configuracion-mensaje-aviso-sheet')).toHaveTextContent(
+      'Se creó la pestaña «Stock 2026».',
+    );
   });
 
   it('sin Sheet: las listas quedan deshabilitadas y, al salir de un link válido, lista ese Sheet', async () => {
@@ -516,10 +585,14 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
 
     const espera = pendiente<Response>();
     listarFalso.mockReturnValueOnce(espera.promesa);
-    fireEvent.change(campoLink, { target: { value: '1PruebaSheetConStockViejo00000000000000000' } });
+    fireEvent.change(campoLink, {
+      target: { value: '1PruebaSheetConStockViejo00000000000000000' },
+    });
     fireEvent.blur(campoLink);
 
-    expect(listarFalso.mock.calls[0][0]).toBe(`${RUTA_PESTANAS}?idOLink=1PruebaSheetConStockViejo00000000000000000`);
+    expect(listarFalso.mock.calls[0][0]).toBe(
+      `${RUTA_PESTANAS}?idOLink=1PruebaSheetConStockViejo00000000000000000`,
+    );
     expect(selectorTraer()).toBeDisabled();
     expect(opciones(selectorTraer())).toEqual(['Cargando pestañas…']);
 
@@ -536,7 +609,10 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
 
   it('si ninguna pestaña es reconocida, queda en "No traer cartas" y lo dice la ayuda', async () => {
     listarFalso.mockImplementation(async () =>
-      respuesta({ sheetGuardado: true, pestanas: [{ nombre: 'Ventas', enUso: false, sugerida: false, fija: false }] }),
+      respuesta({
+        sheetGuardado: true,
+        pestanas: [{ nombre: 'Ventas', enUso: false, sugerida: false, fija: false }],
+      }),
     );
     await abrirPantalla();
 
@@ -553,9 +629,9 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
     fetchFalso.mockResolvedValueOnce(respuesta(CONFIGURACION));
     render(<ConfiguracionPagina />);
 
-    expect(await screen.findByTestId('configuracion-mensaje-error-traer-cartas-de')).toHaveTextContent(
-      'No se pudieron cargar las pestañas del Sheet. Reintentar',
-    );
+    expect(
+      await screen.findByTestId('configuracion-mensaje-error-traer-cartas-de'),
+    ).toHaveTextContent('No se pudieron cargar las pestañas del Sheet. Reintentar');
     expect(screen.getByTestId('configuracion-mensaje-error-pestana-a-renombrar')).toHaveTextContent(
       'No se pudieron cargar las pestañas del Sheet. Reintentar',
     );
@@ -565,17 +641,26 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
     expect(opciones(selectorRenombrar())).toEqual(['Elegir una pestaña']);
     expect(screen.getByTestId('configuracion-boton-renombrar-pestana')).toBeDisabled();
 
-    fetchFalso.mockResolvedValueOnce(respuesta({ pestanaInventario: 'Inventario', pestanaCreada: false }));
+    fetchFalso.mockResolvedValueOnce(
+      respuesta({ pestanaInventario: 'Inventario', pestanaCreada: false }),
+    );
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
-    expect(await screen.findByTestId('configuracion-mensaje-exito-sheet')).toHaveTextContent('Inventario guardado.');
-    expect(ultimoCuerpo()).toEqual({ sheet: CONFIGURACION.sheet!.link, pestanaInventario: 'Inventario' });
+    expect(await screen.findByTestId('configuracion-mensaje-exito-sheet')).toHaveTextContent(
+      'Inventario guardado.',
+    );
+    expect(ultimoCuerpo()).toEqual({
+      sheet: CONFIGURACION.sheet!.link,
+      pestanaInventario: 'Inventario',
+    });
 
     // Después de guardar se volvió a listar (y volvió a fallar); ahora "Reintentar" funciona.
     const reintentar = await screen.findByTestId('configuracion-boton-reintentar-pestanas-origen');
     listarFalso.mockImplementation(async () => respuesta(PESTANAS));
     fireEvent.click(reintentar);
     await waitFor(() => expect(selectorTraer()).toBeEnabled());
-    expect(screen.queryByTestId('configuracion-mensaje-error-traer-cartas-de')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('configuracion-mensaje-error-traer-cartas-de'),
+    ).not.toBeInTheDocument();
   });
 
   it('si la pestaña de origen ya no existe, muestra el error junto a la lista y la recarga', async () => {
@@ -590,10 +675,14 @@ describe('ConfiguracionPagina · Inventario: "Traer cartas de" (HU-007 CA2 a CA4
       }),
     );
 
-    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), { target: { value: 'Stock 2026' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pestana-inventario'), {
+      target: { value: 'Stock 2026' },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-sheet'));
 
-    expect(await screen.findByTestId('configuracion-mensaje-error-traer-cartas-de')).toHaveTextContent(texto);
+    expect(
+      await screen.findByTestId('configuracion-mensaje-error-traer-cartas-de'),
+    ).toHaveTextContent(texto);
     expect(screen.queryByTestId('configuracion-mensaje-error-sheet')).not.toBeInTheDocument();
     await waitFor(() => expect(listarFalso).toHaveBeenCalledTimes(2));
   });
@@ -603,7 +692,9 @@ describe('ConfiguracionPagina · Inventario: renombrar una pestaña (HU-007 CA5 
   /** Elige una pestaña, escribe el nombre nuevo y aprieta "Renombrar pestaña". */
   function renombrar(actual: string, nuevo: string) {
     fireEvent.change(selectorRenombrar(), { target: { value: actual } });
-    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-nuevo'), { target: { value: nuevo } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-nuevo'), {
+      target: { value: nuevo },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-renombrar-pestana'));
   }
 
@@ -657,7 +748,11 @@ describe('ConfiguracionPagina · Inventario: renombrar una pestaña (HU-007 CA5 
     expect(exito).toHaveAttribute('role', 'status');
     expect(screen.getByTestId('configuracion-campo-nombre-nuevo')).toHaveValue('');
     expect(selectorRenombrar()).toHaveValue('');
-    expect(opciones(selectorRenombrar())).toEqual(['Elegir una pestaña', 'Inventario · en uso', 'Stock 2026']);
+    expect(opciones(selectorRenombrar())).toEqual([
+      'Elegir una pestaña',
+      'Inventario · en uso',
+      'Stock 2026',
+    ]);
     expect(screen.getByTestId('configuracion-campo-pestana-inventario')).toHaveValue('Inventario');
     expect(listarFalso).toHaveBeenCalledTimes(1);
   });
@@ -715,24 +810,44 @@ describe('ConfiguracionPagina · Inventario: renombrar una pestaña (HU-007 CA5 
   });
 
   it.each([
-    ['más de 100 caracteres', 'Hoja 1', 'x'.repeat(101), 'El nombre no debe superar los 100 caracteres.'],
+    [
+      'más de 100 caracteres',
+      'Hoja 1',
+      'x'.repeat(101),
+      'El nombre no debe superar los 100 caracteres.',
+    ],
     ['igual al actual', 'Hoja 1', ' Hoja 1 ', 'El nombre nuevo es igual al actual.'],
-    ['repetido sin distinguir mayúsculas', 'Hoja 1', 'inventario', 'Ya existe una pestaña con ese nombre.'],
-  ])('con un nombre %s marca el nombre nuevo y no llama a la API', async (_caso, actual, nuevo, mensaje) => {
-    await abrirPantalla();
-    const llamadas = fetchFalso.mock.calls.length;
+    [
+      'repetido sin distinguir mayúsculas',
+      'Hoja 1',
+      'inventario',
+      'Ya existe una pestaña con ese nombre.',
+    ],
+  ])(
+    'con un nombre %s marca el nombre nuevo y no llama a la API',
+    async (_caso, actual, nuevo, mensaje) => {
+      await abrirPantalla();
+      const llamadas = fetchFalso.mock.calls.length;
 
-    renombrar(actual, nuevo);
+      renombrar(actual, nuevo);
 
-    expect(screen.getByTestId('configuracion-mensaje-error-nombre-nuevo')).toHaveTextContent(mensaje);
-    expect(screen.getByTestId('configuracion-campo-nombre-nuevo')).toHaveFocus();
-    expect(fetchFalso.mock.calls.length).toBe(llamadas);
-  });
+      expect(screen.getByTestId('configuracion-mensaje-error-nombre-nuevo')).toHaveTextContent(
+        mensaje,
+      );
+      expect(screen.getByTestId('configuracion-campo-nombre-nuevo')).toHaveFocus();
+      expect(fetchFalso.mock.calls.length).toBe(llamadas);
+    },
+  );
 
   it('cambiar solo mayúsculas sí se permite', async () => {
     await abrirPantalla();
     fetchFalso.mockResolvedValueOnce(
-      respuesta({ nombreAnterior: 'Hoja 1', nombreNuevo: 'HOJA 1', eraPestanaInventario: false, pestanas: [] }),
+      respuesta({
+        nombreAnterior: 'Hoja 1',
+        nombreNuevo: 'HOJA 1',
+        eraPestanaInventario: false,
+        pestanas: [],
+      }),
     );
 
     renombrar('Hoja 1', 'HOJA 1');
@@ -763,7 +878,9 @@ describe('ConfiguracionPagina · Inventario: renombrar una pestaña (HU-007 CA5 
   it('si la pestaña fue borrada en el Sheet, muestra el error de la fila y recarga la lista', async () => {
     await abrirPantalla();
     const texto = 'La pestaña ya no existe en el Sheet. Se actualizó la lista.';
-    fetchFalso.mockResolvedValueOnce(problema(404, texto, { campo: null, codigo: 'PESTANA_INEXISTENTE' }));
+    fetchFalso.mockResolvedValueOnce(
+      problema(404, texto, { campo: null, codigo: 'PESTANA_INEXISTENTE' }),
+    );
 
     renombrar('Hoja 1', 'Stock 2026');
 
@@ -782,7 +899,9 @@ describe('ConfiguracionPagina · Inventario: renombrar una pestaña (HU-007 CA5 
     fireEvent.click(await screen.findByTestId('configuracion-boton-reintentar-pestanas'));
 
     await waitFor(() => expect(selectorRenombrar()).toBeEnabled());
-    expect(screen.queryByTestId('configuracion-mensaje-error-pestana-a-renombrar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('configuracion-mensaje-error-pestana-a-renombrar'),
+    ).not.toBeInTheDocument();
   });
 
   it('con el Sheet sin pestañas, la lista queda deshabilitada y lo dice', async () => {
@@ -790,7 +909,9 @@ describe('ConfiguracionPagina · Inventario: renombrar una pestaña (HU-007 CA5 
     fetchFalso.mockResolvedValueOnce(respuesta(CONFIGURACION));
     render(<ConfiguracionPagina />);
 
-    await waitFor(() => expect(opciones(selectorRenombrar())).toEqual(['El Sheet no tiene pestañas.']));
+    await waitFor(() =>
+      expect(opciones(selectorRenombrar())).toEqual(['El Sheet no tiene pestañas.']),
+    );
     expect(selectorRenombrar()).toBeDisabled();
     expect(screen.getByTestId('configuracion-boton-renombrar-pestana')).toBeDisabled();
   });
@@ -802,8 +923,12 @@ describe('ConfiguracionPagina · bloque Regla de precio (CA6)', () => {
     const espera = pendiente<Response>();
     fetchFalso.mockReturnValueOnce(espera.promesa);
 
-    fireEvent.change(screen.getByTestId('configuracion-campo-cotizacion'), { target: { value: '1350,5' } });
-    fireEvent.change(screen.getByTestId('configuracion-campo-carpeta-cache'), { target: { value: '  D:/TCG/cache ' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-cotizacion'), {
+      target: { value: '1350,5' },
+    });
+    fireEvent.change(screen.getByTestId('configuracion-campo-carpeta-cache'), {
+      target: { value: '  D:/TCG/cache ' },
+    });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-precios'));
 
     const boton = screen.getByTestId('configuracion-boton-guardar-precios');
@@ -819,7 +944,12 @@ describe('ConfiguracionPagina · bloque Regla de precio (CA6)', () => {
 
     await act(async () =>
       espera.resolver(
-        respuesta({ ...CONFIGURACION.precios, cotizacion: 1350.5, carpetaCache: 'D:/TCG/cache', aviso: null }),
+        respuesta({
+          ...CONFIGURACION.precios,
+          cotizacion: 1350.5,
+          carpetaCache: 'D:/TCG/cache',
+          aviso: null,
+        }),
       ),
     );
 
@@ -831,9 +961,15 @@ describe('ConfiguracionPagina · bloque Regla de precio (CA6)', () => {
 
   it('con un bulk con centavos marca ese campo, con el error de bloque, y no llama a la API', async () => {
     await abrirPantalla();
-    fireEvent.change(screen.getByTestId('configuracion-campo-bulk-rare'), { target: { value: '300,50' } });
-    fireEvent.change(screen.getByTestId('configuracion-campo-cotizacion'), { target: { value: '' } });
-    fireEvent.change(screen.getByTestId('configuracion-campo-bulk-mythic'), { target: { value: '0' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-bulk-rare'), {
+      target: { value: '300,50' },
+    });
+    fireEvent.change(screen.getByTestId('configuracion-campo-cotizacion'), {
+      target: { value: '' },
+    });
+    fireEvent.change(screen.getByTestId('configuracion-campo-bulk-mythic'), {
+      target: { value: '0' },
+    });
 
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-precios'));
 
@@ -843,7 +979,9 @@ describe('ConfiguracionPagina · bloque Regla de precio (CA6)', () => {
     expect(screen.getByTestId('configuracion-mensaje-error-cotizacion')).toHaveTextContent(
       'La cotización del dólar es obligatoria.',
     );
-    expect(screen.getByTestId('configuracion-mensaje-error-bulk-mythic')).toHaveTextContent('Debe ser mayor a 0.');
+    expect(screen.getByTestId('configuracion-mensaje-error-bulk-mythic')).toHaveTextContent(
+      'Debe ser mayor a 0.',
+    );
     expect(screen.getByTestId('configuracion-mensaje-error-precios')).toHaveTextContent(
       'No se guardó. Hay un campo con error, marcado en rojo.',
     );
@@ -861,13 +999,15 @@ describe('ConfiguracionPagina · bloque Regla de precio (CA6)', () => {
         },
       }),
     );
-    fireEvent.change(screen.getByTestId('configuracion-campo-carpeta-cache'), { target: { value: 'Z:/no-existe' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-carpeta-cache'), {
+      target: { value: 'Z:/no-existe' },
+    });
 
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-precios'));
 
-    expect(await screen.findByTestId('configuracion-mensaje-error-carpeta-cache')).toHaveTextContent(
-      'La carpeta no existe. Se puede indicar otra o dejar el campo vacío.',
-    );
+    expect(
+      await screen.findByTestId('configuracion-mensaje-error-carpeta-cache'),
+    ).toHaveTextContent('La carpeta no existe. Se puede indicar otra o dejar el campo vacío.');
     expect(screen.getByTestId('configuracion-mensaje-error-bulk-rare')).toHaveTextContent(
       'El precio debe ser un número entero, sin centavos.',
     );
@@ -879,12 +1019,15 @@ describe('ConfiguracionPagina · bloque Regla de precio (CA6)', () => {
 
   it('si falla Card Kingdom muestra el aviso en lugar del éxito', async () => {
     await abrirPantalla();
-    const aviso = 'Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde.';
+    const aviso =
+      'Guardado, pero no se pudo sincronizar con Card Kingdom. Se puede reintentar más tarde.';
     fetchFalso.mockResolvedValueOnce(respuesta({ ...CONFIGURACION.precios, aviso }));
 
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-precios'));
 
-    expect(await screen.findByTestId('configuracion-mensaje-aviso-precios')).toHaveTextContent(aviso);
+    expect(await screen.findByTestId('configuracion-mensaje-aviso-precios')).toHaveTextContent(
+      aviso,
+    );
     expect(screen.queryByTestId('configuracion-mensaje-exito-precios')).not.toBeInTheDocument();
   });
 });
@@ -906,7 +1049,9 @@ describe('ConfiguracionPagina · bloque Puntos (CA6)', () => {
     fetchFalso.mockResolvedValueOnce(respuesta({ pesosPorPunto: 500 }));
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-puntos'));
 
-    expect(await screen.findByTestId('configuracion-mensaje-exito-puntos')).toHaveTextContent('Puntos guardados.');
+    expect(await screen.findByTestId('configuracion-mensaje-exito-puntos')).toHaveTextContent(
+      'Puntos guardados.',
+    );
     expect(fetchFalso.mock.calls.at(-1)![0]).toBe('/api/v1/configuracion/puntos');
     expect(ultimoCuerpo()).toEqual({ pesosPorPunto: 500 });
   });
@@ -924,7 +1069,9 @@ describe('ConfiguracionPagina · bloque Puntos (CA6)', () => {
 
     fireEvent.change(campo, { target: { value: '0' } });
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-puntos'));
-    expect(screen.getByTestId('configuracion-mensaje-error-pesos-por-punto')).toHaveTextContent('Debe ser mayor a 0.');
+    expect(screen.getByTestId('configuracion-mensaje-error-pesos-por-punto')).toHaveTextContent(
+      'Debe ser mayor a 0.',
+    );
     expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
 });
@@ -968,7 +1115,9 @@ describe('ConfiguracionPagina · salir con cambios sin guardar (CA7)', () => {
 
   it('con un cambio muestra el modal; "Seguir editando" y Esc se quedan con lo escrito', async () => {
     const { navegaciones, quitar } = await abrirConEnlace();
-    fireEvent.change(screen.getByTestId('configuracion-campo-pesos-por-punto'), { target: { value: '750' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pesos-por-punto'), {
+      target: { value: '750' },
+    });
 
     fireEvent.click(screen.getByTestId('app-enlace-inventario'));
 
@@ -991,7 +1140,9 @@ describe('ConfiguracionPagina · salir con cambios sin guardar (CA7)', () => {
 
   it('un bloque guardado deja de contar como sin guardar', async () => {
     const { navegaciones, quitar } = await abrirConEnlace();
-    fireEvent.change(screen.getByTestId('configuracion-campo-pesos-por-punto'), { target: { value: '500' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-pesos-por-punto'), {
+      target: { value: '500' },
+    });
     fetchFalso.mockResolvedValueOnce(respuesta({ pesosPorPunto: 500 }));
     fireEvent.click(screen.getByTestId('configuracion-boton-guardar-puntos'));
     await screen.findByTestId('configuracion-mensaje-exito-puntos');
@@ -1005,7 +1156,9 @@ describe('ConfiguracionPagina · salir con cambios sin guardar (CA7)', () => {
 
   it('"Salir igual" sigue al enlace sin volver a preguntar', async () => {
     const { navegaciones, quitar } = await abrirConEnlace();
-    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-tienda'), { target: { value: 'Otra' } });
+    fireEvent.change(screen.getByTestId('configuracion-campo-nombre-tienda'), {
+      target: { value: 'Otra' },
+    });
 
     fireEvent.click(screen.getByTestId('app-enlace-inventario'));
     expect(navegaciones).toEqual([]);

@@ -7,7 +7,6 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Tracing;
 import io.cucumber.java.Scenario;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -82,7 +81,8 @@ public class NavegadorE2E {
                     .setViewportSize(ANCHO, ALTO)
                     .setLocale("es-AR"));
             contexto.setDefaultTimeout(ESPERA_MAXIMA_MS);
-            contexto.tracing().start(new Tracing.StartOptions().setScreenshots(true).setSnapshots(true));
+            contexto.tracing()
+                    .start(new Tracing.StartOptions().setScreenshots(true).setSnapshots(true));
             pagina = contexto.newPage();
         }
         return pagina;
@@ -100,9 +100,11 @@ public class NavegadorE2E {
             if (escenario.isFailed()) {
                 String nombre = nombreDeArchivo(escenario.getName());
                 byte[] captura = pagina.screenshot(new Page.ScreenshotOptions()
-                        .setPath(CARPETA_EVIDENCIAS.resolve(nombre + ".png")).setFullPage(true));
+                        .setPath(CARPETA_EVIDENCIAS.resolve(nombre + ".png"))
+                        .setFullPage(true));
                 escenario.attach(captura, "image/png", nombre);
-                contexto.tracing().stop(new Tracing.StopOptions().setPath(CARPETA_EVIDENCIAS.resolve(nombre + "-traza.zip")));
+                contexto.tracing()
+                        .stop(new Tracing.StopOptions().setPath(CARPETA_EVIDENCIAS.resolve(nombre + "-traza.zip")));
             } else {
                 contexto.tracing().stop();
             }

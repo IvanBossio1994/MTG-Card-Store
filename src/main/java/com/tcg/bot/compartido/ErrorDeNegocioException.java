@@ -1,10 +1,9 @@
 package com.tcg.bot.compartido;
 
-import org.springframework.http.HttpStatus;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 /**
  * Error de negocio con código HTTP y mensaje en español para el usuario.
@@ -44,8 +43,11 @@ public class ErrorDeNegocioException extends RuntimeException {
     public static ErrorDeNegocioException campoInvalido(String campo, String mensaje) {
         Map<String, String> errores = new LinkedHashMap<>();
         errores.put(campo, mensaje);
-        return new ErrorDeNegocioException(HttpStatus.BAD_REQUEST, ManejadorErroresApi.TITULO_DATOS_INVALIDOS,
-                ManejadorErroresApi.DETALLE_DATOS_INVALIDOS, Map.of("errores", errores));
+        return new ErrorDeNegocioException(
+                HttpStatus.BAD_REQUEST,
+                ManejadorErroresApi.TITULO_DATOS_INVALIDOS,
+                ManejadorErroresApi.DETALLE_DATOS_INVALIDOS,
+                Map.of("errores", errores));
     }
 
     /**
@@ -54,13 +56,17 @@ public class ErrorDeNegocioException extends RuntimeException {
      * Ejemplo: {@code datosInvalidos({"nombreNuevo": "Ya existe una pestaña con ese nombre."}, "nombre-nuevo", "NOMBRE_REPETIDO")}
      * → 400 con {@code errores}, {@code campo: "nombre-nuevo"} y {@code codigo: "NOMBRE_REPETIDO"}.
      */
-    public static ErrorDeNegocioException datosInvalidos(Map<String, String> errores, String campoPantalla, String codigo) {
+    public static ErrorDeNegocioException datosInvalidos(
+            Map<String, String> errores, String campoPantalla, String codigo) {
         Map<String, Object> propiedades = new LinkedHashMap<>();
         propiedades.put("errores", new LinkedHashMap<>(errores));
         propiedades.put("campo", campoPantalla);
         propiedades.put("codigo", codigo);
-        return new ErrorDeNegocioException(HttpStatus.BAD_REQUEST, ManejadorErroresApi.TITULO_DATOS_INVALIDOS,
-                ManejadorErroresApi.DETALLE_DATOS_INVALIDOS, propiedades);
+        return new ErrorDeNegocioException(
+                HttpStatus.BAD_REQUEST,
+                ManejadorErroresApi.TITULO_DATOS_INVALIDOS,
+                ManejadorErroresApi.DETALLE_DATOS_INVALIDOS,
+                propiedades);
     }
 
     /**

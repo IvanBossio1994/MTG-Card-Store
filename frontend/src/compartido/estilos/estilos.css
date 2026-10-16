@@ -1,8 +1,8 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Tokens del sistema de diseño (docs/v2/ux/sistema-diseno.md). Se usan como clases: bg-arena, text-acento, border-borde… */
 @theme {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
 
   --color-arena: #faf7f2;
   --color-tinta: #292524;

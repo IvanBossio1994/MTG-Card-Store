@@ -1,5 +1,11 @@
 package com.tcg.bot.compartido;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -14,12 +20,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** CA5: errores de la API como ProblemDetail en español. Fuera de /api no cambia nada. */
 @WebMvcTest(ManejadorErroresApiTest.ControladorDePrueba.class)
@@ -50,7 +50,8 @@ class ManejadorErroresApiTest {
 
     @Test
     void dtoInvalidoResponde400ConErroresPorCampo() throws Exception {
-        mockMvc.perform(post("/api/v1/prueba").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/prueba")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nombre\":\"\",\"cantidad\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -62,10 +63,13 @@ class ManejadorErroresApiTest {
 
     @Test
     void jsonMalFormadoResponde400() throws Exception {
-        mockMvc.perform(post("/api/v1/prueba").contentType(MediaType.APPLICATION_JSON).content("{nombre:"))
+        mockMvc.perform(post("/api/v1/prueba")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{nombre:"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Pedido inválido"))
-                .andExpect(jsonPath("$.detail").value("El pedido no se pudo leer. Los datos enviados no tienen el formato esperado."));
+                .andExpect(jsonPath("$.detail")
+                        .value("El pedido no se pudo leer. Los datos enviados no tienen el formato esperado."));
     }
 
     @Test
@@ -88,14 +92,15 @@ class ManejadorErroresApiTest {
         mockMvc.perform(get("/api/v1/prueba/falla"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.title").value("Error interno"))
-                .andExpect(jsonPath("$.detail").value("Ocurrió un error inesperado. Se puede reintentar en un momento."));
+                .andExpect(
+                        jsonPath("$.detail").value("Ocurrió un error inesperado. Se puede reintentar en un momento."));
     }
 
     record PedidoDePrueba(
             @NotBlank(message = "Ingresá un nombre.") String nombre,
-            @Positive(message = "La cantidad tiene que ser mayor a 0.") int cantidad
-    ) {
-    }
+
+            @Positive(message = "La cantidad tiene que ser mayor a 0.")
+            int cantidad) {}
 
     @RestController
     static class ControladorDePrueba {

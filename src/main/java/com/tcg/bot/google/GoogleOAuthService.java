@@ -14,17 +14,12 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.tcg.bot.compartido.AccesoSheet;
 import com.tcg.bot.compartido.SesionGoogle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,6 +27,10 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * Login con el Gmail del comercio (OAuth). Lo usan la v1 (pantallas y Sheets) y la v2 ({@link SesionGoogle}).
@@ -48,12 +47,14 @@ public class GoogleOAuthService implements SesionGoogle {
     private static final String USERINFO_URI = "https://openidconnect.googleapis.com/v1/userinfo";
     /** {@code email}: para mostrar "Conectado como {gmail}" en Configuración. */
     private static final List<String> SCOPES = List.of(SheetsScopes.SPREADSHEETS, "email");
+
     private static final long SEGUNDOS_MINIMOS_DE_TOKEN = 60;
 
     private final Path tokenDirectory;
     private final String clientId;
     private final String clientSecret;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final HttpClient http =
+            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private volatile String gmailEnMemoria;
 
     /**
@@ -63,16 +64,14 @@ public class GoogleOAuthService implements SesionGoogle {
     public GoogleOAuthService(
             @Value("${app.storage-dir:./data}") String storageDirectory,
             @Value("${google.oauth.client-id:}") String clientId,
-            @Value("${google.oauth.client-secret:}") String clientSecret
-    ) {
+            @Value("${google.oauth.client-secret:}") String clientSecret) {
         this.tokenDirectory = Paths.get(storageDirectory).resolve("google-oauth-token");
         this.clientId = clientId;
         this.clientSecret = clientSecret;
     }
 
     public boolean hasOAuthClientConfigured() {
-        return clientId != null && !clientId.isBlank()
-                && clientSecret != null && !clientSecret.isBlank();
+        return clientId != null && !clientId.isBlank() && clientSecret != null && !clientSecret.isBlank();
     }
 
     public boolean hasOAuthToken() {
@@ -96,9 +95,8 @@ public class GoogleOAuthService implements SesionGoogle {
     }
 
     public void exchangeCode(String code, String redirectUri) throws Exception {
-        var tokenResponse = flow().newTokenRequest(code)
-                .setRedirectUri(redirectUri)
-                .execute();
+        var tokenResponse =
+                flow().newTokenRequest(code).setRedirectUri(redirectUri).execute();
         flow().createAndStoreCredential(tokenResponse, USER_ID);
         gmailEnMemoria = null;
     }
@@ -110,10 +108,7 @@ public class GoogleOAuthService implements SesionGoogle {
         }
 
         return new Sheets.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                credential
-        )
+                        GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance(), credential)
                 .setApplicationName(APPLICATION_NAME)
                 .build();
     }
@@ -139,7 +134,8 @@ public class GoogleOAuthService implements SesionGoogle {
                 throw SesionGoogle.sesionVencida();
             }
             Long segundosRestantes = credencial.getExpiresInSeconds();
-            if ((segundosRestantes == null || segundosRestantes < SEGUNDOS_MINIMOS_DE_TOKEN) && !credencial.refreshToken()) {
+            if ((segundosRestantes == null || segundosRestantes < SEGUNDOS_MINIMOS_DE_TOKEN)
+                    && !credencial.refreshToken()) {
                 throw SesionGoogle.sesionVencida();
             }
             return gmailDe(credencial);
@@ -196,11 +192,10 @@ public class GoogleOAuthService implements SesionGoogle {
     private GoogleAuthorizationCodeFlow flow() throws IOException, GeneralSecurityException {
         GoogleClientSecrets clientSecrets = clientSecrets();
         return new GoogleAuthorizationCodeFlow.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                clientSecrets,
-                SCOPES
-        )
+                        GoogleNetHttpTransport.newTrustedTransport(),
+                        GsonFactory.getDefaultInstance(),
+                        clientSecrets,
+                        SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(tokenDirectory.toFile()))
                 .setAccessType("offline")
                 .build();
@@ -226,7 +221,8 @@ public class GoogleOAuthService implements SesionGoogle {
         }
 
         try (var paths = Files.walk(path)) {
-            for (Path item : paths.sorted((first, second) -> second.compareTo(first)).toList()) {
+            for (Path item :
+                    paths.sorted((first, second) -> second.compareTo(first)).toList()) {
                 Files.deleteIfExists(item);
             }
         }

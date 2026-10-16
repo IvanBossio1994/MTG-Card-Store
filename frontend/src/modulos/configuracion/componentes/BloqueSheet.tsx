@@ -50,10 +50,17 @@ function origenSugerido(pestanas: Pestana[]): string {
  * Éxito de traer cartas: "Se creó la pestaña «X» con N cartas de «Y»." (con 1, "1 carta"), más la frase de las
  * columnas extra si las hubo.
  */
-function mensajeCartasTraidas(pestana: string, origen: string, cantidad: number, hayColumnasExtra: boolean): string {
+function mensajeCartasTraidas(
+  pestana: string,
+  origen: string,
+  cantidad: number,
+  hayColumnasExtra: boolean,
+): string {
   const base = texto('configuracion.sheet.traer.exito', { pestana, n: cantidad, origen });
   const conNumero = cantidad === 1 ? base.replace('1 cartas', '1 carta') : base;
-  return hayColumnasExtra ? `${conNumero} ${textos['configuracion.sheet.traer.exito-columnas-extra']}` : conNumero;
+  return hayColumnasExtra
+    ? `${conNumero} ${textos['configuracion.sheet.traer.exito-columnas-extra']}`
+    : conNumero;
 }
 
 export interface BloqueSheetProps {
@@ -77,7 +84,9 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
   const [gmail, setGmail] = useState(sheet.gmail ?? null);
   const [origen, setOrigen] = useState('');
   const [trayendo, setTrayendo] = useState(false);
-  const [listaTraer, setListaTraer] = useState<EstadoLista>({ tipo: haySheetGuardado ? 'cargando' : 'sin-sheet' });
+  const [listaTraer, setListaTraer] = useState<EstadoLista>({
+    tipo: haySheetGuardado ? 'cargando' : 'sin-sheet',
+  });
   const [listaRenombrar, setListaRenombrar] = useState<EstadoLista>({
     tipo: haySheetGuardado ? 'cargando' : 'sin-sheet',
   });
@@ -137,6 +146,7 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
   // Al abrir, con un Sheet guardado, una sola llamada llena las dos listas.
   useEffect(() => {
     if (haySheetGuardado) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- HU-013: la carga de las listas pasa a useQuery
       void cargarListas({ traer: true, renombrar: true });
     }
   }, [haySheetGuardado, cargarListas]);
@@ -179,26 +189,31 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
     const pestanaExiste = pestanasTraer.some((existente) => existente.nombre === pestanaLimpia);
     const traerDe = origenElegido && !pestanaExiste ? origenElegido : undefined;
     setTrayendo(Boolean(traerDe));
-    const conectado = await bloque.guardar(() => conectarSheet(linkLimpio, pestanaLimpia, traerDe), {
-      exito: (respuesta) =>
-        respuesta.cartasTraidas
-          ? mensajeCartasTraidas(
-              respuesta.pestanaInventario ?? pestanaLimpia,
-              respuesta.cartasTraidas.origen ?? origenElegido,
-              respuesta.cartasTraidas.cantidad ?? 0,
-              respuesta.cartasTraidas.hayColumnasExtra ?? false,
-            )
-          : textos['configuracion.sheet.exito'],
-      aviso: (respuesta) =>
-        respuesta.pestanaCreada && !respuesta.cartasTraidas
-          ? texto('configuracion.sheet.aviso.creada', { pestana: respuesta.pestanaInventario ?? pestanaLimpia })
-          : null,
-      alFallar: (error) => {
-        if (error instanceof ErrorApi && error.codigo === 'ORIGEN_INEXISTENTE') {
-          recargarListaTraer();
-        }
+    const conectado = await bloque.guardar(
+      () => conectarSheet(linkLimpio, pestanaLimpia, traerDe),
+      {
+        exito: (respuesta) =>
+          respuesta.cartasTraidas
+            ? mensajeCartasTraidas(
+                respuesta.pestanaInventario ?? pestanaLimpia,
+                respuesta.cartasTraidas.origen ?? origenElegido,
+                respuesta.cartasTraidas.cantidad ?? 0,
+                respuesta.cartasTraidas.hayColumnasExtra ?? false,
+              )
+            : textos['configuracion.sheet.exito'],
+        aviso: (respuesta) =>
+          respuesta.pestanaCreada && !respuesta.cartasTraidas
+            ? texto('configuracion.sheet.aviso.creada', {
+                pestana: respuesta.pestanaInventario ?? pestanaLimpia,
+              })
+            : null,
+        alFallar: (error) => {
+          if (error instanceof ErrorApi && error.codigo === 'ORIGEN_INEXISTENTE') {
+            recargarListaTraer();
+          }
+        },
       },
-    });
+    );
     if (conectado) {
       const linkGuardado = conectado.link ?? linkLimpio;
       setLinkOId(linkGuardado);
@@ -228,7 +243,8 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
       errores.nombreNuevo = textos['configuracion.sheet.renombrar.error.nombre-igual'];
     } else if (
       pestanasRenombrar.some(
-        (otra) => otra.nombre !== actual && otra.nombre?.toLocaleLowerCase() === nuevo.toLocaleLowerCase(),
+        (otra) =>
+          otra.nombre !== actual && otra.nombre?.toLocaleLowerCase() === nuevo.toLocaleLowerCase(),
       )
     ) {
       errores.nombreNuevo = textos['configuracion.sheet.renombrar.error.nombre-repetido'];
@@ -239,10 +255,15 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
     }
     const renombrada = await filaRenombrar.guardar(() => renombrarPestana(actual, nuevo), {
       exito: (respuesta) =>
-        texto(respuesta.eraPestanaInventario ? 'configuracion.sheet.aviso.renombrada' : 'configuracion.sheet.renombrar.exito', {
-          anterior: respuesta.nombreAnterior ?? actual,
-          pestana: respuesta.nombreNuevo ?? nuevo,
-        }),
+        texto(
+          respuesta.eraPestanaInventario
+            ? 'configuracion.sheet.aviso.renombrada'
+            : 'configuracion.sheet.renombrar.exito',
+          {
+            anterior: respuesta.nombreAnterior ?? actual,
+            pestana: respuesta.nombreNuevo ?? nuevo,
+          },
+        ),
       alFallar: (error) => {
         if (error instanceof ErrorApi && error.codigo === 'PESTANA_INEXISTENTE') {
           setPestanaElegida('');
@@ -271,13 +292,16 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
     valor: nombre,
     texto: sugerida ? `${nombre} · ${textos['configuracion.sheet.traer.texto.sugerida']}` : nombre,
   }));
-  const ningunaReconocida = estadoTraer.tipo === 'lista' && !pestanasTraer.some((existente) => existente.sugerida);
+  const ningunaReconocida =
+    estadoTraer.tipo === 'lista' && !pestanasTraer.some((existente) => existente.sugerida);
 
-  const opcionesRenombrar: OpcionLista[] = pestanasRenombrar.map(({ nombre = '', enUso, fija }) => ({
-    valor: nombre,
-    texto: enUso ? `${nombre} · ${textos['configuracion.sheet.renombrar.texto.en-uso']}` : nombre,
-    deshabilitada: fija,
-  }));
+  const opcionesRenombrar: OpcionLista[] = pestanasRenombrar.map(
+    ({ nombre = '', enUso, fija }) => ({
+      valor: nombre,
+      texto: enUso ? `${nombre} · ${textos['configuracion.sheet.renombrar.texto.en-uso']}` : nombre,
+      deshabilitada: fija,
+    }),
+  );
 
   const textoCapa = filaRenombrar.guardando
     ? textos['configuracion.sheet.renombrar.carga']
@@ -372,7 +396,9 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
             ref={bloque.registrarCampo('traerCartasDe')}
             error={
               bloque.errores.traerCartasDe ??
-              (estadoTraer.tipo === 'error' ? textos['configuracion.sheet.traer.error.lista'] : undefined)
+              (estadoTraer.tipo === 'error'
+                ? textos['configuracion.sheet.traer.error.lista']
+                : undefined)
             }
             errorSinMarcar={!bloque.errores.traerCartasDe}
             accionError={
@@ -418,7 +444,9 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
           void renombrar();
         }}
       >
-        <h3 className="mb-3 text-[14px] font-semibold">{textos['configuracion.sheet.renombrar.titulo']}</h3>
+        <h3 className="mb-3 text-[14px] font-semibold">
+          {textos['configuracion.sheet.renombrar.titulo']}
+        </h3>
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px] items-start gap-4">
           <ListaDesplegable
             id="configuracion-pestana-a-renombrar"
@@ -448,7 +476,9 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
             ref={filaRenombrar.registrarCampo('nombreActual')}
             error={
               filaRenombrar.errores.nombreActual ??
-              (listaRenombrar.tipo === 'error' ? textos['configuracion.sheet.renombrar.error.lista'] : undefined)
+              (listaRenombrar.tipo === 'error'
+                ? textos['configuracion.sheet.renombrar.error.lista']
+                : undefined)
             }
             errorSinMarcar={!filaRenombrar.errores.nombreActual}
             accionError={
@@ -497,7 +527,11 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
           </div>
         </div>
         <div className="mt-2 flex min-h-[40px]">
-          <MensajeBloque pantalla="configuracion" bloque="renombrar" mensaje={filaRenombrar.mensaje} />
+          <MensajeBloque
+            pantalla="configuracion"
+            bloque="renombrar"
+            mensaje={filaRenombrar.mensaje}
+          />
         </div>
       </form>
 
@@ -507,7 +541,13 @@ export function BloqueSheet({ sheet, alCambiarSinGuardar }: BloqueSheetProps) {
 }
 
 /** Enlace-botón "Reintentar" dentro del error de una lista de pestañas. */
-function BotonReintentarLista({ alReintentar, 'data-testid': testId }: { alReintentar: () => void; 'data-testid': string }) {
+function BotonReintentarLista({
+  alReintentar,
+  'data-testid': testId,
+}: {
+  alReintentar: () => void;
+  'data-testid': string;
+}) {
   return (
     <button
       type="button"

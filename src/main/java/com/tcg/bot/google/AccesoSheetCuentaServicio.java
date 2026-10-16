@@ -21,12 +21,6 @@ import com.google.api.services.sheets.v4.model.ValueRange;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.tcg.bot.compartido.AccesoSheet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -40,6 +34,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 
 /**
  * Acceso real al Google Sheet con la cuenta de servicio ({@link AccesoSheet#CUENTA_SERVICIO}).
@@ -54,6 +53,7 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     private static final String NOMBRE_APP = "TCG Inventory";
     /** Filas y columnas con las que Google crea una pestaña nueva. */
     private static final int FILAS_POR_DEFECTO = 1000;
+
     private static final int COLUMNAS_POR_DEFECTO = 26;
 
     private final Path archivoClave;
@@ -71,17 +71,23 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
 
     @Override
     public List<String> listarPestanas(String sheetId) {
-        return conGoogle(() -> propiedadesDePestanas(sheetId).stream().map(SheetProperties::getTitle).toList());
+        return conGoogle(() -> propiedadesDePestanas(sheetId).stream()
+                .map(SheetProperties::getTitle)
+                .toList());
     }
 
     @Override
     public void renombrarPestana(String sheetId, String nombreActual, String nombreNuevo) {
         conLock(() -> {
             Integer idPestana = idDePestana(sheetId, nombreActual);
-            var pedido = new Request().setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
-                    .setProperties(new SheetProperties().setSheetId(idPestana).setTitle(nombreNuevo))
-                    .setFields("title"));
-            cliente().spreadsheets().batchUpdate(sheetId, new BatchUpdateSpreadsheetRequest().setRequests(List.of(pedido)))
+            var pedido = new Request()
+                    .setUpdateSheetProperties(new UpdateSheetPropertiesRequest()
+                            .setProperties(
+                                    new SheetProperties().setSheetId(idPestana).setTitle(nombreNuevo))
+                            .setFields("title"));
+            cliente()
+                    .spreadsheets()
+                    .batchUpdate(sheetId, new BatchUpdateSpreadsheetRequest().setRequests(List.of(pedido)))
                     .execute();
             return null;
         });
@@ -90,8 +96,11 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     @Override
     public void crearPestana(String sheetId, String pestana) {
         conLock(() -> {
-            var pedido = new Request().setAddSheet(new AddSheetRequest().setProperties(new SheetProperties().setTitle(pestana)));
-            cliente().spreadsheets().batchUpdate(sheetId, new BatchUpdateSpreadsheetRequest().setRequests(List.of(pedido)))
+            var pedido = new Request()
+                    .setAddSheet(new AddSheetRequest().setProperties(new SheetProperties().setTitle(pestana)));
+            cliente()
+                    .spreadsheets()
+                    .batchUpdate(sheetId, new BatchUpdateSpreadsheetRequest().setRequests(List.of(pedido)))
                     .execute();
             return null;
         });
@@ -100,7 +109,12 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     @Override
     public List<String> leerEncabezados(String sheetId, String pestana) {
         return conGoogle(() -> {
-            var valores = cliente().spreadsheets().values().get(sheetId, rango(pestana, "1:1")).execute().getValues();
+            var valores = cliente()
+                    .spreadsheets()
+                    .values()
+                    .get(sheetId, rango(pestana, "1:1"))
+                    .execute()
+                    .getValues();
             return primeraFila(valores);
         });
     }
@@ -109,8 +123,12 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     public void escribirEncabezados(String sheetId, String pestana, List<String> encabezados) {
         conLock(() -> {
             var cuerpo = new ValueRange().setValues(List.of(new ArrayList<Object>(encabezados)));
-            cliente().spreadsheets().values().update(sheetId, rango(pestana, "A1"), cuerpo)
-                    .setValueInputOption("RAW").execute();
+            cliente()
+                    .spreadsheets()
+                    .values()
+                    .update(sheetId, rango(pestana, "A1"), cuerpo)
+                    .setValueInputOption("RAW")
+                    .execute();
             return null;
         });
     }
@@ -118,13 +136,21 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     @Override
     public LinkedHashMap<String, List<String>> leerEncabezadosDeTodas(String sheetId) {
         return conGoogle(() -> {
-            List<String> pestanas = propiedadesDePestanas(sheetId).stream().map(SheetProperties::getTitle).toList();
+            List<String> pestanas = propiedadesDePestanas(sheetId).stream()
+                    .map(SheetProperties::getTitle)
+                    .toList();
             LinkedHashMap<String, List<String>> encabezados = new LinkedHashMap<>();
             if (pestanas.isEmpty()) {
                 return encabezados;
             }
-            List<String> rangos = pestanas.stream().map(pestana -> rango(pestana, "1:1")).toList();
-            List<ValueRange> filas = cliente().spreadsheets().values().batchGet(sheetId).setRanges(rangos).execute()
+            List<String> rangos =
+                    pestanas.stream().map(pestana -> rango(pestana, "1:1")).toList();
+            List<ValueRange> filas = cliente()
+                    .spreadsheets()
+                    .values()
+                    .batchGet(sheetId)
+                    .setRanges(rangos)
+                    .execute()
                     .getValueRanges();
             for (int i = 0; i < pestanas.size(); i++) {
                 ValueRange fila = filas != null && i < filas.size() ? filas.get(i) : null;
@@ -138,10 +164,14 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     public List<List<Object>> leerValores(String sheetId, String pestana) {
         return conGoogle(() -> {
             // Sin formato: los números llegan como números; las fechas, como se ven.
-            var valores = cliente().spreadsheets().values().get(sheetId, rango(pestana, null))
+            var valores = cliente()
+                    .spreadsheets()
+                    .values()
+                    .get(sheetId, rango(pestana, null))
                     .setValueRenderOption("UNFORMATTED_VALUE")
                     .setDateTimeRenderOption("FORMATTED_STRING")
-                    .execute().getValues();
+                    .execute()
+                    .getValues();
             List<List<Object>> filas = new ArrayList<>();
             if (valores != null) {
                 for (List<Object> fila : valores) {
@@ -163,21 +193,32 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
             } while (idsUsados.contains(idNuevo));
 
             int columnas = filas.stream().mapToInt(List::size).max().orElse(0);
-            var crear = new Request().setAddSheet(new AddSheetRequest().setProperties(new SheetProperties()
-                    .setSheetId(idNuevo)
-                    .setTitle(pestana)
-                    .setGridProperties(new GridProperties()
-                            .setRowCount(Math.max(filas.size(), FILAS_POR_DEFECTO))
-                            .setColumnCount(Math.max(columnas, COLUMNAS_POR_DEFECTO)))));
+            var crear = new Request()
+                    .setAddSheet(new AddSheetRequest()
+                            .setProperties(new SheetProperties()
+                                    .setSheetId(idNuevo)
+                                    .setTitle(pestana)
+                                    .setGridProperties(new GridProperties()
+                                            .setRowCount(Math.max(filas.size(), FILAS_POR_DEFECTO))
+                                            .setColumnCount(Math.max(columnas, COLUMNAS_POR_DEFECTO)))));
             List<Request> pedidos = new ArrayList<>(List.of(crear));
             if (!filas.isEmpty()) {
-                pedidos.add(new Request().setUpdateCells(new UpdateCellsRequest()
-                        .setStart(new GridCoordinate().setSheetId(idNuevo).setRowIndex(0).setColumnIndex(0))
-                        .setRows(filas.stream().map(AccesoSheetCuentaServicio::filaDeCeldas).toList())
-                        .setFields("userEnteredValue")));
+                pedidos.add(new Request()
+                        .setUpdateCells(new UpdateCellsRequest()
+                                .setStart(new GridCoordinate()
+                                        .setSheetId(idNuevo)
+                                        .setRowIndex(0)
+                                        .setColumnIndex(0))
+                                .setRows(filas.stream()
+                                        .map(AccesoSheetCuentaServicio::filaDeCeldas)
+                                        .toList())
+                                .setFields("userEnteredValue")));
             }
             // Crear y escribir van en el mismo batchUpdate: Google los aplica todo o nada.
-            cliente().spreadsheets().batchUpdate(sheetId, new BatchUpdateSpreadsheetRequest().setRequests(pedidos)).execute();
+            cliente()
+                    .spreadsheets()
+                    .batchUpdate(sheetId, new BatchUpdateSpreadsheetRequest().setRequests(pedidos))
+                    .execute();
             return null;
         });
     }
@@ -211,7 +252,11 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
     }
 
     private List<SheetProperties> propiedadesDePestanas(String sheetId) throws IOException, GeneralSecurityException {
-        var sheet = cliente().spreadsheets().get(sheetId).setFields("sheets.properties(sheetId,title)").execute();
+        var sheet = cliente()
+                .spreadsheets()
+                .get(sheetId)
+                .setFields("sheets.properties(sheetId,title)")
+                .execute();
         List<SheetProperties> propiedades = new ArrayList<>();
         if (sheet.getSheets() != null) {
             for (Sheet pestana : sheet.getSheets()) {
@@ -254,9 +299,12 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
             throw AccesoSheet.errorInesperado();
         }
         try (InputStream clave = Files.newInputStream(archivoClave)) {
-            GoogleCredentials credenciales = GoogleCredentials.fromStream(clave).createScoped(SheetsScopes.SPREADSHEETS);
-            return new Sheets.Builder(GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance(),
-                    new HttpCredentialsAdapter(credenciales))
+            GoogleCredentials credenciales =
+                    GoogleCredentials.fromStream(clave).createScoped(SheetsScopes.SPREADSHEETS);
+            return new Sheets.Builder(
+                            GoogleNetHttpTransport.newTrustedTransport(),
+                            GsonFactory.getDefaultInstance(),
+                            new HttpCredentialsAdapter(credenciales))
                     .setApplicationName(NOMBRE_APP)
                     .build();
         }
@@ -279,7 +327,9 @@ public class AccesoSheetCuentaServicio implements AccesoSheet {
             if (e.getStatusCode() == 403 || e.getStatusCode() == 404) {
                 throw AccesoSheet.sinAcceso();
             }
-            log.warn("Google Sheets respondió {}: {}", e.getStatusCode(),
+            log.warn(
+                    "Google Sheets respondió {}: {}",
+                    e.getStatusCode(),
                     e.getDetails() == null ? "" : e.getDetails().getMessage());
             throw AccesoSheet.errorInesperado();
         } catch (IOException e) {

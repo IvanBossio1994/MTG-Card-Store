@@ -55,7 +55,10 @@ export function guardarTienda(nombre: string, quitarLogo: boolean): Promise<Bloq
 export function subirLogo(archivo: File): Promise<Esquemas['LogoRespuesta']> {
   const formulario = new FormData();
   formulario.append('archivo', archivo);
-  return pedirApi<Esquemas['LogoRespuesta']>(`${BASE}/tienda/logo`, { method: 'POST', body: formulario });
+  return pedirApi<Esquemas['LogoRespuesta']>(`${BASE}/tienda/logo`, {
+    method: 'POST',
+    body: formulario,
+  });
 }
 
 /**
@@ -63,7 +66,11 @@ export function subirLogo(archivo: File): Promise<Esquemas['LogoRespuesta']> {
  * la crea con las cartas de esa pestaña (`cartasTraidas`); si la crea sin cartas, `aviso` lo dice.
  * Ejemplo: `const { cartasTraidas } = await conectarSheet('https://docs.google.com/spreadsheets/d/1vSk…/edit', 'Stock 2026', 'stock viejo')`
  */
-export function conectarSheet(sheet: string, pestanaInventario: string, traerCartasDe?: string): Promise<BloqueSheet> {
+export function conectarSheet(
+  sheet: string,
+  pestanaInventario: string,
+  traerCartasDe?: string,
+): Promise<BloqueSheet> {
   const pedido: Esquemas['SheetPedido'] = { sheet, pestanaInventario };
   if (traerCartasDe) {
     pedido.traerCartasDe = traerCartasDe;
@@ -84,8 +91,14 @@ export function listarPestanas(idOLink?: string): Promise<ListaPestanas> {
  * Le cambia el nombre a una pestaña del Sheet guardado. Si era la del inventario, la API ya guardó el nombre nuevo.
  * Ejemplo: `const { eraPestanaInventario, pestanas } = await renombrarPestana('Hoja 1', 'Stock 2026')`
  */
-export function renombrarPestana(nombreActual: string, nombreNuevo: string): Promise<PestanaRenombrada> {
-  return enviarJson<PestanaRenombrada>(`${BASE}/sheet/pestanas/renombrar`, 'PUT', { nombreActual, nombreNuevo });
+export function renombrarPestana(
+  nombreActual: string,
+  nombreNuevo: string,
+): Promise<PestanaRenombrada> {
+  return enviarJson<PestanaRenombrada>(`${BASE}/sheet/pestanas/renombrar`, 'PUT', {
+    nombreActual,
+    nombreNuevo,
+  });
 }
 
 /**

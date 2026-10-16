@@ -17,8 +17,18 @@ import java.util.Map;
 public final class ColumnasInventario {
 
     /** Encabezados de la pestaña del inventario, en orden (los mismos que escribe la v1, columnas A:K). */
-    public static final List<String> ENCABEZADOS = List.of("Cantidad", "Nombre", "Codigo de set", "Nombre del set",
-            "Numero de carta", "Condicion", "Printing (foil/no foil)", "Idioma", "Precio Local", "Precio CK USD", "Accion");
+    public static final List<String> ENCABEZADOS = List.of(
+            "Cantidad",
+            "Nombre",
+            "Codigo de set",
+            "Nombre del set",
+            "Numero de carta",
+            "Condicion",
+            "Printing (foil/no foil)",
+            "Idioma",
+            "Precio Local",
+            "Precio CK USD",
+            "Accion");
 
     private static final int COLUMNA_NOMBRE = 1;
 
@@ -28,7 +38,16 @@ public final class ColumnasInventario {
             List.of("Nombre", "Carta", "Card", "Name"),
             List.of("Codigo de set", "Codigo set", "Set code", "SetCode", "Code"),
             List.of("Set Name", "Nombre del set", "Nombre set", "Set", "Edition", "Edicion"),
-            List.of("Card Number", "Numero de carta", "Numero carta", "Numero", "N", "No", "Number", "Collector number", "Collector"),
+            List.of(
+                    "Card Number",
+                    "Numero de carta",
+                    "Numero carta",
+                    "Numero",
+                    "N",
+                    "No",
+                    "Number",
+                    "Collector number",
+                    "Collector"),
             List.of("Condicion", "Condition", "Estado carta"),
             List.of("Printing", "Foil", "Nonfoil", "Printing foil/no foil", "Printing (foil/no foil)"),
             List.of("Idioma", "Language", "Lang"),
@@ -39,8 +58,7 @@ public final class ColumnasInventario {
     /** Alias normalizado → número de columna de la app. */
     private static final Map<String, Integer> COLUMNA_POR_ALIAS = columnaPorAlias();
 
-    private ColumnasInventario() {
-    }
+    private ColumnasInventario() {}
 
     /**
      * Pasa un encabezado a la forma con la que se comparan los alias: sin tildes, en minúscula, solo letras y números.
@@ -168,6 +186,5 @@ public final class ColumnasInventario {
      * quedaron columnas desconocidas al final.
      * Ejemplo: {@code new CartasConvertidas(filas, 128, true)}.
      */
-    public record CartasConvertidas(List<List<Object>> filas, int cantidad, boolean hayColumnasExtra) {
-    }
+    public record CartasConvertidas(List<List<Object>> filas, int cantidad, boolean hayColumnasExtra) {}
 }

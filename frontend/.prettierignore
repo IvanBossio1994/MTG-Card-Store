@@ -1,0 +1,6 @@
+# Node y dependencias que baja Maven (también están en .gitignore).
+node/
+node_modules/
+package-lock.json
+# Tipos generados desde OpenAPI (`npm run generar-tipos-api`): no se tocan a mano.
+src/compartido/api/tiposApi.ts

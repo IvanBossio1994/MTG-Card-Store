@@ -1,5 +1,8 @@
 package com.tcg.bot.compartido;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -11,10 +14,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Perfil {@code e2e}: la app arranca sin Google ni internet.
@@ -46,8 +45,18 @@ public class ModoPruebaConfig {
      */
     @Bean
     public AccesoSheet accesoSheetDePrueba() {
-        List<Object> encabezadosInventario = List.of("Cantidad", "Nombre", "Codigo de set", "Nombre del set",
-                "Numero de carta", "Condicion", "Printing (foil/no foil)", "Idioma", "Precio Local", "Precio CK USD", "Accion");
+        List<Object> encabezadosInventario = List.of(
+                "Cantidad",
+                "Nombre",
+                "Codigo de set",
+                "Nombre del set",
+                "Numero de carta",
+                "Condicion",
+                "Printing (foil/no foil)",
+                "Idioma",
+                "Precio Local",
+                "Precio CK USD",
+                "Accion");
         return new AccesoSheetEnMemoria()
                 .compartir(SHEET_CON_INVENTARIO, "Inventario")
                 .cargarFilas(SHEET_CON_INVENTARIO, "Inventario", List.of(encabezadosInventario))
@@ -55,12 +64,15 @@ public class ModoPruebaConfig {
                 .compartir("1PruebaSheetConVariasPestanas00000000000000", "Hoja 1", "Ventas")
                 .compartir(SHEET_CON_STOCK_VIEJO, "Inventario", "stock viejo")
                 .cargarFilas(SHEET_CON_STOCK_VIEJO, "Inventario", List.of(encabezadosInventario))
-                .cargarFilas(SHEET_CON_STOCK_VIEJO, "stock viejo", List.of(
-                        List.of("Carta", "Stock", "Set", "Precio", "Notas"),
-                        List.of("Sol Ring", 4, "Commander Masters", 1500, "firmada"),
-                        List.of("", "", "", "", ""),
-                        List.of("Opt", 2, "Dominaria", 300, ""),
-                        List.of("Counterspell", 1, "Mystery Booster", 800, "")));
+                .cargarFilas(
+                        SHEET_CON_STOCK_VIEJO,
+                        "stock viejo",
+                        List.of(
+                                List.of("Carta", "Stock", "Set", "Precio", "Notas"),
+                                List.of("Sol Ring", 4, "Commander Masters", 1500, "firmada"),
+                                List.of("", "", "", "", ""),
+                                List.of("Opt", 2, "Dominaria", 300, ""),
+                                List.of("Counterspell", 1, "Mystery Booster", 800, "")));
     }
 
     /**

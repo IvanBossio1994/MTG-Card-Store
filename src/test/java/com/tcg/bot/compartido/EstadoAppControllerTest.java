@@ -1,13 +1,5 @@
 package com.tcg.bot.compartido;
 
-import com.tcg.bot.compartido.EstadoAppController.EstadoAppRespuesta;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
-import org.springframework.mock.env.MockEnvironment;
-import org.springframework.test.web.servlet.MockMvc;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyString;
@@ -18,6 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.tcg.bot.compartido.EstadoAppController.EstadoAppRespuesta;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.test.web.servlet.MockMvc;
 
 /** CA4: GET /api/v1/estado-app (API y lógica de versión y modo). */
 @WebMvcTest(EstadoAppController.class)
@@ -59,14 +59,21 @@ class EstadoAppControllerTest {
 
     @Test
     void sinModoPruebaDevuelveModoNormal() {
-        assertThat(new EstadoAppController(new MockEnvironment(), "1.0").consultarEstadoApp().modo()).isEqualTo("normal");
+        assertThat(new EstadoAppController(new MockEnvironment(), "1.0")
+                        .consultarEstadoApp()
+                        .modo())
+                .isEqualTo("normal");
     }
 
     @Test
     void versionSinFiltrarOVaciaSeMuestraComoDesconocida() {
-        assertThat(new EstadoAppController(new MockEnvironment(), "@project.version@").consultarEstadoApp().version())
+        assertThat(new EstadoAppController(new MockEnvironment(), "@project.version@")
+                        .consultarEstadoApp()
+                        .version())
                 .isEqualTo(EstadoAppController.VERSION_DESCONOCIDA);
-        assertThat(new EstadoAppController(new MockEnvironment(), "").consultarEstadoApp().version())
+        assertThat(new EstadoAppController(new MockEnvironment(), "")
+                        .consultarEstadoApp()
+                        .version())
                 .isEqualTo(EstadoAppController.VERSION_DESCONOCIDA);
     }
 }

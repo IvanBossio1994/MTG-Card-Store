@@ -5,11 +5,6 @@ import com.tcg.bot.compartido.AccesoSheet;
 import com.tcg.bot.configuracion.ConfiguracionArchivosRepository;
 import com.tcg.bot.configuracion.ConfiguracionRepository;
 import com.tcg.bot.google.AccesoSheetCuentaServicio;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.web.context.WebServerApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.support.GenericApplicationContext;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -17,6 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.stream.Stream;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.context.WebServerApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
 
 /**
  * Arranca la app para los E2E, una sola vez por corrida, en un puerto libre y dentro del mismo proceso de los tests.
@@ -32,8 +31,7 @@ public final class AppParaE2E {
     private static ConfigurableApplicationContext app;
     private static String urlBase;
 
-    private AppParaE2E() {
-    }
+    private AppParaE2E() {}
 
     /**
      * Levanta la app si todavía no está levantada y guarda su dirección.
@@ -48,9 +46,7 @@ public final class AppParaE2E {
                 .profiles("e2e")
                 .initializers(contexto -> usarSheetDeQa((GenericApplicationContext) contexto))
                 // Como argumentos (no como propiedades por defecto) para que pisen a application.properties.
-                .run("--server.port=0",
-                        "--app.storage-dir=" + CARPETA_DATOS,
-                        "--spring.main.banner-mode=off");
+                .run("--server.port=0", "--app.storage-dir=" + CARPETA_DATOS, "--spring.main.banner-mode=off");
         int puerto = ((WebServerApplicationContext) app).getWebServer().getPort();
         urlBase = "http://127.0.0.1:" + puerto;
     }
@@ -104,10 +100,14 @@ public final class AppParaE2E {
      */
     private static void usarSheetDeQa(GenericApplicationContext contexto) {
         String clave = SheetDeQa.ARCHIVO_CLAVE.toString();
-        contexto.registerBean("accesoSheetDeQa", AccesoSheet.class,
+        contexto.registerBean(
+                "accesoSheetDeQa",
+                AccesoSheet.class,
                 () -> new AccesoSheetCuentaServicio(clave),
                 definicion -> definicion.setPrimary(true));
-        contexto.registerBean("configuracionDeQa", ConfiguracionRepository.class,
+        contexto.registerBean(
+                "configuracionDeQa",
+                ConfiguracionRepository.class,
                 () -> new ConfiguracionArchivosRepository(CARPETA_DATOS.toString(), SheetDeQa.ID, 1650, 500, 1),
                 definicion -> definicion.setPrimary(true));
     }

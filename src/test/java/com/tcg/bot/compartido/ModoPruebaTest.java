@@ -1,6 +1,10 @@
 package com.tcg.bot.compartido;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.tcg.bot.TcgBotApplication;
+import java.util.Arrays;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,11 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
-
-import java.util.Arrays;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /** CA7: con el perfil e2e no hay beans de v1 ni de Google (sin descarga de CK ni sincronización). CA4/CA5 de punta a punta. */
 @SpringBootTest(classes = TcgBotApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -33,9 +32,9 @@ class ModoPruebaTest {
         assertThat(contexto.containsBeanDefinition("cardKingdomApiService")).isFalse();
         assertThat(contexto.containsBeanDefinition("googleOAuthService")).isFalse();
         assertThat(Arrays.stream(contexto.getBeanDefinitionNames())
-                .map(nombre -> contexto.getType(nombre))
-                .filter(tipo -> tipo != null)
-                .map(Class::getName))
+                        .map(nombre -> contexto.getType(nombre))
+                        .filter(tipo -> tipo != null)
+                        .map(Class::getName))
                 .noneMatch(clase -> clase.startsWith("com.tcg.bot.legacy.") || clase.startsWith("com.tcg.bot.google."));
     }
 
@@ -66,7 +65,8 @@ class ModoPruebaTest {
 
         assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(respuesta.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
-        assertThat(respuesta.getBody()).containsEntry("detail", "No existe la dirección pedida: GET /api/v1/no-existe.");
+        assertThat(respuesta.getBody())
+                .containsEntry("detail", "No existe la dirección pedida: GET /api/v1/no-existe.");
     }
 
     @Test
@@ -74,6 +74,9 @@ class ModoPruebaTest {
         String apiDocs = http.getForObject("/v3/api-docs", String.class);
 
         assertThat(apiDocs).contains("/api/v1/estado-app").contains("\"modo\":\"prueba\"");
-        assertThat(http.getForEntity("/swagger-ui", String.class).getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(http.getForEntity("/swagger-ui", String.class)
+                        .getStatusCode()
+                        .is2xxSuccessful())
+                .isTrue();
     }
 }

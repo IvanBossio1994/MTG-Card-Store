@@ -1,18 +1,17 @@
 package com.tcg.bot.e2e.pasos;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.tcg.bot.e2e.paginas.ConfiguracionPantalla;
 import com.tcg.bot.e2e.soporte.SheetDeQa;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Pasos de Configuración: solo llaman a la pantalla y al Sheet de QA, sin locators ni lógica.

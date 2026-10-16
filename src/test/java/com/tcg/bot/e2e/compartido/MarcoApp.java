@@ -1,13 +1,12 @@
 package com.tcg.bot.e2e.compartido;
 
+import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+
 import com.microsoft.playwright.Locator;
 import com.tcg.bot.e2e.localizadores.AppLocalizadores;
 import com.tcg.bot.e2e.soporte.NavegadorE2E;
-
 import java.text.Normalizer;
 import java.util.Arrays;
-
-import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 /**
  * El marco de todas las pantallas v2 (espeja {@code frontend/src/app/MarcoApp.tsx}): el menú lateral con los módulos.
@@ -39,8 +38,11 @@ public class MarcoApp {
             return Arrays.stream(values())
                     .filter(modulo -> sinTildes(modulo.nombreVisible).equals(sinTildes(nombre)))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("No hay un módulo \"" + nombre + "\" en el menú. Válidos: "
-                            + Arrays.stream(values()).map(modulo -> modulo.nombreVisible).toList()));
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("No hay un módulo \"" + nombre + "\" en el menú. Válidos: "
+                                    + Arrays.stream(values())
+                                            .map(modulo -> modulo.nombreVisible)
+                                            .toList()));
         }
 
         /** Ruta del módulo en la app. Ejemplo: {@code CONFIGURACION.ruta()} → {@code "/app/configuracion"}. */
@@ -54,7 +56,9 @@ public class MarcoApp {
         }
 
         private static String sinTildes(String texto) {
-            return Normalizer.normalize(texto.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase();
+            return Normalizer.normalize(texto.trim(), Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "")
+                    .toLowerCase();
         }
     }
 

@@ -15,12 +15,16 @@ export interface AvisoSalirSinGuardarProps {
  * con "Seguir editando" (foco inicial y Esc) y "Salir igual"; al cerrar la pestaña usa el aviso del navegador.
  * Ejemplo: `<AvisoSalirSinGuardar pantalla="configuracion" hayCambiosSinGuardar={() => sinGuardar.size > 0} />`
  */
-export function AvisoSalirSinGuardar({ hayCambiosSinGuardar, pantalla }: AvisoSalirSinGuardarProps) {
+export function AvisoSalirSinGuardar({
+  hayCambiosSinGuardar,
+  pantalla,
+}: AvisoSalirSinGuardarProps) {
   const [enlacePendiente, setEnlacePendiente] = useState<HTMLAnchorElement | null>(null);
   const seguirEditando = useRef<HTMLButtonElement>(null);
   const salirIgualBoton = useRef<HTMLButtonElement>(null);
   const saliendo = useRef(false);
   const hayCambios = useRef(hayCambiosSinGuardar);
+  // eslint-disable-next-line react-hooks/refs -- HU-013: guardar el último valor en un ref durante el render; pasar a useEffectEvent
   hayCambios.current = hayCambiosSinGuardar;
 
   useEffect(() => {
@@ -93,7 +97,8 @@ export function AvisoSalirSinGuardar({ hayCambiosSinGuardar, pantalla }: AvisoSa
     // El foco no sale del modal: Tab alterna entre los dos botones.
     if (evento.key === 'Tab') {
       evento.preventDefault();
-      const siguiente = document.activeElement === seguirEditando.current ? salirIgualBoton : seguirEditando;
+      const siguiente =
+        document.activeElement === seguirEditando.current ? salirIgualBoton : seguirEditando;
       siguiente.current?.focus();
     }
   }
@@ -115,9 +120,15 @@ export function AvisoSalirSinGuardar({ hayCambiosSinGuardar, pantalla }: AvisoSa
         <h2 id="aviso-salir-titulo" className="mt-2 text-[18px] font-semibold tracking-[-0.01em]">
           {textos['general.modal.sin-guardar-titulo']}
         </h2>
-        <p className="mt-1 mb-4 text-[14px] text-suave">{textos['general.modal.sin-guardar-pregunta']}</p>
+        <p className="mt-1 mb-4 text-[14px] text-suave">
+          {textos['general.modal.sin-guardar-pregunta']}
+        </p>
         <div className="flex items-center justify-center gap-4">
-          <Boton ref={seguirEditando} onClick={quedarse} data-testid={`${pantalla}-boton-seguir-editando`}>
+          <Boton
+            ref={seguirEditando}
+            onClick={quedarse}
+            data-testid={`${pantalla}-boton-seguir-editando`}
+          >
             {textos['general.boton.seguir-editando']}
           </Boton>
           <Boton
