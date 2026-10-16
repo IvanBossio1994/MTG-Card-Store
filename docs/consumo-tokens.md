@@ -40,3 +40,4 @@ Se mide **una vez por tipo**: `/usage` al lanzar la primera tarea de ese agente 
 | 15/10 (fin de HU-008 tarea 1) | 74 | 68 | Fin: backend-java arnés E2E (157k) + smoke del líder | **Arnés E2E desde cero ≈ 14 puntos de ventana, 2 de semana**. Inicio de `qa-camino-feliz` |
 | 15/10 (fin de HU-008 tarea 2) | 81 | 69 | Fin: qa-camino-feliz (161k, Sonnet) + ajuste de `data-testid` y verificación del líder | **QA camino feliz (11 escenarios) ≈ 7 puntos de ventana, 1 de semana**. Se cierra HU-008; casos de error para otra ventana |
 | 15/10 (fin de la revisión de Superpowers) | 83 | 69 | Fin: líder sin agentes (1 lectura web + edición de reglas de agentes) | **Investigar un plugin y adaptar reglas sin agentes ≈ 2 puntos de ventana, 0 de semana** |
+| 15/10 (ventana nueva, antes de la 3.ª pasada de estilo) | 0 | 70 | Inicio de sesión: líder sin agentes, investigación de tests y repositorios | Punto de partida para medir la investigación (lectura por rangos de 5 archivos) |

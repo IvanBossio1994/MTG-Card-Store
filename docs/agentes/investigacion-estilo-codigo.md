@@ -1,6 +1,6 @@
 # Investigación: estilo de código común (back, front y QA)
 
-> Estado: **investigación** (15/10, sesión al 87-88%). No se tocó código. **Próximo paso:** hacer la sección "Pendiente de investigar" (back y front). Después, el brief de una épica o HU de **base técnica** con `/agente-lider` → "Historia nueva". **QA queda postergado** hasta que la persona a cargo pase su estilo: no incluirlo por ahora.
+> Estado: **investigación terminada** (15/10). No se tocó código. **Próximo paso:** que la persona a cargo responda las preguntas 4 y 5 (y qué hacer con F3). Después, el brief de una épica o HU de **base técnica** con `/agente-lider` → "Historia nueva". **QA queda postergado** hasta que la persona a cargo pase su estilo: no incluirlo por ahora.
 > Objetivo de la persona a cargo (QA automation sr): **acortar, modernizar y unificar** el código antes de seguir con otras épicas, y dejar una guía con ejemplos para todos los desarrollos.
 
 ## 1. Cómo está hoy (lo que se miró)
@@ -73,14 +73,31 @@ Pendiente decidir: ¿se mantienen las clases `<Modulo>Localizadores` o los locat
 
 Estimación: guía ~3-5 puntos (líder) · herramientas ~10-15 (backend-java) · cada refactor ~10-17 (un agente por área).
 
-## Pendiente de investigar (próxima sesión)
-- Tests de back (`ConfiguracionControllerTest`, tests del service) y de front (Vitest): ver cuánto se acortan con `MockMvcTester` y Testing Library.
-- Repositorios y acceso al Sheet (`ConfiguracionArchivosRepository`, `AccesoSheetCuentaServicio`): no se revisaron.
-- Confirmar F3 (link con `/u/0/`) con una prueba antes de abrir el `DEF`.
+## Tercera pasada: tests y repositorios (15/10, hecha)
+Leídos: `ConfiguracionControllerTest` (550 líneas), `ConfiguracionServiceTest` (504), `ConfiguracionPagina.test.tsx` (859), `AccesoSheetCuentaServicio` (273) y `ConfiguracionArchivosRepository` (245).
+
+**Bien:** los tests usan dobles reales en memoria (`AccesoSheetEnMemoria`, `RepositorioQuePuedeFallar`) y no Mockito; ayudantes con nombre (`putJson`, `esErrorDeCampo`, `abrirPantalla`); text blocks ya en algunos JSON; nombres de test que se leen como frases. Los repositorios escriben con archivo temporal + movimiento atómico y lock, y la clave se carga recién en el primer uso.
+
+| # | Dónde | Hallazgo | Mejora | Cuánto se acorta |
+|---|---|---|---|---|
+| T1 | `ConfiguracionControllerTest` | 224 líneas de `perform`/`andExpect`; el GET de la configuración tiene 17 `jsonPath` seguidos | **`MockMvcTester`** + comparar el JSON entero con un text block (`bodyJson().isLenientlyEqualTo("""…""")`). Ojo: el ahorro grande viene de comparar el JSON entero, no del cambio de API | ~30% (550 → ~380) |
+| T2 | Tests de back | El armado del Sheet de prueba (5 Sheets, pestañas, filas) está **copiado** en el test del controller y en el del service; `RepositorioQuePuedeFallar` vive dentro de `ConfiguracionServiceTest` y el otro test lo importa de ahí | Una clase de datos de prueba por módulo (`DatosDePruebaConfiguracion`) con los Sheets y los dobles | ~40 líneas por test |
+| T3 | `ConfiguracionServiceTest` | Ya es compacto; un `assertThat` por campo | Comparar el record entero (`isEqualTo(new …)` o `usingRecursiveComparison()`) | ~10% |
+| T4 | `ConfiguracionPagina.test.tsx` | 81 `fireEvent` y **no** está `user-event`; `fetch` falso hecho a mano con un enrutador propio (`fetchFalso`/`listarFalso`) | **`@testing-library/user-event`** (simula teclear, salir del campo y hacer clic como una persona; es lo que recomienda Testing Library) y **MSW** (respuestas falsas por ruta, reutilizables entre tests) | ~25% (859 → ~650) |
+| T5 | Test de front | Un solo archivo de 859 líneas para los 4 bloques | Un test por componente (`BloqueSheet.test.tsx`, …) + uno chico de la página | Mismo total, más fácil de leer |
+| R1 | `AccesoSheetCuentaServicio` | Cada escritura termina en `return null;` porque usa el mismo lambda que las lecturas | Una segunda interfaz para acciones sin resultado (`AccionGoogle`) | Menor |
+| R2 | `AccesoSheetCuentaServicio` | El id de la pestaña nueva se sortea a mano (`ThreadLocalRandom` + lista de ids usados) | Dejar que Google lo asigne y leerlo de la respuesta de `addSheet` | ~10 líneas |
+| R3 | `ConfiguracionArchivosRepository` | 14 constantes de claves en inglés (`store.name`, …) | **Se mantienen:** son las del archivo que comparte con la v1. Solo agruparlas | — |
+
+Si se suma TanStack Query (F1/F2), los tests de front necesitan envolver la pantalla en un `QueryClientProvider`: va en el mismo ayudante `abrirPantalla`.
+
+### F3 confirmado (15/10)
+Probado con los dos patrones: `…/spreadsheets/u/0/d/<id>/edit` → front **no**, back **sí**; `…/spreadsheets/d/abc/edit` (ID corto) → front **sí**, back **no**.
+**Efecto real (menor que lo anotado):** el patrón del front solo se usa al salir del campo (`alSalirDelLink`). Con un link `/u/0/` **sí se puede guardar**; lo que falla es que la lista **"Traer cartas de" no se carga** para ese Sheet, así que no se pueden traer cartas de otra pestaña. Severidad media. Arreglo: el mismo patrón que el back (o que el front no valide y deje decidir al back). Va como `DEF` o dentro del refactor de front.
 
 ## 4. Preguntas para la persona a cargo (antes del brief)
 1. *(Postergado, QA)* **Ejemplo propio:** pasar un archivo de pasos, una BasePage y una página de su código de QA para copiar el estilo (es lo más rápido para no adivinar).
-2. **Imports con `*`:** ¿en todo el código o solo en QA?
-3. **Locators:** ¿campos `Locator` en la pantalla (propuesta) o clase aparte de locators como hoy?
-4. **Librerías nuevas en el front:** ¿TanStack Query y React Hook Form + Zod, o seguir sin librerías?
+2. ~~**Imports con `*`**~~ → decidido (ver "Imports").
+3. *(Postergado, QA)* **Locators:** ¿campos `Locator` en la pantalla (propuesta) o clase aparte de locators como hoy?
+4. **Librerías nuevas en el front:** ¿TanStack Query y React Hook Form + Zod, o seguir sin librerías? Para los tests: `user-event` y MSW (solo de desarrollo, no llegan a la app).
 5. **Orden:** ¿guía + herramientas primero y refactor después, o empezar por QA?
