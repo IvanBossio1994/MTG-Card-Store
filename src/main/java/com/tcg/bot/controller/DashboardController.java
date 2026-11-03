@@ -1516,6 +1516,8 @@ public class DashboardController {
             @RequestParam(name = "cacheDirectory", required = false) String cacheDirectory,
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
+            @RequestParam(name = "markupPercent", required = false) Double markupPercent,
+            @RequestParam(name = "minimumPrice", required = false) Double minimumPrice,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
@@ -1528,7 +1530,12 @@ public class DashboardController {
             storeSettingsService.validateSettings(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
             storeSettingsService.validateLogo(storeLogo);
             storeSettingsService.validateGoogleCredentials(googleCredentials);
-            pricingSettingsService.update(ckDollarRate, roundMultiple);
+            pricingSettingsService.update(
+                    ckDollarRate,
+                    roundMultiple,
+                    markupPercent == null ? pricingSettingsService.getMarkupPercent() : markupPercent,
+                    minimumPrice == null ? pricingSettingsService.getMinimumPrice() : minimumPrice
+            );
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
 
             if (removeLogo) {
@@ -1629,10 +1636,17 @@ public class DashboardController {
     public String updatePricingRule(
             @RequestParam("ckDollarRate") double ckDollarRate,
             @RequestParam("roundMultiple") int roundMultiple,
+            @RequestParam(name = "markupPercent", required = false) Double markupPercent,
+            @RequestParam(name = "minimumPrice", required = false) Double minimumPrice,
             Model model
     ) {
         try {
-            pricingSettingsService.update(ckDollarRate, roundMultiple);
+            pricingSettingsService.update(
+                    ckDollarRate,
+                    roundMultiple,
+                    markupPercent == null ? pricingSettingsService.getMarkupPercent() : markupPercent,
+                    minimumPrice == null ? pricingSettingsService.getMinimumPrice() : minimumPrice
+            );
             if (synchronizeInventory(false)) {
                 model.addAttribute("success", "Regla de precio guardada e inventario sincronizado.");
             } else {
@@ -2025,6 +2039,8 @@ public class DashboardController {
         model.addAttribute("updatedCount", 0);
         model.addAttribute("ckDollarRate", pricingSettingsService.getCkDollarRate());
         model.addAttribute("roundMultiple", pricingSettingsService.getRoundMultiple());
+        model.addAttribute("markupPercent", pricingSettingsService.getMarkupPercent());
+        model.addAttribute("minimumPrice", pricingSettingsService.getMinimumPrice());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("sheetEditorEmail", inventoryService.getServiceAccountEmail());

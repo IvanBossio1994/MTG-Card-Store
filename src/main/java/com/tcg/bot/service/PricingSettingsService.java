@@ -20,12 +20,20 @@ public class PricingSettingsService {
     private static final String ROUND_MULTIPLE_KEY =
             "pricing.round-multiple";
 
+    private static final String MARKUP_PERCENT_KEY =
+            "pricing.markup-percent";
+
+    private static final String MINIMUM_PRICE_KEY =
+            "pricing.minimum-price";
+
     private final double defaultCkDollarRate;
     private final int defaultRoundMultiple;
     private final Path settingsFile;
 
     private volatile double ckDollarRate;
     private volatile int roundMultiple;
+    private volatile double markupPercent;
+    private volatile double minimumPrice;
 
     public PricingSettingsService(
             @Value("${pricing.ck-dollar-rate:1650.0}") double defaultCkDollarRate,
@@ -48,7 +56,34 @@ public class PricingSettingsService {
         return roundMultiple;
     }
 
+    /** Recargo sobre el precio de referencia, en porcentaje. Puede ser negativo para vender por debajo. */
+    public double getMarkupPercent() {
+        return markupPercent;
+    }
+
+    /** Precio minimo en ARS por carta (por ejemplo, para que una comun no salga $0). 0 = sin minimo. */
+    public double getMinimumPrice() {
+        return minimumPrice;
+    }
+
     public synchronized void update(double newCkDollarRate, int newRoundMultiple) throws IOException {
+        update(newCkDollarRate, newRoundMultiple, markupPercent, minimumPrice);
+    }
+
+    public synchronized void update(
+            double newCkDollarRate,
+            int newRoundMultiple,
+            double newMarkupPercent,
+            double newMinimumPrice
+    ) throws IOException {
+        if (newMarkupPercent <= -100) {
+            throw new IllegalArgumentException("El recargo tiene que ser mayor a -100%.");
+        }
+
+        if (newMinimumPrice < 0) {
+            throw new IllegalArgumentException("El precio minimo no puede ser negativo.");
+        }
+
         if (newCkDollarRate <= 0) {
             throw new IllegalArgumentException("La cotizacion debe ser mayor a cero.");
         }
@@ -60,6 +95,8 @@ public class PricingSettingsService {
         Properties properties = new Properties();
         properties.setProperty(DOLLAR_RATE_KEY, Double.toString(newCkDollarRate));
         properties.setProperty(ROUND_MULTIPLE_KEY, Integer.toString(newRoundMultiple));
+        properties.setProperty(MARKUP_PERCENT_KEY, Double.toString(newMarkupPercent));
+        properties.setProperty(MINIMUM_PRICE_KEY, Double.toString(newMinimumPrice));
 
         Files.createDirectories(settingsFile.getParent());
 
@@ -69,6 +106,8 @@ public class PricingSettingsService {
 
         ckDollarRate = newCkDollarRate;
         roundMultiple = newRoundMultiple;
+        markupPercent = newMarkupPercent;
+        minimumPrice = newMinimumPrice;
     }
 
     private void load() {
@@ -88,6 +127,8 @@ public class PricingSettingsService {
                     properties.getProperty(ROUND_MULTIPLE_KEY),
                     defaultRoundMultiple
             );
+            markupPercent = parseDouble(properties.getProperty(MARKUP_PERCENT_KEY), 0);
+            minimumPrice = Math.max(parseDouble(properties.getProperty(MINIMUM_PRICE_KEY), 0), 0);
         } catch (IOException e) {
             ckDollarRate = defaultCkDollarRate;
             roundMultiple = defaultRoundMultiple;
@@ -98,6 +139,14 @@ public class PricingSettingsService {
         try {
             double parsedValue = Double.parseDouble(value);
             return parsedValue > 0 ? parsedValue : fallback;
+        } catch (NumberFormatException | NullPointerException e) {
+            return fallback;
+        }
+    }
+
+    private double parseDouble(String value, double fallback) {
+        try {
+            return Double.parseDouble(value);
         } catch (NumberFormatException | NullPointerException e) {
             return fallback;
         }
