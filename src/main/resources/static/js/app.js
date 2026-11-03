@@ -1542,3 +1542,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+
+// Vista grande de la carta al pasar el mouse por la miniatura de los resultados.
+(function () {
+    const thumbs = document.querySelectorAll(".card-thumb img");
+    if (!thumbs.length || !window.matchMedia("(hover: hover)").matches) {
+        return;
+    }
+    const preview = document.createElement("img");
+    preview.className = "card-preview";
+    preview.alt = "";
+    preview.referrerPolicy = "no-referrer";
+    document.body.appendChild(preview);
+
+    function place(event) {
+        const width = 220;
+        const height = 306;
+        let left = event.clientX + 24;
+        let top = event.clientY - height / 2;
+        if (left + width > window.innerWidth - 12) {
+            left = event.clientX - width - 24;
+        }
+        top = Math.max(12, Math.min(top, window.innerHeight - height - 12));
+        preview.style.left = left + "px";
+        preview.style.top = top + "px";
+    }
+
+    thumbs.forEach(function (img) {
+        img.addEventListener("mouseenter", function (event) {
+            preview.src = img.src.replace("version=small", "version=normal");
+            place(event);
+            preview.classList.add("visible");
+        });
+        img.addEventListener("mousemove", place);
+        img.addEventListener("mouseleave", function () {
+            preview.classList.remove("visible");
+        });
+    });
+})();

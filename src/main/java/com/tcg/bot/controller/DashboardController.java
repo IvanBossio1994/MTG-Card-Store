@@ -2318,6 +2318,16 @@ public class DashboardController {
         public String formattedNmPrice() {
             return formatUsdPrice(nmPrice);
         }
+
+        /** Miniatura de la carta desde Scryfall (cualquier edición): solo para reconocerla de un vistazo. */
+        public String imageUrl() {
+            if (name == null || name.isBlank()) {
+                return null;
+            }
+            String front = name.split(" // ")[0].trim();
+            return "https://api.scryfall.com/cards/named?format=image&version=small&exact="
+                    + java.net.URLEncoder.encode(front, java.nio.charset.StandardCharsets.UTF_8);
+        }
     }
 
     public record CardSuggestion(

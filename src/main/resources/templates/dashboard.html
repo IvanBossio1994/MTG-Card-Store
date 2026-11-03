@@ -176,7 +176,15 @@
                             </button>
                         </div>
                     </td>
-                    <td th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</td>
+                    <td>
+                        <div class="card-cell">
+                            <span class="card-thumb" th:if="${result.imageUrl() != null}">
+                                <img th:src="${result.imageUrl()}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                                     onerror="this.parentElement.classList.add('no-image'); this.remove();">
+                            </span>
+                            <span class="card-cell-name" th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
+                        </div>
+                    </td>
                     <td th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>
                     <td th:text="${result.sku != null && result.sku != '' ? result.sku : '-'}">CMM-0410</td>
                     <td th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
