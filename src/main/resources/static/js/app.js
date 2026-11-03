@@ -779,6 +779,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
 
                     const rowIndex = button.dataset.row;
+                    const cardId = button.dataset.cardId || "";
+                    const adjustToggle = document.getElementById("stock-adjust-mode");
+                    const reason = adjustToggle && adjustToggle.checked ? "adjust" : "sale";
 
                     const increase =
                         button.classList.contains("increase");
@@ -842,12 +845,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         if (newRowIndex) {
                             button.dataset.row = newRowIndex;
+                            button.dataset.cardId = result.cardId || "";
 
                             const decreaseButton =
                                 button.parentElement.querySelector(".stock-button.decrease");
 
                             if (decreaseButton) {
                                 decreaseButton.dataset.row = newRowIndex;
+                                decreaseButton.dataset.cardId = result.cardId || "";
                                 decreaseButton.disabled = false;
                                 decreaseButton.title = "Registrar unidad vendida";
                             }
@@ -884,7 +889,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             body:
                                 new URLSearchParams({
                                     rowIndex,
-                                    change
+                                    cardId,
+                                    change,
+                                    reason
                                 })
                         }
                     );

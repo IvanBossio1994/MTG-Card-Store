@@ -9,6 +9,8 @@ import com.tcg.bot.service.InventoryService;
 import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.PricingSettingsService;
 import com.tcg.bot.service.StoreSettingsService;
+import com.tcg.bot.service.StockOperationsService;
+import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -77,13 +79,17 @@ public class DashboardController {
     private static final DateTimeFormatter MOVEMENT_TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
 
+    private final StockOperationsService stockOperationsService;
+
     public DashboardController(
             InventoryService inventoryService,
             CardKingdomApiService cardKingdomApiService,
             PriceComparisonService priceComparisonService,
             PricingSettingsService pricingSettingsService,
-            StoreSettingsService storeSettingsService
+            StoreSettingsService storeSettingsService,
+            StockOperationsService stockOperationsService
     ) {
+        this.stockOperationsService = stockOperationsService;
         this.inventoryService = inventoryService;
         this.cardKingdomApiService = cardKingdomApiService;
         this.priceComparisonService = priceComparisonService;
@@ -694,29 +700,13 @@ public class DashboardController {
         }
 
         return entries.stream()
-                .filter(entry -> "VENTA".equalsIgnoreCase(entry.getType()))
-                .mapToDouble(entry -> parseCashTotal(entry.getTotal()))
+                .filter(CashRegisterEntry::affectsCash)
+                .mapToDouble(CashRegisterEntry::signedTotal)
                 .sum();
     }
 
     private double parseCashTotal(String value) {
-        if (value == null || value.isBlank()) {
-            return 0;
-        }
-
-        try {
-            String normalized = value.replace("$", "").trim();
-
-            if (normalized.contains(",") && normalized.contains(".")) {
-                normalized = normalized.replace(".", "").replace(",", ".");
-            } else if (normalized.contains(",")) {
-                normalized = normalized.replace(",", ".");
-            }
-
-            return Double.parseDouble(normalized);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        return Amounts.parse(value);
     }
 
     private String formatCashTotal(double value) {
@@ -746,30 +736,7 @@ public class DashboardController {
     }
 
     private static Double parsePriceValue(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-
-        String normalized = value.trim()
-                .replace("$", "")
-                .replace(" ", "");
-
-        int lastDot = normalized.lastIndexOf('.');
-        int lastComma = normalized.lastIndexOf(',');
-
-        if (lastDot >= 0 && lastComma >= 0) {
-            normalized = lastComma > lastDot
-                    ? normalized.replace(".", "").replace(",", ".")
-                    : normalized.replace(",", "");
-        } else if (lastComma >= 0) {
-            normalized = normalized.replace(".", "").replace(",", ".");
-        }
-
-        try {
-            return Double.parseDouble(normalized);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return Amounts.parseOrNull(value);
     }
 
     private List<CashReportMonth> cashReportMonths(
@@ -791,30 +758,25 @@ public class DashboardController {
                         .computeIfAbsent(monthKey, key -> new LinkedHashMap<>())
                         .computeIfAbsent(movementReportKey(movement), key -> new CashReportCardAccumulator());
 
-                if (quantity > 0) {
+                // Lo vendido sale de la caja, no de los movimientos: un ajuste de stock no es una venta
+                // y una venta anulada que devuelve stock no es un ingreso nuevo.
+                if (quantity > 0 && !StockOperationsService.SOURCE_VOIDED.equalsIgnoreCase(movement.getSource())) {
                     cardReport.addEntry(quantity);
-                } else {
-                    cardReport.addSold(Math.abs(quantity));
                 }
             }
         }
 
         if (cashEntries != null) {
             for (CashRegisterEntry entry : cashEntries) {
-                if (!"VENTA".equalsIgnoreCase(entry.getType())) {
+                if (!entry.affectsCash()) {
                     continue;
                 }
 
-                String monthKey = monthKey(entry.getDate());
-                Map<String, CashReportCardAccumulator> monthCards = cardsByMonth.get(monthKey);
-                if (monthCards == null) {
-                    continue;
-                }
-
-                CashReportCardAccumulator cardReport = monthCards.get(cashEntryReportKey(entry));
-                if (cardReport != null) {
-                    cardReport.addSaleTotal(parseCashTotal(entry.getTotal()));
-                }
+                CashReportCardAccumulator cardReport = cardsByMonth
+                        .computeIfAbsent(monthKey(entry.getDate()), key -> new LinkedHashMap<>())
+                        .computeIfAbsent(cashEntryReportKey(entry), key -> new CashReportCardAccumulator());
+                cardReport.addSaleTotal(entry.signedTotal());
+                cardReport.addSold(entry.signedQuantity());
             }
         }
 
@@ -823,10 +785,6 @@ public class DashboardController {
             CashReportAccumulator report = new CashReportAccumulator();
 
             for (CashReportCardAccumulator cardReport : monthEntry.getValue().values()) {
-                if (!cardReport.hasEntryAndSale()) {
-                    continue;
-                }
-
                 report.addCard(cardReport);
             }
 
@@ -1943,11 +1901,16 @@ public class DashboardController {
                 .mapToInt(this::quantity)
                 .sum();
 
-        int rowIndex = matches.stream()
-                .mapToInt(InventoryCard::getRowIndex)
-                .filter(index -> index > 0)
+        // Si hay varias filas de la misma impresion (por ejemplo NM y LP), el "-" descuenta de una que tenga stock.
+        InventoryCard target = matches.stream()
+                .filter(card -> card.getRowIndex() > 0 && quantity(card) > 0)
                 .findFirst()
-                .orElse(0);
+                .orElse(matches.stream()
+                        .filter(card -> card.getRowIndex() > 0)
+                        .findFirst()
+                        .orElse(null));
+        int rowIndex = target == null ? 0 : target.getRowIndex();
+        String cardId = target == null || target.getId() == null ? "" : target.getId();
 
         String nmPrice = product.getConditionValues() == null
                 ? ""
@@ -1961,7 +1924,8 @@ public class DashboardController {
                 foil ? "Foil" : "No Foil",
                 nmPrice,
                 stockQuantity,
-                rowIndex
+                rowIndex,
+                cardId
         );
     }
 
@@ -2008,7 +1972,7 @@ public class DashboardController {
 
     private int quantity(InventoryCard card) {
         try {
-            int quantity = Integer.parseInt(card.getQuantity().trim());
+            int quantity = com.tcg.bot.util.Amounts.parseInt(card.getQuantity());
             return Math.max(quantity, 0);
         } catch (NumberFormatException e) {
             return 0;
@@ -2183,7 +2147,8 @@ public class DashboardController {
             String printing,
             String nmPrice,
             int stockQuantity,
-            int rowIndex
+            int rowIndex,
+            String cardId
     ) {
         public String formattedNmPrice() {
             return formatUsdPrice(nmPrice);
@@ -2313,9 +2278,6 @@ public class DashboardController {
             enteredQuantity += quantity;
         }
 
-        boolean hasEntryAndSale() {
-            return soldQuantity > 0 && enteredQuantity > 0;
-        }
     }
 
     private class MovementAccumulator {
@@ -2439,54 +2401,57 @@ public class DashboardController {
 
     @PostMapping("/inventory/quantity")
     @ResponseBody
-    public ResponseEntity<?> updateQuantity(@RequestParam int rowIndex, @RequestParam int change) {
+    public ResponseEntity<?> updateQuantity(
+            @RequestParam(defaultValue = "0") int rowIndex,
+            @RequestParam(required = false) String cardId,
+            @RequestParam int change,
+            @RequestParam(required = false) String reason
+    ) {
         try {
-            InventoryCard card = findInventoryCardByRow(rowIndex);
-            if (card == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiMessage(false, "No se encontro la carta en el inventario."));
-            }
+            var result = stockOperationsService.changeStock(
+                    cardId,
+                    rowIndex,
+                    change,
+                    StockOperationsService.Reason.from(reason)
+            );
 
-            int previousQuantity = quantity(card);
-            int newQuantity = Math.max(previousQuantity + change, 0);
-
-            if (previousQuantity != newQuantity) {
-                card.setQuantity(String.valueOf(newQuantity));
-                applyStockAction(card);
-                inventoryService.updateStockState(rowIndex, card);
-                inventoryService.appendMovement(createMovement(
-                        change > 0 ? "ENTRADA" : "SALIDA",
-                        Math.abs(newQuantity - previousQuantity),
-                        card,
-                        previousQuantity,
-                        newQuantity,
-                        change > 0 ? "Agregado al stock" : "Unidad vendida"
-                ));
-
-                if (change < 0) {
-                    LocalDateTime now = LocalDateTime.now(APP_ZONE);
-                    inventoryService.appendCashSale(
-                            now.format(MOVEMENT_DATE_FORMAT),
-                            now.format(MOVEMENT_TIME_FORMAT),
-                            card,
-                            Math.abs(newQuantity - previousQuantity)
-                    );
-                }
-
+            InventoryCard card = findInventoryCardByRow(result.rowIndex());
+            if (card != null) {
                 refreshLatestUpdateForCard(card);
             }
 
             return ResponseEntity.ok(new StockUpdateResponse(
-                    rowIndex,
-                    newQuantity,
-                    stockActionForQuantity(newQuantity),
-                    change > 0 ? "Unidad agregada" : "Unidad vendida"
+                    result.rowIndex(),
+                    result.cardId(),
+                    result.stockQuantity(),
+                    result.action(),
+                    result.source()
             ));
+        } catch (StockOperationsService.StockOperationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiMessage(false, e.getMessage()));
         } catch (Exception e) {
             log.warn("No se pudo actualizar la cantidad de inventario.", e);
             return ResponseEntity.internalServerError()
                     .body(new ApiMessage(false, "No se pudo actualizar el stock: " + e.getMessage()));
         }
+    }
+
+    @PostMapping("/caja/anular")
+    public String voidSale(@RequestParam String saleId, RedirectAttributes redirectAttributes) {
+        try {
+            var result = stockOperationsService.voidSale(saleId);
+            redirectAttributes.addFlashAttribute("cashMessage", result.stockRestored()
+                    ? "Venta anulada: se restó de la caja y las cartas volvieron al stock."
+                    : "Venta anulada en caja. No se encontró la carta en el inventario, revisá el stock a mano.");
+        } catch (StockOperationsService.StockOperationException e) {
+            redirectAttributes.addFlashAttribute("cashError", e.getMessage());
+        } catch (Exception e) {
+            log.warn("No se pudo anular la venta {}.", saleId, e);
+            redirectAttributes.addFlashAttribute("cashError", "No se pudo anular la venta: " + e.getMessage());
+        }
+
+        return "redirect:/movimientos?tab=cash";
     }
 
     @PostMapping("/inventory/cards")
@@ -2506,7 +2471,7 @@ public class DashboardController {
             inventoryService.appendMovement(createMovement("ENTRADA", 1, card, 0, 1, "Busqueda"));
             refreshLatestUpdateForCard(card);
 
-            return ResponseEntity.ok(new StockCreateResponse(rowIndex));
+            return ResponseEntity.ok(new StockCreateResponse(rowIndex, card.getId()));
         } catch (Exception e) {
             log.warn("No se pudo agregar la carta al inventario.", e);
             return ResponseEntity.internalServerError()
@@ -2573,7 +2538,7 @@ public class DashboardController {
         return sku.substring(sku.indexOf("-") + 1);
     }
 
-    public record StockCreateResponse(int rowIndex) {
+    public record StockCreateResponse(int rowIndex, String cardId) {
     }
 
     public record ApiMessage(boolean success, String message) {
@@ -2581,6 +2546,7 @@ public class DashboardController {
 
     public record StockUpdateResponse(
             int rowIndex,
+            String cardId,
             int stockQuantity,
             String action,
             String message

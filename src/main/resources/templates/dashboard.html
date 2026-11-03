@@ -78,6 +78,14 @@
                     th:text="${'STOCK LOCAL (' + totalStockQuantity + ')'}">STOCK LOCAL (1)</strong>
         </div>
 
+        <div class="stock-mode-bar" th:if="${searchPerformed}">
+            <label class="stock-mode-toggle"
+                   title="Con esto activado, el botón - corrige el stock sin anotar una venta en la caja">
+                <input id="stock-adjust-mode" type="checkbox">
+                Modo ajuste: el "-" corrige stock sin registrar venta
+            </label>
+        </div>
+
         <div class="table-wrap" th:if="${searchPerformed}">
             <table id="search-results-table">
                 <thead>
@@ -104,7 +112,7 @@
                         <div class="stock-controls">
                             <button type="button"
                                     class="stock-button decrease"
-                                    th:attr="data-row=${result.rowIndex}"
+                                    th:attr="data-row=${result.rowIndex},data-card-id=${result.cardId}"
                                     th:disabled="${result.rowIndex <= 0}"
                                     th:title="${result.rowIndex <= 0} ? 'Esta impresión todavía no existe en tu Sheet' : 'Registrar unidad vendida'">
                                 -
@@ -115,7 +123,7 @@
                             </span>
                             <button type="button"
                                     class="stock-button increase"
-                                    th:attr="data-row=${result.rowIndex},data-sku=${result.sku}"
+                                    th:attr="data-row=${result.rowIndex},data-card-id=${result.cardId},data-sku=${result.sku}"
                                     th:title="${result.rowIndex <= 0} ? 'Agregar esta impresión al Sheet' : 'Agregar una unidad'">
                                 +
                             </button>

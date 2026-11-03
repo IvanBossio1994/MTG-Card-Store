@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class InventoryService {
+public class InventoryService implements InventoryStore {
 
     private final GoogleSheetsService googleSheetsService;
 
@@ -94,7 +94,7 @@ public class InventoryService {
         return googleSheetsService.getCashRegisterEntries();
     }
 
-    public void appendCashSale(String date, String time, InventoryCard card, int quantity) throws Exception {
-        googleSheetsService.appendCashSale(date, time, card, quantity);
+    public void appendCashEntry(CashRegisterEntry entry) throws Exception {
+        googleSheetsService.appendCashEntry(entry);
     }
 }
