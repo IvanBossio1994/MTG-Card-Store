@@ -895,6 +895,57 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    /** Filas de una pestaña de la app (desde la fila 2), con la cabecera asegurada. */
+    public List<List<String>> getTabRows(String tab, List<String> header) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, tab, header);
+        String lastColumn = SheetColumns.columnLetter(header.size() - 1);
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), sheetRange(tab, "A2:" + lastColumn))
+                .setValueRenderOption("UNFORMATTED_VALUE")
+                .execute();
+        List<List<String>> rows = new ArrayList<>();
+        if (response.getValues() != null) {
+            for (var row : response.getValues()) {
+                List<String> values = new ArrayList<>();
+                for (int index = 0; index < header.size(); index++) {
+                    values.add(getColumnValue(row, index));
+                }
+                rows.add(values);
+            }
+        }
+        return rows;
+    }
+
+    /** Agrega una fila al final de la pestaña y devuelve su número de fila. */
+    public int appendTabRow(String tab, List<String> header, List<Object> values) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, tab, header);
+        String lastColumn = SheetColumns.columnLetter(header.size() - 1);
+        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(List.of(values));
+        var response = sheetsService.spreadsheets().values()
+                .append(storeSettingsService.getSpreadsheetId(), sheetRange(tab, "A:" + lastColumn), body)
+                .setValueInputOption("RAW")
+                .setInsertDataOption("INSERT_ROWS")
+                .execute();
+        String range = response.getUpdates() == null ? null : response.getUpdates().getUpdatedRange();
+        var matcher = range == null ? null : java.util.regex.Pattern.compile("![A-Z]+(\\d+)").matcher(range);
+        if (matcher != null && matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        return getTabRows(tab, header).size() + 1;
+    }
+
+    public void updateTabRow(String tab, List<String> header, int rowIndex, List<Object> values) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        String lastColumn = SheetColumns.columnLetter(header.size() - 1);
+        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(List.of(values));
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), sheetRange(tab, "A" + rowIndex + ":" + lastColumn + rowIndex), body)
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
     public List<com.tcg.bot.model.CreditEntry> getCreditEntries() throws Exception {
         Sheets sheetsService = getSheetsService();
         ensureSheetWithHeader(sheetsService, CREDIT_SHEET_NAME, CREDIT_HEADER);
@@ -1538,7 +1589,8 @@ public class GoogleSheetsService {
                 || CASH_SHEET_NAME.equals(sheetTitle)
                 || RESERVATIONS_SHEET_NAME.equals(sheetTitle)
                 || PRICES_SHEET_NAME.equals(sheetTitle)
-                || CREDIT_SHEET_NAME.equals(sheetTitle);
+                || CREDIT_SHEET_NAME.equals(sheetTitle)
+                || com.tcg.bot.model.Game.isGameSheet(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {

@@ -215,6 +215,7 @@ class StockOperationsServiceTest {
         final List<CashRegisterEntry> cash = new ArrayList<>();
         final List<Reservation> reservations = new ArrayList<>();
         final List<com.tcg.bot.model.CreditEntry> credits = new ArrayList<>();
+        final java.util.Map<com.tcg.bot.model.Game, List<com.tcg.bot.model.GameCard>> games = new java.util.EnumMap<>(com.tcg.bot.model.Game.class);
         boolean failCash;
         boolean failMovements;
         boolean failStatuses;
@@ -283,6 +284,30 @@ class StockOperationsServiceTest {
                 stored.setStatus(line.getStatus());
                 stored.setUpdatedAt(line.getUpdatedAt());
             }
+        }
+
+        @Override
+        public List<com.tcg.bot.model.GameCard> getGameCards(com.tcg.bot.model.Game game) {
+            List<com.tcg.bot.model.GameCard> copies = new ArrayList<>();
+            for (var card : games.getOrDefault(game, List.of())) {
+                copies.add(com.tcg.bot.model.GameCard.fromRow(card.toRow().stream().map(String::valueOf).toList(), card.getRowIndex()));
+            }
+            return copies;
+        }
+
+        @Override
+        public int appendGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) {
+            var list = games.computeIfAbsent(game, key -> new ArrayList<>());
+            int row = list.size() + 2;
+            card.setRowIndex(row);
+            list.add(card);
+            return row;
+        }
+
+        @Override
+        public void updateGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) {
+            var list = games.get(game);
+            list.set(card.getRowIndex() - 2, card);
         }
 
         @Override

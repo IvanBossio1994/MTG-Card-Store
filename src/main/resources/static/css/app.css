@@ -3573,3 +3573,114 @@ a.whatsapp-button:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* Otros juegos */
+.game-search label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.game-search-row {
+    display: flex;
+    gap: 10px;
+}
+
+.game-search-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font: inherit;
+}
+
+.game-results {
+    display: grid;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.game-result {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.game-result.in-stock {
+    border-color: #b7e2c8;
+    background: #f6fcf8;
+}
+
+.game-result img {
+    width: 64px;
+    border-radius: 5px;
+}
+
+.game-result-body {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    font-size: 0.9rem;
+}
+
+.game-prices {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    color: var(--muted);
+}
+
+.game-prices strong {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.game-result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.game-table .stock-controls form {
+    display: inline;
+}
+
+.table-wrap .game-table {
+    min-width: 680px;
+}
+
+@media (max-width: 700px) {
+    .game-result {
+        grid-template-columns: 52px minmax(0, 1fr);
+    }
+
+    .game-result img {
+        width: 52px;
+    }
+
+    .game-result-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+}
+
+.game-thumb {
+    width: 64px;
+    min-height: 88px;
+    border-radius: 5px;
+    background: var(--bg);
+}
+
+@media (max-width: 700px) {
+    .game-thumb {
+        width: 52px;
+        min-height: 72px;
+    }
+}

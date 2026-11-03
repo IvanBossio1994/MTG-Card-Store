@@ -63,6 +63,28 @@ public class InventoryService implements InventoryStore {
     }
 
     @Override
+    public java.util.List<com.tcg.bot.model.GameCard> getGameCards(com.tcg.bot.model.Game game) throws Exception {
+        var rows = googleSheetsService.getTabRows(game.sheetName(), com.tcg.bot.model.Game.HEADER);
+        java.util.List<com.tcg.bot.model.GameCard> cards = new java.util.ArrayList<>();
+        for (int index = 0; index < rows.size(); index++) {
+            if (!rows.get(index).get(1).isBlank()) {
+                cards.add(com.tcg.bot.model.GameCard.fromRow(rows.get(index), index + 2));
+            }
+        }
+        return cards;
+    }
+
+    @Override
+    public int appendGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) throws Exception {
+        return googleSheetsService.appendTabRow(game.sheetName(), com.tcg.bot.model.Game.HEADER, card.toRow());
+    }
+
+    @Override
+    public void updateGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) throws Exception {
+        googleSheetsService.updateTabRow(game.sheetName(), com.tcg.bot.model.Game.HEADER, card.getRowIndex(), card.toRow());
+    }
+
+    @Override
     public java.util.List<com.tcg.bot.model.CreditEntry> getCreditEntries() throws Exception {
         return googleSheetsService.getCreditEntries();
     }
