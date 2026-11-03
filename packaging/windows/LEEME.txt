@@ -1,0 +1,9 @@
+TCG Store Helper
+
+1. Descomprimi esta carpeta donde quieras (por ejemplo, en Documentos).
+2. Doble clic en TCGStoreHelper.exe. Se abre el navegador con la app.
+3. Para cerrar la app, cerra la ventana negra.
+
+No hace falta instalar Java: ya viene incluido.
+Tus datos y claves quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
+Ahi va el archivo google-oauth.properties para el login con Google.

@@ -2,6 +2,12 @@
 
 Aplicacion local para administrar stock de cartas MTG con Google Sheets y precios de Card Kingdom.
 
+## Version para Windows (sin instalar nada)
+
+En [Releases](https://github.com/IvanBossio1994/MTG-Card-Store/releases) esta `TCGStoreHelper-windows.zip`:
+se descomprime y se abre `TCGStoreHelper.exe`. Trae Java incluido, abre el navegador solo y guarda los datos en
+`%USERPROFILE%\TCGStoreHelper\data`. Se arma con el workflow `Windows` (al crear un tag `v*` o a mano).
+
 ## Setup en una PC nueva
 
 1. Clonar el repositorio.
