@@ -102,7 +102,10 @@
                     <th>Código/N°</th>
                     <th>Variación</th>
                     <th>Printing</th>
-                    <th>N°</th>
+                    <th>CK USD</th>
+                    <th th:if="${showTcgplayer}">TCGplayer</th>
+                    <th th:if="${showCardmarket}">Cardmarket</th>
+                    <th>Tu precio</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -143,9 +146,12 @@
                     <td th:text="${result.variation != null && result.variation != '' ? result.variation : '-'}">Normal</td>
                     <td th:text="${result.printing != null && result.printing != '' ? result.printing : '-'}">No Foil</td>
                     <td th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
+                    <td th:if="${showTcgplayer}" th:text="${result.prices.tcgplayer != '' ? result.prices.tcgplayer : '-'}">US$ 2,10</td>
+                    <td th:if="${showCardmarket}" th:text="${result.prices.cardmarket != '' ? result.prices.cardmarket : '-'}">€ 1,80</td>
+                    <td th:text="${result.prices.suggestedLocal != '' ? result.prices.suggestedLocal : '-'}">$ 4.500</td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(results)}">
-                    <td class="empty" colspan="7">No se encontraron cartas para esa búsqueda.</td>
+                    <td class="empty" colspan="10">No se encontraron cartas para esa búsqueda.</td>
                 </tr>
                 </tbody>
             </table>

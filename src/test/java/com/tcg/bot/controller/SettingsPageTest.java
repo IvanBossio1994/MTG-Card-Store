@@ -30,6 +30,8 @@ class SettingsPageTest {
                 .andExpect(content().string(containsString("Plan Gratis")))
                 .andExpect(content().string(containsString("name=\"licenseKey\"")))
                 .andExpect(content().string(containsString("name=\"markupPercent\"")))
-                .andExpect(content().string(containsString("name=\"minimumPrice\"")));
+                .andExpect(content().string(containsString("name=\"minimumPrice\"")))
+                .andExpect(content().string(containsString("name=\"cardmarketEnabled\"")))
+                .andExpect(content().string(containsString("Promedio de las fuentes")));
     }
 }

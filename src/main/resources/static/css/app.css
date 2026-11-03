@@ -2522,3 +2522,21 @@ tr.in-stock {
 .license-card {
     margin-top: 20px;
 }
+
+.price-sources {
+    margin: 16px 0;
+    padding-top: 12px;
+    border-top: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+.price-sources h3 {
+    margin: 0 0 4px;
+    font-size: 1rem;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+}

@@ -11,6 +11,7 @@ import com.tcg.bot.service.PricingSettingsService;
 import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.service.StockOperationsService;
 import com.tcg.bot.service.LicenseService;
+import com.tcg.bot.service.ScryfallPriceService;
 import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +83,7 @@ public class DashboardController {
 
     private final StockOperationsService stockOperationsService;
     private final LicenseService licenseService;
+    private final ScryfallPriceService scryfallPriceService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -90,8 +92,10 @@ public class DashboardController {
             PricingSettingsService pricingSettingsService,
             StoreSettingsService storeSettingsService,
             StockOperationsService stockOperationsService,
-            LicenseService licenseService
+            LicenseService licenseService,
+            ScryfallPriceService scryfallPriceService
     ) {
+        this.scryfallPriceService = scryfallPriceService;
         this.stockOperationsService = stockOperationsService;
         this.licenseService = licenseService;
         this.inventoryService = inventoryService;
@@ -156,9 +160,17 @@ public class DashboardController {
             }
 
             var inventoryCards = inventoryService.getInventoryCards();
+            Map<String, ScryfallPriceService.Prices> extraPrices = pricingSettingsService.usesExtraSources()
+                    ? scryfallPriceService.prices(products.stream()
+                            .limit(150)
+                            .map(product -> new ScryfallPriceService.CardRef(setCode(product.getSku()), collectorNumber(product.getSku())))
+                            .toList())
+                    : Map.of();
             var results = products.stream()
-                    .map(product -> createSearchResult(product, inventoryCards))
+                    .map(product -> createSearchResult(product, inventoryCards, extraPrices))
                     .toList();
+            model.addAttribute("showTcgplayer", pricingSettingsService.isTcgplayerEnabled());
+            model.addAttribute("showCardmarket", pricingSettingsService.isCardmarketEnabled());
 
             model.addAttribute("results", results);
             model.addAttribute("totalStockQuantity", results.stream()
@@ -1532,6 +1544,11 @@ public class DashboardController {
             @RequestParam("roundMultiple") int roundMultiple,
             @RequestParam(name = "markupPercent", required = false) Double markupPercent,
             @RequestParam(name = "minimumPrice", required = false) Double minimumPrice,
+            @RequestParam(name = "sourcesSubmitted", defaultValue = "false") boolean sourcesSubmitted,
+            @RequestParam(name = "tcgplayerEnabled", defaultValue = "false") boolean tcgplayerEnabled,
+            @RequestParam(name = "cardmarketEnabled", defaultValue = "false") boolean cardmarketEnabled,
+            @RequestParam(name = "eurRate", required = false) Double eurRate,
+            @RequestParam(name = "combineMode", required = false) String combineMode,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
@@ -1550,6 +1567,14 @@ public class DashboardController {
                     markupPercent == null ? pricingSettingsService.getMarkupPercent() : markupPercent,
                     minimumPrice == null ? pricingSettingsService.getMinimumPrice() : minimumPrice
             );
+            if (sourcesSubmitted) {
+                pricingSettingsService.updateSources(
+                        tcgplayerEnabled,
+                        cardmarketEnabled,
+                        eurRate == null ? 0 : eurRate,
+                        com.tcg.bot.service.PricingSettingsService.CombineMode.from(combineMode)
+                );
+            }
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
 
             if (removeLogo) {
@@ -1764,8 +1789,15 @@ public class DashboardController {
         List<UpdateResult> updates = new ArrayList<>();
         Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
 
+        Map<String, ScryfallPriceService.Prices> extraPrices = pricingSettingsService.usesExtraSources()
+                ? scryfallPriceService.prices(cards.stream()
+                        .filter(card -> quantity(card) > 0)
+                        .map(card -> new ScryfallPriceService.CardRef(card.getSetCode(), card.getCollectorNumber()))
+                        .toList())
+                : Map.of();
+
         for (var card : cards) {
-            UpdateResult update = updateCard(card.getRowIndex(), card, priceList);
+            UpdateResult update = updateCard(card.getRowIndex(), card, priceList, extraPrices);
             updates.add(update);
 
             if (card.getRowIndex() > 0 && update.writeRequired()) {
@@ -1801,7 +1833,8 @@ public class DashboardController {
     private UpdateResult updateCard(
             int rowIndex,
             InventoryCard card,
-            com.tcg.bot.dto.CardKingdomPriceListResponse priceList
+            com.tcg.bot.dto.CardKingdomPriceListResponse priceList,
+            Map<String, ScryfallPriceService.Prices> extraPrices
     ) throws Exception {
         String previousCkPrice = card.getCkPriceUsd();
         String previousLocalPrice = card.getLocalPrice();
@@ -1866,7 +1899,15 @@ public class DashboardController {
             );
         }
 
-        String localPrice = String.format("%.0f", priceComparisonService.calculateLocalPrice(ckPrice));
+        var quote = priceComparisonService.quote(
+                ckPrice,
+                extraPrices.get(ScryfallPriceService.key(card.getSetCode(), card.getCollectorNumber())),
+                card.isFoil()
+        );
+        double suggested = quote.localPrice() == null
+                ? priceComparisonService.calculateLocalPrice(ckPrice)
+                : quote.localPrice();
+        String localPrice = String.format("%.0f", suggested);
         card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         card.setLocalPrice(localPrice);
         card.setAction(ACTION_IN_STOCK);
@@ -1917,7 +1958,8 @@ public class DashboardController {
 
     private SearchResult createSearchResult(
             CardKingdomProduct product,
-            List<InventoryCard> inventoryCards
+            List<InventoryCard> inventoryCards,
+            Map<String, ScryfallPriceService.Prices> extraPrices
     ) {
         String collectorNumber = collectorNumber(product.getSku());
         boolean foil = "true".equalsIgnoreCase(product.getFoil());
@@ -1953,8 +1995,32 @@ public class DashboardController {
                 nmPrice,
                 stockQuantity,
                 rowIndex,
-                cardId
+                cardId,
+                comparePrices(product, foil, extraPrices)
         );
+    }
+
+    private PriceComparison comparePrices(
+            CardKingdomProduct product,
+            boolean foil,
+            Map<String, ScryfallPriceService.Prices> extraPrices
+    ) {
+        Double ckUsd = priceComparisonService.extractConditionPrice(product, "NM");
+        var quote = priceComparisonService.quote(
+                ckUsd,
+                extraPrices.get(ScryfallPriceService.key(setCode(product.getSku()), collectorNumber(product.getSku()))),
+                foil
+        );
+        var tcg = quote.find(com.tcg.bot.service.PriceComparisonService.TCGPLAYER);
+        var cm = quote.find(com.tcg.bot.service.PriceComparisonService.CARDMARKET);
+        return new PriceComparison(
+                tcg == null ? "" : "US$ " + formatPrice(String.valueOf(tcg.price()), 2),
+                cm == null ? "" : "€ " + formatPrice(String.valueOf(cm.price()), 2),
+                quote.localPrice() == null ? "" : "$ " + formatPrice(String.valueOf(quote.localPrice()), 0)
+        );
+    }
+
+    public record PriceComparison(String tcgplayer, String cardmarket, String suggestedLocal) {
     }
 
     private boolean matchesInventoryCard(
@@ -2077,6 +2143,11 @@ public class DashboardController {
         model.addAttribute("licensePurchaseUrl", licenseService.getPurchaseUrl());
         model.addAttribute("freeCardLimit", LicenseService.FREE_CARD_LIMIT);
         model.addAttribute("minimumPrice", pricingSettingsService.getMinimumPrice());
+        model.addAttribute("tcgplayerEnabled", pricingSettingsService.isTcgplayerEnabled());
+        model.addAttribute("cardmarketEnabled", pricingSettingsService.isCardmarketEnabled());
+        model.addAttribute("eurRate", pricingSettingsService.getEurRate());
+        model.addAttribute("combineMode", pricingSettingsService.getCombineMode().name());
+        model.addAttribute("combineModes", com.tcg.bot.service.PricingSettingsService.CombineMode.values());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("sheetEditorEmail", inventoryService.getServiceAccountEmail());
@@ -2200,7 +2271,8 @@ public class DashboardController {
             String nmPrice,
             int stockQuantity,
             int rowIndex,
-            String cardId
+            String cardId,
+            PriceComparison prices
     ) {
         public String formattedNmPrice() {
             return formatUsdPrice(nmPrice);

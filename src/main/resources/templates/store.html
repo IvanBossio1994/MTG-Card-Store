@@ -103,6 +103,30 @@
                            th:value="${minimumPrice}">
                 </div>
             </div>
+            <div class="price-sources">
+                <input type="hidden" name="sourcesSubmitted" value="true">
+                <h3>Fuentes de precio</h3>
+                <p class="field-help">Card Kingdom siempre se usa como catálogo. Sumá otras fuentes para compararlas en la búsqueda
+                    y, si querés, para calcular tu precio con el promedio, la más alta o la más baja.</p>
+                <label class="checkbox-row"><input type="checkbox" checked disabled> Card Kingdom (USD)</label>
+                <label class="checkbox-row"><input type="checkbox" name="tcgplayerEnabled" value="true"
+                                                   th:checked="${tcgplayerEnabled}"> TCGplayer (USD, vía Scryfall)</label>
+                <label class="checkbox-row"><input type="checkbox" name="cardmarketEnabled" value="true"
+                                                   th:checked="${cardmarketEnabled}"> Cardmarket (EUR, vía Scryfall)</label>
+                <div class="pricing-config-grid">
+                    <div class="store-field">
+                        <label for="eurRate">Cotización ARS por EUR (para Cardmarket)</label>
+                        <input id="eurRate" name="eurRate" type="number" min="0" step="0.01" th:value="${eurRate}">
+                    </div>
+                    <div class="store-field">
+                        <label for="combineMode">Precio local según</label>
+                        <select id="combineMode" name="combineMode">
+                            <option th:each="mode : ${combineModes}" th:value="${mode.name()}"
+                                    th:text="${mode.label}" th:selected="${mode.name() == combineMode}">Solo Card Kingdom</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div class="store-field">
                 <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
                 <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
