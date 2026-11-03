@@ -34,11 +34,12 @@
             <span class="summary-note" th:classappend="${summary.reservationsDueToday > 0} ? 'warn'"
                   th:text="${summary.reservationsDueToday > 0 ? summary.reservationsDueToday + ' vencen hoy' : 'Ninguna vence hoy'}">Ninguna vence hoy</span>
         </a>
-        <div class="summary-tile">
+        <a class="summary-tile" th:href="@{/revisar}">
             <span class="summary-label">Cartas en stock</span>
             <strong th:text="${summary.unitsInStock}">0</strong>
-            <span class="summary-note" th:text="${summary.distinctInStock + ' distintas'}">0 distintas</span>
-        </div>
+            <span class="summary-note" th:classappend="${reviewCount != null and reviewCount > 0} ? 'warn'"
+                  th:text="${reviewCount != null and reviewCount > 0 ? summary.distinctInStock + ' distintas · ' + reviewCount + ' para revisar' : summary.distinctInStock + ' distintas'}">0 distintas</span>
+        </a>
         <a class="summary-tile" th:href="@{/precios}">
             <span class="summary-label">Valor del stock</span>
             <strong th:text="${'$ ' + summary.stockValue}">$ 0</strong>

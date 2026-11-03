@@ -99,6 +99,9 @@
                 </li>
             </ul>
             <div class="order-actions" th:if="${order.isActive()}">
+                <a class="secondary-button whatsapp-button" th:if="${whatsappLinks != null and whatsappLinks.containsKey(order.reservationId)}"
+                   th:href="${whatsappLinks.get(order.reservationId)}" target="_blank" rel="noopener"
+                   title="Abre WhatsApp con el aviso ya escrito">Avisar por WhatsApp</a>
                 <form method="post" th:action="@{/reservas/{id}/retirar(id=${order.reservationId})}">
                     <button class="primary-button" type="submit" title="Registra la venta en la caja">Retiró y pagó</button>
                 </form>
