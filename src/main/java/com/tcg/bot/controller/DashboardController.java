@@ -2018,7 +2018,8 @@ public class DashboardController {
                 stockQuantity,
                 rowIndex,
                 cardId,
-                comparePrices(product, foil, extraPrices)
+                comparePrices(product, foil, extraPrices),
+                target == null ? 0 : com.tcg.bot.util.Amounts.parse(target.getLocalPrice())
         );
     }
 
@@ -2294,7 +2295,8 @@ public class DashboardController {
             int stockQuantity,
             int rowIndex,
             String cardId,
-            PriceComparison prices
+            PriceComparison prices,
+            double localPrice
     ) {
         public String formattedNmPrice() {
             return formatUsdPrice(nmPrice);

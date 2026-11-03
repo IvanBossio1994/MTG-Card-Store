@@ -32,9 +32,13 @@
         </div>
 
         <p id="order-draft-empty" class="supporting">
-            Buscá cartas en <a th:href="@{/}">Inicio</a> y tocá <strong>Reservar</strong> para sumarlas acá.
+            Buscá cartas en <a th:href="@{/}">Inicio</a> y tocá <strong>+ Carrito</strong> para sumarlas acá.
         </p>
-        <ul id="order-draft-list" class="order-draft-list"></ul>
+        <ul id="order-draft-list" class="cart-list order-draft-list"></ul>
+        <div class="cart-total" hidden>
+            <span>Total</span>
+            <strong id="order-draft-total">$ 0</strong>
+        </div>
 
         <form id="order-form" method="post" th:action="@{/reservas}" hidden>
             <input id="order-items-input" type="hidden" name="items" value="[]">
@@ -49,7 +53,13 @@
                     <input name="days" type="number" min="0" max="60" th:value="${defaultDays}">
                 </label>
             </div>
-            <button class="primary-button" type="submit">Reservar pedido</button>
+            <div class="order-actions">
+                <button class="primary-button" type="submit">Reservar pedido</button>
+                <button class="secondary-button" type="submit" form="order-sell-form" formnovalidate>Cobrar ahora sin reservar</button>
+            </div>
+        </form>
+        <form id="order-sell-form" method="post" th:action="@{/ventas}" hidden>
+            <input id="order-sell-items" type="hidden" name="items" value="[]">
         </form>
     </section>
 

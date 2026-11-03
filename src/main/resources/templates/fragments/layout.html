@@ -59,6 +59,29 @@
     </aside>
 </div>
 
+<aside th:fragment="cart" id="cart-panel" class="cart-panel" hidden aria-label="Carrito">
+    <button id="cart-toggle" class="cart-toggle" type="button" aria-expanded="true" aria-controls="cart-body">
+        <span class="cart-toggle-title">Carrito</span>
+        <span id="cart-summary" class="cart-summary">0 cartas · $ 0</span>
+    </button>
+    <div id="cart-body" class="cart-body">
+        <ul id="cart-list" class="cart-list"></ul>
+        <div class="cart-total">
+            <span>Total</span>
+            <strong id="cart-total">$ 0</strong>
+        </div>
+        <p id="cart-price-warning" class="cart-warning" hidden>Hay cartas sin precio en tu Sheet: sincronizá antes de cobrar.</p>
+        <form id="cart-sell-form" method="post" th:action="@{/ventas}">
+            <input id="cart-items-input" type="hidden" name="items" value="[]">
+            <button class="primary-button" type="submit">Cobrar ahora</button>
+        </form>
+        <div class="cart-secondary">
+            <a class="secondary-button" th:href="@{/reservas}">Reservar para un cliente</a>
+            <button id="cart-clear" class="text-action" type="button">Vaciar</button>
+        </div>
+    </div>
+</aside>
+
 <div th:fragment="loading(title, message)" id="loading-overlay" class="loading-overlay" aria-hidden="true">
     <div class="loading-card" role="status" aria-live="polite">
         <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
