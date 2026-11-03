@@ -1307,5 +1307,238 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-print]").forEach(button => {
         button.addEventListener("click", () => window.print());
     });
+
+    // --- Compras a clientes ---
+    const BUY_KEY = "tcg-buy-draft";
+    const BUY_PERCENT_KEY = "tcg-buy-percent";
+
+    function readBuy() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(BUY_KEY) || "[]");
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function writeBuy(items) {
+        try {
+            localStorage.setItem(BUY_KEY, JSON.stringify(items));
+        } catch (e) {
+            // Sin almacenamiento local la compra solo vive en esta pantalla.
+        }
+        renderBuyBadge(items);
+        renderBuy(items);
+    }
+
+    function renderBuyBadge(items) {
+        const badge = document.getElementById("buy-badge");
+        if (!badge) {
+            return;
+        }
+        const units = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        badge.hidden = units <= 0;
+        badge.textContent = `Compra (${units}) →`;
+    }
+
+    function buyPercent() {
+        const form = document.getElementById("buy-form");
+        const payment = form ? form.querySelector("input[name=payment]:checked") : null;
+        const input = document.getElementById(payment && payment.value === "credit" ? "buy-credit-percent" : "buy-cash-percent");
+        return input ? Math.min(Math.max(Number(input.value) || 0, 0), 100) : 50;
+    }
+
+    function renderBuy(items) {
+        const list = document.getElementById("buy-list");
+        const form = document.getElementById("buy-form");
+        if (!list || !form) {
+            return;
+        }
+        const empty = document.getElementById("buy-empty");
+        form.hidden = items.length === 0;
+        if (empty) {
+            empty.hidden = items.length > 0;
+        }
+
+        const percent = buyPercent();
+        list.innerHTML = "";
+        let total = 0;
+        items.forEach((item, index) => {
+            const offered = item.manual ? Number(item.unitPaid) || 0 : Math.round((Number(item.price) || 0) * percent / 100);
+            item.unitPaid = offered;
+            total += offered * item.quantity;
+
+            const row = document.createElement("tr");
+            const name = document.createElement("td");
+            name.innerHTML = "";
+            const strong = document.createElement("strong");
+            strong.textContent = item.name;
+            const meta = document.createElement("small");
+            meta.textContent = [item.set, item.printing].filter(Boolean).join(" · ");
+            name.append(strong, document.createElement("br"), meta);
+
+            const price = document.createElement("td");
+            price.className = "nowrap";
+            price.textContent = Number(item.price) > 0 ? money(item.price) : "sin precio";
+
+            const qty = document.createElement("td");
+            const qtyBox = document.createElement("div");
+            qtyBox.className = "cart-qty";
+            const minus = document.createElement("button");
+            minus.type = "button";
+            minus.textContent = "−";
+            minus.addEventListener("click", () => {
+                const next = readBuy();
+                next[index].quantity -= 1;
+                if (next[index].quantity <= 0) {
+                    next.splice(index, 1);
+                }
+                writeBuy(next);
+            });
+            const count = document.createElement("span");
+            count.textContent = item.quantity;
+            const plus = document.createElement("button");
+            plus.type = "button";
+            plus.textContent = "+";
+            plus.addEventListener("click", () => {
+                const next = readBuy();
+                next[index].quantity += 1;
+                writeBuy(next);
+            });
+            qtyBox.append(minus, count, plus);
+            qty.appendChild(qtyBox);
+
+            const paid = document.createElement("td");
+            const paidInput = document.createElement("input");
+            paidInput.type = "text";
+            paidInput.inputMode = "numeric";
+            paidInput.className = "buy-paid-input";
+            paidInput.value = offered;
+            paidInput.setAttribute("aria-label", "Pagás por " + item.name);
+            paidInput.addEventListener("change", () => {
+                const next = readBuy();
+                next[index].unitPaid = Number(String(paidInput.value).replace(/\./g, "").replace(/[^0-9]/g, "")) || 0;
+                next[index].manual = true;
+                writeBuy(next);
+            });
+            paid.appendChild(paidInput);
+
+            const subtotal = document.createElement("td");
+            subtotal.className = "nowrap";
+            subtotal.textContent = money(offered * item.quantity);
+
+            const remove = document.createElement("td");
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.className = "text-action";
+            removeButton.textContent = "Quitar";
+            removeButton.addEventListener("click", () => {
+                const next = readBuy();
+                next.splice(index, 1);
+                writeBuy(next);
+            });
+            remove.appendChild(removeButton);
+
+            row.append(name, price, qty, paid, subtotal, remove);
+            list.appendChild(row);
+        });
+
+        document.getElementById("buy-total").textContent = money(total);
+        document.getElementById("buy-lines-input").value = JSON.stringify(items.map(item => ({
+            sku: item.sku, cardId: item.cardId, quantity: item.quantity, unitPaid: item.unitPaid
+        })));
+    }
+
+    document.querySelectorAll(".buy-button").forEach(button => {
+        button.addEventListener("click", () => {
+            const items = readBuy();
+            const sku = button.dataset.sku;
+            const existing = items.find(item => item.sku === sku);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                items.push({
+                    sku,
+                    cardId: button.dataset.cardId || "",
+                    name: button.dataset.name || "",
+                    set: button.dataset.set || "",
+                    printing: button.dataset.printing || "",
+                    price: Number(button.dataset.price) || 0,
+                    quantity: 1
+                });
+            }
+            writeBuy(items);
+            showToast("Sumada a la compra", "success");
+        });
+    });
+
+    const buyForm = document.getElementById("buy-form");
+    if (buyForm) {
+        try {
+            const saved = JSON.parse(localStorage.getItem(BUY_PERCENT_KEY) || "null");
+            if (saved) {
+                document.getElementById("buy-cash-percent").value = saved.cash;
+                document.getElementById("buy-credit-percent").value = saved.credit;
+            }
+        } catch (e) {
+            // Porcentajes por defecto.
+        }
+        buyForm.addEventListener("change", event => {
+            if (event.target.name === "payment" || event.target.id === "buy-cash-percent" || event.target.id === "buy-credit-percent") {
+                try {
+                    localStorage.setItem(BUY_PERCENT_KEY, JSON.stringify({
+                        cash: document.getElementById("buy-cash-percent").value,
+                        credit: document.getElementById("buy-credit-percent").value
+                    }));
+                } catch (e) {
+                    // Preferencia opcional.
+                }
+                const items = readBuy().map(item => ({...item, manual: false}));
+                writeBuy(items);
+            }
+        });
+        buyForm.addEventListener("submit", event => {
+            const payment = buyForm.querySelector("input[name=payment]:checked");
+            if (payment && payment.value === "credit" && !buyForm.elements.customer.value.trim()) {
+                event.preventDefault();
+                showToast("Para pagar con crédito poné el nombre del cliente", "error");
+                buyForm.elements.customer.focus();
+            }
+        });
+        document.getElementById("buy-clear").addEventListener("click", () => writeBuy([]));
+    }
+
+    if (document.body.dataset.clearBuy === "true") {
+        writeBuy([]);
+    } else {
+        renderBuyBadge(readBuy());
+        renderBuy(readBuy());
+    }
+
+    // --- Crédito al cobrar desde el carrito ---
+    const creditInput = document.getElementById("cart-credit-customer");
+    if (creditInput) {
+        let loaded = false;
+        creditInput.addEventListener("focus", () => {
+            if (loaded) {
+                return;
+            }
+            loaded = true;
+            fetch(document.getElementById("cart-sell-form").action.replace(/ventas$/, "api/credito"))
+                .then(response => response.ok ? response.json() : [])
+                .then(accounts => {
+                    const list = document.getElementById("cart-credit-list");
+                    accounts.forEach(account => {
+                        const option = document.createElement("option");
+                        option.value = account.customer;
+                        option.label = account.customer + " · " + money(account.balance);
+                        list.appendChild(option);
+                    });
+                })
+                .catch(() => {
+                    loaded = false;
+                });
+        });
+    }
 });
 

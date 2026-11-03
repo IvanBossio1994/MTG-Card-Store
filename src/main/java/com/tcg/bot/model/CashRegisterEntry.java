@@ -68,9 +68,35 @@ public class CashRegisterEntry {
     public static final String TYPE_VOID = "ANULACION";
     /** Cierre de caja: solo deja anotado lo contado; no suma ni resta. */
     public static final String TYPE_CLOSE = "CIERRE";
+    /** Compra de cartas a un cliente. Pagada en efectivo resta del cajón; con crédito de tienda no. */
+    public static final String TYPE_BUY = "COMPRA";
+    /** Parte de una venta pagada con crédito de tienda: esa plata no entra al cajón. */
+    public static final String TYPE_CREDIT = "CREDITO";
 
     public boolean isSale() {
         return TYPE_SALE.equalsIgnoreCase(type);
+    }
+
+    public boolean isBuy() {
+        return TYPE_BUY.equalsIgnoreCase(type);
+    }
+
+    public boolean isCreditUse() {
+        return TYPE_CREDIT.equalsIgnoreCase(type);
+    }
+
+    /**
+     * Lo que mueve el efectivo/medios del cajón: ventas, anulaciones, compras pagadas (no con crédito) y la parte
+     * de ventas pagada con crédito (que se resta porque no entró plata).
+     */
+    public double drawerAmount() {
+        if (affectsCash()) {
+            return signedTotal();
+        }
+        if (isBuy() || isCreditUse()) {
+            return -Math.abs(Amounts.parse(total));
+        }
+        return 0;
     }
 
     public boolean isClose() {

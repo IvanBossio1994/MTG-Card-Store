@@ -36,6 +36,12 @@
             <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Zm1.5 1.5v13.7l4.5-3 4.5 3V4.5h-9Z"/></svg>
                 Reservas y pedidos</a>
+            <a th:classappend="${active == 'buy'} ? 'active'" th:href="@{/compras}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 1 4 4h3l1 14H4L5 7h3a4 4 0 0 1 4-4Zm0 1.5A2.5 2.5 0 0 0 9.5 7h5A2.5 2.5 0 0 0 12 4.5ZM6.4 8.5l-.8 11h12.8l-.8-11H6.4ZM11.25 10h1.5v2.25H15v1.5h-2.25V16h-1.5v-2.25H9v-1.5h2.25V10Z"/></svg>
+                Comprar a clientes</a>
+            <a th:classappend="${active == 'customers'} ? 'active'" th:href="@{/clientes}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 1.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6h-1.5c0-2.3-2.8-4.5-6.5-4.5S5.5 17.7 5.5 20H4Z"/></svg>
+                Crédito de clientes</a>
             <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.5v11h15v-11h-15ZM6 9h6v1.5H6V9Zm0 3h9v1.5H6V12Z"/></svg>
                 Caja y movimientos</a>
@@ -76,6 +82,11 @@
         <p id="cart-price-warning" class="cart-warning" hidden>Hay cartas sin precio en tu Sheet: sincronizá antes de cobrar.</p>
         <form id="cart-sell-form" method="post" th:action="@{/ventas}">
             <input id="cart-items-input" type="hidden" name="items" value="[]">
+            <label class="cart-credit">Usar crédito de un cliente (opcional)
+                <input id="cart-credit-customer" name="creditCustomer" type="text" list="cart-credit-list"
+                       autocomplete="off" placeholder="Nombre del cliente">
+            </label>
+            <datalist id="cart-credit-list"></datalist>
             <button class="primary-button" type="submit">Cobrar ahora</button>
         </form>
         <div class="cart-secondary">

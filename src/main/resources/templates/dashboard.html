@@ -108,6 +108,7 @@
         </div>
 
         <div class="stock-mode-bar" th:if="${searchPerformed}">
+            <a id="buy-badge" class="order-badge buy-badge" th:href="@{/compras}" hidden>Compra (0) →</a>
             <label class="stock-mode-toggle"
                    title="Con esto activado, el botón - corrige el stock sin anotar una venta en la caja">
                 <input id="stock-adjust-mode" type="checkbox">
@@ -165,6 +166,13 @@
                                     th:attr="data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-stock=${result.stockQuantity},data-price=${result.localPrice}"
                                     title="Sumar al carrito para cobrar o reservar">
                                 + Carrito
+                            </button>
+                            <button type="button"
+                                    class="buy-button"
+                                    th:if="${result.sku != null and result.sku != ''}"
+                                    th:attr="data-sku=${result.sku},data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-printing=${result.printing},data-price=${result.referencePrice()}"
+                                    title="Sumar a una compra a un cliente">
+                                Comprar
                             </button>
                         </div>
                     </td>

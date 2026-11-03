@@ -87,6 +87,7 @@ public class DashboardController {
     private final com.tcg.bot.service.PriceHistoryService priceHistoryService;
     private final com.tcg.bot.service.StoreSummaryService storeSummaryService;
     private final com.tcg.bot.service.ReviewService reviewService;
+    private final com.tcg.bot.service.BuyService buyService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -99,10 +100,12 @@ public class DashboardController {
             ScryfallPriceService scryfallPriceService,
             com.tcg.bot.service.PriceHistoryService priceHistoryService,
             com.tcg.bot.service.StoreSummaryService storeSummaryService,
-            com.tcg.bot.service.ReviewService reviewService
+            com.tcg.bot.service.ReviewService reviewService,
+            com.tcg.bot.service.BuyService buyService
     ) {
         this.storeSummaryService = storeSummaryService;
         this.reviewService = reviewService;
+        this.buyService = buyService;
         this.priceHistoryService = priceHistoryService;
         this.scryfallPriceService = scryfallPriceService;
         this.stockOperationsService = stockOperationsService;
@@ -2047,11 +2050,12 @@ public class DashboardController {
         return new PriceComparison(
                 tcg == null ? "" : "US$ " + formatPrice(String.valueOf(tcg.price()), 2),
                 cm == null ? "" : "€ " + formatPrice(String.valueOf(cm.price()), 2),
-                quote.localPrice() == null ? "" : "$ " + formatPrice(String.valueOf(quote.localPrice()), 0)
+                quote.localPrice() == null ? "" : "$ " + formatPrice(String.valueOf(quote.localPrice()), 0),
+                quote.localPrice() == null ? 0 : quote.localPrice()
         );
     }
 
-    public record PriceComparison(String tcgplayer, String cardmarket, String suggestedLocal) {
+    public record PriceComparison(String tcgplayer, String cardmarket, String suggestedLocal, double suggestedValue) {
     }
 
     private boolean matchesInventoryCard(
@@ -2306,6 +2310,11 @@ public class DashboardController {
             PriceComparison prices,
             double localPrice
     ) {
+        /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido si no hay. */
+        public long referencePrice() {
+            return Math.round(localPrice > 0 ? localPrice : prices == null ? 0 : prices.suggestedValue());
+        }
+
         public String formattedNmPrice() {
             return formatUsdPrice(nmPrice);
         }
@@ -2608,6 +2617,79 @@ public class DashboardController {
         }
 
         return "redirect:/movimientos?tab=cash";
+    }
+
+    /**
+     * Compra de cartas a un cliente. Las líneas llegan como JSON [{sku, cardId, quantity, unitPaid}].
+     * Las cartas que todavía no están en el Sheet se agregan (respetando el límite del plan) y después
+     * BuyService suma el stock y registra el pago.
+     */
+    @PostMapping("/compras")
+    public String buyCards(
+            @RequestParam String lines,
+            @RequestParam(required = false) String customer,
+            @RequestParam(required = false) String contact,
+            @RequestParam(defaultValue = "cash") String payment,
+            RedirectAttributes redirect
+    ) {
+        try {
+            com.google.gson.JsonArray array = com.google.gson.JsonParser.parseString(lines).getAsJsonArray();
+            if (array.isEmpty()) {
+                throw new StockOperationsService.StockOperationException("La compra no tiene cartas.");
+            }
+            com.tcg.bot.service.BuyService.Result result;
+            synchronized (StockOperationsService.writeLock()) {
+                List<InventoryCard> current = new ArrayList<>(inventoryService.getInventoryCards());
+                List<com.tcg.bot.service.BuyService.Line> buyLines = new ArrayList<>();
+                for (var element : array) {
+                    var line = element.getAsJsonObject();
+                    String cardId = line.has("cardId") && !line.get("cardId").isJsonNull() ? line.get("cardId").getAsString() : "";
+                    String sku = line.has("sku") && !line.get("sku").isJsonNull() ? line.get("sku").getAsString() : "";
+                    int quantity = line.has("quantity") ? line.get("quantity").getAsInt() : 0;
+                    double unitPaid = line.has("unitPaid") ? line.get("unitPaid").getAsDouble() : -1;
+
+                    InventoryCard card = current.stream()
+                            .filter(candidate -> !cardId.isBlank() && cardId.equals(candidate.getId()))
+                            .findFirst()
+                            .orElse(null);
+                    if (card == null) {
+                        CardKingdomProduct product = findProductBySku(sku);
+                        if (product == null) {
+                            throw new StockOperationsService.StockOperationException(
+                                    "No se encontró una de las cartas en Card Kingdom. Volvé a buscarla.");
+                        }
+                        card = findSamePrinting(current, product);
+                        if (card == null) {
+                            if (licenseService.remainingNewCards(distinctCards(current)) <= 0) {
+                                throw new StockOperationsService.StockOperationException(licenseService.limitMessage());
+                            }
+                            card = createInventoryCard(product);
+                            card.setQuantity("0");
+                            card.setAction(StockOperationsService.actionFor(0));
+                            card.setRowIndex(inventoryService.appendInventoryCard(card));
+                            current.add(card);
+                        }
+                    }
+                    buyLines.add(new com.tcg.bot.service.BuyService.Line(card, quantity, unitPaid));
+                }
+                result = buyService.buy(customer, contact,
+                        "credit".equalsIgnoreCase(payment) ? com.tcg.bot.service.BuyService.Payment.CREDIT
+                                : com.tcg.bot.service.BuyService.Payment.CASH,
+                        buyLines);
+            }
+            redirect.addFlashAttribute("buyMessage", result.payment() == com.tcg.bot.service.BuyService.Payment.CASH
+                    ? "Compra registrada: " + result.units() + (result.units() == 1 ? " carta" : " cartas")
+                            + " por $ " + result.formattedTotal() + " en efectivo. Ya están en el stock."
+                    : "Compra registrada: " + result.units() + (result.units() == 1 ? " carta" : " cartas")
+                            + ". " + customer.trim() + " ahora tiene $ " + result.formattedBalance() + " de crédito.");
+            redirect.addFlashAttribute("clearBuy", true);
+        } catch (StockOperationsService.StockOperationException e) {
+            redirect.addFlashAttribute("buyError", e.getMessage());
+        } catch (Exception e) {
+            log.warn("No se pudo registrar la compra.", e);
+            redirect.addFlashAttribute("buyError", "No se pudo registrar la compra: " + e.getMessage());
+        }
+        return "redirect:/compras";
     }
 
     @PostMapping("/inventory/cards")

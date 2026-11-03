@@ -43,4 +43,18 @@ public interface InventoryStore {
     default void updateCardIdentity(int rowIndex, InventoryCard card) throws Exception {
         throw new UnsupportedOperationException("No disponible");
     }
+
+    /** Crédito de tienda (hoja "Credito"). */
+    default List<com.tcg.bot.model.CreditEntry> getCreditEntries() throws Exception {
+        return List.of();
+    }
+
+    default void appendCreditEntry(com.tcg.bot.model.CreditEntry entry) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
+    /** Agrega una fila nueva al inventario y devuelve su número de fila. */
+    default int appendInventoryCard(InventoryCard card) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
 }

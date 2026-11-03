@@ -63,6 +63,16 @@ public class InventoryService implements InventoryStore {
     }
 
     @Override
+    public java.util.List<com.tcg.bot.model.CreditEntry> getCreditEntries() throws Exception {
+        return googleSheetsService.getCreditEntries();
+    }
+
+    @Override
+    public void appendCreditEntry(com.tcg.bot.model.CreditEntry entry) throws Exception {
+        googleSheetsService.appendCreditEntry(entry);
+    }
+
+    @Override
     public void updateCardIdentity(int rowIndex, InventoryCard card) throws Exception {
         googleSheetsService.updateCardIdentity(rowIndex, card);
     }
@@ -75,6 +85,7 @@ public class InventoryService implements InventoryStore {
         googleSheetsService.updateQuantity(rowIndex, change);
     }
 
+    @Override
     public int appendInventoryCard(InventoryCard card) throws Exception {
         return googleSheetsService.appendInventoryCard(card);
     }

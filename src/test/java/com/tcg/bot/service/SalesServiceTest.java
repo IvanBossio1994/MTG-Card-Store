@@ -25,7 +25,7 @@ class SalesServiceTest {
         store.cards.add(card("sol", 2, "Sol Ring", 3, "1500"));
         store.cards.add(card("cs", 3, "Counterspell", 1, "800"));
         var stock = new StockOperationsService(store, Clock.fixed(Instant.parse("2026-11-03T15:00:00Z"), ZoneId.of("America/Buenos_Aires")));
-        service = new SalesService(store, stock);
+        service = new SalesService(store, stock, new CreditService(store, stock));
     }
 
     @Test
@@ -38,6 +38,21 @@ class SalesServiceTest {
         assertThat(store.card("cs").getQuantity()).isEqualTo("0");
         assertThat(store.cash).hasSize(2).allSatisfy(entry -> assertThat(entry.isSale()).isTrue());
         assertThat(store.cash).extracting(e -> e.getSaleId()).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void customerCreditPaysPartOfTheSaleAndIsTakenOutOfTheDrawer() throws Exception {
+        var credit = new CreditService(store, new StockOperationsService(store,
+                Clock.fixed(Instant.parse("2026-11-03T15:00:00Z"), ZoneId.of("America/Buenos_Aires"))));
+        credit.add("Juan", "", 2000, "Compra", "C1");
+
+        var ticket = service.sell(List.of(new Item("sol", 2), new Item("cs", 1)), "juan");
+
+        assertThat(ticket.creditUsed()).isEqualTo(2000);
+        assertThat(ticket.formattedToPay()).isEqualTo("1.800");
+        assertThat(credit.balance("Juan")).isZero();
+        assertThat(store.cash.stream().mapToDouble(e -> e.drawerAmount()).sum()).isEqualTo(1800);
+        assertThat(store.cash.stream().filter(e -> e.affectsCash()).mapToDouble(e -> e.signedTotal()).sum()).isEqualTo(3800);
     }
 
     @Test
