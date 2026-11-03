@@ -10,6 +10,7 @@ import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.PricingSettingsService;
 import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.service.StockOperationsService;
+import com.tcg.bot.service.LicenseService;
 import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,7 @@ public class DashboardController {
             DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final StockOperationsService stockOperationsService;
+    private final LicenseService licenseService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -87,9 +89,11 @@ public class DashboardController {
             PriceComparisonService priceComparisonService,
             PricingSettingsService pricingSettingsService,
             StoreSettingsService storeSettingsService,
-            StockOperationsService stockOperationsService
+            StockOperationsService stockOperationsService,
+            LicenseService licenseService
     ) {
         this.stockOperationsService = stockOperationsService;
+        this.licenseService = licenseService;
         this.inventoryService = inventoryService;
         this.cardKingdomApiService = cardKingdomApiService;
         this.priceComparisonService = priceComparisonService;
@@ -964,6 +968,16 @@ public class DashboardController {
                 cardsToWrite.put(existingCard.getRowIndex(), existingCard);
                 movements.add(createMovement("ENTRADA", quantity, existingCard, updatedQuantity - quantity, updatedQuantity, "Importar lista"));
                 updated++;
+            }
+
+            int remaining = licenseService.remainingNewCards(distinctCards(inventoryCards));
+            if (cardsToAppend.size() > remaining) {
+                return populateImportAnalysisModel(
+                        rawList,
+                        model,
+                        licenseService.limitMessage() + " Esta lista suma " + cardsToAppend.size()
+                                + " cartas nuevas y te quedan " + remaining + "."
+                );
             }
 
             inventoryService.updateQuantities(quantitiesByRow);
@@ -1993,6 +2007,25 @@ public class DashboardController {
         }
     }
 
+    private static int distinctCards(List<InventoryCard> cards) {
+        return (int) cards.stream()
+                .filter(card -> card.getName() != null && !card.getName().isBlank())
+                .count();
+    }
+
+    @PostMapping("/configuracion/licencia")
+    public String updateLicense(@RequestParam(name = "licenseKey", required = false) String licenseKey,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            var status = licenseService.activate(licenseKey);
+            redirectAttributes.addFlashAttribute(status.pro() ? "licenseSuccess" : "licenseError", status.message());
+        } catch (Exception e) {
+            log.warn("No se pudo guardar la licencia.", e);
+            redirectAttributes.addFlashAttribute("licenseError", "No se pudo guardar la licencia: " + e.getMessage());
+        }
+        return "redirect:/configuracion";
+    }
+
     private InventoryCard findInventoryCardByRow(int rowIndex) throws Exception {
         return inventoryService.getInventoryCards()
                 .stream()
@@ -2040,6 +2073,9 @@ public class DashboardController {
         model.addAttribute("ckDollarRate", pricingSettingsService.getCkDollarRate());
         model.addAttribute("roundMultiple", pricingSettingsService.getRoundMultiple());
         model.addAttribute("markupPercent", pricingSettingsService.getMarkupPercent());
+        model.addAttribute("license", licenseService.status());
+        model.addAttribute("licensePurchaseUrl", licenseService.getPurchaseUrl());
+        model.addAttribute("freeCardLimit", LicenseService.FREE_CARD_LIMIT);
         model.addAttribute("minimumPrice", pricingSettingsService.getMinimumPrice());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
@@ -2479,6 +2515,11 @@ public class DashboardController {
             if (product == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiMessage(false, "No se encontro la carta en Card Kingdom."));
+            }
+
+            if (licenseService.remainingNewCards(distinctCards(inventoryService.getInventoryCards())) <= 0) {
+                return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                        .body(new ApiMessage(false, licenseService.limitMessage()));
             }
 
             InventoryCard card = createInventoryCard(product);

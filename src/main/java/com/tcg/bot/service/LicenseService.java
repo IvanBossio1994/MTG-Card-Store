@@ -1,0 +1,264 @@
+package com.tcg.bot.service;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Properties;
+
+/**
+ * Plan gratis / plan Tienda.
+ * <p>
+ * Gratis: hasta {@link #FREE_CARD_LIMIT} cartas distintas en el inventario, con todo lo demas habilitado.
+ * Al pasarse se puede seguir buscando, vendiendo y reservando, pero no sumar cartas nuevas.
+ * <p>
+ * Tienda: una clave de licencia de Lemon Squeezy, validada directo contra su API publica de licencias
+ * (no hace falta servidor propio ni base de datos). El resultado se guarda en data/license.properties y
+ * vale {@link #OFFLINE_GRACE} sin conexion, para que un corte de internet no frene la tienda.
+ */
+@Service
+public class LicenseService {
+
+    public static final int FREE_CARD_LIMIT = 300;
+    static final Duration OFFLINE_GRACE = Duration.ofDays(7);
+
+    private static final Logger log = LoggerFactory.getLogger(LicenseService.class);
+    private static final String VALIDATE_URL = "https://api.lemonsqueezy.com/v1/licenses/validate";
+
+    /** Respuesta minima de una validacion. */
+    public record Validation(boolean valid, String status, String expiresAt, String email, String productId, String error) {
+    }
+
+    /** Se separa para poder probar sin internet. */
+    public interface Validator {
+        Validation validate(String licenseKey) throws Exception;
+    }
+
+    public record Status(boolean pro, String plan, String email, String expiresAt, String message, String maskedKey) {
+    }
+
+    private final Path file;
+    private final Validator validator;
+    private final Clock clock;
+    private final String expectedProductId;
+    private final String purchaseUrl;
+
+    private String licenseKey = "";
+    private Validation lastValidation;
+    private Instant validatedAt;
+
+    @Autowired
+    public LicenseService(
+            @Value("${app.storage-dir:./data}") String storageDirectory,
+            @Value("${license.lemonsqueezy.product-id:}") String expectedProductId,
+            @Value("${license.purchase-url:}") String purchaseUrl
+    ) {
+        this(Paths.get(storageDirectory).resolve("license.properties"), lemonSqueezyValidator(), Clock.systemUTC(),
+                expectedProductId, purchaseUrl);
+    }
+
+    LicenseService(Path file, Validator validator, Clock clock, String expectedProductId, String purchaseUrl) {
+        this.file = file;
+        this.validator = validator;
+        this.clock = clock;
+        this.expectedProductId = expectedProductId == null ? "" : expectedProductId.trim();
+        this.purchaseUrl = purchaseUrl == null ? "" : purchaseUrl.trim();
+        load();
+    }
+
+    public String getPurchaseUrl() {
+        return purchaseUrl;
+    }
+
+    public synchronized boolean isPro() {
+        if (licenseKey.isBlank() || lastValidation == null || validatedAt == null) {
+            return false;
+        }
+
+        boolean active = lastValidation.valid() && "active".equalsIgnoreCase(lastValidation.status());
+        boolean fresh = validatedAt.plus(OFFLINE_GRACE).isAfter(clock.instant());
+        return active && fresh;
+    }
+
+    /** Cuantas cartas distintas mas se pueden agregar. Integer.MAX_VALUE en plan Tienda. */
+    public int remainingNewCards(int currentDistinctCards) {
+        if (isPro()) {
+            return Integer.MAX_VALUE;
+        }
+        return Math.max(FREE_CARD_LIMIT - currentDistinctCards, 0);
+    }
+
+    public String limitMessage() {
+        return "Llegaste al límite del plan gratis (" + FREE_CARD_LIMIT + " cartas distintas). "
+                + "Podés seguir vendiendo y reservando; para sumar cartas nuevas activá el plan Tienda en Configuración.";
+    }
+
+    public synchronized Status status() {
+        if (isPro()) {
+            return new Status(true, "Tienda", lastValidation.email(), lastValidation.expiresAt(),
+                    "Plan Tienda activo.", mask(licenseKey));
+        }
+
+        String message = "Plan gratis: hasta " + FREE_CARD_LIMIT + " cartas distintas.";
+        if (!licenseKey.isBlank() && lastValidation != null && lastValidation.error() != null && !lastValidation.error().isBlank()) {
+            message = "La licencia no está activa: " + lastValidation.error();
+        } else if (!licenseKey.isBlank() && lastValidation != null && !"active".equalsIgnoreCase(lastValidation.status())) {
+            message = "La licencia está " + translate(lastValidation.status()) + ".";
+        } else if (!licenseKey.isBlank()) {
+            message = "No se pudo validar la licencia hace más de " + OFFLINE_GRACE.toDays() + " días. Revisá la conexión.";
+        }
+
+        return new Status(false, "Gratis", lastValidation == null ? "" : lastValidation.email(), "", message, mask(licenseKey));
+    }
+
+    /** Guarda y valida una clave nueva. Devuelve el estado resultante. */
+    public synchronized Status activate(String key) throws IOException {
+        String trimmed = key == null ? "" : key.trim();
+        if (trimmed.isEmpty()) {
+            licenseKey = "";
+            lastValidation = null;
+            validatedAt = null;
+            save();
+            return status();
+        }
+
+        licenseKey = trimmed;
+        refresh();
+        return status();
+    }
+
+    @Scheduled(initialDelay = 30_000, fixedDelay = 12 * 60 * 60_000)
+    public synchronized void refresh() {
+        if (licenseKey.isBlank()) {
+            return;
+        }
+
+        try {
+            Validation validation = validator.validate(licenseKey);
+            if (validation.valid() && !expectedProductId.isEmpty() && !expectedProductId.equals(validation.productId())) {
+                validation = new Validation(false, validation.status(), validation.expiresAt(), validation.email(),
+                        validation.productId(), "la clave es de otro producto");
+            }
+            lastValidation = validation;
+            validatedAt = clock.instant();
+            save();
+        } catch (Exception e) {
+            // Sin internet: se mantiene la ultima validacion mientras dure la gracia.
+            log.info("No se pudo validar la licencia ahora: {}", e.getMessage());
+        }
+    }
+
+    private void load() {
+        if (!Files.exists(file)) {
+            return;
+        }
+
+        Properties properties = new Properties();
+        try (InputStream input = Files.newInputStream(file)) {
+            properties.load(input);
+            licenseKey = properties.getProperty("key", "");
+            String at = properties.getProperty("validatedAt", "");
+            validatedAt = at.isBlank() ? null : Instant.parse(at);
+            lastValidation = new Validation(
+                    Boolean.parseBoolean(properties.getProperty("valid", "false")),
+                    properties.getProperty("status", ""),
+                    properties.getProperty("expiresAt", ""),
+                    properties.getProperty("email", ""),
+                    properties.getProperty("productId", ""),
+                    properties.getProperty("error", "")
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo leer la licencia guardada.", e);
+        }
+    }
+
+    private void save() throws IOException {
+        Properties properties = new Properties();
+        properties.setProperty("key", licenseKey);
+        if (lastValidation != null && validatedAt != null) {
+            properties.setProperty("valid", Boolean.toString(lastValidation.valid()));
+            properties.setProperty("status", nullToEmpty(lastValidation.status()));
+            properties.setProperty("expiresAt", nullToEmpty(lastValidation.expiresAt()));
+            properties.setProperty("email", nullToEmpty(lastValidation.email()));
+            properties.setProperty("productId", nullToEmpty(lastValidation.productId()));
+            properties.setProperty("error", nullToEmpty(lastValidation.error()));
+            properties.setProperty("validatedAt", validatedAt.toString());
+        }
+
+        Files.createDirectories(file.getParent());
+        try (OutputStream output = Files.newOutputStream(file)) {
+            properties.store(output, "Licencia de MTG Card Store");
+        }
+    }
+
+    private static Validator lemonSqueezyValidator() {
+        HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+        return key -> {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(VALIDATE_URL))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Accept", "application/json")
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            "license_key=" + URLEncoder.encode(key, StandardCharsets.UTF_8)))
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            return parse(response.body());
+        };
+    }
+
+    static Validation parse(String body) {
+        JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+        boolean valid = json.has("valid") && !json.get("valid").isJsonNull() && json.get("valid").getAsBoolean();
+        String error = string(json, "error");
+        JsonObject license = json.has("license_key") && json.get("license_key").isJsonObject()
+                ? json.getAsJsonObject("license_key") : new JsonObject();
+        JsonObject meta = json.has("meta") && json.get("meta").isJsonObject()
+                ? json.getAsJsonObject("meta") : new JsonObject();
+        return new Validation(valid, string(license, "status"), string(license, "expires_at"),
+                string(meta, "customer_email"), string(meta, "product_id"), error);
+    }
+
+    private static String string(JsonObject object, String field) {
+        return object.has(field) && !object.get(field).isJsonNull() ? object.get(field).getAsString() : "";
+    }
+
+    private static String translate(String status) {
+        return switch (status == null ? "" : status.toLowerCase()) {
+            case "expired" -> "vencida";
+            case "disabled" -> "desactivada";
+            case "inactive" -> "inactiva";
+            default -> "sin validar";
+        };
+    }
+
+    private static String mask(String key) {
+        if (key == null || key.length() < 8) {
+            return key == null ? "" : key;
+        }
+        return "••••" + key.substring(key.length() - 4);
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+}

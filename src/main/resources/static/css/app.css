@@ -2518,3 +2518,7 @@ tr.in-stock {
     margin: 8px 0 0;
     padding-left: 18px;
 }
+
+.license-card {
+    margin-top: 20px;
+}
