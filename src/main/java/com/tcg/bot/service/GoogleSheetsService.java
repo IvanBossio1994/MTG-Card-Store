@@ -12,6 +12,7 @@ import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
 import com.tcg.bot.model.CashRegisterEntry;
+import com.tcg.bot.model.Reservation;
 import com.tcg.bot.util.Amounts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,25 @@ public class GoogleSheetsService {
     private static final String DEFAULT_INVENTORY_SHEET_NAME = "Inventario";
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
+    private static final String RESERVATIONS_SHEET_NAME = "Reservas";
+    private static final List<String> RESERVATIONS_HEADER = List.of(
+            "Fecha",
+            "Hora",
+            "ID reserva",
+            "Cliente",
+            "Contacto",
+            "ID carta",
+            "Nombre",
+            "Nombre del set",
+            "Codigo de set",
+            "Numero de carta",
+            "Printing",
+            "Cantidad",
+            "Precio Local",
+            "Vence",
+            "Estado",
+            "Actualizado"
+    );
 
     private final StoreSettingsService storeSettingsService;
     private final String configuredCredentialsPath;
@@ -642,6 +662,147 @@ public class GoogleSheetsService {
         ));
     }
 
+    public List<Reservation> getReservations() throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, RESERVATIONS_SHEET_NAME, RESERVATIONS_HEADER);
+
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), sheetRange(RESERVATIONS_SHEET_NAME, "A2:P"))
+                .setValueRenderOption("UNFORMATTED_VALUE")
+                .execute();
+
+        List<Reservation> reservations = new ArrayList<>();
+        var values = response.getValues();
+        if (values == null) {
+            return reservations;
+        }
+
+        for (int index = 0; index < values.size(); index++) {
+            var row = values.get(index);
+            if (getColumnValue(row, 2).isBlank()) {
+                continue;
+            }
+
+            Reservation reservation = new Reservation();
+            reservation.setRowIndex(index + 2);
+            reservation.setDate(getColumnValue(row, 0));
+            reservation.setTime(getColumnValue(row, 1));
+            reservation.setReservationId(getColumnValue(row, 2));
+            reservation.setCustomer(getColumnValue(row, 3));
+            reservation.setContact(getColumnValue(row, 4));
+            reservation.setCardId(getColumnValue(row, 5));
+            reservation.setName(getColumnValue(row, 6));
+            reservation.setSetName(getColumnValue(row, 7));
+            reservation.setSetCode(getColumnValue(row, 8));
+            reservation.setCollectorNumber(getColumnValue(row, 9));
+            reservation.setPrinting(getColumnValue(row, 10));
+            reservation.setQuantity(getColumnValue(row, 11));
+            reservation.setUnitPrice(getColumnValue(row, 12));
+            reservation.setExpiresOn(getColumnValue(row, 13));
+            reservation.setStatus(getColumnValue(row, 14).trim().toUpperCase());
+            reservation.setUpdatedAt(getColumnValue(row, 15));
+            reservations.add(reservation);
+        }
+
+        return reservations;
+    }
+
+    public void appendReservations(List<Reservation> reservations) throws Exception {
+        if (reservations == null || reservations.isEmpty()) {
+            return;
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, RESERVATIONS_SHEET_NAME, RESERVATIONS_HEADER);
+
+        List<List<Object>> rows = new ArrayList<>();
+        for (Reservation reservation : reservations) {
+            rows.add(List.of(
+                    safe(reservation.getDate()),
+                    safe(reservation.getTime()),
+                    safe(reservation.getReservationId()),
+                    safe(reservation.getCustomer()),
+                    safe(reservation.getContact()),
+                    safe(reservation.getCardId()),
+                    safe(reservation.getName()),
+                    safe(reservation.getSetName()),
+                    safe(reservation.getSetCode()),
+                    safe(reservation.getCollectorNumber()),
+                    safe(reservation.getPrinting()),
+                    String.valueOf(reservation.units()),
+                    formatCashNumber(Amounts.parse(reservation.getUnitPrice())),
+                    safe(reservation.getExpiresOn()),
+                    safe(reservation.getStatus()),
+                    safe(reservation.getUpdatedAt())
+            ));
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(rows);
+        sheetsService.spreadsheets().values()
+                .append(storeSettingsService.getSpreadsheetId(), sheetRange(RESERVATIONS_SHEET_NAME, "A:P"), body)
+                .setValueInputOption("RAW")
+                .setInsertDataOption("INSERT_ROWS")
+                .execute();
+    }
+
+    public void updateReservationStatuses(List<Reservation> reservations) throws Exception {
+        if (reservations == null || reservations.isEmpty()) {
+            return;
+        }
+
+        Sheets sheetsService = getSheetsService();
+        List<com.google.api.services.sheets.v4.model.ValueRange> data = new ArrayList<>();
+        for (Reservation reservation : reservations) {
+            data.add(new com.google.api.services.sheets.v4.model.ValueRange()
+                    .setRange(sheetRange(RESERVATIONS_SHEET_NAME, "O" + reservation.getRowIndex() + ":P" + reservation.getRowIndex()))
+                    .setValues(List.of(List.of(safe(reservation.getStatus()), safe(reservation.getUpdatedAt())))));
+        }
+
+        batchUpdate(sheetsService, data);
+    }
+
+    /** Crea la hoja si no existe y le pone el encabezado si esta vacio. Nunca toca filas de datos. */
+    private void ensureSheetWithHeader(Sheets sheetsService, String sheetName, List<String> header) throws Exception {
+        var spreadsheet = sheetsService.spreadsheets()
+                .get(storeSettingsService.getSpreadsheetId())
+                .setFields("sheets.properties.title")
+                .execute();
+
+        boolean exists = spreadsheet.getSheets() != null
+                && spreadsheet.getSheets().stream()
+                .anyMatch(sheet -> sheetName.equals(sheet.getProperties().getTitle()));
+
+        if (!exists) {
+            var addSheetRequest = new com.google.api.services.sheets.v4.model.Request()
+                    .setAddSheet(new com.google.api.services.sheets.v4.model.AddSheetRequest()
+                            .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties()
+                                    .setTitle(sheetName)));
+
+            sheetsService.spreadsheets()
+                    .batchUpdate(storeSettingsService.getSpreadsheetId(),
+                            new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest()
+                                    .setRequests(List.of(addSheetRequest)))
+                    .execute();
+        }
+
+        String lastColumn = SheetColumns.columnLetter(header.size() - 1);
+        var headerResponse = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), sheetRange(sheetName, "A1:" + lastColumn + "1"))
+                .execute();
+
+        if (headerResponse.getValues() != null
+                && !headerResponse.getValues().isEmpty()
+                && sameHeader(headerResponse.getValues().get(0), header)) {
+            return;
+        }
+
+        sheetsService.spreadsheets().values()
+                .update(storeSettingsService.getSpreadsheetId(), sheetRange(sheetName, "A1:" + lastColumn + "1"),
+                        new com.google.api.services.sheets.v4.model.ValueRange().setValues(List.of(new ArrayList<>(header))))
+                .setValueInputOption("RAW")
+                .execute();
+    }
+
     private CashRegisterEntry cashEntryFromRow(List<Object> row) {
         CashRegisterEntry entry = new CashRegisterEntry();
         String thirdColumn = getColumnValue(row, 2);
@@ -1170,7 +1331,8 @@ public class GoogleSheetsService {
 
     private boolean isSystemSheet(String sheetTitle) {
         return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
-                || CASH_SHEET_NAME.equals(sheetTitle);
+                || CASH_SHEET_NAME.equals(sheetTitle)
+                || RESERVATIONS_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {

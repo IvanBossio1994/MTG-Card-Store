@@ -3,6 +3,7 @@ package com.tcg.bot.service;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.Reservation;
 
 import java.util.List;
 
@@ -21,4 +22,11 @@ public interface InventoryStore {
     List<CashRegisterEntry> getCashRegisterEntries() throws Exception;
 
     void appendCashEntry(CashRegisterEntry entry) throws Exception;
+
+    List<Reservation> getReservations() throws Exception;
+
+    void appendReservations(List<Reservation> reservations) throws Exception;
+
+    /** Actualiza Estado y Actualizado de cada linea, usando su rowIndex. */
+    void updateReservationStatuses(List<Reservation> reservations) throws Exception;
 }

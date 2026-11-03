@@ -79,6 +79,7 @@
         </div>
 
         <div class="stock-mode-bar" th:if="${searchPerformed}">
+            <a id="order-badge" class="order-badge" th:href="@{/reservas}" hidden>Pedido (0) →</a>
             <label class="stock-mode-toggle"
                    title="Con esto activado, el botón - corrige el stock sin anotar una venta en la caja">
                 <input id="stock-adjust-mode" type="checkbox">
@@ -126,6 +127,13 @@
                                     th:attr="data-row=${result.rowIndex},data-card-id=${result.cardId},data-sku=${result.sku}"
                                     th:title="${result.rowIndex <= 0} ? 'Agregar esta impresión al Sheet' : 'Agregar una unidad'">
                                 +
+                            </button>
+                            <button type="button"
+                                    class="reserve-button"
+                                    th:if="${result.stockQuantity > 0}"
+                                    th:attr="data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-stock=${result.stockQuantity}"
+                                    title="Sumar al pedido de un cliente (reserva)">
+                                Reservar
                             </button>
                         </div>
                     </td>

@@ -221,7 +221,7 @@
                                             <form th:if="${entry.canBeVoided()}" method="post" th:action="@{/caja/anular}"
                                                   class="cash-void-form">
                                                 <input type="hidden" name="saleId" th:value="${entry.saleId}">
-                                                <button type="submit" class="link-button"
+                                                <button type="submit" class="text-action"
                                                         title="Anula la venta: resta el total en caja y devuelve las cartas al stock">
                                                     Anular
                                                 </button>

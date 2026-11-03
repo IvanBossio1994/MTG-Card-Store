@@ -36,6 +36,11 @@ public class StockOperationsService {
     public static final String SOURCE_SOLD = "Unidad vendida";
     public static final String SOURCE_ADJUSTED = "Ajuste de stock";
     public static final String SOURCE_VOIDED = "Venta anulada";
+    public static final String SOURCE_RESERVED = "Reservada";
+    public static final String SOURCE_RESERVATION_RELEASED = "Reserva liberada";
+
+    /** Todas las escrituras de stock/caja/reservas pasan por aca para no pisarse entre si. */
+    static final Object LOCK = new Object();
 
     private static final Logger log = LoggerFactory.getLogger(StockOperationsService.class);
     private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
@@ -55,7 +60,7 @@ public class StockOperationsService {
     }
 
     private final InventoryStore store;
-    private final Clock clock;
+    final Clock clock;
 
     @org.springframework.beans.factory.annotation.Autowired
     public StockOperationsService(InventoryStore store) {
@@ -71,7 +76,13 @@ public class StockOperationsService {
      * Suma o resta unidades de una carta. Con {@code change < 0} y motivo SALE, registra la venta en caja.
      * Sumar unidades nunca es una venta.
      */
-    public synchronized StockChange changeStock(String cardId, int rowIndexHint, int change, Reason reason) throws Exception {
+    public StockChange changeStock(String cardId, int rowIndexHint, int change, Reason reason) throws Exception {
+        synchronized (LOCK) {
+            return changeStockLocked(cardId, rowIndexHint, change, reason);
+        }
+    }
+
+    private StockChange changeStockLocked(String cardId, int rowIndexHint, int change, Reason reason) throws Exception {
         if (change == 0) {
             throw new StockOperationException("No hay cambios para aplicar.");
         }
@@ -121,7 +132,13 @@ public class StockOperationsService {
     /**
      * Anula una venta: agrega una fila ANULACION que resta el total en caja y devuelve las unidades al stock.
      */
-    public synchronized VoidResult voidSale(String saleId) throws Exception {
+    public VoidResult voidSale(String saleId) throws Exception {
+        synchronized (LOCK) {
+            return voidSaleLocked(saleId);
+        }
+    }
+
+    private VoidResult voidSaleLocked(String saleId) throws Exception {
         if (saleId == null || saleId.isBlank()) {
             throw new StockOperationException("Falta indicar qué venta anular.");
         }
@@ -226,7 +243,7 @@ public class StockOperationsService {
         }
     }
 
-    private void appendMovementQuietly(InventoryMovement movement) {
+    void appendMovementQuietly(InventoryMovement movement) {
         try {
             store.appendMovement(movement);
         } catch (Exception e) {
@@ -235,7 +252,7 @@ public class StockOperationsService {
         }
     }
 
-    private CashRegisterEntry cashEntry(LocalDateTime now, InventoryCard card, String type, int units, double unitPrice) {
+    CashRegisterEntry cashEntry(LocalDateTime now, InventoryCard card, String type, int units, double unitPrice) {
         CashRegisterEntry entry = new CashRegisterEntry();
         entry.setDate(now.format(DATE_FORMAT));
         entry.setTime(now.format(TIME_FORMAT));
@@ -252,7 +269,7 @@ public class StockOperationsService {
         return entry;
     }
 
-    private InventoryMovement movement(
+    InventoryMovement movement(
             LocalDateTime now,
             int signedQuantity,
             InventoryCard card,
@@ -277,7 +294,7 @@ public class StockOperationsService {
         );
     }
 
-    private static void setQuantity(InventoryCard card, int quantity) {
+    static void setQuantity(InventoryCard card, int quantity) {
         card.setQuantity(String.valueOf(quantity));
         card.setAction(actionFor(quantity));
     }
@@ -298,7 +315,7 @@ public class StockOperationsService {
         return value == null ? "" : value;
     }
 
-    private static String newSaleId() {
+    static String newSaleId() {
         return "V" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 

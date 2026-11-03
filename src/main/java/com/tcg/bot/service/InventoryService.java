@@ -4,6 +4,7 @@ import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.dto.CardKingdomProduct;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.Reservation;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -96,5 +97,17 @@ public class InventoryService implements InventoryStore {
 
     public void appendCashEntry(CashRegisterEntry entry) throws Exception {
         googleSheetsService.appendCashEntry(entry);
+    }
+
+    public List<Reservation> getReservations() throws Exception {
+        return googleSheetsService.getReservations();
+    }
+
+    public void appendReservations(List<Reservation> reservations) throws Exception {
+        googleSheetsService.appendReservations(reservations);
+    }
+
+    public void updateReservationStatuses(List<Reservation> reservations) throws Exception {
+        googleSheetsService.updateReservationStatuses(reservations);
     }
 }
