@@ -2540,3 +2540,18 @@ tr.in-stock {
     gap: 8px;
     margin: 6px 0;
 }
+
+.google-card {
+    margin-bottom: 18px;
+}
+
+.google-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.google-card a.primary-button {
+    display: inline-block;
+    text-decoration: none;
+}

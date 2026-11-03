@@ -32,6 +32,8 @@ class SettingsPageTest {
                 .andExpect(content().string(containsString("name=\"markupPercent\"")))
                 .andExpect(content().string(containsString("name=\"minimumPrice\"")))
                 .andExpect(content().string(containsString("name=\"cardmarketEnabled\"")))
-                .andExpect(content().string(containsString("Promedio de las fuentes")));
+                .andExpect(content().string(containsString("Promedio de las fuentes")))
+                .andExpect(content().string(containsString("Cuenta de Google")))
+                .andExpect(content().string(containsString("google-oauth.properties")));
     }
 }
