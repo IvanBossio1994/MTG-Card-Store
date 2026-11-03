@@ -61,4 +61,49 @@ class GameCatalogTest {
         assertThat(new YugiohCatalog(url -> null).search("zzz")).isEmpty();
         assertThat(new PokemonCatalog(url -> null).search("zzz")).isEmpty();
     }
+
+    @Test
+    void pokemonUsesTcgdexFirstWithOnePrintingPerTcgplayerVariant() throws Exception {
+        List<String> urls = new ArrayList<>();
+        var catalog = new PokemonCatalog(url -> {
+            urls.add(url);
+            if (url.endsWith("?name=pikachu")) {
+                return "[{\"id\":\"swsh4-188\",\"name\":\"Pikachu VMAX\"},{\"id\":\"sv03-63\",\"name\":\"Pikachu\"}]";
+            }
+            if (url.endsWith("/sv03-63")) {
+                return """
+                        {"id":"sv03-63","localId":"63","name":"Pikachu","rarity":"Common",
+                         "image":"https://assets.tcgdex.net/en/sv/sv03/63",
+                         "set":{"id":"sv03","name":"Obsidian Flames"},
+                         "pricing":{"tcgplayer":{"unit":"USD","normal":{"marketPrice":0.25,"midPrice":0.3},
+                                                 "reverse":{"midPrice":1.1}}}}
+                        """;
+            }
+            return "{\"id\":\"swsh4-188\",\"localId\":\"188\",\"name\":\"Pikachu VMAX\",\"set\":{\"id\":\"swsh4\",\"name\":\"Vivid Voltage\"},\"variants\":{\"holo\":true}}";
+        }, url -> {
+            throw new AssertionError("No tenía que usar pokemontcg.io");
+        });
+
+        var prints = catalog.search("pikachu");
+
+        assertThat(urls.get(1)).endsWith("/sv03-63"); // el nombre exacto primero
+        assertThat(prints).hasSize(3);
+        assertThat(prints.get(0).catalogId()).isEqualTo("sv03-63:normal");
+        assertThat(prints.get(0).finish()).isEqualTo("Normal");
+        assertThat(prints.get(0).usd()).isEqualTo(0.25);
+        assertThat(prints.get(0).imageUrl()).isEqualTo("https://assets.tcgdex.net/en/sv/sv03/63/low.webp");
+        assertThat(prints.get(1).finish()).isEqualTo("Reverse Holo");
+        assertThat(prints.get(1).usd()).isEqualTo(1.1);
+        assertThat(prints.get(2).finish()).isEqualTo("Holo");
+        assertThat(prints.get(2).usd()).isNull();
+    }
+
+    @Test
+    void pokemonFallsBackToPokemonTcgWhenTcgdexFails() throws Exception {
+        var catalog = new PokemonCatalog(url -> {
+            throw new java.net.http.HttpTimeoutException("timeout");
+        }, url -> "{\"data\":[{\"id\":\"base1-58\",\"name\":\"Pikachu\",\"number\":\"58\",\"set\":{\"id\":\"base1\",\"name\":\"Base\"}}]}");
+
+        assertThat(catalog.search("Pikachu")).extracting(p -> p.catalogId()).containsExactly("base1-58");
+    }
 }

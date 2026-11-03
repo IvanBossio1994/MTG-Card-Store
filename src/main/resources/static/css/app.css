@@ -4308,3 +4308,123 @@ td {
 .search-control input:focus {
     box-shadow: none;
 }
+
+/* Pestañas de juego en la barra superior */
+.topbar {
+    gap: 18px;
+}
+
+.game-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.game-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background .15s ease, color .15s ease;
+}
+
+.game-tab:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.game-tab.active {
+    color: var(--ink);
+    background: #fff;
+    box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
+}
+
+.game-tab-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--tab-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tab-color) 25%, transparent);
+}
+
+.game-tab-magic { --tab-color: #f59e0b; }
+.game-tab-pokemon { --tab-color: #facc15; }
+.game-tab-yugioh { --tab-color: #a78bfa; }
+
+.game-tab-short {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    .topbar {
+        height: 72px;
+        flex-direction: row;
+        align-items: center;
+        padding: 0 12px;
+        gap: 10px;
+    }
+
+    .topbar .brand-mark,
+    .topbar .brand-logo {
+        width: 38px;
+        height: 38px;
+        font-size: 12px;
+    }
+
+    .topbar .brand > div {
+        display: none;
+    }
+
+    .topbar-start {
+        gap: 10px;
+    }
+
+    .game-tabs {
+        margin-left: auto;
+    }
+
+    .game-tab {
+        padding: 8px 10px;
+        font-size: 13px;
+        gap: 6px;
+    }
+
+    .game-tab-long {
+        display: none;
+    }
+
+    .game-tab-short {
+        display: inline;
+    }
+}
+
+@media (max-width: 380px) {
+    .game-tab-dot {
+        display: none;
+    }
+}
+
+/* Resultados de otros juegos: mismas acciones que Magic */
+.game-result-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.game-result-actions form {
+    margin: 0;
+}
+
+.game-table .reserve-button {
+    margin-left: 8px;
+}

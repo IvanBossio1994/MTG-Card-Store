@@ -42,16 +42,16 @@ public class GameController {
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("game", game);
+        model.addAttribute("activeGame", game.slug());
         model.addAttribute("query", query == null ? "" : query);
 
         if (query != null && !query.isBlank()) {
             try {
                 model.addAttribute("results", gameInventoryService.search(game, query));
             } catch (Exception e) {
-                log.debug("No se pudo buscar en el catálogo de {}: {}", game.label(), e.getMessage());
+                log.warn("No se pudo buscar en el catálogo de {}: {}", game.label(), e.toString());
                 model.addAttribute("results", List.of());
-                model.addAttribute("gameError", "No se pudo consultar el catálogo de " + game.label()
-                        + ". Revisá la conexión a internet y probá de nuevo.");
+                model.addAttribute("gameError", catalogError(game, e));
             }
         }
         try {
@@ -92,6 +92,65 @@ public class GameController {
             redirect.addFlashAttribute("gameError", "No se pudo guardar en el Sheet: " + e.getMessage());
         }
         return back(game, q);
+    }
+
+    /**
+     * Crea (si hace falta) la fila de una impresión con cantidad 0, para sumarla a una compra a un cliente.
+     * Responde JSON con el ID de la fila.
+     */
+    @PostMapping(value = "/juegos/{slug}/fila", produces = "application/json")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> ensureRow(
+            @PathVariable String slug,
+            @RequestParam String catalogId,
+            @RequestParam String name,
+            @RequestParam(required = false) String setName,
+            @RequestParam(required = false) String setCode,
+            @RequestParam(required = false) String number,
+            @RequestParam(required = false) String rarity,
+            @RequestParam(required = false) String finish,
+            @RequestParam(required = false) String usd) {
+        Game game = Game.fromSlug(slug);
+        if (game == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        try {
+            var card = gameInventoryService.ensureRow(game, new GamePrint(catalogId, name, setName, setCode, number,
+                    rarity, finish, "", Amounts.parseOrNull(usd), ""));
+            return org.springframework.http.ResponseEntity.ok(java.util.Map.of(
+                    "id", card.getId(),
+                    "stock", card.getQuantity(),
+                    "price", Math.round(card.getLocalPrice())));
+        } catch (StockOperationException e) {
+            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.warn("No se pudo crear la fila de {}.", game.label(), e);
+            return org.springframework.http.ResponseEntity.internalServerError()
+                    .body(java.util.Map.of("error", "No se pudo guardar en el Sheet: " + e.getMessage()));
+        }
+    }
+
+    /** Explica por qué falló el catálogo con palabras de la tienda. */
+    static String catalogError(Game game, Exception e) {
+        String detail = String.valueOf(e.getMessage()).toLowerCase(java.util.Locale.ROOT);
+        Throwable root = e;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        if (detail.contains("429")) {
+            return "El catálogo de " + game.label() + " pidió que esperemos: hubo demasiadas consultas seguidas. "
+                    + "Probá en unos minutos; las búsquedas que ya hiciste se guardan una hora.";
+        }
+        if (root instanceof java.net.http.HttpTimeoutException || root instanceof java.net.SocketTimeoutException) {
+            return "El catálogo de " + game.label() + " tardó demasiado en responder. Probá de nuevo en un rato.";
+        }
+        if (root instanceof java.net.UnknownHostException || root instanceof java.net.ConnectException) {
+            return "No hay conexión con el catálogo de " + game.label() + ". Revisá internet y probá de nuevo.";
+        }
+        if (detail.contains("respondió 5")) {
+            return "El catálogo de " + game.label() + " está caído en este momento. Probá más tarde.";
+        }
+        return "No se pudo consultar el catálogo de " + game.label() + " (" + e.getMessage() + "). Probá de nuevo.";
     }
 
     @PostMapping("/juegos/{slug}/stock")

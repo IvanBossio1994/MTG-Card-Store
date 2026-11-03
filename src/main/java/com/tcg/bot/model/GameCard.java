@@ -62,6 +62,10 @@ public class GameCard {
                 java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(Math.round(localPrice)) : "-";
     }
 
+    public long priceValue() {
+        return Math.round(localPrice);
+    }
+
     public String formattedUsd() {
         return usd == null ? "-" : "US$ " + String.format(java.util.Locale.US, "%.2f", usd).replace('.', ',');
     }
@@ -77,7 +81,8 @@ public class GameCard {
         card.setCollectorNumber(number);
         card.setPrinting(finish);
         card.setQuantity(String.valueOf(quantity));
-        card.setLocalPrice(String.valueOf(Math.round(localPrice)));
+        card.setLocalPrice(localPrice > 0 ? String.valueOf(Math.round(localPrice)) : "");
+        card.setGame(game);
         return card;
     }
 

@@ -179,7 +179,7 @@
                     <td>
                         <div class="card-cell">
                             <span class="card-thumb" th:if="${result.imageUrl() != null}">
-                                <img th:src="${result.imageUrl()}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                                <img th:src="@{/imagen(u=${result.imageUrl()})}" th:attr="data-large=@{/imagen(u=${result.imageUrl().replace('version=small', 'version=normal')})}" alt="" loading="lazy"
                                      onerror="this.parentElement.classList.add('no-image'); this.remove();">
                             </span>
                             <span class="card-cell-name" th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>

@@ -77,7 +77,7 @@ public class ReservationService {
         }
 
         synchronized (StockOperationsService.LOCK) {
-            List<InventoryCard> cards = store.getInventoryCards();
+            List<InventoryCard> cards = store.getAllStockCards();
             Map<String, Integer> requested = new LinkedHashMap<>();
             for (Item item : items) {
                 if (item.cardId() == null || item.cardId().isBlank() || item.quantity() <= 0) {
@@ -147,7 +147,7 @@ public class ReservationService {
                 int previous = StockOperationsService.quantity(card);
                 int next = previous - units;
                 StockOperationsService.setQuantity(card, next);
-                store.updateStockState(card.getRowIndex(), card);
+                store.updateAnyStock(card);
                 stockOperations.appendMovementQuietly(stockOperations.movement(
                         now, -units, card, previous, next, StockOperationsService.SOURCE_RESERVED + " (" + customer.trim() + ")"));
             }
@@ -237,7 +237,7 @@ public class ReservationService {
 
     private void release(List<Reservation> lines, String status) throws Exception {
         LocalDateTime now = LocalDateTime.now(stockOperations.clock);
-        List<InventoryCard> cards = store.getInventoryCards();
+        List<InventoryCard> cards = store.getAllStockCards();
 
         // Primero se marca la reserva: si se cae a mitad, no se devuelve stock dos veces.
         markAll(lines, status, now);
@@ -256,7 +256,7 @@ public class ReservationService {
             int previous = StockOperationsService.quantity(card);
             int next = previous + line.units();
             StockOperationsService.setQuantity(card, next);
-            store.updateStockState(card.getRowIndex(), card);
+            store.updateAnyStock(card);
             stockOperations.appendMovementQuietly(stockOperations.movement(
                     now, line.units(), card, previous, next,
                     StockOperationsService.SOURCE_RESERVATION_RELEASED + " (" + line.getCustomer() + ")"));

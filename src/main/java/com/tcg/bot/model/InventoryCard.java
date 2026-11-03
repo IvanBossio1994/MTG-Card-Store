@@ -7,6 +7,9 @@ import lombok.Setter;
 @Setter
 public class InventoryCard {
 
+    /** null para Magic; el juego cuando la carta vive en la pestaña de Pokémon o Yu-Gi-Oh. No va al Sheet. */
+    private Game game;
+
     // ---- Cantidad ----
     private String quantity;
 

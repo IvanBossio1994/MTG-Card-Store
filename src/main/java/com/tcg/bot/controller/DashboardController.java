@@ -125,6 +125,7 @@ public class DashboardController {
             Model model
     ) {
         addBaseModel(model, query);
+        model.addAttribute("activeGame", "magic");
         model.addAttribute("searchSet", setFilter == null ? "" : setFilter);
         model.addAttribute("searchNumber", numberFilter == null ? "" : numberFilter);
 
@@ -2649,7 +2650,7 @@ public class DashboardController {
             }
             com.tcg.bot.service.BuyService.Result result;
             synchronized (StockOperationsService.writeLock()) {
-                List<InventoryCard> current = new ArrayList<>(inventoryService.getInventoryCards());
+                List<InventoryCard> current = new ArrayList<>(inventoryService.getAllStockCards());
                 List<com.tcg.bot.service.BuyService.Line> buyLines = new ArrayList<>();
                 for (var element : array) {
                     var line = element.getAsJsonObject();

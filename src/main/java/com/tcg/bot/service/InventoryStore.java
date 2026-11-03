@@ -70,4 +70,32 @@ public interface InventoryStore {
     default void updateGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) throws Exception {
         throw new UnsupportedOperationException("No disponible");
     }
+
+    /** Las cartas de todos los juegos: Magic y las pestañas de Pokémon y Yu-Gi-Oh (con {@code game} puesto). */
+    default List<InventoryCard> getAllStockCards() throws Exception {
+        List<InventoryCard> all = new java.util.ArrayList<>(getInventoryCards());
+        for (com.tcg.bot.model.Game game : com.tcg.bot.model.Game.values()) {
+            for (com.tcg.bot.model.GameCard card : getGameCards(game)) {
+                if (card.getName() != null && !card.getName().isBlank()) {
+                    all.add(card.asInventoryCard(game));
+                }
+            }
+        }
+        return all;
+    }
+
+    /** Guarda la cantidad de una carta de cualquier juego en su pestaña. */
+    default void updateAnyStock(InventoryCard card) throws Exception {
+        if (card.getGame() == null) {
+            updateStockState(card.getRowIndex(), card);
+            return;
+        }
+        com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
+                .filter(candidate -> card.getId() != null && card.getId().equals(candidate.getId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(card.getName() + " ya no está en la pestaña "
+                        + card.getGame().sheetName() + "."));
+        row.setQuantity(Math.max(com.tcg.bot.util.Amounts.parseInt(card.getQuantity()), 0));
+        updateGameCard(card.getGame(), row);
+    }
 }
