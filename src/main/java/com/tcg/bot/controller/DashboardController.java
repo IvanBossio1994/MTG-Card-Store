@@ -85,6 +85,7 @@ public class DashboardController {
     private final LicenseService licenseService;
     private final ScryfallPriceService scryfallPriceService;
     private final com.tcg.bot.service.PriceHistoryService priceHistoryService;
+    private final com.tcg.bot.service.StoreSummaryService storeSummaryService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -95,8 +96,10 @@ public class DashboardController {
             StockOperationsService stockOperationsService,
             LicenseService licenseService,
             ScryfallPriceService scryfallPriceService,
-            com.tcg.bot.service.PriceHistoryService priceHistoryService
+            com.tcg.bot.service.PriceHistoryService priceHistoryService,
+            com.tcg.bot.service.StoreSummaryService storeSummaryService
     ) {
+        this.storeSummaryService = storeSummaryService;
         this.priceHistoryService = priceHistoryService;
         this.scryfallPriceService = scryfallPriceService;
         this.stockOperationsService = stockOperationsService;
@@ -132,6 +135,9 @@ public class DashboardController {
             }
 
             addLatestUpdates(model);
+            if (storeSettingsService.hasSpreadsheetConfigured() && inventoryService.hasCredentialsConfigured()) {
+                model.addAttribute("summary", storeSummaryService.summary());
+            }
             return "dashboard";
         }
 

@@ -23,17 +23,34 @@
     <aside id="app-menu" class="app-menu" aria-hidden="true">
         <div class="menu-head">
             <span class="brand-mark">TCG</span>
-            <strong>Inventory Manager</strong>
+            <div>
+                <strong>TCG Store Helper</strong>
+                <p class="menu-tagline">Tu tienda en tu Google Sheet</p>
+            </div>
         </div>
-        <nav class="menu-nav" aria-label="Menu principal">
-            <a th:classappend="${active == 'home'} ? 'active'" th:href="@{/}">Inicio</a>
-            <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">Configuracion</a>
-            <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">Movimientos</a>
-            <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">Reservas y pedidos</a>
-            <a th:classappend="${active == 'prices'} ? 'active'" th:href="@{/precios}">Historial de precios</a>
-            <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">Importar lista</a>
+        <nav class="menu-nav" aria-label="Menú principal">
+            <p class="menu-section">Día a día</p>
+            <a th:classappend="${active == 'home'} ? 'active'" th:href="@{/}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 0 4.75 13.3l4.22 4.23 1.06-1.06-4.23-4.22A7.5 7.5 0 0 0 10.5 3Zm0 1.5a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z"/></svg>
+                Buscar y vender</a>
+            <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Zm1.5 1.5v13.7l4.5-3 4.5 3V4.5h-9Z"/></svg>
+                Reservas y pedidos</a>
+            <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.5v11h15v-11h-15ZM6 9h6v1.5H6V9Zm0 3h9v1.5H6V12Z"/></svg>
+                Caja y movimientos</a>
+            <a th:classappend="${active == 'prices'} ? 'active'" th:href="@{/precios}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19.5h18V21H3v-1.5Zm1.2-4.3 5.1-5.1 3.5 3.5 6.1-6.1 1.06 1.06-7.16 7.16-3.5-3.5-4.04 4.04-1.06-1.06Z"/></svg>
+                Historial de precios</a>
+            <p class="menu-section">Inventario</p>
+            <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5V3Zm1.5 1.5v15h11V7.6l-3.1-3.1H6.5ZM8 11h8v1.5H8V11Zm0 3h8v1.5H8V14Z"/></svg>
+                Importar lista</a>
+            <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm0 1.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10.6 2h2.8l.5 2.6 1.6.7 2.2-1.5 2 2-1.5 2.2.7 1.6 2.6.5v2.8l-2.6.5-.7 1.6 1.5 2.2-2 2-2.2-1.5-1.6.7-.5 2.6h-2.8l-.5-2.6-1.6-.7-2.2 1.5-2-2 1.5-2.2-.7-1.6L2 13.4v-2.8l2.6-.5.7-1.6-1.5-2.2 2-2 2.2 1.5 1.6-.7.5-2.6Z"/></svg>
+                Configuración</a>
             <form th:action="@{/tutorial/reset}" method="post">
-                <button type="submit" class="menu-link-button">Tutorial</button>
+                <button type="submit" class="menu-link-button">Ver tutorial de nuevo</button>
             </form>
         </nav>
     </aside>
