@@ -44,6 +44,7 @@ class BuyPageTest {
         card.setQuantity("1");
         card.setLocalPrice("3000");
         when(inventoryService.getInventoryCards()).thenReturn(List.of(card));
+        when(inventoryService.getAllStockCards()).thenReturn(List.of(card));
 
         mvc.perform(post("/compras")
                         .param("lines", "[{\"sku\":\"CMM-410\",\"cardId\":\"sol\",\"quantity\":2,\"unitPaid\":1500}]")
@@ -56,7 +57,7 @@ class BuyPageTest {
         verify(inventoryService).appendCashEntry(cash.capture());
         assertThat(cash.getValue().isBuy()).isTrue();
         assertThat(cash.getValue().drawerAmount()).isEqualTo(-3000);
-        verify(inventoryService).updateStockState(eq(4), org.mockito.ArgumentMatchers.argThat(c -> "3".equals(c.getQuantity())));
+        verify(inventoryService).updateAnyStock(org.mockito.ArgumentMatchers.argThat(c -> c.getRowIndex() == 4 && "3".equals(c.getQuantity())));
     }
 
     @Test

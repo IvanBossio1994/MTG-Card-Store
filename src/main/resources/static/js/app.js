@@ -1449,8 +1449,32 @@ document.addEventListener("DOMContentLoaded", () => {
         })));
     }
 
+    // En Pokémon y Yu-Gi-Oh la impresión puede no tener fila todavía: se crea con cantidad 0 antes de sumarla.
+    async function ensureGameRow(button) {
+        if (button.dataset.cardId || !button.dataset.ensureUrl) {
+            return true;
+        }
+        const body = new URLSearchParams(JSON.parse(button.dataset.print || "{}"));
+        try {
+            const response = await fetch(button.dataset.ensureUrl, {method: "POST", body});
+            const data = await response.json();
+            if (!response.ok || !data.id) {
+                showToast(data.error || "No se pudo guardar la carta en el Sheet", "error");
+                return false;
+            }
+            button.dataset.cardId = data.id;
+            return true;
+        } catch (e) {
+            showToast("No se pudo guardar la carta en el Sheet", "error");
+            return false;
+        }
+    }
+
     document.querySelectorAll(".buy-button").forEach(button => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
+            if (!(await ensureGameRow(button))) {
+                return;
+            }
             const items = readBuy();
             const sku = button.dataset.sku;
             const existing = items.find(item => item.sku === sku);
@@ -1552,7 +1576,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const preview = document.createElement("img");
     preview.className = "card-preview";
     preview.alt = "";
-    preview.referrerPolicy = "no-referrer";
     document.body.appendChild(preview);
 
     function place(event) {
@@ -1570,7 +1593,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     thumbs.forEach(function (img) {
         img.addEventListener("mouseenter", function (event) {
-            preview.src = img.src.replace("version=small", "version=normal");
+            preview.src = img.dataset.large || img.src;
             place(event);
             preview.classList.add("visible");
         });

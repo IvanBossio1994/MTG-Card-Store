@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tcg.bot.model.Game;
 import com.tcg.bot.model.GamePrint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +17,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Cartas de Pokémon desde pokemontcg.io (gratis). Cada terminación con precio en TCGplayer
- * (normal, holo, reverse holo, 1st edition) es una impresión distinta.
- * Funciona sin clave; con la variable TCG_POKEMON_API_KEY se evitan límites de uso.
+ * Cartas de Pokémon. Primero TCGdex (gratis, sin clave ni límite publicado); si falla, pokemontcg.io,
+ * que sin clave permite 30 consultas por minuto y está pasando a ser pago (Scrydex).
+ * Cada terminación con precio en TCGplayer (normal, holo, reverse holo, 1st edition) es una impresión distinta.
+ * Con la variable TCG_POKEMON_API_KEY, pokemontcg.io sube a 20.000 consultas por día.
  */
 @Service
 public class PokemonCatalog implements GameCatalog {
@@ -32,15 +35,25 @@ public class PokemonCatalog implements GameCatalog {
             "unlimitedHolofoil", "Unlimited Holo",
             "unlimited", "Unlimited");
 
+    private static final Logger log = LoggerFactory.getLogger(PokemonCatalog.class);
+
+    private final TcgdexSource tcgdex;
     private final Fetcher fetcher;
 
     @Autowired
     public PokemonCatalog() {
-        this(GameCatalog.httpFetcher("X-Api-Key", System.getenv("TCG_POKEMON_API_KEY")));
+        this(GameCatalog.httpFetcher(null, null),
+                GameCatalog.httpFetcher("X-Api-Key", System.getenv("TCG_POKEMON_API_KEY")));
     }
 
+    /** Solo pokemontcg.io (para pruebas). */
     PokemonCatalog(Fetcher fetcher) {
-        this.fetcher = fetcher;
+        this(null, fetcher);
+    }
+
+    PokemonCatalog(Fetcher tcgdexFetcher, Fetcher pokemonTcgFetcher) {
+        this.tcgdex = tcgdexFetcher == null ? null : new TcgdexSource(tcgdexFetcher);
+        this.fetcher = pokemonTcgFetcher;
     }
 
     @Override
@@ -54,6 +67,20 @@ public class PokemonCatalog implements GameCatalog {
         if (clean.isEmpty()) {
             return List.of();
         }
+        if (tcgdex != null) {
+            try {
+                List<GamePrint> found = tcgdex.search(clean);
+                if (!found.isEmpty()) {
+                    return found;
+                }
+            } catch (Exception e) {
+                log.info("TCGdex no respondió ({}); pruebo con pokemontcg.io.", e.getMessage());
+            }
+        }
+        return searchPokemonTcg(clean);
+    }
+
+    private List<GamePrint> searchPokemonTcg(String clean) throws Exception {
         String query = clean.contains(" ") ? "name:\"" + clean + "\"" : "name:" + clean + "*";
         String body = fetcher.get(API + "?pageSize=60&orderBy=-set.releaseDate&q=" + URLEncoder.encode(query, StandardCharsets.UTF_8));
         if (body == null) {

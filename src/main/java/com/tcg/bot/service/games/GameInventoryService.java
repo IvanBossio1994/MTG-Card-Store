@@ -33,6 +33,14 @@ public class GameInventoryService {
 
     private static final Logger log = LoggerFactory.getLogger(GameInventoryService.class);
     static final int MAX_NAMES_PER_REFRESH = 150;
+    /** Igual que Card Kingdom: una misma consulta no se repite antes de 1 h 5 min, para no pasarse de los límites. */
+    static final java.time.Duration CACHE_TTL = java.time.Duration.ofMinutes(65);
+
+    private record Cached(java.time.Instant at, List<GamePrint> prints) {
+    }
+
+    private final Map<String, Cached> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    java.time.Clock clock = java.time.Clock.systemUTC();
 
     private final InventoryStore store;
     private final StockOperationsBridge stock;
@@ -60,20 +68,36 @@ public class GameInventoryService {
                     java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(Math.round(suggestedLocal)) : "-";
         }
 
+        /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido. */
+        public long referencePrice() {
+            return Math.round(stockCard != null && stockCard.getLocalPrice() > 0 ? stockCard.getLocalPrice() : suggestedLocal);
+        }
+
+        /** Los datos de la impresión, para crear la fila desde el botón Comprar. */
+        public String printJson() {
+            com.google.gson.JsonObject json = new com.google.gson.JsonObject();
+            json.addProperty("catalogId", print.catalogId());
+            json.addProperty("name", print.name());
+            json.addProperty("setName", print.setName());
+            json.addProperty("setCode", print.setCode());
+            json.addProperty("number", print.number());
+            json.addProperty("rarity", print.rarity());
+            json.addProperty("finish", print.finish());
+            json.addProperty("usd", print.usd() == null ? "" : String.valueOf(print.usd()));
+            return json.toString();
+        }
+
         public String formattedUsd() {
             return print.usd() == null ? "-" : "US$ " + String.format(java.util.Locale.US, "%.2f", print.usd()).replace('.', ',');
         }
     }
 
     public List<Result> search(Game game, String name) throws Exception {
-        List<GamePrint> prints = catalog(game).search(name);
-        Map<String, GameCard> byCatalog = new HashMap<>();
-        for (GameCard card : store.getGameCards(game)) {
-            byCatalog.put(card.getCatalogId(), card);
-        }
+        List<GamePrint> prints = cachedSearch(game, name);
+        List<GameCard> cards = store.getGameCards(game);
         List<Result> results = new ArrayList<>();
         for (GamePrint print : prints) {
-            results.add(new Result(print, byCatalog.get(print.catalogId()), localPrice(print.usd())));
+            results.add(new Result(print, match(cards, print), localPrice(print.usd())));
         }
         // Primero lo que ya tenés en stock.
         results.sort(Comparator.comparing((Result result) -> result.stock() > 0).reversed());
@@ -86,24 +110,99 @@ public class GameInventoryService {
         return cards;
     }
 
+    /**
+     * Busca en el catálogo guardando la respuesta 1 h 5 min. Si el catálogo falla y hay una respuesta vieja,
+     * se usa esa antes que mostrar un error.
+     */
+    public List<GamePrint> cachedSearch(Game game, String name) throws Exception {
+        String key = game.slug() + "|" + (name == null ? "" : name.trim().toLowerCase(java.util.Locale.ROOT));
+        Cached hit = cache.get(key);
+        java.time.Instant now = clock.instant();
+        if (hit != null && hit.at().plus(CACHE_TTL).isAfter(now)) {
+            return hit.prints();
+        }
+        try {
+            List<GamePrint> prints = List.copyOf(catalog(game).search(name));
+            cache.put(key, new Cached(now, prints));
+            return prints;
+        } catch (Exception e) {
+            if (hit != null) {
+                log.info("Catálogo de {} sin respuesta ({}); uso la búsqueda guardada.", game.label(), e.getMessage());
+                return hit.prints();
+            }
+            throw e;
+        }
+    }
+
+    /** Una impresión que ya se mostró en una búsqueda reciente. */
+    public GamePrint findPrint(Game game, String catalogId) {
+        String prefix = game.slug() + "|";
+        for (var entry : cache.entrySet()) {
+            if (!entry.getKey().startsWith(prefix)) {
+                continue;
+            }
+            for (GamePrint print : entry.getValue().prints()) {
+                if (print.catalogId().equals(catalogId)) {
+                    return print;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * La fila del Sheet de esa impresión. Primero por ID del catálogo; si no, por nombre, set, número y terminación,
+     * así las cartas cargadas con otra fuente (pokemontcg.io) siguen coincidiendo.
+     */
+    static GameCard match(List<GameCard> cards, GamePrint print) {
+        for (GameCard card : cards) {
+            if (print.catalogId().equals(card.getCatalogId())) {
+                return card;
+            }
+        }
+        for (GameCard card : cards) {
+            if (same(card.getName(), print.name()) && same(card.getNumber(), print.number())
+                    && same(card.getFinish(), print.finish())
+                    && (same(card.getSetName(), print.setName()) || same(card.getSetCode(), print.setCode()))) {
+                return card;
+            }
+        }
+        return null;
+    }
+
+    private static boolean same(String a, String b) {
+        String left = a == null ? "" : a.trim();
+        String right = b == null ? "" : b.trim();
+        return !left.isEmpty() && left.equalsIgnoreCase(right);
+    }
+
     /** Suma una unidad de esa impresión; si no estaba en el Sheet, crea la fila. */
     public GameCard add(Game game, GamePrint print) throws Exception {
         synchronized (StockOperationsService.writeLock()) {
-            List<GameCard> cards = store.getGameCards(game);
-            GameCard existing = cards.stream()
-                    .filter(card -> print.catalogId().equals(card.getCatalogId()))
-                    .findFirst()
-                    .orElse(null);
+            GameCard existing = match(store.getGameCards(game), print);
             if (existing != null) {
                 return change(game, existing.getId(), 1, false);
             }
+            return createRow(game, print, 1);
+        }
+    }
 
+    /** La fila de esa impresión, creándola con cantidad 0 si hace falta (para comprarla a un cliente). */
+    public GameCard ensureRow(Game game, GamePrint print) throws Exception {
+        synchronized (StockOperationsService.writeLock()) {
+            GameCard existing = match(store.getGameCards(game), print);
+            return existing != null ? existing : createRow(game, print, 0);
+        }
+    }
+
+    private GameCard createRow(Game game, GamePrint print, int quantity) throws Exception {
+        {
             if (licenseService.remainingNewCards(distinctCardsInStore()) <= 0) {
                 throw new StockOperationException(licenseService.limitMessage());
             }
 
             GameCard card = new GameCard();
-            card.setQuantity(1);
+            card.setQuantity(quantity);
             card.setName(print.name());
             card.setSetName(print.setName());
             card.setSetCode(print.setCode());
@@ -115,7 +214,9 @@ public class GameInventoryService {
             card.setId("G" + UUID.randomUUID().toString().replace("-", "").substring(0, 10));
             card.setCatalogId(print.catalogId());
             card.setRowIndex(store.appendGameCard(game, card));
-            stock.movement(card.asInventoryCard(game), 1, 0, 1, StockOperationsService.SOURCE_ADDED);
+            if (quantity > 0) {
+                stock.movement(card.asInventoryCard(game), quantity, 0, quantity, StockOperationsService.SOURCE_ADDED);
+            }
             return card;
         }
     }
@@ -161,17 +262,18 @@ public class GameInventoryService {
         Set<String> names = new LinkedHashSet<>();
         cards.forEach(card -> names.add(card.getName()));
 
-        Map<String, Double> prices = new HashMap<>();
+        List<GamePrint> printsFound = new ArrayList<>();
         int asked = 0;
         for (String name : names) {
             if (asked++ >= MAX_NAMES_PER_REFRESH) {
                 break;
             }
             try {
-                for (GamePrint print : catalog(game).search(name)) {
-                    prices.put(print.catalogId(), print.usd());
+                boolean fresh = !cache.containsKey(game.slug() + "|" + name.trim().toLowerCase(java.util.Locale.ROOT));
+                printsFound.addAll(cachedSearch(game, name));
+                if (fresh) {
+                    Thread.sleep(250);
                 }
-                Thread.sleep(120);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -183,12 +285,20 @@ public class GameInventoryService {
         int changed = 0;
         synchronized (StockOperationsService.writeLock()) {
             for (GameCard card : store.getGameCards(game)) {
-                if (!prices.containsKey(card.getCatalogId())) {
+                GamePrint print = printsFound.stream()
+                        .filter(candidate -> match(List.of(card), candidate) == card)
+                        .findFirst()
+                        .orElse(null);
+                if (print == null) {
                     continue;
                 }
-                Double usd = prices.get(card.getCatalogId());
+                Double usd = print.usd();
+                boolean newId = !print.catalogId().equals(card.getCatalogId());
+                if (newId) {
+                    card.setCatalogId(print.catalogId());
+                }
                 double local = localPrice(usd);
-                if (!java.util.Objects.equals(usd, card.getUsd()) || Math.round(local) != Math.round(card.getLocalPrice())) {
+                if (newId || !java.util.Objects.equals(usd, card.getUsd()) || Math.round(local) != Math.round(card.getLocalPrice())) {
                     card.setUsd(usd);
                     if (local > 0) {
                         card.setLocalPrice(local);

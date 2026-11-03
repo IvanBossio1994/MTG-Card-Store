@@ -60,7 +60,7 @@ public class StoreSummaryService {
         int withoutPrice = 0;
 
         try {
-            for (InventoryCard card : store.getInventoryCards()) {
+            for (InventoryCard card : store.getAllStockCards()) {
                 int quantity = Math.max(Amounts.parseInt(card.getQuantity()), 0);
                 if (quantity <= 0 || card.getName() == null || card.getName().isBlank()) {
                     continue;

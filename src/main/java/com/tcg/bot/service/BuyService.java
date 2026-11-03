@@ -68,7 +68,7 @@ public class BuyService {
                 int previous = StockOperationsService.quantity(card);
                 int next = previous + line.quantity();
                 StockOperationsService.setQuantity(card, next);
-                store.updateStockState(card.getRowIndex(), card);
+                store.updateAnyStock(card);
                 stockOperations.appendMovementQuietly(stockOperations.movement(
                         now, line.quantity(), card, previous, next, SOURCE_BOUGHT + " (" + who + ")"));
                 units += line.quantity();

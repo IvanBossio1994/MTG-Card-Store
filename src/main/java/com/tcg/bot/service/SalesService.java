@@ -69,7 +69,7 @@ public class SalesService {
         }
 
         synchronized (StockOperationsService.writeLock()) {
-            List<InventoryCard> cards = store.getInventoryCards();
+            List<InventoryCard> cards = store.getAllStockCards();
 
             // Primero se valida todo: si falta stock o precio de alguna carta, no se cobra nada.
             List<InventoryCard> targets = new ArrayList<>();
@@ -100,7 +100,7 @@ public class SalesService {
                 int next = previous - quantity;
 
                 StockOperationsService.setQuantity(card, next);
-                store.updateStockState(card.getRowIndex(), card);
+                store.updateAnyStock(card);
 
                 CashRegisterEntry sale = stockOperations.cashEntry(now, card, CashRegisterEntry.TYPE_SALE, quantity, unitPrice);
                 sale.setSaleId(StockOperationsService.newSaleId());
@@ -108,7 +108,7 @@ public class SalesService {
                     store.appendCashEntry(sale);
                 } catch (Exception e) {
                     StockOperationsService.setQuantity(card, previous);
-                    store.updateStockState(card.getRowIndex(), card);
+                    store.updateAnyStock(card);
                     throw new StockOperationException("Se cortó la conexión con el Sheet al cobrar " + card.getName()
                             + (units > 0 ? ". Las cartas anteriores sí quedaron cobradas; revisá la caja." : ". No se cobró nada."));
                 }

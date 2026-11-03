@@ -110,7 +110,7 @@ public class StockOperationsService {
         }
 
         setQuantity(card, next);
-        store.updateStockState(card.getRowIndex(), card);
+        store.updateAnyStock(card);
 
         LocalDateTime now = LocalDateTime.now(clock);
         String saleId = null;
@@ -191,14 +191,14 @@ public class StockOperationsService {
         int previous = quantity(card);
         int next = previous + units;
         setQuantity(card, next);
-        store.updateStockState(card.getRowIndex(), card);
+        store.updateAnyStock(card);
         appendMovementQuietly(movement(now, units, card, previous, next, SOURCE_VOIDED));
 
         return new VoidResult(saleId, true, unitPrice * units);
     }
 
     private InventoryCard findCard(String cardId, int rowIndexHint) throws Exception {
-        List<InventoryCard> cards = store.getInventoryCards();
+        List<InventoryCard> cards = store.getAllStockCards();
 
         if (cardId != null && !cardId.isBlank()) {
             return cards.stream()
@@ -210,13 +210,13 @@ public class StockOperationsService {
 
         // Sin ID (Sheet viejo sin la columna): se usa la fila, como antes.
         return cards.stream()
-                .filter(card -> card.getRowIndex() == rowIndexHint)
+                .filter(card -> card.getGame() == null && card.getRowIndex() == rowIndexHint)
                 .findFirst()
                 .orElseThrow(() -> new StockOperationException("No se encontró la carta en el inventario."));
     }
 
     private InventoryCard findCardForSale(CashRegisterEntry sale) throws Exception {
-        List<InventoryCard> cards = store.getInventoryCards();
+        List<InventoryCard> cards = store.getAllStockCards();
 
         if (sale.getCardId() != null && !sale.getCardId().isBlank()) {
             for (InventoryCard card : cards) {
@@ -241,7 +241,7 @@ public class StockOperationsService {
     private void rollbackStock(InventoryCard card, int previous) {
         try {
             setQuantity(card, previous);
-            store.updateStockState(card.getRowIndex(), card);
+            store.updateAnyStock(card);
         } catch (Exception rollbackError) {
             log.error("No se pudo registrar la venta ni devolver el stock de {} (fila {}). Revisar a mano.",
                     card.getName(), card.getRowIndex(), rollbackError);
