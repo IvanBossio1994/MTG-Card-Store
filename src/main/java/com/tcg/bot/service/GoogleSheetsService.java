@@ -144,6 +144,10 @@ public class GoogleSheetsService {
         }
     }
 
+    public boolean usesGoogleAccount() {
+        return googleAccountService.isConnected();
+    }
+
     public boolean hasCredentialsConfigured() {
         if (googleAccountService.isConnected()) {
             return true;

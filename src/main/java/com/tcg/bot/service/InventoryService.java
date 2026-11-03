@@ -31,6 +31,10 @@ public class InventoryService implements InventoryStore {
         return googleSheetsService.getServiceAccountEmail();
     }
 
+    public boolean usesGoogleAccount() {
+        return googleSheetsService.usesGoogleAccount();
+    }
+
     public boolean hasCredentialsConfigured() {
         return googleSheetsService.hasCredentialsConfigured();
     }

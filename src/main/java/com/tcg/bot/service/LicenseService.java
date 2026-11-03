@@ -95,7 +95,7 @@ public class LicenseService {
             return false;
         }
 
-        boolean active = lastValidation.valid() && "active".equalsIgnoreCase(lastValidation.status());
+        boolean active = lastValidation.valid() && usable(lastValidation.status());
         boolean fresh = validatedAt.plus(OFFLINE_GRACE).isAfter(clock.instant());
         return active && fresh;
     }
@@ -122,7 +122,7 @@ public class LicenseService {
         String message = "Plan gratis: hasta " + FREE_CARD_LIMIT + " cartas distintas.";
         if (!licenseKey.isBlank() && lastValidation != null && lastValidation.error() != null && !lastValidation.error().isBlank()) {
             message = "La licencia no está activa: " + lastValidation.error();
-        } else if (!licenseKey.isBlank() && lastValidation != null && !"active".equalsIgnoreCase(lastValidation.status())) {
+        } else if (!licenseKey.isBlank() && lastValidation != null && !usable(lastValidation.status())) {
             message = "La licencia está " + translate(lastValidation.status()) + ".";
         } else if (!licenseKey.isBlank()) {
             message = "No se pudo validar la licencia hace más de " + OFFLINE_GRACE.toDays() + " días. Revisá la conexión.";
@@ -240,6 +240,14 @@ public class LicenseService {
 
     private static String string(JsonObject object, String field) {
         return object.has(field) && !object.get(field).isJsonNull() ? object.get(field).getAsString() : "";
+    }
+
+    /**
+     * Lemon Squeezy deja las claves recien compradas en "inactive" hasta que se activan en un equipo:
+     * siguen siendo validas y pagas. Solo "expired" y "disabled" cortan el plan.
+     */
+    static boolean usable(String status) {
+        return "active".equalsIgnoreCase(status) || "inactive".equalsIgnoreCase(status);
     }
 
     private static String translate(String status) {
