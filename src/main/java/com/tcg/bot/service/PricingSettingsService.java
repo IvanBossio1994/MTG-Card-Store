@@ -34,6 +34,37 @@ public class PricingSettingsService {
     private volatile int roundMultiple;
     private volatile double markupPercent;
     private volatile double minimumPrice;
+    private volatile boolean tcgplayerEnabled;
+    private volatile boolean cardmarketEnabled;
+    private volatile double eurRate;
+    private volatile CombineMode combineMode = CombineMode.CARD_KINGDOM;
+
+    /** Como se combinan las fuentes activas para sugerir el precio local. */
+    public enum CombineMode {
+        CARD_KINGDOM("Solo Card Kingdom"),
+        AVERAGE("Promedio de las fuentes"),
+        MAX("La más alta"),
+        MIN("La más baja");
+
+        private final String label;
+
+        CombineMode(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public static CombineMode from(String value) {
+            for (CombineMode mode : values()) {
+                if (mode.name().equalsIgnoreCase(value)) {
+                    return mode;
+                }
+            }
+            return CARD_KINGDOM;
+        }
+    }
 
     public PricingSettingsService(
             @Value("${pricing.ck-dollar-rate:1650.0}") double defaultCkDollarRate,
@@ -64,6 +95,44 @@ public class PricingSettingsService {
     /** Precio minimo en ARS por carta (por ejemplo, para que una comun no salga $0). 0 = sin minimo. */
     public double getMinimumPrice() {
         return minimumPrice;
+    }
+
+    public boolean isTcgplayerEnabled() {
+        return tcgplayerEnabled;
+    }
+
+    public boolean isCardmarketEnabled() {
+        return cardmarketEnabled;
+    }
+
+    /** ARS por euro, para convertir Cardmarket. */
+    public double getEurRate() {
+        return eurRate;
+    }
+
+    public CombineMode getCombineMode() {
+        return combineMode;
+    }
+
+    public boolean usesExtraSources() {
+        return tcgplayerEnabled || cardmarketEnabled;
+    }
+
+    public synchronized void updateSources(
+            boolean newTcgplayerEnabled,
+            boolean newCardmarketEnabled,
+            double newEurRate,
+            CombineMode newCombineMode
+    ) throws IOException {
+        if (newCardmarketEnabled && newEurRate <= 0) {
+            throw new IllegalArgumentException("Para usar Cardmarket cargá la cotización del euro.");
+        }
+
+        tcgplayerEnabled = newTcgplayerEnabled;
+        cardmarketEnabled = newCardmarketEnabled;
+        eurRate = Math.max(newEurRate, 0);
+        combineMode = newCombineMode == null ? CombineMode.CARD_KINGDOM : newCombineMode;
+        update(ckDollarRate, roundMultiple, markupPercent, minimumPrice);
     }
 
     public synchronized void update(double newCkDollarRate, int newRoundMultiple) throws IOException {
@@ -97,6 +166,10 @@ public class PricingSettingsService {
         properties.setProperty(ROUND_MULTIPLE_KEY, Integer.toString(newRoundMultiple));
         properties.setProperty(MARKUP_PERCENT_KEY, Double.toString(newMarkupPercent));
         properties.setProperty(MINIMUM_PRICE_KEY, Double.toString(newMinimumPrice));
+        properties.setProperty("pricing.source.tcgplayer", Boolean.toString(tcgplayerEnabled));
+        properties.setProperty("pricing.source.cardmarket", Boolean.toString(cardmarketEnabled));
+        properties.setProperty("pricing.eur-rate", Double.toString(eurRate));
+        properties.setProperty("pricing.combine", combineMode.name());
 
         Files.createDirectories(settingsFile.getParent());
 
@@ -129,6 +202,10 @@ public class PricingSettingsService {
             );
             markupPercent = parseDouble(properties.getProperty(MARKUP_PERCENT_KEY), 0);
             minimumPrice = Math.max(parseDouble(properties.getProperty(MINIMUM_PRICE_KEY), 0), 0);
+            tcgplayerEnabled = Boolean.parseBoolean(properties.getProperty("pricing.source.tcgplayer", "false"));
+            cardmarketEnabled = Boolean.parseBoolean(properties.getProperty("pricing.source.cardmarket", "false"));
+            eurRate = Math.max(parseDouble(properties.getProperty("pricing.eur-rate"), 0), 0);
+            combineMode = CombineMode.from(properties.getProperty("pricing.combine"));
         } catch (IOException e) {
             ckDollarRate = defaultCkDollarRate;
             roundMultiple = defaultRoundMultiple;
