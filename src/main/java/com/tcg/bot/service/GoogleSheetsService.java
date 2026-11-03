@@ -41,6 +41,9 @@ public class GoogleSheetsService {
     private static final String CASH_SHEET_NAME = "Caja";
     private static final String RESERVATIONS_SHEET_NAME = "Reservas";
     private static final String PRICES_SHEET_NAME = "Precios";
+    private static final String CREDIT_SHEET_NAME = "Credito";
+    private static final List<String> CREDIT_HEADER = List.of(
+            "Fecha", "Hora", "Cliente", "Contacto", "Monto", "Motivo", "Referencia");
     private static final List<String> PRICES_HEADER = List.of(
             "Fecha",
             "ID carta",
@@ -892,6 +895,56 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public List<com.tcg.bot.model.CreditEntry> getCreditEntries() throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, CREDIT_SHEET_NAME, CREDIT_HEADER);
+
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), sheetRange(CREDIT_SHEET_NAME, "A2:G"))
+                .setValueRenderOption("UNFORMATTED_VALUE")
+                .execute();
+
+        List<com.tcg.bot.model.CreditEntry> entries = new ArrayList<>();
+        var values = response.getValues();
+        if (values == null) {
+            return entries;
+        }
+        for (var row : values) {
+            if (getColumnValue(row, 2).isBlank()) {
+                continue;
+            }
+            entries.add(new com.tcg.bot.model.CreditEntry(
+                    getColumnValue(row, 0),
+                    getColumnValue(row, 1),
+                    getColumnValue(row, 2),
+                    getColumnValue(row, 3),
+                    Amounts.parse(getColumnValue(row, 4)),
+                    getColumnValue(row, 5),
+                    getColumnValue(row, 6)
+            ));
+        }
+        return entries;
+    }
+
+    public void appendCreditEntry(com.tcg.bot.model.CreditEntry entry) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, CREDIT_SHEET_NAME, CREDIT_HEADER);
+        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(List.of(List.of(
+                safe(entry.date()),
+                safe(entry.time()),
+                safe(entry.customer()),
+                safe(entry.contact()),
+                Math.round(entry.amount()),
+                safe(entry.reason()),
+                safe(entry.reference())
+        )));
+        sheetsService.spreadsheets().values()
+                .append(storeSettingsService.getSpreadsheetId(), sheetRange(CREDIT_SHEET_NAME, "A:G"), body)
+                .setValueInputOption("RAW")
+                .setInsertDataOption("INSERT_ROWS")
+                .execute();
+    }
+
     private static Object priceCell(Double value) {
         return value == null ? "" : value;
     }
@@ -1484,7 +1537,8 @@ public class GoogleSheetsService {
         return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
                 || CASH_SHEET_NAME.equals(sheetTitle)
                 || RESERVATIONS_SHEET_NAME.equals(sheetTitle)
-                || PRICES_SHEET_NAME.equals(sheetTitle);
+                || PRICES_SHEET_NAME.equals(sheetTitle)
+                || CREDIT_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {

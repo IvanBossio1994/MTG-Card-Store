@@ -24,19 +24,38 @@ public class SalesService {
 
     private final InventoryStore store;
     private final StockOperationsService stockOperations;
+    private final CreditService creditService;
 
-    public SalesService(InventoryStore store, StockOperationsService stockOperations) {
+    public SalesService(InventoryStore store, StockOperationsService stockOperations, CreditService creditService) {
         this.store = store;
         this.stockOperations = stockOperations;
+        this.creditService = creditService;
     }
 
-    public record Ticket(int units, double total, int lines) {
+    public record Ticket(int units, double total, int lines, double creditUsed) {
         public String formattedTotal() {
-            return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(total);
+            return format(total);
+        }
+
+        public String formattedCreditUsed() {
+            return format(creditUsed);
+        }
+
+        public String formattedToPay() {
+            return format(total - creditUsed);
+        }
+
+        private static String format(double value) {
+            return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(value);
         }
     }
 
     public Ticket sell(List<ReservationService.Item> items) throws Exception {
+        return sell(items, null);
+    }
+
+    /** Con {@code creditCustomer}, usa el crédito de tienda de ese cliente (hasta lo que alcance) para pagar. */
+    public Ticket sell(List<ReservationService.Item> items, String creditCustomer) throws Exception {
         Map<String, Integer> requested = new LinkedHashMap<>();
         if (items != null) {
             for (ReservationService.Item item : items) {
@@ -100,7 +119,27 @@ public class SalesService {
                 total += unitPrice * quantity;
             }
 
-            return new Ticket(units, total, targets.size());
+            double creditUsed = 0;
+            if (creditCustomer != null && !creditCustomer.isBlank()) {
+                creditUsed = Math.min(Math.max(creditService.balance(creditCustomer), 0), total);
+                if (creditUsed >= 1) {
+                    String reference = "V" + StockOperationsService.newSaleId();
+                    creditService.add(creditCustomer, "", -creditUsed, "Usado en una venta", reference);
+                    CashRegisterEntry credit = new CashRegisterEntry();
+                    credit.setDate(now.toLocalDate().toString());
+                    credit.setTime(now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+                    credit.setType(CashRegisterEntry.TYPE_CREDIT);
+                    credit.setName("Pagado con crédito de " + creditCustomer.trim());
+                    credit.setQuantity("0");
+                    credit.setTotal(String.valueOf(Math.round(creditUsed)));
+                    credit.setSaleId(reference);
+                    store.appendCashEntry(credit);
+                } else {
+                    creditUsed = 0;
+                }
+            }
+
+            return new Ticket(units, total, targets.size(), creditUsed);
         }
     }
 }

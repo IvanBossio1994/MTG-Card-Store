@@ -3395,3 +3395,181 @@ a.whatsapp-button:hover {
 .panel .supporting + .review-list {
     margin-top: 12px;
 }
+
+/* Compras a clientes y crédito */
+.buy-button {
+    margin-left: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--amber);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--amber);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.buy-button:hover {
+    background: var(--amber-soft);
+}
+
+.order-badge.buy-badge {
+    background: var(--amber);
+}
+
+.buy-percent {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.buy-percent label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.buy-percent span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.buy-percent input {
+    width: 76px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font: inherit;
+}
+
+.table-wrap .buy-table {
+    min-width: 640px;
+}
+
+.buy-table small {
+    color: var(--muted);
+}
+
+.buy-paid-input {
+    width: 110px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+.buy-payment {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    margin: 18px 0;
+    padding: 0;
+    border: 0;
+}
+
+.buy-payment legend {
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.buy-payment label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.buy-total {
+    margin: 6px 0 16px;
+}
+
+.credit-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.credit-form label,
+.cart-credit {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.credit-form input,
+.cart-credit input {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font: inherit;
+}
+
+.credit-form .order-actions {
+    grid-column: 1 / -1;
+}
+
+.cart-credit {
+    margin-bottom: 10px;
+}
+
+.credit-accounts {
+    display: grid;
+    gap: 8px;
+}
+
+.credit-account {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.credit-account summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+}
+
+.credit-account summary span {
+    display: grid;
+}
+
+.credit-account summary small {
+    color: var(--muted);
+}
+
+.credit-account .credit-positive {
+    color: var(--green);
+}
+
+.credit-account ul {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0 14px 12px;
+    list-style: none;
+    font-size: 0.9rem;
+}
+
+.credit-account li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+}
+
+@media (max-width: 760px) {
+    .credit-form {
+        grid-template-columns: 1fr;
+    }
+}

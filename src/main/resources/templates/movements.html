@@ -214,9 +214,11 @@
                                         <td th:text="${entry.printing != null && entry.printing != '' ? entry.printing : '-'}">nonfoil</td>
                                         <td th:text="${entry.localPrice != null && entry.localPrice != '' ? '$ ' + entry.formattedLocalPrice : '-'}">$ 1.000</td>
                                         <td th:text="${entry.signedQuantity()}">1</td>
-                                        <td class="nowrap" th:text="${entry.signedTotal() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedSignedTotal}">$ 1.000</td>
+                                        <td class="nowrap" th:text="${entry.drawerAmount() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedTotal}">$ 1.000</td>
                                         <td class="cash-status">
                                             <span th:if="${entry.isClose()}" class="cash-badge close">Cierre</span>
+                                            <span th:if="${entry.isBuy()}" class="cash-badge close">Compra</span>
+                                            <span th:if="${entry.isCreditUse()}" class="cash-badge close">Crédito</span>
                                             <span th:if="${entry.isVoid()}" class="cash-badge void">Anulación</span>
                                             <span th:if="${entry.isVoided()}" class="cash-badge voided">Anulada</span>
                                             <form th:if="${entry.canBeVoided()}" method="post" th:action="@{/caja/anular}"

@@ -41,10 +41,15 @@
                 <strong th:text="${'-$ ' + day.voids}">-$ 0</strong>
                 <span class="summary-note">Ya descontadas</span>
             </div>
+            <div class="summary-tile" th:if="${day.purchases != '0' or day.creditUsed != '0'}">
+                <span class="summary-label">Compras y crédito</span>
+                <strong th:text="${'-$ ' + day.purchases}">-$ 0</strong>
+                <span class="summary-note" th:text="${'Compras pagadas · $ ' + day.creditUsed + ' cobrado con crédito'}">Compras pagadas</span>
+            </div>
             <div class="summary-tile">
                 <span class="summary-label">Tendría que haber</span>
-                <strong id="close-expected" th:attr="data-expected=${day.expectedValue}" th:text="${'$ ' + day.expected}">$ 0</strong>
-                <span class="summary-note">Ventas menos anulaciones</span>
+                <strong id="close-expected" th:attr="data-expected=${day.expectedValue}" th:text="${day.expected.startsWith('-') ? '-$ ' + day.expected.substring(1) : '$ ' + day.expected}">$ 0</strong>
+                <span class="summary-note">Ventas menos anulaciones, compras y crédito</span>
             </div>
             <div class="summary-tile" th:if="${day.lastClose() != null}">
                 <span class="summary-label">Último cierre</span>
@@ -104,17 +109,17 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="entry : ${day.sales}" th:classappend="${entry.isVoid()} ? 'cash-row-void' : ''">
+                    <tr th:each="entry : ${day.sales}" th:classappend="${entry.drawerAmount() < 0} ? 'cash-row-void' : ''">
                         <td th:text="${entry.time}">12:00</td>
                         <td th:text="${entry.name + (entry.isVoid() ? ' (anulación)' : '')}">Sol Ring</td>
-                        <td th:text="${entry.signedQuantity()}">1</td>
-                        <td class="nowrap" th:text="${entry.signedTotal() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedSignedTotal}">$ 1.000</td>
+                        <td th:text="${entry.isCreditUse() ? '-' : entry.signedQuantity()}">1</td>
+                        <td class="nowrap" th:text="${entry.drawerAmount() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedTotal}">$ 1.000</td>
                     </tr>
                     </tbody>
                     <tfoot>
                     <tr>
                         <td colspan="3">Total</td>
-                        <td class="nowrap" th:text="${'$ ' + day.expected}">$ 0</td>
+                        <td class="nowrap" th:text="${day.expected.startsWith('-') ? '-$ ' + day.expected.substring(1) : '$ ' + day.expected}">$ 0</td>
                     </tr>
                     </tfoot>
                 </table>

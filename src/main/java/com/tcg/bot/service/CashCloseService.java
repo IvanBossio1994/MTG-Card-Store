@@ -38,6 +38,8 @@ public class CashCloseService {
             int units,
             String grossSales,
             String voids,
+            String purchases,
+            String creditUsed,
             String expected,
             double expectedValue,
             List<CashRegisterEntry> closes
@@ -57,14 +59,20 @@ public class CashCloseService {
                 .filter(entry -> target.equals(entry.getDate()))
                 .toList();
 
-        List<CashRegisterEntry> sales = entries.stream().filter(CashRegisterEntry::affectsCash).toList();
-        double gross = sales.stream().filter(CashRegisterEntry::isSale).mapToDouble(CashRegisterEntry::signedTotal).sum();
-        double voids = sales.stream().filter(CashRegisterEntry::isVoid).mapToDouble(CashRegisterEntry::signedTotal).sum();
-        int units = sales.stream().mapToInt(CashRegisterEntry::signedQuantity).sum();
-        int count = (int) sales.stream().filter(entry -> entry.isSale() && !entry.isVoided()).count();
+        List<CashRegisterEntry> moves = entries.stream()
+                .filter(entry -> entry.affectsCash() || entry.isBuy() || entry.isCreditUse())
+                .toList();
+        double gross = moves.stream().filter(CashRegisterEntry::isSale).mapToDouble(CashRegisterEntry::signedTotal).sum();
+        double voids = moves.stream().filter(CashRegisterEntry::isVoid).mapToDouble(CashRegisterEntry::signedTotal).sum();
+        double purchases = moves.stream().filter(CashRegisterEntry::isBuy).mapToDouble(CashRegisterEntry::drawerAmount).sum();
+        double credit = moves.stream().filter(CashRegisterEntry::isCreditUse).mapToDouble(CashRegisterEntry::drawerAmount).sum();
+        double expected = moves.stream().mapToDouble(CashRegisterEntry::drawerAmount).sum();
+        int units = moves.stream().filter(CashRegisterEntry::affectsCash).mapToInt(CashRegisterEntry::signedQuantity).sum();
+        int count = (int) moves.stream().filter(entry -> entry.isSale() && !entry.isVoided()).count();
 
-        return new Day(target, formatDate(target), sales, count, units, ars(gross), ars(Math.abs(voids)),
-                ars(gross + voids), gross + voids, entries.stream().filter(CashRegisterEntry::isClose).toList());
+        return new Day(target, formatDate(target), moves, count, units, ars(gross), ars(Math.abs(voids)),
+                ars(Math.abs(purchases)), ars(Math.abs(credit)), signedAmount(expected), expected,
+                entries.stream().filter(CashRegisterEntry::isClose).toList());
     }
 
     /** Guarda el cierre. Los montos contados se separan por medio de pago porque en la tienda conviven. */
@@ -99,6 +107,10 @@ public class CashCloseService {
             store.appendCashEntry(entry);
             return difference;
         }
+    }
+
+    private static String signedAmount(double value) {
+        return value < 0 ? "-" + ars(Math.abs(value)) : ars(value);
     }
 
     public static String signed(double value) {

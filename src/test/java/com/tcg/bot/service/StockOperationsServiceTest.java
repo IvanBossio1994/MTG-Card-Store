@@ -214,6 +214,7 @@ class StockOperationsServiceTest {
         final List<InventoryMovement> movements = new ArrayList<>();
         final List<CashRegisterEntry> cash = new ArrayList<>();
         final List<Reservation> reservations = new ArrayList<>();
+        final List<com.tcg.bot.model.CreditEntry> credits = new ArrayList<>();
         boolean failCash;
         boolean failMovements;
         boolean failStatuses;
@@ -282,6 +283,24 @@ class StockOperationsServiceTest {
                 stored.setStatus(line.getStatus());
                 stored.setUpdatedAt(line.getUpdatedAt());
             }
+        }
+
+        @Override
+        public List<com.tcg.bot.model.CreditEntry> getCreditEntries() {
+            return List.copyOf(credits);
+        }
+
+        @Override
+        public void appendCreditEntry(com.tcg.bot.model.CreditEntry entry) {
+            credits.add(entry);
+        }
+
+        @Override
+        public int appendInventoryCard(InventoryCard card) {
+            int row = cards.stream().mapToInt(InventoryCard::getRowIndex).max().orElse(1) + 1;
+            card.setRowIndex(row);
+            cards.add(card);
+            return row;
         }
 
         @Override

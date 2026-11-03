@@ -22,12 +22,20 @@ public class SalesController {
     }
 
     @PostMapping("/ventas")
-    public String sell(@RequestParam String items, RedirectAttributes redirect) {
+    public String sell(@RequestParam String items,
+                       @RequestParam(required = false) String creditCustomer,
+                       RedirectAttributes redirect) {
         try {
-            var ticket = salesService.sell(ReservationController.parseItems(items));
-            redirect.addFlashAttribute("saleMessage", "Venta cobrada: " + ticket.units()
-                    + (ticket.units() == 1 ? " carta" : " cartas") + " por $ " + ticket.formattedTotal()
-                    + ". Ya está en la caja.");
+            var ticket = salesService.sell(ReservationController.parseItems(items), creditCustomer);
+            String message = "Venta cobrada: " + ticket.units() + (ticket.units() == 1 ? " carta" : " cartas")
+                    + " por $ " + ticket.formattedTotal() + ".";
+            if (ticket.creditUsed() > 0) {
+                message += " Se usaron $ " + ticket.formattedCreditUsed() + " de crédito de " + creditCustomer.trim()
+                        + ": cobrá $ " + ticket.formattedToPay() + ".";
+            } else if (creditCustomer != null && !creditCustomer.isBlank()) {
+                message += " " + creditCustomer.trim() + " no tenía crédito, se cobró completo.";
+            }
+            redirect.addFlashAttribute("saleMessage", message);
             redirect.addFlashAttribute("clearOrder", true);
         } catch (StockOperationException e) {
             redirect.addFlashAttribute("saleError", e.getMessage());
