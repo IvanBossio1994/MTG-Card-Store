@@ -3,6 +3,7 @@ package com.tcg.bot.service;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.Reservation;
 import com.tcg.bot.service.StockOperationsService.Reason;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -193,7 +194,7 @@ class StockOperationsServiceTest {
         assertThat(store.card("c1").getQuantity()).isEqualTo("1");
     }
 
-    private static InventoryCard card(String id, int row, String name, int quantity, String price) {
+    static InventoryCard card(String id, int row, String name, int quantity, String price) {
         InventoryCard card = new InventoryCard();
         card.setId(id);
         card.setRowIndex(row);
@@ -212,6 +213,7 @@ class StockOperationsServiceTest {
         final List<InventoryCard> cards = new ArrayList<>();
         final List<InventoryMovement> movements = new ArrayList<>();
         final List<CashRegisterEntry> cash = new ArrayList<>();
+        final List<Reservation> reservations = new ArrayList<>();
         boolean failCash;
         boolean failMovements;
 
@@ -254,6 +256,28 @@ class StockOperationsServiceTest {
         @Override
         public List<CashRegisterEntry> getCashRegisterEntries() {
             return List.copyOf(cash);
+        }
+
+        @Override
+        public List<Reservation> getReservations() {
+            return List.copyOf(reservations);
+        }
+
+        @Override
+        public void appendReservations(List<Reservation> lines) {
+            for (Reservation line : lines) {
+                line.setRowIndex(reservations.size() + 2);
+                reservations.add(line);
+            }
+        }
+
+        @Override
+        public void updateReservationStatuses(List<Reservation> lines) {
+            for (Reservation line : lines) {
+                Reservation stored = reservations.get(line.getRowIndex() - 2);
+                stored.setStatus(line.getStatus());
+                stored.setUpdatedAt(line.getUpdatedAt());
+            }
         }
 
         @Override

@@ -2411,7 +2411,7 @@ tr.in-stock {
     margin: 0;
 }
 
-.link-button {
+.text-action {
     background: none;
     border: 0;
     padding: 0;
@@ -2427,4 +2427,94 @@ tr.in-stock {
     gap: 6px;
     font-size: 0.9rem;
     cursor: pointer;
+}
+
+/* ---- Reservas y pedidos ---- */
+.stock-mode-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.reserve-button {
+    margin-left: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.order-badge {
+    font-weight: 600;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #2f6f4f;
+    color: #fff;
+}
+
+.order-draft-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px;
+}
+
+.order-draft-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+.order-form-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.order-form-fields label {
+    display: grid;
+    gap: 4px;
+    font-size: 0.9rem;
+}
+
+.order-card {
+    border: 1px solid rgba(127, 127, 127, 0.25);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+}
+
+.order-card.inactive {
+    opacity: 0.65;
+}
+
+.order-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.order-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.order-actions form {
+    margin: 0;
+}
+
+.order-lines {
+    margin: 8px 0 0;
+    padding-left: 18px;
 }

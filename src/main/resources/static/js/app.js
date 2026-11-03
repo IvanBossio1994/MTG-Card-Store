@@ -1047,5 +1047,113 @@ document.addEventListener("DOMContentLoaded", () => {
 
         setTimeout(() => {toast.remove();}, 2400);
     }
+
+    // ---- Pedido en preparación (reservas) ----
+    // Se guarda en el navegador hasta confirmarlo en /reservas. No es un dato importante:
+    // si se pierde, se vuelve a armar desde la búsqueda.
+    const ORDER_KEY = "tcg-order-draft";
+
+    function readOrder() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(ORDER_KEY) || "[]");
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function writeOrder(items) {
+        try {
+            localStorage.setItem(ORDER_KEY, JSON.stringify(items));
+        } catch (e) {
+            // Sin almacenamiento local el pedido solo vive en esta pantalla.
+        }
+        renderOrderBadge(items);
+        renderOrderDraft(items);
+    }
+
+    function renderOrderBadge(items) {
+        const badge = document.getElementById("order-badge");
+        if (!badge) {
+            return;
+        }
+        const units = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        badge.hidden = units <= 0;
+        badge.textContent = `Pedido (${units}) →`;
+    }
+
+    function renderOrderDraft(items) {
+        const list = document.getElementById("order-draft-list");
+        const input = document.getElementById("order-items-input");
+        const form = document.getElementById("order-form");
+        const empty = document.getElementById("order-draft-empty");
+        if (!list || !input || !form) {
+            return;
+        }
+
+        list.innerHTML = "";
+        items.forEach((item, index) => {
+            const row = document.createElement("li");
+            row.className = "order-draft-item";
+
+            const label = document.createElement("span");
+            label.textContent = `${item.quantity} × ${item.name}${item.set ? " (" + item.set + ")" : ""}`;
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "text-action";
+            remove.textContent = "Quitar";
+            remove.addEventListener("click", () => {
+                const next = readOrder();
+                next.splice(index, 1);
+                writeOrder(next);
+            });
+
+            row.append(label, remove);
+            list.appendChild(row);
+        });
+
+        input.value = JSON.stringify(items.map(item => ({cardId: item.cardId, quantity: item.quantity})));
+        form.hidden = items.length === 0;
+        if (empty) {
+            empty.hidden = items.length > 0;
+        }
+    }
+
+    document.querySelectorAll(".reserve-button").forEach(button => {
+        button.addEventListener("click", () => {
+            const cardId = button.dataset.cardId;
+            if (!cardId) {
+                showToast("Esta carta todavía no tiene ID. Sincronizá el inventario y volvé a buscar.", "error");
+                return;
+            }
+
+            const items = readOrder();
+            const existing = items.find(item => item.cardId === cardId);
+            const stock = parseInt(button.dataset.stock || "0", 10) || 0;
+            const current = existing ? existing.quantity : 0;
+
+            if (current + 1 > stock) {
+                showToast("No hay más unidades disponibles para sumar al pedido", "error");
+                return;
+            }
+
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                items.push({cardId, quantity: 1, name: button.dataset.name || "", set: button.dataset.set || ""});
+            }
+
+            writeOrder(items);
+            showToast("Agregada al pedido", "success");
+        });
+    });
+
+    if (document.body.dataset.clearOrder === "true") {
+        writeOrder([]);
+    } else {
+        renderOrderBadge(readOrder());
+        renderOrderDraft(readOrder());
+    }
 });
 

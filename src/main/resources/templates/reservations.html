@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reservas | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body th:attr="data-clear-order=${clearOrder == true}">
+<header th:replace="~{fragments/layout :: topbar('Reservas y pedidos')}"></header>
+<div th:replace="~{fragments/layout :: menu('reservations')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Clientes</p>
+            <h1>Reservas y pedidos</h1>
+            <p class="supporting">Apartá cartas para un cliente. Mientras están reservadas nadie más las vende;
+                si no las retira antes del vencimiento, vuelven solas al stock.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <p class="alert error" th:if="${reservationError}" th:text="${reservationError}"></p>
+        <p class="alert success" th:if="${reservationMessage}" th:text="${reservationMessage}"></p>
+
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Nuevo pedido</p>
+                <h2>Pedido en preparación</h2>
+            </div>
+        </div>
+
+        <p id="order-draft-empty" class="supporting">
+            Buscá cartas en <a th:href="@{/}">Inicio</a> y tocá <strong>Reservar</strong> para sumarlas acá.
+        </p>
+        <ul id="order-draft-list" class="order-draft-list"></ul>
+
+        <form id="order-form" method="post" th:action="@{/reservas}" hidden>
+            <input id="order-items-input" type="hidden" name="items" value="[]">
+            <div class="order-form-fields">
+                <label>Cliente
+                    <input name="customer" type="text" required maxlength="80" placeholder="Nombre del cliente">
+                </label>
+                <label>Contacto (opcional)
+                    <input name="contact" type="text" maxlength="80" placeholder="WhatsApp, Instagram, mail">
+                </label>
+                <label>Días para retirar
+                    <input name="days" type="number" min="0" max="60" th:value="${defaultDays}">
+                </label>
+            </div>
+            <button class="primary-button" type="submit">Reservar pedido</button>
+        </form>
+    </section>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Historial</p>
+                <h2>Reservas</h2>
+            </div>
+        </div>
+
+        <div class="placeholder" th:if="${#lists.isEmpty(orders)}">
+            <strong>No hay reservas todavía</strong>
+            <p>Las reservas se guardan en la hoja "Reservas" de tu Sheet.</p>
+        </div>
+
+        <article class="order-card" th:each="order : ${orders}" th:classappend="${order.isActive()} ? '' : 'inactive'">
+            <div class="order-card-head">
+                <div>
+                    <strong th:text="${order.customer}">Juan</strong>
+                    <span th:if="${order.contact != null && order.contact != ''}" th:text="${' · ' + order.contact}"> · @juan</span>
+                    <div class="supporting">
+                        <span th:text="${order.reservationId}">R1234</span>
+                        · reservado el <span th:text="${order.formattedDate}">01/11/2026</span>
+                        <span th:if="${order.isActive()}"> · vence el <strong th:text="${order.formattedExpiresOn}">08/11/2026</strong></span>
+                    </div>
+                </div>
+                <div>
+                    <strong th:text="${'$ ' + order.formattedTotal}">$ 0</strong>
+                    <span class="cash-badge" th:unless="${order.isActive()}" th:text="${order.status}">RETIRADA</span>
+                </div>
+            </div>
+            <ul class="order-lines">
+                <li th:each="line : ${order.lines}"
+                    th:text="${line.quantity + ' × ' + line.name + ' (' + line.setName + ') · $ ' + line.formattedUnitPrice}">
+                    1 × Sol Ring
+                </li>
+            </ul>
+            <div class="order-actions" th:if="${order.isActive()}">
+                <form method="post" th:action="@{/reservas/{id}/retirar(id=${order.reservationId})}">
+                    <button class="primary-button" type="submit" title="Registra la venta en la caja">Retiró y pagó</button>
+                </form>
+                <form method="post" th:action="@{/reservas/{id}/cancelar(id=${order.reservationId})}">
+                    <button class="secondary-button" type="submit" title="Las cartas vuelven al stock">Cancelar</button>
+                </form>
+            </div>
+        </article>
+    </section>
+</main>
+</body>
+</html>
