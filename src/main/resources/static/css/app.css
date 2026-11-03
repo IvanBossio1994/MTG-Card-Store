@@ -2385,3 +2385,46 @@ tr.in-stock {
         grid-template-columns: 1fr;
     }
 }
+
+/* ---- Caja v2: anulaciones ---- */
+.cash-row-void td,
+.cash-row-voided td {
+    color: var(--muted, #8a8f98);
+}
+
+.cash-row-voided td:not(.cash-status) {
+    text-decoration: line-through;
+}
+
+.cash-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(200, 60, 60, 0.12);
+    color: #b23a3a;
+}
+
+.cash-void-form {
+    display: inline;
+    margin: 0;
+}
+
+.link-button {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: #b23a3a;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.stock-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}

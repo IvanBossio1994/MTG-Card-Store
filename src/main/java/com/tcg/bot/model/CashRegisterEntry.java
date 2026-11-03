@@ -1,5 +1,7 @@
 package com.tcg.bot.model;
 
+import com.tcg.bot.util.Amounts;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -33,6 +35,10 @@ public class CashRegisterEntry {
     private String total;
     private String dayTotal;
     private String status;
+    private String saleId;
+    private String voidsSaleId;
+    private String cardId;
+    private boolean voided;
 
     public String getFormattedLocalPrice() {
         return formatAmount(localPrice);
@@ -58,33 +64,46 @@ public class CashRegisterEntry {
         }
     }
 
-    private String formatAmount(String value) {
-        double number = parseAmount(value);
+    public static final String TYPE_SALE = "VENTA";
+    public static final String TYPE_VOID = "ANULACION";
 
-        if (number <= 0 && (value == null || value.isBlank())) {
+    public boolean isSale() {
+        return TYPE_SALE.equalsIgnoreCase(type);
+    }
+
+    public boolean isVoid() {
+        return TYPE_VOID.equalsIgnoreCase(type);
+    }
+
+    /** Venta o anulacion: lo que suma o resta en la caja. */
+    public boolean affectsCash() {
+        return isSale() || isVoid();
+    }
+
+    /** Total con signo: las anulaciones restan aunque en el Sheet esten escritas en positivo. */
+    public double signedTotal() {
+        double value = Math.abs(Amounts.parse(total));
+        return isVoid() ? -value : value;
+    }
+
+    public int signedQuantity() {
+        int value = Math.abs(Amounts.parseInt(quantity));
+        return isVoid() ? -value : value;
+    }
+
+    public String getFormattedSignedTotal() {
+        return ARS_FORMAT.format(signedTotal());
+    }
+
+    public boolean canBeVoided() {
+        return isSale() && saleId != null && !saleId.isBlank() && !voided;
+    }
+
+    private String formatAmount(String value) {
+        if (value == null || value.isBlank()) {
             return "";
         }
 
-        return ARS_FORMAT.format(number);
-    }
-
-    private double parseAmount(String value) {
-        if (value == null || value.isBlank()) {
-            return 0;
-        }
-
-        String normalized = value.replace("$", "").trim();
-
-        if (normalized.contains(",") && normalized.contains(".")) {
-            normalized = normalized.replace(".", "").replace(",", ".");
-        } else if (normalized.contains(",")) {
-            normalized = normalized.replace(",", ".");
-        }
-
-        try {
-            return Double.parseDouble(normalized);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        return ARS_FORMAT.format(Amounts.parse(value));
     }
 }

@@ -40,6 +40,9 @@ public class InventoryCard {
     // ---- Acción ----
     private String action;
 
+    // ---- ID estable de la carta (columna ID del Sheet) ----
+    private String id;
+
     // ---- Guarda el indice real de la fila en Google Sheet ----
     private int rowIndex;
 
