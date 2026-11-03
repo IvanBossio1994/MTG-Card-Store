@@ -8,15 +8,40 @@
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Card Kingdom + Google Sheets')}"></header>
+<header th:replace="~{fragments/layout :: topbar('Inventario, caja y reservas')}"></header>
 <div th:replace="~{fragments/layout :: menu('home')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Inventario local</p>
-            <h1>Buscar cartas en inventario</h1>
-            <p class="supporting">Consultá Card Kingdom y detectá las impresiones que ya tenés cargadas.</p>
+            <p class="eyebrow">Tu tienda</p>
+            <h1>Buscar cartas</h1>
+            <p class="supporting">Buscá una carta para venderla, sumar stock o reservarla para un cliente.</p>
         </div>
+    </section>
+
+    <section class="summary-strip" th:if="${summary != null}" aria-label="Resumen de hoy">
+        <a class="summary-tile" th:href="@{/movimientos(tab='cash')}">
+            <span class="summary-label">Ventas de hoy</span>
+            <strong th:text="${'$ ' + summary.salesToday}">$ 0</strong>
+            <span class="summary-note" th:text="${summary.salesCountToday == 1 ? '1 venta' : summary.salesCountToday + ' ventas'}">0 ventas</span>
+        </a>
+        <a class="summary-tile" th:href="@{/reservas}">
+            <span class="summary-label">Reservas activas</span>
+            <strong th:text="${summary.activeReservations}">0</strong>
+            <span class="summary-note" th:classappend="${summary.reservationsDueToday > 0} ? 'warn'"
+                  th:text="${summary.reservationsDueToday > 0 ? summary.reservationsDueToday + ' vencen hoy' : 'Ninguna vence hoy'}">Ninguna vence hoy</span>
+        </a>
+        <div class="summary-tile">
+            <span class="summary-label">Cartas en stock</span>
+            <strong th:text="${summary.unitsInStock}">0</strong>
+            <span class="summary-note" th:text="${summary.distinctInStock + ' distintas'}">0 distintas</span>
+        </div>
+        <a class="summary-tile" th:href="@{/precios}">
+            <span class="summary-label">Valor del stock</span>
+            <strong th:text="${'$ ' + summary.stockValue}">$ 0</strong>
+            <span class="summary-note" th:classappend="${summary.cardsWithoutPrice > 0} ? 'warn'"
+                  th:text="${summary.cardsWithoutPrice > 0 ? summary.cardsWithoutPrice + ' sin precio' : 'A tu precio de venta'}">A tu precio de venta</span>
+        </a>
     </section>
 
     <section class="panel search-panel">
