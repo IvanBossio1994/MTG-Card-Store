@@ -13,9 +13,16 @@ public class PriceComparisonService {
         this.pricingSettingsService = pricingSettingsService;
     }
 
+    /**
+     * Precio en ARS = USD x cotizacion x (1 + recargo%), redondeado hacia arriba al multiplo,
+     * y nunca por debajo del precio minimo.
+     */
     public double calculateLocalPrice(double ckUsdPrice) {
-        double rawPrice = ckUsdPrice * pricingSettingsService.getCkDollarRate();
-        return roundUpToMultiple(rawPrice, pricingSettingsService.getRoundMultiple());
+        double rawPrice = ckUsdPrice
+                * pricingSettingsService.getCkDollarRate()
+                * (1 + pricingSettingsService.getMarkupPercent() / 100.0);
+        double rounded = roundUpToMultiple(rawPrice, pricingSettingsService.getRoundMultiple());
+        return Math.max(rounded, pricingSettingsService.getMinimumPrice());
     }
 
     private double roundUpToMultiple(double value, int multiple) {

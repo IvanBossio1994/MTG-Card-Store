@@ -80,7 +80,7 @@
         </section>
         <section class="settings-card">
             <h2>Regla de precio</h2>
-            <p class="card-help">Define como convertir el precio de Card Kingdom al precio sugerido en ARS.</p>
+            <p class="card-help">Precio en ARS = precio CK en USD × cotización × (1 + recargo), redondeado hacia arriba al múltiplo y nunca por debajo del mínimo.</p>
             <div class="pricing-config-grid">
                 <div class="store-field">
                     <label for="ckDollarRate">Cotizacion ARS por CK USD</label>
@@ -91,6 +91,16 @@
                     <label for="roundMultiple">Redondear al multiplo de</label>
                     <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
                            th:value="${roundMultiple}" required>
+                </div>
+                <div class="store-field">
+                    <label for="markupPercent">Recargo sobre CK (%)</label>
+                    <input id="markupPercent" name="markupPercent" type="number" min="-99" step="0.5"
+                           th:value="${markupPercent}">
+                </div>
+                <div class="store-field">
+                    <label for="minimumPrice">Precio mínimo por carta (ARS)</label>
+                    <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="1"
+                           th:value="${minimumPrice}">
                 </div>
             </div>
             <div class="store-field">
