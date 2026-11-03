@@ -57,4 +57,17 @@ public interface InventoryStore {
     default int appendInventoryCard(InventoryCard card) throws Exception {
         throw new UnsupportedOperationException("No disponible");
     }
+
+    /** Inventario de otro juego (su propia pestaña). */
+    default List<com.tcg.bot.model.GameCard> getGameCards(com.tcg.bot.model.Game game) throws Exception {
+        return List.of();
+    }
+
+    default int appendGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
+    default void updateGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
 }

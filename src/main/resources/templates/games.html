@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${game.label() + ' | TCG Inventory'}">Pokémon | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(${game.label()})}"></header>
+<div th:replace="~{fragments/layout :: menu(${game.slug()})}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Otros juegos</p>
+            <h1 th:text="${game.label()}">Pokémon</h1>
+            <p class="supporting">
+                Tu stock de <span th:text="${game.label()}">Pokémon</span> vive en la pestaña
+                "<span th:text="${game.sheetName()}">Inventario Pokemon</span>" de tu Sheet. Los precios salen de
+                <span th:text="${game.slug() == 'pokemon' ? 'pokemontcg.io (TCGplayer)' : 'YGOPRODeck'}">pokemontcg.io</span>
+                y se pasan a pesos con tu misma cotización y redondeo. Las ventas van a la misma caja que Magic.
+            </p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${gameError}" th:text="${gameError}"></p>
+    <p class="alert success" th:if="${gameMessage}" th:text="${gameMessage}"></p>
+
+    <section class="panel">
+        <form class="game-search" th:action="@{/juegos/{slug}(slug=${game.slug()})}" method="get">
+            <label for="game-q">Buscar carta</label>
+            <div class="game-search-row">
+                <input id="game-q" name="q" type="text" th:value="${query}" autocomplete="off"
+                       th:placeholder="${game.slug() == 'pokemon' ? 'Ej: Charizard, Pikachu ex' : 'Ej: Dark Magician, Ash Blossom'}">
+                <button type="submit" class="primary-button">Buscar</button>
+            </div>
+        </form>
+
+        <p class="supporting" th:if="${results != null and #lists.isEmpty(results) and gameError == null}">
+            No apareció ninguna carta con ese nombre. Probá en inglés o con menos palabras.</p>
+
+        <div class="game-results" th:if="${results != null and !#lists.isEmpty(results)}">
+            <article class="game-result" th:each="result : ${results}" th:classappend="${result.stock() > 0} ? 'in-stock'">
+                <div class="game-thumb">
+                    <img th:if="${result.print.imageUrl() != ''}" th:src="${result.print.imageUrl()}" alt="" loading="lazy">
+                </div>
+                <div class="game-result-body">
+                    <strong th:text="${result.print.name()}">Charizard</strong>
+                    <span th:text="${result.print.setName() + ' · ' + result.print.setCode() + (result.print.number() != '' ? ' #' + result.print.number() : '')}">Base · BS #4</span>
+                    <span class="candidate-meta" th:text="${result.print.rarity() + (result.print.finish() != '' ? ' · ' + result.print.finish() : '')}">Rare Holo · Holo</span>
+                    <span class="game-prices">
+                        <span th:text="${result.formattedUsd()}">US$ 350,00</span>
+                        <strong th:text="${result.formattedSuggested()}">$ 420.000</strong>
+                    </span>
+                </div>
+                <div class="game-result-actions">
+                    <span class="stock-pill" th:classappend="${result.stock() == 0} ? 'out'" th:text="${result.stock() + ' en stock'}">0 en stock</span>
+                    <form th:if="${result.stockCard != null and result.stock() > 0}" th:action="@{/juegos/{slug}/stock(slug=${game.slug()})}" method="post">
+                        <input type="hidden" name="id" th:value="${result.stockCard.id}">
+                        <input type="hidden" name="change" value="-1">
+                        <input type="hidden" name="reason" value="sale">
+                        <input type="hidden" name="q" th:value="${query}">
+                        <button type="submit" class="secondary-button" title="Registra la venta en la caja">Vender 1</button>
+                    </form>
+                    <form th:action="@{/juegos/{slug}/agregar(slug=${game.slug()})}" method="post">
+                        <input type="hidden" name="catalogId" th:value="${result.print.catalogId()}">
+                        <input type="hidden" name="name" th:value="${result.print.name()}">
+                        <input type="hidden" name="setName" th:value="${result.print.setName()}">
+                        <input type="hidden" name="setCode" th:value="${result.print.setCode()}">
+                        <input type="hidden" name="number" th:value="${result.print.number()}">
+                        <input type="hidden" name="rarity" th:value="${result.print.rarity()}">
+                        <input type="hidden" name="finish" th:value="${result.print.finish()}">
+                        <input type="hidden" name="usd" th:value="${result.print.usd()}">
+                        <input type="hidden" name="q" th:value="${query}">
+                        <button type="submit" class="primary-button">+ Sumar 1</button>
+                    </form>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Tu stock</p>
+                <h2 th:text="${#lists.isEmpty(cards) ? 'Todavía no cargaste cartas' : #lists.size(cards) + (#lists.size(cards) == 1 ? ' carta' : ' cartas distintas')}">Cartas</h2>
+            </div>
+            <form th:unless="${#lists.isEmpty(cards)}" th:action="@{/juegos/{slug}/precios(slug=${game.slug()})}" method="post"
+                  class="game-refresh-form">
+                <button type="submit" class="secondary-button">Actualizar precios</button>
+            </form>
+        </div>
+        <div class="table-wrap" th:unless="${#lists.isEmpty(cards)}">
+            <table class="game-table">
+                <thead>
+                <tr>
+                    <th>Stock</th>
+                    <th>Carta</th>
+                    <th>Set</th>
+                    <th>Rareza</th>
+                    <th>USD</th>
+                    <th>Tu precio</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="card : ${cards}" th:classappend="${card.quantity > 0} ? 'in-stock'">
+                    <td>
+                        <div class="stock-controls">
+                            <form th:action="@{/juegos/{slug}/stock(slug=${game.slug()})}" method="post">
+                                <input type="hidden" name="id" th:value="${card.id}">
+                                <input type="hidden" name="change" value="-1">
+                                <input type="hidden" name="reason" value="sale">
+                                <button type="submit" class="stock-button decrease" th:disabled="${card.quantity <= 0}"
+                                        title="Registrar unidad vendida">-</button>
+                            </form>
+                            <span class="stock-value" th:text="${card.quantity}">0</span>
+                            <form th:action="@{/juegos/{slug}/stock(slug=${game.slug()})}" method="post">
+                                <input type="hidden" name="id" th:value="${card.id}">
+                                <input type="hidden" name="change" value="1">
+                                <button type="submit" class="stock-button increase" title="Agregar una unidad">+</button>
+                            </form>
+                        </div>
+                    </td>
+                    <td th:text="${card.name}">Charizard</td>
+                    <td th:text="${card.setName + (card.number != null and card.number != '' ? ' #' + card.number : '')}">Base #4</td>
+                    <td th:text="${card.rarity + (card.finish != null and card.finish != '' ? ' · ' + card.finish : '')}">Rare Holo</td>
+                    <td class="nowrap" th:text="${card.formattedUsd()}">US$ 1,00</td>
+                    <td class="nowrap" th:text="${card.formattedLocalPrice()}">$ 1.000</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>
