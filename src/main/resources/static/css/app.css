@@ -131,12 +131,15 @@ body {
     width: 280px;
     padding: 25px 18px;
     background: var(--panel);
-    box-shadow: 18px 0 44px rgba(16, 24, 40, 0.16);
+    box-shadow: none;
+    visibility: hidden;
     transform: translateX(-102%);
-    transition: transform .18s ease;
+    transition: transform .18s ease, visibility .18s;
 }
 
 .app-menu.open {
+    visibility: visible;
+    box-shadow: 18px 0 44px rgba(16, 24, 40, 0.16);
     transform: translateX(0);
 }
 
@@ -983,9 +986,23 @@ h2 {
     table-layout: fixed;
 }
 
+.table-wrap table {
+    min-width: 760px;
+}
+
 .table-wrap th,
 .table-wrap td {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.table-wrap td {
+    white-space: normal;
+}
+
+.table-wrap td .stock-controls,
+.table-wrap td.nowrap {
+    white-space: nowrap;
 }
 
 table {
@@ -1210,6 +1227,7 @@ tr.in-stock {
     display: inline-flex;
     align-items: center;
     width: fit-content;
+    max-width: 100%;
     padding: 4px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -1217,7 +1235,8 @@ tr.in-stock {
 }
 
 .movement-tab-button {
-    min-width: 116px;
+    min-width: 104px;
+    flex: 0 0 auto;
     height: 38px;
     padding: 0 16px;
     border: 0;
@@ -1311,10 +1330,10 @@ tr.in-stock {
     border-radius: 0;
 }
 
-.movement-table,
-.cash-table {
+.table-wrap .movement-table,
+.table-wrap .cash-table {
     table-layout: fixed;
-    min-width: 0;
+    min-width: 1000px;
 }
 
 .movement-table th,
@@ -1323,7 +1342,7 @@ tr.in-stock {
 .cash-table td {
     padding: 12px 10px;
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
 }
 
 .movement-table th:nth-child(1),
@@ -2554,4 +2573,104 @@ tr.in-stock {
 .google-card a.primary-button {
     display: inline-block;
     text-decoration: none;
+}
+
+
+/* --- Ajustes de diseño v2 --- */
+
+#search-results-table th:nth-child(1),
+#search-results-table td:nth-child(1) {
+    width: 168px;
+}
+
+#search-results-table th:nth-child(2),
+#search-results-table td:nth-child(2) {
+    width: 18%;
+}
+
+#search-results-table td:nth-child(1) .stock-controls {
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+#search-results-table .reserve-button {
+    margin-left: 0;
+}
+
+.panel + .panel,
+.settings-card + .settings-card,
+section + section.panel {
+    margin-top: 18px;
+}
+
+main a:not([class]) {
+    color: var(--blue);
+}
+
+.cash-void-form .text-action {
+    padding: 4px 10px;
+    border: 1px solid var(--red);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--red);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.cash-void-form .text-action:hover {
+    background: var(--red-soft);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 14px;
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--blue);
+}
+
+.price-sources select,
+.store-form select {
+    width: 100%;
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+}
+
+@media (max-width: 720px) {
+    .section-head.movement-tabs-head {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+}
+
+#search-results-table th:nth-child(n+6),
+#search-results-table td:nth-child(n+6) {
+    width: 104px;
+}
+
+@media (max-width: 480px) {
+    .movement-tab-button {
+        min-width: 0;
+        padding: 0 12px;
+        font-size: 13px;
+    }
+}
+
+.table-wrap #search-results-table {
+    min-width: 1120px;
 }
