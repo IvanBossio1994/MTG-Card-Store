@@ -42,6 +42,11 @@ public class StockOperationsService {
     /** Todas las escrituras de stock/caja/reservas pasan por aca para no pisarse entre si. */
     static final Object LOCK = new Object();
 
+    /** Para otras escrituras al Sheet que no deben cruzarse con ventas o reservas. */
+    public static Object writeLock() {
+        return LOCK;
+    }
+
     private static final Logger log = LoggerFactory.getLogger(StockOperationsService.class);
     private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

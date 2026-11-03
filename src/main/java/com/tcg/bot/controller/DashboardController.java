@@ -776,7 +776,7 @@ public class DashboardController {
 
                 // Lo vendido sale de la caja, no de los movimientos: un ajuste de stock no es una venta
                 // y una venta anulada que devuelve stock no es un ingreso nuevo.
-                if (quantity > 0 && !StockOperationsService.SOURCE_VOIDED.equalsIgnoreCase(movement.getSource())) {
+                if (quantity > 0 && isNewStock(movement.getSource())) {
                     cardReport.addEntry(quantity);
                 }
             }
@@ -827,6 +827,13 @@ public class DashboardController {
                         maxMovementQuantity
                 ))
                 .toList();
+    }
+
+    /** Una venta anulada o una reserva liberada devuelven cartas que ya estaban: no son ingresos nuevos. */
+    private static boolean isNewStock(String source) {
+        String value = source == null ? "" : source.trim().toLowerCase(java.util.Locale.ROOT);
+        return !value.startsWith(StockOperationsService.SOURCE_VOIDED.toLowerCase(java.util.Locale.ROOT))
+                && !value.startsWith(StockOperationsService.SOURCE_RESERVATION_RELEASED.toLowerCase(java.util.Locale.ROOT));
     }
 
     private String cashEntryReportKey(CashRegisterEntry entry) {
@@ -1734,6 +1741,11 @@ public class DashboardController {
                     ? ""
                     : googleException.getDetails().getMessage();
 
+            if ((statusCode == 403 || statusCode == 404) && inventoryService.usesGoogleAccount()) {
+                return "Con la cuenta de Google conectada, la app solo puede abrir los Sheets que creó ella. "
+                        + "Tocá \"Crear mi Sheet de inventario\" en Configuración, o desconectá la cuenta para usar tu Sheet compartido con el bot.";
+            }
+
             if (statusCode == 403) {
                 return "Google rechazo el acceso. Revisa que el Sheet este compartido como Editor con el mail de Configuracion y que Google Sheets API este habilitada para esas credenciales.";
             }
@@ -2589,15 +2601,29 @@ public class DashboardController {
                         .body(new ApiMessage(false, "No se encontro la carta en Card Kingdom."));
             }
 
-            if (licenseService.remainingNewCards(distinctCards(inventoryService.getInventoryCards())) <= 0) {
-                return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
-                        .body(new ApiMessage(false, licenseService.limitMessage()));
-            }
+            InventoryCard card;
+            int rowIndex;
+            synchronized (StockOperationsService.writeLock()) {
+                List<InventoryCard> current = inventoryService.getInventoryCards();
 
-            InventoryCard card = createInventoryCard(product);
-            int rowIndex = inventoryService.appendInventoryCard(card);
-            card.setRowIndex(rowIndex);
-            inventoryService.appendMovement(createMovement("ENTRADA", 1, card, 0, 1, "Busqueda"));
+                // Doble clic o dos pestañas: si la impresión ya está en el Sheet, se suma ahí en vez de duplicarla.
+                InventoryCard existing = findSamePrinting(current, product);
+                if (existing != null) {
+                    var result = stockOperationsService.changeStock(existing.getId(), existing.getRowIndex(), 1,
+                            StockOperationsService.Reason.ADJUST);
+                    return ResponseEntity.ok(new StockCreateResponse(result.rowIndex(), result.cardId()));
+                }
+
+                if (licenseService.remainingNewCards(distinctCards(current)) <= 0) {
+                    return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                            .body(new ApiMessage(false, licenseService.limitMessage()));
+                }
+
+                card = createInventoryCard(product);
+                rowIndex = inventoryService.appendInventoryCard(card);
+                card.setRowIndex(rowIndex);
+                inventoryService.appendMovement(createMovement("ENTRADA", 1, card, 0, 1, "Agregado al stock"));
+            }
             refreshLatestUpdateForCard(card);
 
             return ResponseEntity.ok(new StockCreateResponse(rowIndex, card.getId()));
@@ -2606,6 +2632,20 @@ public class DashboardController {
             return ResponseEntity.internalServerError()
                     .body(new ApiMessage(false, "No se pudo agregar la carta al inventario: " + e.getMessage()));
         }
+    }
+
+    private InventoryCard findSamePrinting(List<InventoryCard> cards, CardKingdomProduct product) {
+        String setCode = setCode(product.getSku());
+        String number = collectorNumberForSheet(product.getSku());
+        String printing = "true".equalsIgnoreCase(product.getFoil()) ? "foil" : "nonfoil";
+        return cards.stream()
+                .filter(card -> card.getName() != null && card.getName().equalsIgnoreCase(product.getName()))
+                .filter(card -> card.getSetCode() != null && card.getSetCode().equalsIgnoreCase(setCode))
+                .filter(card -> ScryfallPriceService.key(card.getSetCode(), card.getCollectorNumber())
+                        .equals(ScryfallPriceService.key(setCode, number)))
+                .filter(card -> printing.equalsIgnoreCase(card.getPrinting() == null ? "" : card.getPrinting()))
+                .findFirst()
+                .orElse(null);
     }
 
     private CardKingdomProduct findProductBySku(String sku) {
@@ -2642,7 +2682,18 @@ public class DashboardController {
             card.setLocalPrice("");
             card.setCkPriceUsd("");
         } else {
-            String localPrice = String.format("%.0f", priceComparisonService.calculateLocalPrice(ckPrice));
+            // Mismo precio que muestra "Tu precio" en la búsqueda: respeta las fuentes elegidas.
+            ScryfallPriceService.Prices extra = null;
+            if (pricingSettingsService.usesExtraSources()) {
+                extra = scryfallPriceService.prices(List.of(
+                                new ScryfallPriceService.CardRef(card.getSetCode(), card.getCollectorNumber())))
+                        .get(ScryfallPriceService.key(card.getSetCode(), card.getCollectorNumber()));
+            }
+            var quote = priceComparisonService.quote(ckPrice, extra, card.isFoil());
+            double suggested = quote.localPrice() == null
+                    ? priceComparisonService.calculateLocalPrice(ckPrice)
+                    : quote.localPrice();
+            String localPrice = String.format("%.0f", suggested);
             card.setLocalPrice(localPrice);
             card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         }

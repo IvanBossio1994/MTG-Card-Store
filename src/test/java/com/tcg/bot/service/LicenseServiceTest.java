@@ -61,6 +61,14 @@ class LicenseServiceTest {
     }
 
     @Test
+    void newlyBoughtInactiveKeyUnlocks() throws Exception {
+        next.set(new LicenseService.Validation(true, "inactive", "", "", "123", null));
+        LicenseService service = at(Instant.parse("2026-11-03T00:00:00Z"), "123");
+        service.activate("ABCD-EFGH-1234");
+        assertThat(service.isPro()).isTrue();
+    }
+
+    @Test
     void expiredLicenseIsFree() throws Exception {
         next.set(new LicenseService.Validation(true, "expired", "", "", "123", null));
         LicenseService service = at(Instant.parse("2026-11-03T00:00:00Z"), "123");

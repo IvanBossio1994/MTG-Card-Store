@@ -99,6 +99,11 @@ public class ReservationService {
                         .orElseThrow(() -> new StockOperationException(
                                 "Una de las cartas ya no está en el inventario. Volvé a armar el pedido."));
 
+                if (Amounts.parse(card.getLocalPrice()) <= 0) {
+                    throw new StockOperationException(card.getName()
+                            + " no tiene precio local. Sincronizá precios antes de reservarla.");
+                }
+
                 if (StockOperationsService.quantity(card) < entry.getValue()) {
                     throw new StockOperationException("No alcanza el stock de " + card.getName()
                             + ": hay " + StockOperationsService.quantity(card) + " y pediste " + entry.getValue() + ".");

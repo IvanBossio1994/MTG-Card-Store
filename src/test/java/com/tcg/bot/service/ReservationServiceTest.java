@@ -64,6 +64,16 @@ class ReservationServiceTest {
     }
 
     @Test
+    void cannotReserveCardWithoutPrice() {
+        store.cards.add(card("np", 4, "Sin Precio", 2, ""));
+
+        assertThatThrownBy(() -> serviceAt(NOW).create("Juan", "", 7, List.of(new Item("np", 1))))
+                .isInstanceOf(StockOperationException.class)
+                .hasMessageContaining("precio");
+        assertThat(store.card("np").getQuantity()).isEqualTo("2");
+    }
+
+    @Test
     void pickUpRegistersSalesAndKeepsStockDown() throws Exception {
         var service = serviceAt(NOW);
         String id = service.create("Juan", "", 7, List.of(new Item("sol", 2), new Item("cs", 1)));
