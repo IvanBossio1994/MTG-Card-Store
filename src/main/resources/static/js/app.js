@@ -1286,5 +1286,26 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
         renderOrder(readOrder());
     }
+
+    const closeForm = document.getElementById("close-form");
+    if (closeForm) {
+        const expected = Number(document.getElementById("close-expected").dataset.expected) || 0;
+        const parseAmount = value => Number(String(value || "").replace(/\$/g, "").replace(/\./g, "").replace(",", ".").trim()) || 0;
+        const update = () => {
+            const counted = ["efectivo", "transferencias", "tarjeta"]
+                .reduce((sum, name) => sum + parseAmount(closeForm.elements[name].value), 0);
+            const difference = Math.round(counted - expected);
+            document.getElementById("close-counted").textContent = money(counted);
+            const label = document.getElementById("close-difference");
+            label.textContent = difference === 0 ? "$ 0" : (difference > 0 ? "+" : "-") + money(Math.abs(difference));
+            label.className = difference === 0 ? "ok" : (difference > 0 ? "over" : "short");
+        };
+        closeForm.addEventListener("input", update);
+        update();
+    }
+
+    document.querySelectorAll("[data-print]").forEach(button => {
+        button.addEventListener("click", () => window.print());
+    });
 });
 

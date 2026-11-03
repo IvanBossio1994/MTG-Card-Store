@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cierre de caja | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar('Cierre de caja')}"></header>
+<div th:replace="~{fragments/layout :: menu('movements')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Caja</p>
+            <h1 th:text="${day != null ? 'Cierre del ' + day.formattedDate : 'Cierre de caja'}">Cierre del 03/11/2026</h1>
+            <p class="supporting no-print">Contá lo que entró hoy y comparalo con lo que la app registró. El cierre queda
+                anotado en la hoja Caja de tu Sheet.</p>
+        </div>
+        <div class="hero-actions no-print">
+            <form th:action="@{/caja/cierre}" method="get" class="close-date-form">
+                <input type="date" name="fecha" th:value="${day != null ? day.date : ''}" aria-label="Fecha">
+                <button type="submit" class="secondary-button">Ver</button>
+            </form>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${closeError}" th:text="${closeError}"></p>
+    <p class="alert success" th:if="${closeMessage}" th:text="${closeMessage}"></p>
+
+    <th:block th:if="${day != null}">
+        <section class="summary-strip close-strip">
+            <div class="summary-tile">
+                <span class="summary-label">Ventas</span>
+                <strong th:text="${'$ ' + day.grossSales}">$ 0</strong>
+                <span class="summary-note" th:text="${day.salesCount + (day.salesCount == 1 ? ' venta · ' : ' ventas · ') + day.units + (day.units == 1 ? ' carta' : ' cartas')}">0 ventas</span>
+            </div>
+            <div class="summary-tile">
+                <span class="summary-label">Anulaciones</span>
+                <strong th:text="${'-$ ' + day.voids}">-$ 0</strong>
+                <span class="summary-note">Ya descontadas</span>
+            </div>
+            <div class="summary-tile">
+                <span class="summary-label">Tendría que haber</span>
+                <strong id="close-expected" th:attr="data-expected=${day.expectedValue}" th:text="${'$ ' + day.expected}">$ 0</strong>
+                <span class="summary-note">Ventas menos anulaciones</span>
+            </div>
+            <div class="summary-tile" th:if="${day.lastClose() != null}">
+                <span class="summary-label">Último cierre</span>
+                <strong th:text="${day.lastClose().time}">20:00</strong>
+                <span class="summary-note">Ver detalle abajo</span>
+            </div>
+        </section>
+
+        <section class="panel no-print">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Contar la caja</p>
+                    <h2>¿Cuánto entró?</h2>
+                </div>
+            </div>
+            <form id="close-form" class="close-form" th:action="@{/caja/cierre}" method="post">
+                <input type="hidden" name="fecha" th:value="${day.date}">
+                <label>Efectivo
+                    <input type="text" inputmode="numeric" name="efectivo" placeholder="0" autocomplete="off">
+                </label>
+                <label>Transferencias / Mercado Pago
+                    <input type="text" inputmode="numeric" name="transferencias" placeholder="0" autocomplete="off">
+                </label>
+                <label>Tarjeta
+                    <input type="text" inputmode="numeric" name="tarjeta" placeholder="0" autocomplete="off">
+                </label>
+                <label class="close-note">Nota (opcional)
+                    <input type="text" name="nota" maxlength="140" placeholder="Ej: faltan $ 500 de cambio">
+                </label>
+                <div class="close-result">
+                    <span>Contado <strong id="close-counted">$ 0</strong></span>
+                    <span>Diferencia <strong id="close-difference">$ 0</strong></span>
+                </div>
+                <div class="order-actions">
+                    <button type="submit" class="primary-button">Guardar cierre</button>
+                    <button type="button" class="secondary-button" data-print>Imprimir resumen</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Detalle</p>
+                    <h2>Movimientos de caja del día</h2>
+                </div>
+            </div>
+            <p class="supporting" th:if="${#lists.isEmpty(day.sales)}">No hubo ventas este día.</p>
+            <div class="table-wrap" th:unless="${#lists.isEmpty(day.sales)}">
+                <table class="close-table">
+                    <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Carta</th>
+                        <th>Cant.</th>
+                        <th>Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="entry : ${day.sales}" th:classappend="${entry.isVoid()} ? 'cash-row-void' : ''">
+                        <td th:text="${entry.time}">12:00</td>
+                        <td th:text="${entry.name + (entry.isVoid() ? ' (anulación)' : '')}">Sol Ring</td>
+                        <td th:text="${entry.signedQuantity()}">1</td>
+                        <td class="nowrap" th:text="${entry.signedTotal() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedSignedTotal}">$ 1.000</td>
+                    </tr>
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <td colspan="3">Total</td>
+                        <td class="nowrap" th:text="${'$ ' + day.expected}">$ 0</td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <ul class="close-history" th:unless="${#lists.isEmpty(day.closes)}">
+                <li th:each="close : ${day.closes}" th:text="${close.time + ' · ' + close.name}">20:00 · Cierre</li>
+            </ul>
+        </section>
+    </th:block>
+</main>
+</body>
+</html>

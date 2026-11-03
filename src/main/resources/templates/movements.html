@@ -160,10 +160,10 @@
             </div>
 
             <div class="cash-summary-grid">
-                <div class="cash-summary-card">
-                    <span>Ventas de hoy</span>
+                <a class="cash-summary-card cash-summary-link" th:href="@{/caja/cierre}">
+                    <span>Ventas de hoy · cerrar caja →</span>
                     <strong th:text="${'$ ' + cashTodayTotal}">$ 0</strong>
-                </div>
+                </a>
                 <div class="cash-summary-card" th:if="${selectedCashDate != null && selectedCashDate != ''}">
                     <span>Total filtrado</span>
                     <strong th:text="${'$ ' + cashSelectedTotal}">$ 0</strong>
@@ -216,6 +216,7 @@
                                         <td th:text="${entry.signedQuantity()}">1</td>
                                         <td class="nowrap" th:text="${entry.signedTotal() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedSignedTotal}">$ 1.000</td>
                                         <td class="cash-status">
+                                            <span th:if="${entry.isClose()}" class="cash-badge close">Cierre</span>
                                             <span th:if="${entry.isVoid()}" class="cash-badge void">Anulación</span>
                                             <span th:if="${entry.isVoided()}" class="cash-badge voided">Anulada</span>
                                             <form th:if="${entry.canBeVoided()}" method="post" th:action="@{/caja/anular}"
@@ -232,6 +233,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <a class="secondary-button cash-close-link" th:href="@{/caja/cierre(fecha=${day.date})}">Cierre de este día</a>
                         </details>
                     </div>
                 </details>

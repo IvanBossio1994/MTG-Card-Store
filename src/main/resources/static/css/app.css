@@ -3213,3 +3213,138 @@ a.summary-tile .summary-label::after {
     color: var(--text);
     font: inherit;
 }
+
+/* Cierre de caja */
+.close-date-form {
+    display: flex;
+    gap: 8px;
+}
+
+.close-date-form input {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font: inherit;
+}
+
+.close-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.close-form label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.close-form input {
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font: inherit;
+    font-size: 1.05rem;
+}
+
+.close-form .close-note,
+.close-form .close-result,
+.close-form .order-actions {
+    grid-column: 1 / -1;
+}
+
+.close-result {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 1.05rem;
+}
+
+.close-result strong {
+    margin-left: 6px;
+    font-size: 1.3rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.close-result .ok {
+    color: var(--green);
+}
+
+.close-result .over {
+    color: var(--blue);
+}
+
+.close-result .short {
+    color: var(--red);
+}
+
+.close-table tfoot td {
+    font-weight: 700;
+    border-top: 2px solid var(--border);
+}
+
+.close-history {
+    margin: 16px 0 0;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.cash-close-link {
+    margin: 12px;
+}
+
+a.cash-summary-card {
+    color: inherit;
+    text-decoration: none;
+}
+
+a.cash-summary-card:hover {
+    border-color: var(--blue);
+}
+
+.cash-badge.close {
+    background: var(--blue-soft);
+    color: var(--blue);
+}
+
+@media (max-width: 760px) {
+    .close-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media print {
+    .topbar,
+    .app-menu,
+    .menu-backdrop,
+    .cart-panel,
+    .no-print,
+    .alert {
+        display: none !important;
+    }
+
+    body {
+        background: #fff;
+    }
+
+    .page {
+        padding: 0;
+    }
+
+    .panel,
+    .summary-tile {
+        box-shadow: none;
+    }
+}
+
+.table-wrap .close-table {
+    min-width: 0;
+}
+
+.close-strip {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
