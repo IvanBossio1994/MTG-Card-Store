@@ -1,0 +1,57 @@
+name: Windows
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows.yml"
+      - "packaging/**"
+      - "pom.xml"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Compilar
+        run: mvn -B -q package
+
+      - name: Armar la app con Java incluido
+        shell: pwsh
+        run: |
+          $jar = Get-ChildItem target/*.jar | Where-Object { $_.Name -notlike "*plain*" } | Select-Object -First 1
+          New-Item -ItemType Directory -Force input | Out-Null
+          Copy-Item $jar.FullName input/app.jar
+          jpackage --type app-image `
+            --name TCGStoreHelper `
+            --input input `
+            --main-jar app.jar `
+            --java-options "-Dspring.profiles.active=desktop" `
+            --java-options "-Dfile.encoding=UTF-8" `
+            --win-console `
+            --dest dist
+          Copy-Item packaging/windows/LEEME.txt dist/TCGStoreHelper/
+          Compress-Archive -Path dist/TCGStoreHelper -DestinationPath TCGStoreHelper-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TCGStoreHelper-windows
+          path: TCGStoreHelper-windows.zip
+
+      - name: Publicar en Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: TCGStoreHelper-windows.zip

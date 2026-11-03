@@ -68,7 +68,7 @@ public class GoogleSheetsService {
             StoreSettingsService storeSettingsService,
             GoogleAccountService googleAccountService,
             @Value("${google.credentials.path:./data/google-credentials.json}") String configuredCredentialsPath,
-            @Value("${google.service-account-email:tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com}") String configuredServiceAccountEmail
+            @Value("${google.service-account-email:tcgbotsheet@tcgstorehelper.iam.gserviceaccount.com}") String configuredServiceAccountEmail
     ) {
         this.storeSettingsService = storeSettingsService;
         this.googleAccountService = googleAccountService;
