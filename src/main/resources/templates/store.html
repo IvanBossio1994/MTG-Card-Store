@@ -116,6 +116,30 @@
             <a class="secondary-button link-button" th:href="@{/}">Cancelar</a>
         </div>
     </form>
+
+    <section class="settings-card license-card">
+        <h2>Plan</h2>
+        <p class="alert success" th:if="${licenseSuccess}" th:text="${licenseSuccess}"></p>
+        <p class="alert error" th:if="${licenseError}" th:text="${licenseError}"></p>
+        <p>
+            <strong th:text="${'Plan ' + license.plan}">Plan Gratis</strong>
+            <span th:text="${' · ' + license.message}"> · Plan gratis</span>
+        </p>
+        <p class="card-help" th:unless="${license.pro}">
+            El plan gratis permite hasta <span th:text="${freeCardLimit}">300</span> cartas distintas, con todo lo demás
+            habilitado. El plan Tienda no tiene límite y no cobra comisión por venta.
+            <a th:if="${licensePurchaseUrl != ''}" th:href="${licensePurchaseUrl}" target="_blank" rel="noopener">Activar plan Tienda</a>
+        </p>
+        <p class="card-help" th:if="${license.pro && license.email != ''}" th:text="${'Licencia de ' + license.email}"></p>
+        <form method="post" th:action="@{/configuracion/licencia}" class="license-form">
+            <div class="store-field">
+                <label for="licenseKey">Clave de licencia</label>
+                <input id="licenseKey" name="licenseKey" type="text" autocomplete="off"
+                       th:placeholder="${license.maskedKey != '' ? license.maskedKey : 'Pegá la clave que te llegó por mail'}">
+            </div>
+            <button class="secondary-button" type="submit">Guardar licencia</button>
+        </form>
+    </section>
 </main>
 
 <div th:replace="~{fragments/layout :: loading('Guardando configuracion', 'Subiendo credenciales, preparando cache y conectando el Sheet...')}"></div>
