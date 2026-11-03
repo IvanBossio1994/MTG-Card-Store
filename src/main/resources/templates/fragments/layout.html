@@ -30,6 +30,7 @@
             <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">Configuracion</a>
             <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">Movimientos</a>
             <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">Reservas y pedidos</a>
+            <a th:classappend="${active == 'prices'} ? 'active'" th:href="@{/precios}">Historial de precios</a>
             <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">Importar lista</a>
             <form th:action="@{/tutorial/reset}" method="post">
                 <button type="submit" class="menu-link-button">Tutorial</button>

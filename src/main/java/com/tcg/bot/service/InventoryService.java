@@ -13,6 +13,17 @@ import java.util.Map;
 @Service
 public class InventoryService implements InventoryStore {
 
+    @Override
+    public java.util.List<com.tcg.bot.model.PricePoint> getPriceHistory() throws Exception {
+        return googleSheetsService.getPriceHistory();
+    }
+
+    @Override
+    public void appendPriceHistory(java.util.List<com.tcg.bot.model.PricePoint> points) throws Exception {
+        googleSheetsService.appendPriceHistory(points);
+    }
+
+
     private final GoogleSheetsService googleSheetsService;
 
     public InventoryService(GoogleSheetsService googleSheetsService) {

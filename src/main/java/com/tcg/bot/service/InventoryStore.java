@@ -3,6 +3,7 @@ package com.tcg.bot.service;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
+import com.tcg.bot.model.PricePoint;
 import com.tcg.bot.model.Reservation;
 
 import java.util.List;
@@ -29,4 +30,12 @@ public interface InventoryStore {
 
     /** Actualiza Estado y Actualizado de cada linea, usando su rowIndex. */
     void updateReservationStatuses(List<Reservation> reservations) throws Exception;
+
+    /** Historial de precios (hoja "Precios"). */
+    default List<PricePoint> getPriceHistory() throws Exception {
+        return List.of();
+    }
+
+    default void appendPriceHistory(List<PricePoint> points) throws Exception {
+    }
 }
