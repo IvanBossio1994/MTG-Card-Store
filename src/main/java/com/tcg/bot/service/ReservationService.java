@@ -162,11 +162,24 @@ public class ReservationService {
             List<Reservation> lines = activeLines(reservationId);
             LocalDateTime now = LocalDateTime.now(stockOperations.clock);
 
+            // Cada linea tiene un ID de venta fijo. Si un retiro anterior se corto a mitad (por ejemplo,
+            // se cayo internet despues de cobrar), al reintentar no se vuelve a cobrar lo que ya esta en la caja.
+            java.util.Set<String> alreadyCharged = new java.util.HashSet<>();
+            for (CashRegisterEntry entry : store.getCashRegisterEntries()) {
+                if (entry.getSaleId() != null) {
+                    alreadyCharged.add(entry.getSaleId());
+                }
+            }
+
             for (Reservation line : lines) {
+                String saleId = saleIdFor(line);
+                if (alreadyCharged.contains(saleId)) {
+                    continue;
+                }
                 InventoryCard snapshot = cardFromLine(line);
                 CashRegisterEntry sale = stockOperations.cashEntry(
                         now, snapshot, CashRegisterEntry.TYPE_SALE, line.units(), Amounts.parse(line.getUnitPrice()));
-                sale.setSaleId(StockOperationsService.newSaleId());
+                sale.setSaleId(saleId);
                 store.appendCashEntry(sale);
             }
 
@@ -273,6 +286,10 @@ public class ReservationService {
         }
 
         return active;
+    }
+
+    static String saleIdFor(Reservation line) {
+        return "V-" + line.getReservationId() + "-" + line.getCardId();
     }
 
     private static InventoryCard cardFromLine(Reservation line) {

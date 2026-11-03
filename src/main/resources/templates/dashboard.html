@@ -7,7 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
-<body>
+<body th:attr="data-clear-order=${clearOrder == true}">
 <header th:replace="~{fragments/layout :: topbar('Inventario, caja y reservas')}"></header>
 <div th:replace="~{fragments/layout :: menu('home')}"></div>
 <main class="page">
@@ -18,6 +18,9 @@
             <p class="supporting">Buscá una carta para venderla, sumar stock o reservarla para un cliente.</p>
         </div>
     </section>
+
+    <p class="alert success" th:if="${saleMessage}" th:text="${saleMessage}"></p>
+    <p class="alert error" th:if="${saleError}" th:text="${saleError}"></p>
 
     <section class="summary-strip" th:if="${summary != null}" aria-label="Resumen de hoy">
         <a class="summary-tile" th:href="@{/movimientos(tab='cash')}">
@@ -31,11 +34,12 @@
             <span class="summary-note" th:classappend="${summary.reservationsDueToday > 0} ? 'warn'"
                   th:text="${summary.reservationsDueToday > 0 ? summary.reservationsDueToday + ' vencen hoy' : 'Ninguna vence hoy'}">Ninguna vence hoy</span>
         </a>
-        <div class="summary-tile">
+        <a class="summary-tile" th:href="@{/revisar}">
             <span class="summary-label">Cartas en stock</span>
             <strong th:text="${summary.unitsInStock}">0</strong>
-            <span class="summary-note" th:text="${summary.distinctInStock + ' distintas'}">0 distintas</span>
-        </div>
+            <span class="summary-note" th:classappend="${reviewCount != null and reviewCount > 0} ? 'warn'"
+                  th:text="${reviewCount != null and reviewCount > 0 ? summary.distinctInStock + ' distintas · ' + reviewCount + ' para revisar' : summary.distinctInStock + ' distintas'}">0 distintas</span>
+        </a>
         <a class="summary-tile" th:href="@{/precios}">
             <span class="summary-label">Valor del stock</span>
             <strong th:text="${'$ ' + summary.stockValue}">$ 0</strong>
@@ -104,7 +108,6 @@
         </div>
 
         <div class="stock-mode-bar" th:if="${searchPerformed}">
-            <a id="order-badge" class="order-badge" th:href="@{/reservas}" hidden>Pedido (0) →</a>
             <label class="stock-mode-toggle"
                    title="Con esto activado, el botón - corrige el stock sin anotar una venta en la caja">
                 <input id="stock-adjust-mode" type="checkbox">
@@ -159,9 +162,9 @@
                             <button type="button"
                                     class="reserve-button"
                                     th:if="${result.stockQuantity > 0}"
-                                    th:attr="data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-stock=${result.stockQuantity}"
-                                    title="Sumar al pedido de un cliente (reserva)">
-                                Reservar
+                                    th:attr="data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-stock=${result.stockQuantity},data-price=${result.localPrice}"
+                                    title="Sumar al carrito para cobrar o reservar">
+                                + Carrito
                             </button>
                         </div>
                     </td>
@@ -275,6 +278,7 @@
     </section>
 </main>
 
+<aside th:replace="~{fragments/layout :: cart}"></aside>
 <div th:replace="~{fragments/layout :: loading('Sincronizando inventario', 'Conectando el Sheet con la app y actualizando precios...')}"></div>
 <div id="tutorial-overlay"
      class="tutorial-overlay"

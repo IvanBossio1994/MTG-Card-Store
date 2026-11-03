@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -356,6 +357,27 @@ public class GoogleSheetsService {
         SheetColumns columns = sheetColumns(sheetsService);
 
         batchUpdate(sheetsService, automaticUpdateRanges(rowIndex, card, columns));
+    }
+
+    /** Escribe solo las columnas que identifican la carta; no toca stock ni precios. */
+    public void updateCardIdentity(int rowIndex, InventoryCard card) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        SheetColumns columns = sheetColumns(sheetsService);
+        List<com.google.api.services.sheets.v4.model.ValueRange> data = new ArrayList<>();
+        Map<ColumnKey, String> values = new LinkedHashMap<>();
+        values.put(ColumnKey.NAME, card.getName());
+        values.put(ColumnKey.SET_CODE, card.getSetCode());
+        values.put(ColumnKey.SET_NAME, card.getSetName());
+        values.put(ColumnKey.COLLECTOR_NUMBER, card.getCollectorNumber());
+        values.put(ColumnKey.PRINTING, card.getPrinting());
+        for (var entry : values.entrySet()) {
+            if (columns.has(entry.getKey())) {
+                data.add(valueRange(columns.cell(entry.getKey(), rowIndex), entry.getValue() == null ? "" : entry.getValue()));
+            }
+        }
+        if (!data.isEmpty()) {
+            batchUpdate(sheetsService, data);
+        }
     }
 
     public void updateStockState(int rowIndex, InventoryCard card) throws Exception {

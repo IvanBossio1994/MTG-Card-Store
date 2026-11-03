@@ -86,6 +86,7 @@ public class DashboardController {
     private final ScryfallPriceService scryfallPriceService;
     private final com.tcg.bot.service.PriceHistoryService priceHistoryService;
     private final com.tcg.bot.service.StoreSummaryService storeSummaryService;
+    private final com.tcg.bot.service.ReviewService reviewService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -97,9 +98,11 @@ public class DashboardController {
             LicenseService licenseService,
             ScryfallPriceService scryfallPriceService,
             com.tcg.bot.service.PriceHistoryService priceHistoryService,
-            com.tcg.bot.service.StoreSummaryService storeSummaryService
+            com.tcg.bot.service.StoreSummaryService storeSummaryService,
+            com.tcg.bot.service.ReviewService reviewService
     ) {
         this.storeSummaryService = storeSummaryService;
+        this.reviewService = reviewService;
         this.priceHistoryService = priceHistoryService;
         this.scryfallPriceService = scryfallPriceService;
         this.stockOperationsService = stockOperationsService;
@@ -137,6 +140,11 @@ public class DashboardController {
             addLatestUpdates(model);
             if (storeSettingsService.hasSpreadsheetConfigured() && inventoryService.hasCredentialsConfigured()) {
                 model.addAttribute("summary", storeSummaryService.summary());
+                try {
+                    model.addAttribute("reviewCount", reviewService.review().total());
+                } catch (Exception e) {
+                    log.debug("No se pudo calcular lo que hay para revisar: {}", e.getMessage());
+                }
             }
             return "dashboard";
         }
@@ -2018,7 +2026,8 @@ public class DashboardController {
                 stockQuantity,
                 rowIndex,
                 cardId,
-                comparePrices(product, foil, extraPrices)
+                comparePrices(product, foil, extraPrices),
+                target == null ? 0 : com.tcg.bot.util.Amounts.parse(target.getLocalPrice())
         );
     }
 
@@ -2294,7 +2303,8 @@ public class DashboardController {
             int stockQuantity,
             int rowIndex,
             String cardId,
-            PriceComparison prices
+            PriceComparison prices,
+            double localPrice
     ) {
         public String formattedNmPrice() {
             return formatUsdPrice(nmPrice);

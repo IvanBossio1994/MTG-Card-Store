@@ -1052,6 +1052,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Se guarda en el navegador hasta confirmarlo en /reservas. No es un dato importante:
     // si se pierde, se vuelve a armar desde la búsqueda.
     const ORDER_KEY = "tcg-order-draft";
+    const CART_OPEN_KEY = "tcg-cart-open";
+    const moneyFormat = new Intl.NumberFormat("es-AR", {maximumFractionDigits: 0});
+
+    function money(value) {
+        return "$ " + moneyFormat.format(Math.round(Number(value) || 0));
+    }
 
     function readOrder() {
         try {
@@ -1068,18 +1074,106 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) {
             // Sin almacenamiento local el pedido solo vive en esta pantalla.
         }
-        renderOrderBadge(items);
+        renderOrder(items);
+    }
+
+    function renderOrder(items) {
+        renderCart(items);
         renderOrderDraft(items);
     }
 
-    function renderOrderBadge(items) {
-        const badge = document.getElementById("order-badge");
-        if (!badge) {
+    function orderPayload(items) {
+        return JSON.stringify(items.map(item => ({cardId: item.cardId, quantity: item.quantity})));
+    }
+
+    function changeItem(index, delta) {
+        const items = readOrder();
+        const item = items[index];
+        if (!item) {
             return;
         }
+        const next = item.quantity + delta;
+        if (delta > 0 && item.stock && next > item.stock) {
+            showToast("No hay más unidades de " + item.name + " en stock", "error");
+            return;
+        }
+        if (next <= 0) {
+            items.splice(index, 1);
+        } else {
+            item.quantity = next;
+        }
+        writeOrder(items);
+    }
+
+    function cartRow(item, index) {
+        const row = document.createElement("li");
+        row.className = "cart-item";
+
+        const info = document.createElement("div");
+        info.className = "cart-item-info";
+        const name = document.createElement("strong");
+        name.textContent = item.name || "Carta";
+        name.title = item.name || "";
+        const set = document.createElement("span");
+        set.textContent = item.set || "";
+        set.title = item.set || "";
+        const meta = document.createElement("span");
+        const price = Number(item.price) || 0;
+        const left = item.stock ? Math.max(item.stock - item.quantity, 0) : null;
+        meta.textContent = (price > 0 ? money(price) + " c/u" : "sin precio")
+            + (left === null ? "" : " · quedan " + left);
+        if (price <= 0) {
+            meta.classList.add("warn");
+        }
+        info.append(name);
+        if (item.set) {
+            info.append(set);
+        }
+        info.append(meta);
+
+        const qty = document.createElement("div");
+        qty.className = "cart-qty";
+        const minus = document.createElement("button");
+        minus.type = "button";
+        minus.textContent = "−";
+        minus.setAttribute("aria-label", "Quitar una unidad de " + item.name);
+        minus.addEventListener("click", () => changeItem(index, -1));
+        const count = document.createElement("span");
+        count.textContent = item.quantity;
+        const plus = document.createElement("button");
+        plus.type = "button";
+        plus.textContent = "+";
+        plus.setAttribute("aria-label", "Sumar una unidad de " + item.name);
+        plus.addEventListener("click", () => changeItem(index, 1));
+        qty.append(minus, count, plus);
+
+        const subtotal = document.createElement("span");
+        subtotal.className = "cart-subtotal";
+        subtotal.textContent = price > 0 ? money(price * item.quantity) : "-";
+
+        row.append(info, qty, subtotal);
+        return row;
+    }
+
+    function renderCart(items) {
+        const panel = document.getElementById("cart-panel");
+        if (!panel) {
+            return;
+        }
+        const list = document.getElementById("cart-list");
         const units = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-        badge.hidden = units <= 0;
-        badge.textContent = `Pedido (${units}) →`;
+        const total = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
+        const missingPrice = items.some(item => !(Number(item.price) > 0));
+
+        panel.hidden = items.length === 0;
+        document.body.classList.toggle("has-cart", items.length > 0);
+        list.innerHTML = "";
+        items.forEach((item, index) => list.appendChild(cartRow(item, index)));
+        document.getElementById("cart-summary").textContent =
+            units + (units === 1 ? " carta · " : " cartas · ") + money(total);
+        document.getElementById("cart-total").textContent = money(total);
+        document.getElementById("cart-items-input").value = orderPayload(items);
+        document.getElementById("cart-price-warning").hidden = !missingPrice;
     }
 
     function renderOrderDraft(items) {
@@ -1092,32 +1186,64 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         list.innerHTML = "";
-        items.forEach((item, index) => {
-            const row = document.createElement("li");
-            row.className = "order-draft-item";
+        items.forEach((item, index) => list.appendChild(cartRow(item, index)));
+        const total = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
+        const totalLabel = document.getElementById("order-draft-total");
+        if (totalLabel) {
+            totalLabel.textContent = money(total);
+            totalLabel.parentElement.hidden = items.length === 0;
+        }
 
-            const label = document.createElement("span");
-            label.textContent = `${item.quantity} × ${item.name}${item.set ? " (" + item.set + ")" : ""}`;
-
-            const remove = document.createElement("button");
-            remove.type = "button";
-            remove.className = "text-action";
-            remove.textContent = "Quitar";
-            remove.addEventListener("click", () => {
-                const next = readOrder();
-                next.splice(index, 1);
-                writeOrder(next);
-            });
-
-            row.append(label, remove);
-            list.appendChild(row);
-        });
-
-        input.value = JSON.stringify(items.map(item => ({cardId: item.cardId, quantity: item.quantity})));
+        input.value = orderPayload(items);
+        const sellInput = document.getElementById("order-sell-items");
+        if (sellInput) {
+            sellInput.value = orderPayload(items);
+        }
         form.hidden = items.length === 0;
         if (empty) {
             empty.hidden = items.length > 0;
         }
+    }
+
+    const cartToggle = document.getElementById("cart-toggle");
+    if (cartToggle) {
+        const panel = document.getElementById("cart-panel");
+        const setOpen = open => {
+            panel.classList.toggle("collapsed", !open);
+            cartToggle.setAttribute("aria-expanded", String(open));
+            try {
+                localStorage.setItem(CART_OPEN_KEY, open ? "1" : "0");
+            } catch (e) {
+                // Preferencia opcional.
+            }
+        };
+        let startOpen = !window.matchMedia("(max-width: 760px)").matches;
+        try {
+            const saved = localStorage.getItem(CART_OPEN_KEY);
+            if (saved !== null && !window.matchMedia("(max-width: 760px)").matches) {
+                startOpen = saved === "1";
+            }
+        } catch (e) {
+            // Sin almacenamiento, queda el valor por defecto.
+        }
+        setOpen(startOpen);
+        cartToggle.addEventListener("click", () => setOpen(panel.classList.contains("collapsed")));
+    }
+
+    const cartClear = document.getElementById("cart-clear");
+    if (cartClear) {
+        cartClear.addEventListener("click", () => writeOrder([]));
+    }
+
+    const cartSellForm = document.getElementById("cart-sell-form");
+    if (cartSellForm) {
+        cartSellForm.addEventListener("submit", event => {
+            const items = readOrder();
+            if (items.some(item => !(Number(item.price) > 0))) {
+                event.preventDefault();
+                showToast("Hay cartas sin precio. Sincronizá precios antes de cobrar.", "error");
+            }
+        });
     }
 
     document.querySelectorAll(".reserve-button").forEach(button => {
@@ -1134,26 +1260,52 @@ document.addEventListener("DOMContentLoaded", () => {
             const current = existing ? existing.quantity : 0;
 
             if (current + 1 > stock) {
-                showToast("No hay más unidades disponibles para sumar al pedido", "error");
+                showToast("No hay más unidades disponibles para sumar al carrito", "error");
                 return;
             }
 
+            const price = Number(button.dataset.price) || 0;
             if (existing) {
                 existing.quantity += 1;
+                existing.stock = stock;
+                existing.price = price;
             } else {
-                items.push({cardId, quantity: 1, name: button.dataset.name || "", set: button.dataset.set || ""});
+                items.push({cardId, quantity: 1, name: button.dataset.name || "", set: button.dataset.set || "", price, stock});
             }
 
             writeOrder(items);
-            showToast("Agregada al pedido", "success");
+            const panel = document.getElementById("cart-panel");
+            if (panel && panel.classList.contains("collapsed")) {
+                showToast("Agregada al carrito", "success");
+            }
         });
     });
 
     if (document.body.dataset.clearOrder === "true") {
         writeOrder([]);
     } else {
-        renderOrderBadge(readOrder());
-        renderOrderDraft(readOrder());
+        renderOrder(readOrder());
     }
+
+    const closeForm = document.getElementById("close-form");
+    if (closeForm) {
+        const expected = Number(document.getElementById("close-expected").dataset.expected) || 0;
+        const parseAmount = value => Number(String(value || "").replace(/\$/g, "").replace(/\./g, "").replace(",", ".").trim()) || 0;
+        const update = () => {
+            const counted = ["efectivo", "transferencias", "tarjeta"]
+                .reduce((sum, name) => sum + parseAmount(closeForm.elements[name].value), 0);
+            const difference = Math.round(counted - expected);
+            document.getElementById("close-counted").textContent = money(counted);
+            const label = document.getElementById("close-difference");
+            label.textContent = difference === 0 ? "$ 0" : (difference > 0 ? "+" : "-") + money(Math.abs(difference));
+            label.className = difference === 0 ? "ok" : (difference > 0 ? "over" : "short");
+        };
+        closeForm.addEventListener("input", update);
+        update();
+    }
+
+    document.querySelectorAll("[data-print]").forEach(button => {
+        button.addEventListener("click", () => window.print());
+    });
 });
 

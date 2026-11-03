@@ -43,9 +43,15 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19.5h18V21H3v-1.5Zm1.2-4.3 5.1-5.1 3.5 3.5 6.1-6.1 1.06 1.06-7.16 7.16-3.5-3.5-4.04 4.04-1.06-1.06Z"/></svg>
                 Historial de precios</a>
             <p class="menu-section">Inventario</p>
+            <a th:classappend="${active == 'review'} ? 'active'" th:href="@{/revisar}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 1.5 21h21L12 3Zm0 3 8 13.5H4L12 6Zm-.75 4.5v4.5h1.5v-4.5h-1.5Zm0 6v1.5h1.5V16.5h-1.5Z"/></svg>
+                Para revisar</a>
             <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5V3Zm1.5 1.5v15h11V7.6l-3.1-3.1H6.5ZM8 11h8v1.5H8V11Zm0 3h8v1.5H8V14Z"/></svg>
                 Importar lista</a>
+            <a th:classappend="${active == 'identify'} ? 'active'" th:href="@{/completar}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v1.5H5.5v13h13V13H20v7H4V4Zm14.2-1.3 3.1 3.1-8.6 8.6-3.9.8.8-3.9 8.6-8.6Zm0 2.1-7.2 7.2-.3 1.5 1.5-.3 7.2-7.2-1.2-1.2Z"/></svg>
+                Completar ediciones</a>
             <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm0 1.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10.6 2h2.8l.5 2.6 1.6.7 2.2-1.5 2 2-1.5 2.2.7 1.6 2.6.5v2.8l-2.6.5-.7 1.6 1.5 2.2-2 2-2.2-1.5-1.6.7-.5 2.6h-2.8l-.5-2.6-1.6-.7-2.2 1.5-2-2 1.5-2.2-.7-1.6L2 13.4v-2.8l2.6-.5.7-1.6-1.5-2.2 2-2 2.2 1.5 1.6-.7.5-2.6Z"/></svg>
                 Configuración</a>
@@ -55,6 +61,29 @@
         </nav>
     </aside>
 </div>
+
+<aside th:fragment="cart" id="cart-panel" class="cart-panel" hidden aria-label="Carrito">
+    <button id="cart-toggle" class="cart-toggle" type="button" aria-expanded="true" aria-controls="cart-body">
+        <span class="cart-toggle-title">Carrito</span>
+        <span id="cart-summary" class="cart-summary">0 cartas · $ 0</span>
+    </button>
+    <div id="cart-body" class="cart-body">
+        <ul id="cart-list" class="cart-list"></ul>
+        <div class="cart-total">
+            <span>Total</span>
+            <strong id="cart-total">$ 0</strong>
+        </div>
+        <p id="cart-price-warning" class="cart-warning" hidden>Hay cartas sin precio en tu Sheet: sincronizá antes de cobrar.</p>
+        <form id="cart-sell-form" method="post" th:action="@{/ventas}">
+            <input id="cart-items-input" type="hidden" name="items" value="[]">
+            <button class="primary-button" type="submit">Cobrar ahora</button>
+        </form>
+        <div class="cart-secondary">
+            <a class="secondary-button" th:href="@{/reservas}">Reservar para un cliente</a>
+            <button id="cart-clear" class="text-action" type="button">Vaciar</button>
+        </div>
+    </div>
+</aside>
 
 <div th:fragment="loading(title, message)" id="loading-overlay" class="loading-overlay" aria-hidden="true">
     <div class="loading-card" role="status" aria-live="polite">

@@ -66,9 +66,15 @@ public class CashRegisterEntry {
 
     public static final String TYPE_SALE = "VENTA";
     public static final String TYPE_VOID = "ANULACION";
+    /** Cierre de caja: solo deja anotado lo contado; no suma ni resta. */
+    public static final String TYPE_CLOSE = "CIERRE";
 
     public boolean isSale() {
         return TYPE_SALE.equalsIgnoreCase(type);
+    }
+
+    public boolean isClose() {
+        return TYPE_CLOSE.equalsIgnoreCase(type);
     }
 
     public boolean isVoid() {

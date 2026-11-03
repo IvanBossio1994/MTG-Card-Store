@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Para revisar | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar('Para revisar')}"></header>
+<div th:replace="~{fragments/layout :: menu('review')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Inventario</p>
+            <h1>Para revisar</h1>
+            <p class="supporting">Lo que conviene mirar antes de abrir: precios que se movieron, cartas que se
+                venden y se están agotando, y cartas a las que les falta precio o edición.</p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${reviewError}" th:text="${reviewError}"></p>
+
+    <th:block th:if="${review != null}">
+        <section class="panel" th:if="${review.total() == 0}">
+            <h2>Todo en orden</h2>
+            <p class="supporting">No hay nada para revisar. Volvé después de sincronizar.</p>
+        </section>
+
+        <section class="panel" th:unless="${#lists.isEmpty(review.lowStock)}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Reponer</p>
+                    <h2>Se venden y quedan pocas</h2>
+                </div>
+            </div>
+            <p class="supporting" th:text="${'Cartas que se vendieron en los últimos ' + salesDays + ' días y tienen 1 o ninguna en stock.'}"></p>
+            <div class="table-wrap">
+                <table class="review-table">
+                    <thead><tr><th>Carta</th><th>Edición</th><th>Vendidas</th><th>Stock</th></tr></thead>
+                    <tbody>
+                    <tr th:each="item : ${review.lowStock}">
+                        <td th:text="${item.card.name}">Sol Ring</td>
+                        <td th:text="${item.card.setName != null and item.card.setName != '' ? item.card.setName : '-'}">Commander Masters</td>
+                        <td th:text="${item.soldLastMonth}">3</td>
+                        <td><span class="stock-pill" th:classappend="${item.stock == 0} ? 'out'" th:text="${item.stock == 0 ? 'Agotada' : item.stock}">1</span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel" th:unless="${#lists.isEmpty(review.priceMoves)}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Precios</p>
+                    <h2 th:text="${'Cambiaron más de ' + bigChange + '% en el mes'}">Cambiaron más de 15% en el mes</h2>
+                </div>
+                <a class="secondary-button" th:href="@{/precios}">Ver historial</a>
+            </div>
+            <div class="table-wrap">
+                <table class="review-table">
+                    <thead><tr><th>Carta</th><th>Edición</th><th>Tu precio</th><th>Cambio</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="trend : ${review.priceMoves}">
+                        <td th:text="${trend.name}">Sol Ring</td>
+                        <td th:text="${trend.setName != null and trend.setName != '' ? trend.setName : '-'}">Commander Masters</td>
+                        <td class="nowrap" th:text="${trend.formattedLocal()}">$ 5.000</td>
+                        <td><span th:class="${trend.changeClass()}" th:text="${trend.formattedChange()}">+25%</span></td>
+                        <td><a class="text-link" th:href="@{/precios(card=${trend.cardId})}">Ver</a></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel" th:unless="${#lists.isEmpty(review.withoutPrice)}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Sin precio</p>
+                    <h2>Tienen stock pero no precio de venta</h2>
+                </div>
+            </div>
+            <p class="supporting">No se pueden cobrar ni reservar. Sincronizá el inventario para calcular el precio,
+                o cargalo a mano en tu Sheet.</p>
+            <ul class="review-list">
+                <li th:each="card : ${review.withoutPrice}"
+                    th:text="${card.name + (card.setName != null and card.setName != '' ? ' · ' + card.setName : '')}">Sol Ring</li>
+            </ul>
+        </section>
+
+        <section class="panel" th:unless="${#lists.isEmpty(review.withoutEdition)}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Sin edición</p>
+                    <h2 th:text="${#lists.size(review.withoutEdition) + (#lists.size(review.withoutEdition) == 1 ? ' carta sin edición o número' : ' cartas sin edición o número')}">1 carta</h2>
+                </div>
+                <a class="primary-button" th:href="@{/completar}">Completar ediciones</a>
+            </div>
+            <ul class="review-list">
+                <li th:each="card : ${review.withoutEdition}" th:text="${card.name}">Sol Ring</li>
+            </ul>
+        </section>
+    </th:block>
+</main>
+</body>
+</html>
