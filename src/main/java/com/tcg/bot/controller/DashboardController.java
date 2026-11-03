@@ -84,6 +84,7 @@ public class DashboardController {
     private final StockOperationsService stockOperationsService;
     private final LicenseService licenseService;
     private final ScryfallPriceService scryfallPriceService;
+    private final com.tcg.bot.service.PriceHistoryService priceHistoryService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -93,8 +94,10 @@ public class DashboardController {
             StoreSettingsService storeSettingsService,
             StockOperationsService stockOperationsService,
             LicenseService licenseService,
-            ScryfallPriceService scryfallPriceService
+            ScryfallPriceService scryfallPriceService,
+            com.tcg.bot.service.PriceHistoryService priceHistoryService
     ) {
+        this.priceHistoryService = priceHistoryService;
         this.scryfallPriceService = scryfallPriceService;
         this.stockOperationsService = stockOperationsService;
         this.licenseService = licenseService;
@@ -1818,6 +1821,7 @@ public class DashboardController {
         }
 
         inventoryService.updateInventoryRows(cardsToWrite);
+        priceHistoryService.recordQuietly(cards, extraPrices);
 
         latestUpdates = List.copyOf(updates);
         latestUpdatedCount = updates.stream()

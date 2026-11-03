@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Precios | TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar('Historial de precios')}"></header>
+<div th:replace="~{fragments/layout :: menu('prices')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Precios</p>
+            <h1>Historial de precios</h1>
+            <p class="supporting">Cada vez que sincronizás, la app anota en la hoja "Precios" de tu Sheet las cartas
+                cuyo precio cambió. Así ves qué subió y qué bajó.</p>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${selected != null}">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="${selected.setName + (selected.setCode != null && selected.setCode != '' ? ' · ' + selected.setCode + ' ' + selected.collectorNumber : '')}">Commander Masters · CMM 410</p>
+                <h2 th:text="${selected.name}">Sol Ring</h2>
+            </div>
+            <a class="secondary-button" th:href="@{/precios}">Ver todas</a>
+        </div>
+
+        <div class="price-chart" th:if="${chart != null}">
+            <div class="price-chart-labels">
+                <span th:text="${chart.maxLabel}">$ 5.000</span>
+                <span th:text="${chart.minLabel}">$ 3.000</span>
+            </div>
+            <svg th:attr="viewBox=${'0 0 ' + chart.width + ' ' + chart.height}" preserveAspectRatio="none"
+                 role="img" aria-label="Evolución del precio local">
+                <polyline th:attr="points=${chart.localLine}" fill="none" class="price-line"></polyline>
+            </svg>
+            <div class="price-chart-dates">
+                <span th:text="${chart.firstDate}">01/10/2026</span>
+                <span th:text="${chart.lastDate}">03/11/2026</span>
+            </div>
+        </div>
+        <p class="supporting" th:if="${chart == null}">Todavía hay un solo precio anotado. El gráfico aparece cuando
+            el precio cambie en una próxima sincronización.</p>
+
+        <div class="table-wrap">
+            <table class="price-history-table">
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tu precio</th>
+                    <th>CK USD</th>
+                    <th>TCGplayer</th>
+                    <th>Cardmarket</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${historyRows}">
+                    <td th:text="${row.date}">03/11/2026</td>
+                    <td th:text="${row.local}">$ 4.500</td>
+                    <td th:text="${row.ckUsd}">US$ 2,49</td>
+                    <td th:text="${row.tcgplayer}">-</td>
+                    <td th:text="${row.cardmarket}">-</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(historyRows)}">
+                    <td class="empty" colspan="5">Sin precios anotados para esta carta todavía.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <p class="alert error" th:if="${priceError}" th:text="${priceError}"></p>
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Inventario</p>
+                <h2>Variación en los últimos 30 días</h2>
+            </div>
+            <input id="price-filter" class="price-filter" type="search" placeholder="Filtrar por nombre"
+                   aria-label="Filtrar cartas por nombre">
+        </div>
+        <p class="supporting" th:if="${!hasHistory and priceError == null}">Todavía no hay historial. Se empieza a
+            guardar en la próxima sincronización desde Inicio.</p>
+
+        <div class="table-wrap" th:if="${!#lists.isEmpty(trends)}">
+            <table class="price-trend-table">
+                <thead>
+                <tr>
+                    <th>Carta</th>
+                    <th>Set</th>
+                    <th>Tu precio</th>
+                    <th>CK USD</th>
+                    <th>30 días</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="trend : ${trends}" class="price-trend-row" th:attr="data-name=${#strings.toLowerCase(trend.name)}">
+                    <td th:text="${trend.name}">Sol Ring</td>
+                    <td th:text="${trend.setName != null && trend.setName != '' ? trend.setName : '-'}">Commander Masters</td>
+                    <td class="nowrap" th:text="${trend.formattedLocal()}">$ 4.500</td>
+                    <td class="nowrap" th:text="${trend.formattedCkUsd()}">US$ 2,49</td>
+                    <td class="nowrap">
+                        <span th:if="${trend.changePercent != null}"
+                              th:class="${trend.changeClass()}"
+                              th:text="${trend.formattedChange()}">+12%</span>
+                        <span th:if="${trend.changePercent == null}" class="muted">-</span>
+                    </td>
+                    <td><a class="text-link" th:if="${trend.points > 0}" th:href="@{/precios(card=${trend.cardId})}">Ver historial</a></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<script>
+    (function () {
+        var input = document.getElementById('price-filter');
+        if (!input) return;
+        input.addEventListener('input', function () {
+            var term = input.value.trim().toLowerCase();
+            document.querySelectorAll('.price-trend-row').forEach(function (row) {
+                row.hidden = term !== '' && row.dataset.name.indexOf(term) === -1;
+            });
+        });
+    })();
+</script>
+</body>
+</html>

@@ -39,6 +39,20 @@ public class GoogleSheetsService {
     private static final String MOVEMENTS_SHEET_NAME = "Movimientos";
     private static final String CASH_SHEET_NAME = "Caja";
     private static final String RESERVATIONS_SHEET_NAME = "Reservas";
+    private static final String PRICES_SHEET_NAME = "Precios";
+    private static final List<String> PRICES_HEADER = List.of(
+            "Fecha",
+            "ID carta",
+            "Nombre",
+            "Nombre del set",
+            "Codigo de set",
+            "Numero de carta",
+            "Printing",
+            "CK USD",
+            "TCGplayer USD",
+            "Cardmarket EUR",
+            "Precio Local"
+    );
     private static final List<String> RESERVATIONS_HEADER = List.of(
             "Fecha",
             "Hora",
@@ -786,6 +800,80 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public List<com.tcg.bot.model.PricePoint> getPriceHistory() throws Exception {
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, PRICES_SHEET_NAME, PRICES_HEADER);
+
+        var response = sheetsService.spreadsheets().values()
+                .get(storeSettingsService.getSpreadsheetId(), sheetRange(PRICES_SHEET_NAME, "A2:K"))
+                .setValueRenderOption("UNFORMATTED_VALUE")
+                .execute();
+
+        List<com.tcg.bot.model.PricePoint> points = new ArrayList<>();
+        var values = response.getValues();
+        if (values == null) {
+            return points;
+        }
+
+        for (var row : values) {
+            if (getColumnValue(row, 0).isBlank() || getColumnValue(row, 1).isBlank()) {
+                continue;
+            }
+            points.add(new com.tcg.bot.model.PricePoint(
+                    getColumnValue(row, 0),
+                    getColumnValue(row, 1),
+                    getColumnValue(row, 2),
+                    getColumnValue(row, 3),
+                    getColumnValue(row, 4),
+                    getColumnValue(row, 5),
+                    getColumnValue(row, 6),
+                    Amounts.parseOrNull(getColumnValue(row, 7)),
+                    Amounts.parseOrNull(getColumnValue(row, 8)),
+                    Amounts.parseOrNull(getColumnValue(row, 9)),
+                    Amounts.parseOrNull(getColumnValue(row, 10))
+            ));
+        }
+
+        return points;
+    }
+
+    public void appendPriceHistory(List<com.tcg.bot.model.PricePoint> points) throws Exception {
+        if (points == null || points.isEmpty()) {
+            return;
+        }
+
+        Sheets sheetsService = getSheetsService();
+        ensureSheetWithHeader(sheetsService, PRICES_SHEET_NAME, PRICES_HEADER);
+
+        List<List<Object>> rows = new ArrayList<>();
+        for (var point : points) {
+            rows.add(List.of(
+                    safe(point.date()),
+                    safe(point.cardId()),
+                    safe(point.name()),
+                    safe(point.setName()),
+                    safe(point.setCode()),
+                    safe(point.collectorNumber()),
+                    safe(point.printing()),
+                    priceCell(point.ckUsd()),
+                    priceCell(point.tcgplayerUsd()),
+                    priceCell(point.cardmarketEur()),
+                    priceCell(point.localPrice())
+            ));
+        }
+
+        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(rows);
+        sheetsService.spreadsheets().values()
+                .append(storeSettingsService.getSpreadsheetId(), sheetRange(PRICES_SHEET_NAME, "A:K"), body)
+                .setValueInputOption("RAW")
+                .setInsertDataOption("INSERT_ROWS")
+                .execute();
+    }
+
+    private static Object priceCell(Double value) {
+        return value == null ? "" : value;
+    }
+
     public void updateReservationStatuses(List<Reservation> reservations) throws Exception {
         if (reservations == null || reservations.isEmpty()) {
             return;
@@ -1373,7 +1461,8 @@ public class GoogleSheetsService {
     private boolean isSystemSheet(String sheetTitle) {
         return MOVEMENTS_SHEET_NAME.equals(sheetTitle)
                 || CASH_SHEET_NAME.equals(sheetTitle)
-                || RESERVATIONS_SHEET_NAME.equals(sheetTitle);
+                || RESERVATIONS_SHEET_NAME.equals(sheetTitle)
+                || PRICES_SHEET_NAME.equals(sheetTitle);
     }
 
     private boolean isAppManagedHeader(List<Object> header) {
