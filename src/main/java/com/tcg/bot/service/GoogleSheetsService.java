@@ -59,22 +59,29 @@ public class GoogleSheetsService {
     );
 
     private final StoreSettingsService storeSettingsService;
+    private final GoogleAccountService googleAccountService;
     private final String configuredCredentialsPath;
     private final String configuredServiceAccountEmail;
     private volatile String serviceAccountEmail;
 
     public GoogleSheetsService(
             StoreSettingsService storeSettingsService,
+            GoogleAccountService googleAccountService,
             @Value("${google.credentials.path:./data/google-credentials.json}") String configuredCredentialsPath,
             @Value("${google.service-account-email:tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com}") String configuredServiceAccountEmail
     ) {
         this.storeSettingsService = storeSettingsService;
+        this.googleAccountService = googleAccountService;
         this.configuredCredentialsPath = configuredCredentialsPath;
         this.configuredServiceAccountEmail = configuredServiceAccountEmail;
     }
 
     public Sheets getSheetsService() throws Exception {
-        GoogleCredentials credentials;
+        GoogleCredentials credentials = googleAccountService.isConnected() ? googleAccountService.credentials() : null;
+
+        if (credentials != null) {
+            return buildSheets(credentials);
+        }
 
         try (InputStream credentialsStream = openCredentialsStream()) {
             credentials = GoogleCredentials
@@ -82,6 +89,32 @@ public class GoogleSheetsService {
                     .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
         }
 
+        return buildSheets(credentials);
+    }
+
+    /**
+     * Crea un Sheet nuevo en el Drive de la cuenta de Google conectada. Con el permiso drive.file la app
+     * solo puede usar los Sheets que crea ella, asi que este es el camino para empezar sin compartir nada.
+     */
+    public String createSpreadsheet(String title) throws Exception {
+        GoogleCredentials credentials = googleAccountService.credentials();
+        if (credentials == null) {
+            throw new IllegalStateException("Primero conectá tu cuenta de Google.");
+        }
+
+        var spreadsheet = new com.google.api.services.sheets.v4.model.Spreadsheet()
+                .setProperties(new com.google.api.services.sheets.v4.model.SpreadsheetProperties().setTitle(title))
+                .setSheets(List.of(new com.google.api.services.sheets.v4.model.Sheet()
+                        .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties()
+                                .setTitle(storeSettingsService.getInventorySheetName()))));
+
+        return buildSheets(credentials).spreadsheets().create(spreadsheet)
+                .setFields("spreadsheetId")
+                .execute()
+                .getSpreadsheetId();
+    }
+
+    private Sheets buildSheets(GoogleCredentials credentials) throws Exception {
         return new Sheets.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),
                 GsonFactory.getDefaultInstance(),
@@ -112,6 +145,10 @@ public class GoogleSheetsService {
     }
 
     public boolean hasCredentialsConfigured() {
+        if (googleAccountService.isConnected()) {
+            return true;
+        }
+
         String environmentCredentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
         if (externalCredentialsExists(environmentCredentialsPath)) {

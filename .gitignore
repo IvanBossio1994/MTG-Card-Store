@@ -53,3 +53,5 @@ ck-pricelist.json
 /.recovery-orphans/
 /.recovered-files.txt
 /dist/
+google-oauth.properties
+google-account.properties

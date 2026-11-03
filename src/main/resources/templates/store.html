@@ -17,6 +17,36 @@
         <p class="supporting">Personaliza tu comercio y conecta el inventario que se consulta en Inicio.</p>
     </div>
 
+    <section class="settings-card google-card">
+        <h2>Cuenta de Google</h2>
+        <p class="alert success" th:if="${googleSuccess}" th:text="${googleSuccess}"></p>
+        <p class="alert error" th:if="${googleError}" th:text="${googleError}"></p>
+        <th:block th:if="${googleAccount.connected}">
+            <p>
+                <strong>Conectada</strong>
+                <span th:if="${googleAccount.email != ''}" th:text="${' · ' + googleAccount.email}"></span>
+            </p>
+            <p class="card-help">La app solo ve los Sheets que crea ella, nunca el resto de tu Drive.</p>
+            <div class="google-actions">
+                <form method="post" th:action="@{/cuenta/google/crear-sheet}">
+                    <button class="primary-button" type="submit">Crear mi Sheet de inventario</button>
+                </form>
+                <form method="post" th:action="@{/cuenta/google/desconectar}">
+                    <button class="secondary-button" type="submit">Desconectar</button>
+                </form>
+            </div>
+        </th:block>
+        <th:block th:unless="${googleAccount.connected}">
+            <p class="card-help">Entrá con tu cuenta de Google y la app crea el Sheet del inventario en tu Drive.
+                Solo pide permiso para ver tu mail y los archivos que crea ella.</p>
+            <a th:if="${googleAccount.configured}" class="primary-button" th:href="@{/cuenta/google/conectar}">Conectar con Google</a>
+            <p class="card-help" th:unless="${googleAccount.configured}">
+                Para activar el login, guardá <code>google-oauth.properties</code> en la carpeta <code>data</code> de la app.
+                Mientras tanto podés seguir usando el Sheet compartido con el bot, más abajo.
+            </p>
+        </th:block>
+    </section>
+
     <form class="store-form" method="post" enctype="multipart/form-data" th:action="@{/configuracion}">
         <p id="store-error" class="alert error" th:if="${error}" th:text="${error}"></p>
         <p class="alert success" th:if="${success}" th:text="${success}"></p>

@@ -174,6 +174,12 @@ public class StoreSettingsService {
         save();
     }
 
+    /** Usa un Sheet recien creado por la app en el Drive de la cuenta conectada. */
+    public synchronized void useSpreadsheet(String newSpreadsheetId) throws IOException {
+        spreadsheetId = extractSpreadsheetId(newSpreadsheetId);
+        save();
+    }
+
     public synchronized void useInventorySheetName(String sheetName) throws IOException {
         validateSheetName(sheetName);
         inventorySheetName = sheetName.trim();
