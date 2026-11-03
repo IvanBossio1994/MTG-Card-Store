@@ -53,7 +53,7 @@ class CashPageTest {
                 .andExpect(content().string(containsString("Anulada")))
                 .andExpect(content().string(containsString("name=\"saleId\" value=\"V1\"")))
                 .andExpect(content().string(not(containsString("name=\"saleId\" value=\"V2\""))))
-                .andExpect(content().string(containsString("$ -1.600")));
+                .andExpect(content().string(containsString("-$ 1.600")));
     }
 
     private static CashRegisterEntry entry(String date, String type, String name, String price, int qty,

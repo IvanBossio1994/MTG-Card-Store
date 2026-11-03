@@ -93,7 +93,7 @@
                             <tr>
                                 <th>Fecha</th>
                                 <th>Hora</th>
-                                <th>Movimiento</th>
+                                <th>Cant.</th>
                                 <th>Carta</th>
                                 <th>Set</th>
                                 <th>Codigo</th>
@@ -214,7 +214,7 @@
                                         <td th:text="${entry.printing != null && entry.printing != '' ? entry.printing : '-'}">nonfoil</td>
                                         <td th:text="${entry.localPrice != null && entry.localPrice != '' ? '$ ' + entry.formattedLocalPrice : '-'}">$ 1.000</td>
                                         <td th:text="${entry.signedQuantity()}">1</td>
-                                        <td th:text="${'$ ' + entry.formattedSignedTotal}">$ 1.000</td>
+                                        <td class="nowrap" th:text="${entry.signedTotal() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedSignedTotal}">$ 1.000</td>
                                         <td class="cash-status">
                                             <span th:if="${entry.isVoid()}" class="cash-badge void">Anulación</span>
                                             <span th:if="${entry.isVoided()}" class="cash-badge voided">Anulada</span>
