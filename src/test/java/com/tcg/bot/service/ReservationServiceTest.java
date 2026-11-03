@@ -89,6 +89,25 @@ class ReservationServiceTest {
     }
 
     @Test
+    void retryingAFailedPickUpDoesNotChargeTwice() throws Exception {
+        var service = serviceAt(NOW);
+        String id = service.create("Juan", "", 7, List.of(new Item("sol", 2), new Item("cs", 1)));
+
+        store.failStatuses = true;
+        assertThatThrownBy(() -> service.pickUp(id)).isInstanceOf(IllegalStateException.class);
+        assertThat(store.cash).hasSize(2);
+
+        // En el Sheet la reserva quedo activa porque no se pudo guardar el estado.
+        store.reservations.forEach(line -> line.setStatus(Reservation.STATUS_ACTIVE));
+        store.failStatuses = false;
+        service.pickUp(id);
+
+        assertThat(store.cash).hasSize(2);
+        assertThat(store.reservations).allSatisfy(line ->
+                assertThat(line.getStatus()).isEqualTo(Reservation.STATUS_PICKED_UP));
+    }
+
+    @Test
     void cancelReturnsCardsToStock() throws Exception {
         var service = serviceAt(NOW);
         String id = service.create("Juan", "", 7, List.of(new Item("sol", 2)));

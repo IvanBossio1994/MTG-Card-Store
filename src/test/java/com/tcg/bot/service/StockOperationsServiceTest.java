@@ -216,6 +216,7 @@ class StockOperationsServiceTest {
         final List<Reservation> reservations = new ArrayList<>();
         boolean failCash;
         boolean failMovements;
+        boolean failStatuses;
 
         InventoryCard card(String id) {
             return cards.stream().filter(card -> id.equals(card.getId())).findFirst().orElseThrow();
@@ -273,6 +274,9 @@ class StockOperationsServiceTest {
 
         @Override
         public void updateReservationStatuses(List<Reservation> lines) {
+            if (failStatuses) {
+                throw new IllegalStateException("sin conexión");
+            }
             for (Reservation line : lines) {
                 Reservation stored = reservations.get(line.getRowIndex() - 2);
                 stored.setStatus(line.getStatus());
