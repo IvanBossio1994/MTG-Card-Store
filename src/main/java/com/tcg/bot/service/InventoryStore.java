@@ -38,4 +38,9 @@ public interface InventoryStore {
 
     default void appendPriceHistory(List<PricePoint> points) throws Exception {
     }
+
+    /** Completa nombre, edición, número y terminación de una fila (pantalla "Completar ediciones"). */
+    default void updateCardIdentity(int rowIndex, InventoryCard card) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
 }
