@@ -54,6 +54,11 @@ public class InventoryService implements InventoryStore {
         return googleSheetsService.getConfiguredCredentialsPath();
     }
 
+    /** Vuelve a leer todo del Sheet en la próxima consulta (por ejemplo, al sincronizar). */
+    public void clearReadCache() {
+        googleSheetsService.clearReadCache();
+    }
+
     public void clearServiceAccountEmailCache() {
         googleSheetsService.clearServiceAccountEmailCache();
     }

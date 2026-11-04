@@ -37,6 +37,15 @@ public class CardKingdomApiService {
     // ---- Duración cache ----
     private static final long CACHE_HOURS = 1;
 
+    /**
+     * La lista de Card Kingdom ya leída del disco. Son decenas de MB: leerla y parsearla en cada búsqueda
+     * hacía lenta toda la app. Se vuelve a leer solo si cambia el archivo.
+     */
+    private record Loaded(Path path, FileTime modified, CardKingdomPriceListResponse list) {
+    }
+
+    private volatile Loaded loaded;
+
     public CardKingdomApiService(StoreSettingsService storeSettingsService) {
         this.storeSettingsService = storeSettingsService;
     }
@@ -77,17 +86,7 @@ public class CardKingdomApiService {
                 // ---- Cache válida ----
                 if (hoursOld < CACHE_HOURS) {
 
-                    log.info("Usando cache local CK.");
-
-                    String cachedJson =
-                            Files.readString(
-                                    cachePath
-                            );
-
-                    return objectMapper.readValue(
-                            cachedJson,
-                            CardKingdomPriceListResponse.class
-                    );
+                    return readCached(cachePath);
                 }
 
                 log.info("Cache vencida. Re descargando...");
@@ -131,15 +130,38 @@ public class CardKingdomApiService {
             log.info("Cache CK guardada.");
 
             // ---- Parsear ----
-            return objectMapper.readValue(
+            CardKingdomPriceListResponse list = objectMapper.readValue(
                     json,
                     CardKingdomPriceListResponse.class
             );
+            loaded = new Loaded(cachePath, Files.getLastModifiedTime(cachePath), list);
+            return list;
 
         } catch (Exception e) {
 
             log.warn("No se pudo obtener la pricelist de Card Kingdom.", e);
             return readAnyCachedPriceList();
+        }
+    }
+
+    private CardKingdomPriceListResponse readCached(Path cachePath) throws Exception {
+        FileTime modified = Files.getLastModifiedTime(cachePath);
+        Loaded current = loaded;
+        if (current != null && current.path().equals(cachePath) && current.modified().equals(modified)) {
+            return current.list();
+        }
+        synchronized (this) {
+            current = loaded;
+            if (current != null && current.path().equals(cachePath) && current.modified().equals(modified)) {
+                return current.list();
+            }
+            log.info("Leyendo cache local CK.");
+            CardKingdomPriceListResponse list;
+            try (var reader = Files.newBufferedReader(cachePath)) {
+                list = objectMapper.readValue(reader, CardKingdomPriceListResponse.class);
+            }
+            loaded = new Loaded(cachePath, modified, list);
+            return list;
         }
     }
 
@@ -151,10 +173,7 @@ public class CardKingdomApiService {
             }
 
             log.info("Usando cache CK existente porque no se pudo descargar la pricelist.");
-            return objectMapper.readValue(
-                    Files.readString(cachePath),
-                    CardKingdomPriceListResponse.class
-            );
+            return readCached(cachePath);
         } catch (Exception cacheException) {
             log.warn("No se pudo leer el cache local de Card Kingdom.", cacheException);
             return null;

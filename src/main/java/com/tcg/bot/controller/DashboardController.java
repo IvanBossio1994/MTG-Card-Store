@@ -1733,6 +1733,7 @@ public class DashboardController {
 
     @PostMapping("/actualizar")
     public String updateInventory(Model model) {
+        inventoryService.clearReadCache();
         addBaseModel(model, "");
         addLatestUpdates(model);
 
