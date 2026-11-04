@@ -6,6 +6,7 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.SheetsScopes;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.UserCredentials;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tcg.bot.dto.CardKingdomProduct;
@@ -92,22 +93,83 @@ public class GoogleSheetsService {
         this.googleAccountService = googleAccountService;
         this.configuredCredentialsPath = configuredCredentialsPath;
         this.configuredServiceAccountEmail = configuredServiceAccountEmail;
+        try {
+            this.transport = new CachingSheetsTransport(GoogleNetHttpTransport.newTrustedTransport());
+        } catch (Exception e) {
+            throw new IllegalStateException("No se pudo preparar la conexión con Google", e);
+        }
     }
 
+    /**
+     * Un solo cliente de Sheets mientras no cambien las credenciales. Antes se armaba uno nuevo (y se pedía
+     * un token nuevo a Google) en cada lectura, y eso hacía lenta cada pantalla.
+     */
+    private record Client(String key, Sheets sheets) {
+    }
+
+    private final CachingSheetsTransport transport;
+    private volatile Client client;
+    /** Pestañas ya revisadas (existe y tiene encabezado) en este Sheet, para no revisarlas en cada lectura. */
+    private final java.util.Set<String> ensured = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     public Sheets getSheetsService() throws Exception {
-        GoogleCredentials credentials = googleAccountService.isConnected() ? googleAccountService.credentials() : null;
-
-        if (credentials != null) {
-            return buildSheets(credentials);
+        UserCredentials account = googleAccountService.isConnected() ? googleAccountService.credentials() : null;
+        String key = account != null ? "account:" + account.getRefreshToken().hashCode() : "file:" + credentialsFileStamp();
+        Client current = client;
+        if (current != null && current.key().equals(key)) {
+            return current.sheets();
         }
-
-        try (InputStream credentialsStream = openCredentialsStream()) {
-            credentials = GoogleCredentials
-                    .fromStream(credentialsStream)
-                    .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
+        synchronized (this) {
+            current = client;
+            if (current != null && current.key().equals(key)) {
+                return current.sheets();
+            }
+            GoogleCredentials credentials = account;
+            if (credentials == null) {
+                try (InputStream credentialsStream = openCredentialsStream()) {
+                    credentials = GoogleCredentials
+                            .fromStream(credentialsStream)
+                            .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
+                }
+            }
+            Sheets sheets = buildSheets(credentials);
+            transport.clear();
+            ensured.clear();
+            client = new Client(key, sheets);
+            return sheets;
         }
+    }
 
-        return buildSheets(credentials);
+    /** Qué archivo de credenciales se usa y cuándo cambió, para rearmar el cliente si lo reemplazan. */
+    private String credentialsFileStamp() {
+        for (String candidate : new String[]{System.getenv("GOOGLE_APPLICATION_CREDENTIALS"), configuredCredentialsPath}) {
+            if (candidate != null && !candidate.isBlank()) {
+                Path path = Path.of(candidate.trim());
+                try {
+                    if (Files.exists(path)) {
+                        return path.toAbsolutePath() + "@" + Files.getLastModifiedTime(path).toMillis();
+                    }
+                } catch (Exception e) {
+                    return path.toString();
+                }
+            }
+        }
+        return "bundled";
+    }
+
+    /** Borra lo recordado del Sheet (lecturas y pestañas revisadas). */
+    public void clearReadCache() {
+        transport.clear();
+        ensured.clear();
+    }
+
+    /** true si la pestaña ya se revisó en este Sheet; si no, la marca para la próxima. */
+    private boolean alreadyEnsured(String sheetName) {
+        return ensured.contains(storeSettingsService.getSpreadsheetId() + "|" + sheetName);
+    }
+
+    private void markEnsured(String sheetName) {
+        ensured.add(storeSettingsService.getSpreadsheetId() + "|" + sheetName);
     }
 
     /**
@@ -134,7 +196,7 @@ public class GoogleSheetsService {
 
     private Sheets buildSheets(GoogleCredentials credentials) throws Exception {
         return new Sheets.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
+                transport,
                 GsonFactory.getDefaultInstance(),
                 new HttpCredentialsAdapter(credentials)
         )
@@ -1018,6 +1080,14 @@ public class GoogleSheetsService {
 
     /** Crea la hoja si no existe y le pone el encabezado si esta vacio. Nunca toca filas de datos. */
     private void ensureSheetWithHeader(Sheets sheetsService, String sheetName, List<String> header) throws Exception {
+        if (alreadyEnsured(sheetName)) {
+            return;
+        }
+        ensureSheetWithHeaderNow(sheetsService, sheetName, header);
+        markEnsured(sheetName);
+    }
+
+    private void ensureSheetWithHeaderNow(Sheets sheetsService, String sheetName, List<String> header) throws Exception {
         var spreadsheet = sheetsService.spreadsheets()
                 .get(storeSettingsService.getSpreadsheetId())
                 .setFields("sheets.properties.title")
@@ -1266,7 +1336,12 @@ public class GoogleSheetsService {
     }
 
     private void ensureInventorySheet(Sheets sheetsService) throws Exception {
+        String key = "inventario:" + storeSettingsService.getInventorySheetName();
+        if (alreadyEnsured(key)) {
+            return;
+        }
         ensureInventorySheet(sheetsService, List.of());
+        markEnsured(key);
     }
 
     private void ensureInventorySheet(Sheets sheetsService, List<CardKingdomProduct> products) throws Exception {
@@ -1983,6 +2058,14 @@ public class GoogleSheetsService {
     }
 
     private void ensureMovementsSheet(Sheets sheetsService) throws Exception {
+        if (alreadyEnsured(MOVEMENTS_SHEET_NAME)) {
+            return;
+        }
+        ensureMovementsSheetNow(sheetsService);
+        markEnsured(MOVEMENTS_SHEET_NAME);
+    }
+
+    private void ensureMovementsSheetNow(Sheets sheetsService) throws Exception {
         var spreadsheet = sheetsService.spreadsheets()
                 .get(storeSettingsService.getSpreadsheetId())
                 .setFields("sheets.properties.title")
@@ -2053,6 +2136,14 @@ public class GoogleSheetsService {
     }
 
     private void ensureCashSheet(Sheets sheetsService) throws Exception {
+        if (alreadyEnsured(CASH_SHEET_NAME)) {
+            return;
+        }
+        ensureCashSheetNow(sheetsService);
+        markEnsured(CASH_SHEET_NAME);
+    }
+
+    private void ensureCashSheetNow(Sheets sheetsService) throws Exception {
         var spreadsheet = sheetsService.spreadsheets()
                 .get(storeSettingsService.getSpreadsheetId())
                 .setFields("sheets.properties.title")
