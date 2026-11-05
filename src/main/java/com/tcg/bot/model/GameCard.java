@@ -58,8 +58,7 @@ public class GameCard {
     }
 
     public String formattedLocalPrice() {
-        return localPrice > 0 ? "$ " + new java.text.DecimalFormat("#,##0",
-                java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(Math.round(localPrice)) : "-";
+        return localPrice > 0 ? com.tcg.bot.i18n.Money.format(localPrice) : "-";
     }
 
     /** Precio puesto a mano: tiene precio local pero el catálogo no da precio en dólares. */
@@ -72,7 +71,7 @@ public class GameCard {
     }
 
     public String formattedUsd() {
-        return usd == null ? "-" : "US$ " + String.format(java.util.Locale.US, "%.2f", usd).replace('.', ',');
+        return usd == null ? "-" : com.tcg.bot.i18n.Money.usd(usd);
     }
 
     /** Para Caja/Movimientos, que usan las columnas de Magic. */

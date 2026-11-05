@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.Reservation;
@@ -69,11 +70,11 @@ public class ReservationService {
 
     public String create(String customer, String contact, int days, List<Item> items) throws Exception {
         if (customer == null || customer.isBlank()) {
-            throw new StockOperationException("Poné el nombre del cliente.");
+            throw new StockOperationException(I18n.t("err.customer.required"));
         }
 
         if (items == null || items.isEmpty()) {
-            throw new StockOperationException("El pedido no tiene cartas.");
+            throw new StockOperationException(I18n.t("err.order.empty"));
         }
 
         synchronized (StockOperationsService.LOCK) {
@@ -87,7 +88,7 @@ public class ReservationService {
             }
 
             if (requested.isEmpty()) {
-                throw new StockOperationException("El pedido no tiene cartas.");
+                throw new StockOperationException(I18n.t("err.order.empty"));
             }
 
             // Primero se valida todo; si falta stock de alguna carta no se reserva nada.
@@ -105,8 +106,7 @@ public class ReservationService {
                 }
 
                 if (StockOperationsService.quantity(card) < entry.getValue()) {
-                    throw new StockOperationException("No alcanza el stock de " + card.getName()
-                            + ": hay " + StockOperationsService.quantity(card) + " y pediste " + entry.getValue() + ".");
+                    throw new StockOperationException(I18n.t("err.notEnoughStock", card.getName(), StockOperationsService.quantity(card), entry.getValue()));
                 }
 
                 targets.add(card);
@@ -277,12 +277,12 @@ public class ReservationService {
                 .toList();
 
         if (lines.isEmpty()) {
-            throw new StockOperationException("No se encontró la reserva.");
+            throw new StockOperationException(I18n.t("res.err.notFound"));
         }
 
         List<Reservation> active = lines.stream().filter(Reservation::isActive).toList();
         if (active.isEmpty()) {
-            throw new StockOperationException("Esa reserva ya estaba " + lines.get(0).getStatus().toLowerCase() + ".");
+            throw new StockOperationException(I18n.t("res.err.already", statusLabel(lines.get(0).getStatus())));
         }
 
         return active;
@@ -326,11 +326,16 @@ public class ReservationService {
                     anyActive ? Reservation.STATUS_ACTIVE : first.getStatus(),
                     orderLines,
                     orderLines.stream().mapToInt(Reservation::units).sum(),
-                    new java.text.DecimalFormat("#,##0",
-                            java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(total)
+                    com.tcg.bot.i18n.Money.number(total)
             ));
         }
 
         return orders;
+    }
+
+    private static String statusLabel(String status) {
+        String value = status == null ? "" : status.trim().toUpperCase(java.util.Locale.ROOT);
+        String label = I18n.t("res.status." + value);
+        return (label.startsWith("res.status.") ? value : label).toLowerCase(I18n.locale());
     }
 }

@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Para revisar | TCG Inventory</title>
+    <title th:text="#{nav.review} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Para revisar')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{nav.review})}"></header>
 <div th:replace="~{fragments/layout :: menu('review')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Inventario</p>
-            <h1>Para revisar</h1>
-            <p class="supporting">Lo que conviene mirar antes de abrir: precios que se movieron, cartas que se
+            <p class="eyebrow" th:text="#{layout.section.inventory}">Inventario</p>
+            <h1 th:text="#{nav.review}">Para revisar</h1>
+            <p class="supporting" th:text="#{rev.supporting}">Lo que conviene mirar antes de abrir: precios que se movieron, cartas que se
                 venden y se están agotando, y cartas a las que les falta precio o edición.</p>
         </div>
     </section>
@@ -24,27 +24,27 @@
 
     <th:block th:if="${review != null}">
         <section class="panel" th:if="${review.total() == 0}">
-            <h2>Todo en orden</h2>
-            <p class="supporting">No hay nada para revisar. Volvé después de sincronizar.</p>
+            <h2 th:text="#{rev.allGood}">Todo en orden</h2>
+            <p class="supporting" th:text="#{rev.allGood.text}">No hay nada para revisar. Volvé después de sincronizar.</p>
         </section>
 
         <section class="panel" th:unless="${#lists.isEmpty(review.lowStock)}">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Reponer</p>
-                    <h2>Se venden y quedan pocas</h2>
+                    <p class="eyebrow" th:text="#{rev.restock}">Reponer</p>
+                    <h2 th:text="#{rev.restock.title}">Se venden y quedan pocas</h2>
                 </div>
             </div>
-            <p class="supporting" th:text="${'Cartas que se vendieron en los últimos ' + salesDays + ' días y tienen 1 o ninguna en stock.'}"></p>
+            <p class="supporting" th:text="#{rev.restock.text(${salesDays})}"></p>
             <div class="table-wrap">
                 <table class="review-table">
-                    <thead><tr><th>Carta</th><th>Edición</th><th>Vendidas</th><th>Stock</th></tr></thead>
+                    <thead><tr><th th:text="#{common.card}">Carta</th><th th:text="#{rev.col.edition}">Edición</th><th th:text="#{mov.report.bar.sold}">Vendidas</th><th th:text="#{common.stock}">Stock</th></tr></thead>
                     <tbody>
                     <tr th:each="item : ${review.lowStock}">
                         <td th:text="${item.card.name}">Sol Ring</td>
                         <td th:text="${item.card.setName != null and item.card.setName != '' ? item.card.setName : '-'}">Commander Masters</td>
                         <td th:text="${item.soldLastMonth}">3</td>
-                        <td><span class="stock-pill" th:classappend="${item.stock == 0} ? 'out'" th:text="${item.stock == 0 ? 'Agotada' : item.stock}">1</span></td>
+                        <td><span class="stock-pill" th:classappend="${item.stock == 0} ? 'out'" th:text="${item.stock == 0} ? #{rev.soldOut} : ${item.stock}">1</span></td>
                     </tr>
                     </tbody>
                 </table>
@@ -54,21 +54,21 @@
         <section class="panel" th:unless="${#lists.isEmpty(review.priceMoves)}">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Precios</p>
-                    <h2 th:text="${'Cambiaron más de ' + bigChange + '% en el mes'}">Cambiaron más de 15% en el mes</h2>
+                    <p class="eyebrow" th:text="#{rev.prices}">Precios</p>
+                    <h2 th:text="#{rev.prices.title(${bigChange})}">Cambiaron más de 15% en el mes</h2>
                 </div>
-                <a class="secondary-button" th:href="@{/precios}">Ver historial</a>
+                <a class="secondary-button" th:href="@{/precios}" th:text="#{rev.seeHistory}">Ver historial</a>
             </div>
             <div class="table-wrap">
                 <table class="review-table">
-                    <thead><tr><th>Carta</th><th>Edición</th><th>Tu precio</th><th>Cambio</th><th></th></tr></thead>
+                    <thead><tr><th th:text="#{common.card}">Carta</th><th th:text="#{rev.col.edition}">Edición</th><th th:text="#{dash.col.yourPrice}">Tu precio</th><th th:text="#{rev.col.change}">Cambio</th><th></th></tr></thead>
                     <tbody>
                     <tr th:each="trend : ${review.priceMoves}">
                         <td th:text="${trend.name}">Sol Ring</td>
                         <td th:text="${trend.setName != null and trend.setName != '' ? trend.setName : '-'}">Commander Masters</td>
                         <td class="nowrap" th:text="${trend.formattedLocal()}">$ 5.000</td>
                         <td><span th:class="${trend.changeClass()}" th:text="${trend.formattedChange()}">+25%</span></td>
-                        <td><a class="text-link" th:href="@{/precios(card=${trend.cardId})}">Ver</a></td>
+                        <td><a class="text-link" th:href="@{/precios(card=${trend.cardId})}" th:text="#{rev.see}">Ver</a></td>
                     </tr>
                     </tbody>
                 </table>
@@ -78,18 +78,18 @@
         <section class="panel" th:unless="${#lists.isEmpty(review.withoutPrice)}">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Sin precio</p>
-                    <h2>Tienen stock pero no precio de venta</h2>
+                    <p class="eyebrow" th:text="#{rev.noPrice}">Sin precio</p>
+                    <h2 th:text="#{rev.noPrice.title}">Tienen stock pero no precio de venta</h2>
                 </div>
             </div>
-            <p class="supporting">No se pueden cobrar ni reservar hasta tener precio. Sincronizá el inventario
+            <p class="supporting" th:text="#{rev.noPrice.text}">No se pueden cobrar ni reservar hasta tener precio. Sincronizá el inventario
                 para calcularlo, o ponele el precio de tu local acá mismo.</p>
             <ul class="review-list">
                 <li th:each="card : ${review.withoutPrice}">
                     <span th:text="${card.name + (card.setName != null and card.setName != '' ? ' · ' + card.setName : '')}">Sol Ring</span>
                     <span class="price-cell">
                         <button type="button" class="set-price-button price-missing"
-                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name}">Poner precio</button>
+                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name}" th:text="#{rev.setPrice}">Poner precio</button>
                     </span>
                 </li>
             </ul>
@@ -98,21 +98,21 @@
         <section class="panel" th:unless="${#lists.isEmpty(review.manualPrice)}">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Precio a mano</p>
-                    <h2>Card Kingdom no tiene precio para estas cartas</h2>
+                    <p class="eyebrow" th:text="#{rev.manual}">Precio a mano</p>
+                    <h2 th:text="#{rev.manual.title}">Card Kingdom no tiene precio para estas cartas</h2>
                 </div>
             </div>
-            <p class="supporting">Les pusiste el precio a mano. Revisalo de vez en cuando por si cambió el mercado.</p>
+            <p class="supporting" th:text="#{rev.manual.text}">Les pusiste el precio a mano. Revisalo de vez en cuando por si cambió el mercado.</p>
             <ul class="review-list">
                 <li th:each="card : ${review.manualPrice}">
                     <span th:text="${card.name + (card.setName != null and card.setName != '' ? ' · ' + card.setName : '')}">Edgar Markov</span>
                     <span class="price-cell">
-                        <span class="manual-price" title="Último precio puesto a mano. Card Kingdom no tiene precio actualizado para esta carta.">
+                        <span class="manual-price" th:title="#{rev.manual.hint}">
                             <span aria-hidden="true">⚠</span>
-                            <span th:text="${'$ ' + #numbers.formatInteger(card.localPriceValue(), 1, 'POINT')}">$ 50.000</span>
+                            <span th:text="${currencySymbol + ' ' + #numbers.formatInteger(card.localPriceValue(), 1, 'DEFAULT')}">$ 50.000</span>
                         </span>
                         <button type="button" class="set-price-button text-action"
-                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name},data-current=${#numbers.formatInteger(card.localPriceValue(), 1, 'POINT')}">Cambiar</button>
+                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name},data-current=${#numbers.formatInteger(card.localPriceValue(), 1, 'POINT')}" th:text="#{dash.change}">Cambiar</button>
                     </span>
                 </li>
             </ul>
@@ -121,10 +121,10 @@
         <section class="panel" th:unless="${#lists.isEmpty(review.withoutEdition)}">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Sin edición</p>
-                    <h2 th:text="${#lists.size(review.withoutEdition) + (#lists.size(review.withoutEdition) == 1 ? ' carta sin edición o número' : ' cartas sin edición o número')}">1 carta</h2>
+                    <p class="eyebrow" th:text="#{rev.noEdition}">Sin edición</p>
+                    <h2 th:text="#{rev.noEdition.title(${#lists.size(review.withoutEdition)})}">1 carta</h2>
                 </div>
-                <a class="primary-button" th:href="@{/completar}">Completar ediciones</a>
+                <a class="primary-button" th:href="@{/completar}" th:text="#{nav.identify}">Completar ediciones</a>
             </div>
             <ul class="review-list">
                 <li th:each="card : ${review.withoutEdition}" th:text="${card.name}">Sol Ring</li>

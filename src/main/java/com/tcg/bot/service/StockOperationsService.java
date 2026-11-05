@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
@@ -89,7 +90,7 @@ public class StockOperationsService {
 
     private StockChange changeStockLocked(String cardId, int rowIndexHint, int change, Reason reason) throws Exception {
         if (change == 0) {
-            throw new StockOperationException("No hay cambios para aplicar.");
+            throw new StockOperationException(I18n.t("err.noChanges"));
         }
 
         InventoryCard card = findCard(cardId, rowIndexHint);
@@ -99,7 +100,7 @@ public class StockOperationsService {
         boolean isSale = change < 0 && reason == Reason.SALE;
 
         if (applied == 0) {
-            throw new StockOperationException("No hay unidades de " + card.getName() + " para descontar.");
+            throw new StockOperationException(I18n.t("err.noUnits", card.getName()));
         }
 
         double unitPrice = Amounts.parse(card.getLocalPrice());
@@ -145,19 +146,19 @@ public class StockOperationsService {
 
     private VoidResult voidSaleLocked(String saleId) throws Exception {
         if (saleId == null || saleId.isBlank()) {
-            throw new StockOperationException("Falta indicar qué venta anular.");
+            throw new StockOperationException(I18n.t("cash.err.noSale"));
         }
 
         List<CashRegisterEntry> entries = store.getCashRegisterEntries();
         CashRegisterEntry sale = entries.stream()
                 .filter(entry -> entry.isSale() && saleId.equals(entry.getSaleId()))
                 .findFirst()
-                .orElseThrow(() -> new StockOperationException("No se encontró la venta a anular."));
+                .orElseThrow(() -> new StockOperationException(I18n.t("cash.err.saleNotFound")));
 
         boolean alreadyVoided = entries.stream()
                 .anyMatch(entry -> entry.isVoid() && saleId.equals(entry.getVoidsSaleId()));
         if (alreadyVoided || sale.isVoided()) {
-            throw new StockOperationException("Esa venta ya estaba anulada.");
+            throw new StockOperationException(I18n.t("cash.err.alreadyVoided"));
         }
 
         int units = Math.abs(sale.signedQuantity());
@@ -212,7 +213,7 @@ public class StockOperationsService {
         return cards.stream()
                 .filter(card -> card.getGame() == null && card.getRowIndex() == rowIndexHint)
                 .findFirst()
-                .orElseThrow(() -> new StockOperationException("No se encontró la carta en el inventario."));
+                .orElseThrow(() -> new StockOperationException(I18n.t("err.cardNotInInventory")));
     }
 
     private InventoryCard findCardForSale(CashRegisterEntry sale) throws Exception {

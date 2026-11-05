@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import com.tcg.bot.util.Amounts;
@@ -23,7 +24,7 @@ public class ManualPriceService {
     public InventoryCard setPrice(String cardId, int rowIndex, String rawPrice) throws Exception {
         long price = Math.round(Amounts.parse(rawPrice == null ? "" : rawPrice.replace("$", "").trim()));
         if (price <= 0) {
-            throw new StockOperationException("Escribí un precio mayor a cero.");
+            throw new StockOperationException(I18n.t("price.err.zero"));
         }
 
         synchronized (StockOperationsService.writeLock()) {

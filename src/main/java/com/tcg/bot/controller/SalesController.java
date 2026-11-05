@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.SalesService;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import org.slf4j.Logger;
@@ -27,13 +28,12 @@ public class SalesController {
                        RedirectAttributes redirect) {
         try {
             var ticket = salesService.sell(ReservationController.parseItems(items), creditCustomer);
-            String message = "Venta cobrada: " + ticket.units() + (ticket.units() == 1 ? " carta" : " cartas")
-                    + " por $ " + ticket.formattedTotal() + ".";
+            String message = I18n.t("sale.done", ticket.units(), com.tcg.bot.i18n.Money.symbol() + " " + ticket.formattedTotal());
             if (ticket.creditUsed() > 0) {
-                message += " Se usaron $ " + ticket.formattedCreditUsed() + " de crédito de " + creditCustomer.trim()
-                        + ": cobrá $ " + ticket.formattedToPay() + ".";
+                message += " " + I18n.t("sale.creditUsed", com.tcg.bot.i18n.Money.symbol() + " " + ticket.formattedCreditUsed(), creditCustomer.trim(),
+                        com.tcg.bot.i18n.Money.symbol() + " " + ticket.formattedToPay());
             } else if (creditCustomer != null && !creditCustomer.isBlank()) {
-                message += " " + creditCustomer.trim() + " no tenía crédito, se cobró completo.";
+                message += " " + I18n.t("sale.noCredit", creditCustomer.trim());
             }
             redirect.addFlashAttribute("saleMessage", message);
             redirect.addFlashAttribute("clearOrder", true);
@@ -41,7 +41,7 @@ public class SalesController {
             redirect.addFlashAttribute("saleError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo cobrar el carrito.", e);
-            redirect.addFlashAttribute("saleError", "No se pudo cobrar: " + e.getMessage());
+            redirect.addFlashAttribute("saleError", I18n.t("sale.err", e.getMessage()));
         }
         return "redirect:/";
     }

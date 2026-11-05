@@ -28,11 +28,8 @@ public final class Amounts {
         }
 
         String normalized = value.trim()
-                .replace("$", "")
-                .replace("ARS", "")
-                .replace("USD", "")
-                .replace(" ", "")
-                .replace(" ", "");
+                .replaceAll("(?i)ARS|USD|EUR|BRL|MXN|CLP|COP|UYU|PEN|GBP|CAD|AUD|JPY", "")
+                .replaceAll("[^0-9.,eE+-]", "");
 
         if (normalized.isEmpty()) {
             return null;

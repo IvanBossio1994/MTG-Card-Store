@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.Sheets;
@@ -96,7 +97,7 @@ public class GoogleSheetsService {
         try {
             this.transport = new CachingSheetsTransport(GoogleNetHttpTransport.newTrustedTransport());
         } catch (Exception e) {
-            throw new IllegalStateException("No se pudo preparar la conexión con Google", e);
+            throw new IllegalStateException(I18n.t("err.google.prepare"), e);
         }
     }
 
@@ -179,7 +180,7 @@ public class GoogleSheetsService {
     public String createSpreadsheet(String title) throws Exception {
         GoogleCredentials credentials = googleAccountService.credentials();
         if (credentials == null) {
-            throw new IllegalStateException("Primero conectá tu cuenta de Google.");
+            throw new IllegalStateException(I18n.t("err.google.connectFirst"));
         }
 
         var spreadsheet = new com.google.api.services.sheets.v4.model.Spreadsheet()

@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -126,7 +127,7 @@ public class GoogleAccountService {
     public String authorizationUrl(String redirectUri) throws GoogleLoginException {
         Client client = client();
         if (client == null) {
-            throw new GoogleLoginException("Falta el archivo google-oauth.properties en la carpeta data.");
+            throw new GoogleLoginException(I18n.t("google.err.noConfig"));
         }
 
         dropOldLogins();
@@ -151,22 +152,22 @@ public class GoogleAccountService {
     public synchronized Status completeLogin(String state, String code, String error) throws Exception {
         if (notBlank(error)) {
             throw new GoogleLoginException("access_denied".equals(error)
-                    ? "Cancelaste el permiso en Google. Probá de nuevo cuando quieras."
-                    : "Google no dio el permiso (" + error + ").");
+                    ? I18n.t("google.err.denied")
+                    : I18n.t("google.err.noPermission", error));
         }
 
         PendingLogin login = state == null ? null : pending.remove(state);
         if (login == null || login.createdAt().plus(LOGIN_TIMEOUT).isBefore(clock.instant())) {
-            throw new GoogleLoginException("El link de inicio de sesión venció. Tocá \"Conectar con Google\" de nuevo.");
+            throw new GoogleLoginException(I18n.t("google.err.expired"));
         }
 
         if (!notBlank(code)) {
-            throw new GoogleLoginException("Google no devolvió el código de acceso.");
+            throw new GoogleLoginException(I18n.t("google.err.noCode"));
         }
 
         Client client = client();
         if (client == null) {
-            throw new GoogleLoginException("Falta el archivo google-oauth.properties en la carpeta data.");
+            throw new GoogleLoginException(I18n.t("google.err.noConfig"));
         }
 
         Map<String, String> request = new LinkedHashMap<>();
@@ -179,18 +180,17 @@ public class GoogleAccountService {
 
         JsonObject token = JsonParser.parseString(poster.post(TOKEN_URL, request)).getAsJsonObject();
         if (token.has("error")) {
-            throw new GoogleLoginException("Google rechazó el inicio de sesión: " + text(token, "error"));
+            throw new GoogleLoginException(I18n.t("google.err.rejected", text(token, "error")));
         }
 
         String scope = text(token, "scope");
         if (!scope.contains(SCOPE_DRIVE_FILE)) {
-            throw new GoogleLoginException("Para usar tu Sheet tenés que tildar el permiso de archivos de Drive"
-                    + " en la pantalla de Google. Probá de nuevo.");
+            throw new GoogleLoginException(I18n.t("google.err.driveScope"));
         }
 
         String refreshToken = text(token, "refresh_token");
         if (!notBlank(refreshToken)) {
-            throw new GoogleLoginException("Google no devolvió el permiso permanente. Probá de nuevo.");
+            throw new GoogleLoginException(I18n.t("google.err.noRefresh"));
         }
 
         Properties account = new Properties();

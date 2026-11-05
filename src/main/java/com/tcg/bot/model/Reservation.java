@@ -20,11 +20,6 @@ public class Reservation {
     public static final String STATUS_CANCELLED = "CANCELADA";
     public static final String STATUS_EXPIRED = "VENCIDA";
 
-    private static final DecimalFormat ARS_FORMAT = new DecimalFormat(
-            "#,##0",
-            DecimalFormatSymbols.getInstance(new Locale("es", "AR"))
-    );
-    private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private int rowIndex;
     private String date;
@@ -69,11 +64,11 @@ public class Reservation {
     }
 
     public String getFormattedUnitPrice() {
-        return ARS_FORMAT.format(Amounts.parse(unitPrice));
+        return com.tcg.bot.i18n.Money.number(Amounts.parse(unitPrice));
     }
 
     public String getFormattedTotal() {
-        return ARS_FORMAT.format(total());
+        return com.tcg.bot.i18n.Money.number(total());
     }
 
     public String getFormattedExpiresOn() {
@@ -90,7 +85,7 @@ public class Reservation {
         }
 
         try {
-            return LocalDate.parse(value.trim()).format(DISPLAY_DATE);
+            return LocalDate.parse(value.trim()).format(com.tcg.bot.i18n.Dates.shortDate());
         } catch (RuntimeException e) {
             return value;
         }

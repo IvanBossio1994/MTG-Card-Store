@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
@@ -46,7 +47,7 @@ public class SalesService {
         }
 
         private static String format(double value) {
-            return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(value);
+            return com.tcg.bot.i18n.Money.number(value);
         }
     }
 
@@ -65,7 +66,7 @@ public class SalesService {
             }
         }
         if (requested.isEmpty()) {
-            throw new StockOperationException("El pedido no tiene cartas.");
+            throw new StockOperationException(I18n.t("err.order.empty"));
         }
 
         synchronized (StockOperationsService.writeLock()) {
@@ -84,8 +85,7 @@ public class SalesService {
                             + " no tiene precio local. Sincronizá precios antes de cobrarla.");
                 }
                 if (StockOperationsService.quantity(card) < entry.getValue()) {
-                    throw new StockOperationException("No alcanza el stock de " + card.getName()
-                            + ": hay " + StockOperationsService.quantity(card) + " y pediste " + entry.getValue() + ".");
+                    throw new StockOperationException(I18n.t("err.notEnoughStock", card.getName(), StockOperationsService.quantity(card), entry.getValue()));
                 }
                 targets.add(card);
             }
@@ -109,8 +109,7 @@ public class SalesService {
                 } catch (Exception e) {
                     StockOperationsService.setQuantity(card, previous);
                     store.updateAnyStock(card);
-                    throw new StockOperationException("Se cortó la conexión con el Sheet al cobrar " + card.getName()
-                            + (units > 0 ? ". Las cartas anteriores sí quedaron cobradas; revisá la caja." : ". No se cobró nada."));
+                    throw new StockOperationException(I18n.t(units > 0 ? "sale.err.cutPartial" : "sale.err.cutNone", card.getName()));
                 }
 
                 stockOperations.appendMovementQuietly(stockOperations.movement(

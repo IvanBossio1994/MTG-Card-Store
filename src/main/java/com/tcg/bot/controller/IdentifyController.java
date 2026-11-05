@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.service.CardIdentifyService;
 import com.tcg.bot.service.InventoryStore;
@@ -50,7 +51,7 @@ public class IdentifyController {
         } catch (Exception e) {
             log.warn("No se pudo leer el inventario para completar ediciones.", e);
             model.addAttribute("pending", List.of());
-            model.addAttribute("identifyError", "No se pudo leer el Sheet. Revisá la conexión en Configuración.");
+            model.addAttribute("identifyError", I18n.t("err.readSheet"));
             return "identify";
         }
         model.addAttribute("pending", pending);
@@ -66,7 +67,7 @@ public class IdentifyController {
                 } catch (Exception e) {
                     log.debug("Scryfall no respondió: {}", e.getMessage());
                     model.addAttribute("candidates", List.of());
-                    model.addAttribute("identifyError", "No se pudo consultar Scryfall. Revisá la conexión a internet y probá de nuevo.");
+                    model.addAttribute("identifyError", I18n.t("ident.err.scryfall"));
                 }
             }
         }
@@ -93,7 +94,7 @@ public class IdentifyController {
                 // Si el Sheet cambió mientras se elegía (se ordenó o se editó la fila), no se pisa otra carta.
                 if (card == null || !Objects.equals(clean(card.getName()), clean(originalName))) {
                     redirect.addFlashAttribute("identifyError",
-                            "La fila cambió en el Sheet mientras elegías. Volvé a buscar la carta.");
+                            I18n.t("ident.err.rowChanged"));
                     return "redirect:/completar";
                 }
 
@@ -108,12 +109,11 @@ public class IdentifyController {
             }
         } catch (Exception e) {
             log.warn("No se pudo completar la edición de la fila {}.", row, e);
-            redirect.addFlashAttribute("identifyError", "No se pudo guardar en el Sheet. Probá de nuevo.");
+            redirect.addFlashAttribute("identifyError", I18n.t("ident.err.save"));
             return "redirect:/completar";
         }
 
-        redirect.addFlashAttribute("identifySuccess", name.trim() + " quedó como " + setName.trim()
-                + " #" + collectorNumber.trim() + ". Sincronizá para traer su precio.");
+        redirect.addFlashAttribute("identifySuccess", I18n.t("ident.done", name.trim(), setName.trim(), collectorNumber.trim()));
         return "redirect:/completar";
     }
 

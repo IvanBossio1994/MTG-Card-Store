@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <body>
 <header th:fragment="topbar(subtitle)" class="topbar">
     <div class="topbar-start">
-        <button id="menu-button" class="menu-button" type="button" aria-label="Abrir menu"
+        <button id="menu-button" class="menu-button" type="button" th:aria-label="#{layout.openMenu}"
                 aria-controls="app-menu" aria-expanded="false">
             <span></span><span></span><span></span>
         </button>
-        <a class="brand" th:href="@{/}" aria-label="Volver al inicio">
+        <a class="brand" th:href="@{/}" th:aria-label="#{layout.backHome}">
             <img class="brand-logo" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}" alt="">
             <span class="brand-mark" th:unless="${hasStoreLogo}">TCG</span>
             <div>
@@ -16,7 +16,7 @@
             </div>
         </a>
     </div>
-    <nav class="game-tabs" aria-label="Juego">
+    <nav class="game-tabs" th:aria-label="#{layout.game}">
         <a class="game-tab game-tab-magic" th:classappend="${activeGame == 'magic'} ? 'active'" th:href="@{/}"
            th:attrappend="aria-current=${activeGame == 'magic'} ? 'page'">
             <span class="game-tab-dot" aria-hidden="true"></span>Magic</a>
@@ -27,6 +27,11 @@
            th:attrappend="aria-current=${activeGame == 'yugioh'} ? 'page'">
             <span class="game-tab-dot" aria-hidden="true"></span><span class="game-tab-long">Yu-Gi-Oh!</span><span class="game-tab-short">YGO</span></a>
     </nav>
+    <script th:inline="javascript">
+        window.I18N = /*[[${jsMessages}]]*/ {};
+        window.APP_LANG = /*[[${lang}]]*/ "es";
+        window.APP_CURRENCY = /*[[${currencySymbol}]]*/ "$";
+    </script>
 </header>
 
 <div th:fragment="menu(active)">
@@ -36,73 +41,80 @@
             <span class="brand-mark">TCG</span>
             <div>
                 <strong>TCG Store Helper</strong>
-                <p class="menu-tagline">Tu tienda en tu Google Sheet</p>
+                <p class="menu-tagline" th:text="#{layout.tagline}">Tu tienda en tu Google Sheet</p>
             </div>
         </div>
-        <nav class="menu-nav" aria-label="Menú principal">
-            <p class="menu-section">Día a día</p>
+        <nav class="menu-nav" th:aria-label="#{layout.mainMenu}">
+            <p class="menu-section" th:text="#{layout.section.daily}">Día a día</p>
             <a th:classappend="${active == 'home'} ? 'active'" th:href="@{/}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 0 4.75 13.3l4.22 4.23 1.06-1.06-4.23-4.22A7.5 7.5 0 0 0 10.5 3Zm0 1.5a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z"/></svg>
-                Buscar y vender</a>
+                <span th:text="#{nav.home}">Buscar y vender</span></a>
             <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Zm1.5 1.5v13.7l4.5-3 4.5 3V4.5h-9Z"/></svg>
-                Reservas y pedidos</a>
+                <span th:text="#{nav.reservations}">Reservas y pedidos</span></a>
             <a th:classappend="${active == 'buy'} ? 'active'" th:href="@{/compras}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 1 4 4h3l1 14H4L5 7h3a4 4 0 0 1 4-4Zm0 1.5A2.5 2.5 0 0 0 9.5 7h5A2.5 2.5 0 0 0 12 4.5ZM6.4 8.5l-.8 11h12.8l-.8-11H6.4ZM11.25 10h1.5v2.25H15v1.5h-2.25V16h-1.5v-2.25H9v-1.5h2.25V10Z"/></svg>
-                Comprar a clientes</a>
+                <span th:text="#{nav.buy}">Comprar a clientes</span></a>
             <a th:classappend="${active == 'customers'} ? 'active'" th:href="@{/clientes}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 1.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6h-1.5c0-2.3-2.8-4.5-6.5-4.5S5.5 17.7 5.5 20H4Z"/></svg>
-                Crédito de clientes</a>
+                <span th:text="#{nav.customers}">Crédito de clientes</span></a>
             <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.5v11h15v-11h-15ZM6 9h6v1.5H6V9Zm0 3h9v1.5H6V12Z"/></svg>
-                Caja y movimientos</a>
+                <span th:text="#{nav.movements}">Caja y movimientos</span></a>
             <a th:classappend="${active == 'prices'} ? 'active'" th:href="@{/precios}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19.5h18V21H3v-1.5Zm1.2-4.3 5.1-5.1 3.5 3.5 6.1-6.1 1.06 1.06-7.16 7.16-3.5-3.5-4.04 4.04-1.06-1.06Z"/></svg>
-                Historial de precios</a>
-            <p class="menu-section">Inventario</p>
+                <span th:text="#{nav.prices}">Historial de precios</span></a>
+            <p class="menu-section" th:text="#{layout.section.inventory}">Inventario</p>
             <a th:classappend="${active == 'review'} ? 'active'" th:href="@{/revisar}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 1.5 21h21L12 3Zm0 3 8 13.5H4L12 6Zm-.75 4.5v4.5h1.5v-4.5h-1.5Zm0 6v1.5h1.5V16.5h-1.5Z"/></svg>
-                Para revisar</a>
+                <span th:text="#{nav.review}">Para revisar</span></a>
             <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5V3Zm1.5 1.5v15h11V7.6l-3.1-3.1H6.5ZM8 11h8v1.5H8V11Zm0 3h8v1.5H8V14Z"/></svg>
-                Importar lista</a>
+                <span th:text="#{nav.import}">Importar lista</span></a>
             <a th:classappend="${active == 'identify'} ? 'active'" th:href="@{/completar}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v1.5H5.5v13h13V13H20v7H4V4Zm14.2-1.3 3.1 3.1-8.6 8.6-3.9.8.8-3.9 8.6-8.6Zm0 2.1-7.2 7.2-.3 1.5 1.5-.3 7.2-7.2-1.2-1.2Z"/></svg>
-                Completar ediciones</a>
+                <span th:text="#{nav.identify}">Completar ediciones</span></a>
             <a th:classappend="${active == 'settings'} ? 'active'" th:href="@{/configuracion}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm0 1.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10.6 2h2.8l.5 2.6 1.6.7 2.2-1.5 2 2-1.5 2.2.7 1.6 2.6.5v2.8l-2.6.5-.7 1.6 1.5 2.2-2 2-2.2-1.5-1.6.7-.5 2.6h-2.8l-.5-2.6-1.6-.7-2.2 1.5-2-2 1.5-2.2-.7-1.6L2 13.4v-2.8l2.6-.5.7-1.6-1.5-2.2 2-2 2.2 1.5 1.6-.7.5-2.6Z"/></svg>
-                Configuración</a>
+                <span th:text="#{nav.settings}">Configuración</span></a>
+            <label class="menu-language">
+                <span th:text="#{layout.language}">Idioma</span>
+                <select id="language-select" th:aria-label="#{layout.language}">
+                    <option th:each="language : ${languages}" th:value="${language.code}"
+                            th:text="${language.nativeName}" th:selected="${language.code == lang}">Español</option>
+                </select>
+            </label>
             <form th:action="@{/tutorial/reset}" method="post">
-                <button type="submit" class="menu-link-button">Ver tutorial de nuevo</button>
+                <button type="submit" class="menu-link-button" th:text="#{nav.tutorialAgain}">Ver tutorial de nuevo</button>
             </form>
         </nav>
     </aside>
 </div>
 
-<aside th:fragment="cart" id="cart-panel" class="cart-panel" hidden aria-label="Carrito">
+<aside th:fragment="cart" id="cart-panel" class="cart-panel" hidden th:aria-label="#{cart.title}">
     <button id="cart-toggle" class="cart-toggle" type="button" aria-expanded="true" aria-controls="cart-body">
-        <span class="cart-toggle-title">Carrito</span>
-        <span id="cart-summary" class="cart-summary">0 cartas · $ 0</span>
+        <span class="cart-toggle-title" th:text="#{cart.title}">Carrito</span>
+        <span id="cart-summary" class="cart-summary" th:text="#{cart.summary(0, ${currencySymbol} + ' 0')}">0 cartas · $ 0</span>
     </button>
     <div id="cart-body" class="cart-body">
         <ul id="cart-list" class="cart-list"></ul>
         <div class="cart-total">
-            <span>Total</span>
-            <strong id="cart-total">$ 0</strong>
+            <span th:text="#{cart.total}">Total</span>
+            <strong id="cart-total" th:text="${currencySymbol} + ' 0'">$ 0</strong>
         </div>
-        <p id="cart-price-warning" class="cart-warning" hidden>Hay cartas sin precio: tocá "poner precio" en la carta para cargar el precio de tu local.</p>
+        <p id="cart-price-warning" class="cart-warning" hidden th:text="#{cart.priceWarning}">Hay cartas sin precio: tocá "poner precio" en la carta para cargar el precio de tu local.</p>
         <form id="cart-sell-form" method="post" th:action="@{/ventas}">
             <input id="cart-items-input" type="hidden" name="items" value="[]">
-            <label class="cart-credit">Usar crédito de un cliente (opcional)
+            <label class="cart-credit"><span th:text="#{cart.useCredit}">Usar crédito de un cliente (opcional)</span>
                 <input id="cart-credit-customer" name="creditCustomer" type="text" list="cart-credit-list"
-                       autocomplete="off" placeholder="Nombre del cliente">
+                       autocomplete="off" th:placeholder="#{common.customerName}">
             </label>
             <datalist id="cart-credit-list"></datalist>
-            <button class="primary-button" type="submit">Cobrar ahora</button>
+            <button class="primary-button" type="submit" th:text="#{cart.chargeNow}">Cobrar ahora</button>
         </form>
         <div class="cart-secondary">
-            <a class="secondary-button" th:href="@{/reservas}">Reservar para un cliente</a>
-            <button id="cart-clear" class="text-action" type="button">Vaciar</button>
+            <a class="secondary-button" th:href="@{/reservas}" th:text="#{cart.reserve}">Reservar para un cliente</a>
+            <button id="cart-clear" class="text-action" type="button" th:text="#{cart.clear}">Vaciar</button>
         </div>
     </div>
 </aside>
@@ -110,7 +122,7 @@
 <div th:fragment="loading(title, message)" id="loading-overlay" class="loading-overlay" aria-hidden="true">
     <div class="loading-card" role="status" aria-live="polite">
         <img class="loading-cat" th:src="@{/images/cat-card-loader.gif}"
-             alt="Gatito atigrado revisando cartas">
+             th:alt="#{layout.loadingCatAlt}">
         <h2 th:text="${title}">Sincronizando inventario</h2>
         <p th:text="${message}">Conectando el Sheet con la app y actualizando precios...</p>
         <div class="loading-dots" aria-hidden="true">

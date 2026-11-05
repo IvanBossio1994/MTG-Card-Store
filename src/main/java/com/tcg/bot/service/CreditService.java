@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CreditEntry;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import org.springframework.stereotype.Service;
@@ -64,15 +65,15 @@ public class CreditService {
     /** Suma (positivo) o descuenta (negativo) saldo. Nunca deja el saldo en negativo. */
     public CreditEntry add(String customer, String contact, double amount, String reason, String reference) throws Exception {
         if (customer == null || customer.isBlank()) {
-            throw new StockOperationException("Poné el nombre del cliente.");
+            throw new StockOperationException(I18n.t("err.customer.required"));
         }
         if (Math.round(amount) == 0) {
-            throw new StockOperationException("El monto no puede ser cero.");
+            throw new StockOperationException(I18n.t("cust.err.zero"));
         }
         synchronized (StockOperationsService.writeLock()) {
             if (amount < 0 && balance(customer) + amount < -0.5) {
-                throw new StockOperationException(customer.trim() + " tiene $ " + ars(balance(customer))
-                        + " de crédito, no alcanza para descontar $ " + ars(-amount) + ".");
+                throw new StockOperationException(I18n.t("cust.err.notEnough", customer.trim(), com.tcg.bot.i18n.Money.symbol() + " " + ars(balance(customer)),
+                        com.tcg.bot.i18n.Money.symbol() + " " + ars(-amount)));
             }
             LocalDateTime now = LocalDateTime.now(stockOperations.clock);
             CreditEntry entry = new CreditEntry(now.format(DATE_FORMAT), now.format(TIME_FORMAT), customer.trim(),
@@ -84,6 +85,6 @@ public class CreditService {
     }
 
     public static String ars(double value) {
-        return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(Math.round(value));
+        return com.tcg.bot.i18n.Money.number(Math.round(value));
     }
 }

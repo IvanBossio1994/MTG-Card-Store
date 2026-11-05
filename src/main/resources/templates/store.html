@@ -1,49 +1,45 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Configuracion | TCG Inventory</title>
+    <title th:text="#{settings.title} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Configuracion del comercio')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{settings.subtitle})}"></header>
 <div th:replace="~{fragments/layout :: menu('settings')}"></div>
 <main class="store-page">
     <div class="store-heading">
-        <p class="eyebrow">Configuracion</p>
-        <h1>Configuracion</h1>
-        <p class="supporting">Personaliza tu comercio y conecta el inventario que se consulta en Inicio.</p>
+        <p class="eyebrow" th:text="#{settings.title}">Configuración</p>
+        <h1 th:text="#{settings.title}">Configuración</h1>
+        <p class="supporting" th:text="#{settings.supporting}">Personaliza tu comercio.</p>
     </div>
 
     <section class="settings-card google-card">
-        <h2>Cuenta de Google</h2>
+        <h2 th:text="#{settings.google.title}">Cuenta de Google</h2>
         <p class="alert success" th:if="${googleSuccess}" th:text="${googleSuccess}"></p>
         <p class="alert error" th:if="${googleError}" th:text="${googleError}"></p>
         <th:block th:if="${googleAccount.connected}">
             <p>
-                <strong>Conectada</strong>
+                <strong th:text="#{settings.google.connected}">Conectada</strong>
                 <span th:if="${googleAccount.email != ''}" th:text="${' · ' + googleAccount.email}"></span>
             </p>
-            <p class="card-help">La app solo ve los Sheets que crea ella, nunca el resto de tu Drive.</p>
+            <p class="card-help" th:text="#{settings.google.scope}">La app solo ve los Sheets que crea ella, nunca el resto de tu Drive.</p>
             <div class="google-actions">
                 <form method="post" th:action="@{/cuenta/google/crear-sheet}">
-                    <button class="primary-button" type="submit">Crear mi Sheet de inventario</button>
+                    <button class="primary-button" type="submit" th:text="#{settings.google.createSheet}">Crear mi Sheet de inventario</button>
                 </form>
                 <form method="post" th:action="@{/cuenta/google/desconectar}">
-                    <button class="secondary-button" type="submit">Desconectar</button>
+                    <button class="secondary-button" type="submit" th:text="#{settings.google.disconnect}">Desconectar</button>
                 </form>
             </div>
         </th:block>
         <th:block th:unless="${googleAccount.connected}">
-            <p class="card-help">Entrá con tu cuenta de Google y la app crea el Sheet del inventario en tu Drive.
-                Solo pide permiso para ver tu mail y los archivos que crea ella.</p>
-            <a th:if="${googleAccount.configured}" class="primary-button" th:href="@{/cuenta/google/conectar}">Conectar con Google</a>
-            <p class="card-help" th:unless="${googleAccount.configured}">
-                Para activar el login, guardá <code>google-oauth.properties</code> en la carpeta <code>data</code> de la app.
-                Mientras tanto podés seguir usando el Sheet compartido con el bot, más abajo.
-            </p>
+            <p class="card-help" th:text="#{settings.google.intro}">Entrá con tu cuenta de Google.</p>
+            <a th:if="${googleAccount.configured}" class="primary-button" th:href="@{/cuenta/google/conectar}" th:text="#{settings.google.connect}">Conectar con Google</a>
+            <p class="card-help" th:unless="${googleAccount.configured}" th:utext="#{settings.google.notConfigured}">google-oauth.properties</p>
         </th:block>
     </section>
 
@@ -52,19 +48,19 @@
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
         <section class="settings-card">
-            <h2>Identidad de la tienda</h2>
+            <h2 th:text="#{settings.identity}">Identidad de la tienda</h2>
             <div class="store-field">
-                <label for="storeName">Nombre de la tienda</label>
+                <label for="storeName" th:text="#{settings.storeName}">Nombre de la tienda</label>
                 <input id="storeName" name="storeName" type="text" th:value="${storeName}"
-                       placeholder="Ingresa nombre de tienda" required>
+                       th:placeholder="#{settings.storeName.placeholder}" required>
             </div>
             <div class="store-field">
-                <label>Logo de mi tienda</label>
+                <label th:text="#{settings.logo}">Logo de mi tienda</label>
                 <label class="upload-zone" for="storeLogo">
                     <img class="store-logo-preview" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}"
-                         alt="Logo actual de la tienda">
-                    <span class="upload-button">Subir imagen</span>
-                    <span id="logo-file-name" class="upload-help">PNG, JPG o WEBP, hasta 2 MB</span>
+                         th:alt="#{settings.logo.alt}">
+                    <span class="upload-button" th:text="#{settings.logo.upload}">Subir imagen</span>
+                    <span id="logo-file-name" class="upload-help" th:text="#{settings.logo.help}">PNG, JPG o WEBP, hasta 2 MB</span>
                 </label>
                 <input class="file-input" id="storeLogo" name="storeLogo" type="file"
                        accept="image/png,image/jpeg,image/webp">
@@ -72,131 +68,137 @@
         </section>
 
         <section class="settings-card">
-            <h2>Inventario</h2>
+            <h2 th:text="#{settings.inventory}">Inventario</h2>
             <div class="store-field">
-                <label for="inventorySheetName">Pestaña original o pestaña final del inventario</label>
+                <label for="inventorySheetName" th:text="#{settings.sheetName}">Pestaña original o pestaña final del inventario</label>
                 <input id="inventorySheetName" name="inventorySheetName" type="text"
                        th:value="${submittedInventorySheetName}"
                        th:classappend="${inventorySheetError} ? ' invalid-input' : ''"
-                       placeholder="Ej: Stock MTG, Cartas o Inventario" required>
+                       th:placeholder="#{settings.sheetName.placeholder}" required>
                 <p id="inventory-sheet-error" class="field-error" th:if="${inventorySheetError}"
                    th:text="${inventorySheetError}"></p>
-                <p class="field-help">Podes indicar una pestaña existente con cartas, como Cartas. Si la app reconoce al menos dos nombres, crea una pestaña nueva de inventario y deja la original sin tocar.</p>
+                <p class="field-help" th:text="#{settings.sheetName.help}">Podes indicar una pestaña existente con cartas, como Cartas. Si la app reconoce al menos dos nombres, crea una pestaña nueva de inventario y deja la original sin tocar.</p>
             </div>
             <div id="google-sheet-source" class="store-field source-fields">
-                <label for="spreadsheetId">Google Sheet del inventario</label>
+                <label for="spreadsheetId" th:text="#{settings.sheet}">Google Sheet del inventario</label>
                 <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
-                       placeholder="Pega el enlace de Google Sheets o su ID">
-                <p class="field-help">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas de la app.</p>
+                       th:placeholder="#{settings.sheet.placeholder}">
+                <p class="field-help" th:text="#{settings.sheet.help}">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas de la app.</p>
                 <div class="setup-notice compact">
-                    <strong>Permiso necesario</strong>
-                    <p>Compartir este Sheet como <strong>Editor</strong> con:</p>
+                    <strong th:text="#{settings.permission}">Permiso necesario</strong>
+                    <p th:utext="#{settings.permission.share}">Compartir este Sheet como Editor con:</p>
                     <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
                 </div>
             </div>
             <div class="store-field">
-                <label>Credenciales privadas de Google Sheets</label>
+                <label th:text="#{settings.credentials}">Credenciales privadas de Google Sheets</label>
                 <label class="upload-zone compact" for="googleCredentials">
-                    <span class="upload-button">Adjuntar google-credentials.json</span>
+                    <span class="upload-button" th:text="#{settings.credentials.attach}">Adjuntar google-credentials.json</span>
                     <span id="credentials-file-name" class="upload-help"
-                          th:text="${localCredentialsConfigured ? 'Credenciales cargadas en esta PC' : 'JSON de la service account de esta instalacion'}">
+                          th:text="${localCredentialsConfigured} ? #{settings.credentials.loaded} : #{settings.credentials.missing}">
                         Archivo .json privado
                     </span>
                 </label>
                 <input class="file-input" id="googleCredentials" name="googleCredentials" type="file"
                        accept="application/json,.json">
-                <p class="field-help">La app lo guarda como data/google-credentials.json en esta PC. Despues comparti el Sheet con el mail que aparece arriba; solo cargar el mail no alcanza para autenticar la API.</p>
+                <p class="field-help" th:text="#{settings.credentials.help}">La app lo guarda como data/google-credentials.json en esta PC. Despues comparti el Sheet con el mail que aparece arriba; solo cargar el mail no alcanza para autenticar la API.</p>
             </div>
         </section>
         <section class="settings-card">
-            <h2>Regla de precio</h2>
-            <p class="card-help">Precio en ARS = precio CK en USD × cotización × (1 + recargo), redondeado hacia arriba al múltiplo y nunca por debajo del mínimo.</p>
+            <h2 th:text="#{settings.pricing}">Regla de precio</h2>
+            <div class="store-field">
+                <label for="currency" th:text="#{settings.currency}">Moneda de tu tienda</label>
+                <select id="currency" name="currency">
+                    <option th:each="code : ${currencies}" th:value="${code}" th:text="${code}"
+                            th:selected="${code == currencyCode}">ARS</option>
+                </select>
+                <p class="field-help" th:text="#{settings.currency.help}">La moneda en la que cobrás.</p>
+            </div>
+            <p class="card-help" th:text="#{settings.pricing.formula(${currencyCode})}">Precio = precio CK en USD × cotización × (1 + recargo).</p>
             <div class="pricing-config-grid">
                 <div class="store-field">
-                    <label for="ckDollarRate">Cotizacion ARS por CK USD</label>
+                    <label for="ckDollarRate" th:text="#{settings.usdRate(${currencyCode})}">Cotizacion ARS por CK USD</label>
                     <input id="ckDollarRate" name="ckDollarRate" type="number" min="0.01" step="0.01"
                            th:value="${ckDollarRate}" required>
                 </div>
                 <div class="store-field">
-                    <label for="roundMultiple">Redondear al multiplo de</label>
+                    <label for="roundMultiple" th:text="#{settings.roundMultiple}">Redondear al multiplo de</label>
                     <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
                            th:value="${roundMultiple}" required>
                 </div>
                 <div class="store-field">
-                    <label for="markupPercent">Recargo sobre CK (%)</label>
+                    <label for="markupPercent" th:text="#{settings.markup}">Recargo sobre CK (%)</label>
                     <input id="markupPercent" name="markupPercent" type="number" min="-99" step="0.5"
                            th:value="${markupPercent}">
                 </div>
                 <div class="store-field">
-                    <label for="minimumPrice">Precio mínimo por carta (ARS)</label>
+                    <label for="minimumPrice" th:text="#{settings.minimumPrice(${currencyCode})}">Precio mínimo por carta (ARS)</label>
                     <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="1"
                            th:value="${minimumPrice}">
                 </div>
             </div>
             <div class="price-sources">
                 <input type="hidden" name="sourcesSubmitted" value="true">
-                <h3>Fuentes de precio</h3>
-                <p class="field-help">Card Kingdom siempre se usa como catálogo. Sumá otras fuentes para compararlas en la búsqueda
-                    y, si querés, para calcular tu precio con el promedio, la más alta o la más baja.</p>
+                <h3 th:text="#{settings.sources}">Fuentes de precio</h3>
+                <p class="field-help" th:text="#{settings.sources.help}">Card Kingdom siempre se usa como catálogo.</p>
                 <label class="checkbox-row"><input type="checkbox" checked disabled> Card Kingdom (USD)</label>
                 <label class="checkbox-row"><input type="checkbox" name="tcgplayerEnabled" value="true"
-                                                   th:checked="${tcgplayerEnabled}"> TCGplayer (USD, vía Scryfall)</label>
+                                                   th:checked="${tcgplayerEnabled}"> <span th:text="#{settings.sources.tcgplayer}">TCGplayer (USD, vía Scryfall)</span></label>
                 <label class="checkbox-row"><input type="checkbox" name="cardmarketEnabled" value="true"
-                                                   th:checked="${cardmarketEnabled}"> Cardmarket (EUR, vía Scryfall)</label>
+                                                   th:checked="${cardmarketEnabled}"> <span th:text="#{settings.sources.cardmarket}">Cardmarket (EUR, vía Scryfall)</span></label>
                 <div class="pricing-config-grid">
                     <div class="store-field">
-                        <label for="eurRate">Cotización ARS por EUR (para Cardmarket)</label>
+                        <label for="eurRate" th:text="#{settings.eurRate(${currencyCode})}">Cotización ARS por EUR (para Cardmarket)</label>
                         <input id="eurRate" name="eurRate" type="number" min="0" step="0.01" th:value="${eurRate}">
                     </div>
                     <div class="store-field">
-                        <label for="combineMode">Precio local según</label>
+                        <label for="combineMode" th:text="#{settings.combineMode}">Precio local según</label>
                         <select id="combineMode" name="combineMode">
                             <option th:each="mode : ${combineModes}" th:value="${mode.name()}"
-                                    th:text="${mode.label}" th:selected="${mode.name() == combineMode}">Solo Card Kingdom</option>
+                                    th:text="#{${'combine.' + mode.name()}}" th:selected="${mode.name() == combineMode}">Solo Card Kingdom</option>
                         </select>
                     </div>
                 </div>
             </div>
             <div class="store-field">
-                <label for="cacheDirectory">Carpeta para descargas y cache de Card Kingdom</label>
+                <label for="cacheDirectory" th:text="#{settings.cache}">Carpeta para descargas y cache de Card Kingdom</label>
                 <input id="cacheDirectory" name="cacheDirectory" type="text" th:value="${cacheDirectory}"
-                       placeholder="Ej: D:/TCG-inventory/data/cache o E:/MTG/cache">
-                <p class="field-help">Elegi una carpeta local con espacio disponible, por ejemplo en disco D o E. La app guarda ahi ck-pricelist.json, la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
+                       th:placeholder="#{settings.cache.placeholder}">
+                <p class="field-help" th:text="#{settings.cache.help}">Elegi una carpeta local con espacio disponible, por ejemplo en disco D o E. La app guarda ahi ck-pricelist.json, la descarga pesada de Card Kingdom que despues reutiliza como cache.</p>
             </div>
         </section>
 
         <div class="store-actions">
-            <button class="primary-button" type="submit">Guardar configuracion</button>
-            <a class="secondary-button link-button" th:href="@{/}">Cancelar</a>
+            <button class="primary-button" type="submit" th:text="#{settings.save}">Guardar configuracion</button>
+            <a class="secondary-button link-button" th:href="@{/}" th:text="#{common.cancel}">Cancelar</a>
         </div>
     </form>
 
     <section class="settings-card license-card">
-        <h2>Plan</h2>
+        <h2 th:text="#{settings.plan}">Plan</h2>
         <p class="alert success" th:if="${licenseSuccess}" th:text="${licenseSuccess}"></p>
         <p class="alert error" th:if="${licenseError}" th:text="${licenseError}"></p>
         <p>
-            <strong th:text="${'Plan ' + license.plan}">Plan Gratis</strong>
+            <strong th:text="#{settings.plan.name(${license.pro} ? #{settings.plan.store} : #{settings.plan.free})}">Plan Gratis</strong>
             <span th:text="${' · ' + license.message}"> · Plan gratis</span>
         </p>
         <p class="card-help" th:unless="${license.pro}">
-            El plan gratis permite hasta <span th:text="${freeCardLimit}">300</span> cartas distintas, con todo lo demás
-            habilitado. El plan Tienda no tiene límite y no cobra comisión por venta.
-            <a th:if="${licensePurchaseUrl != ''}" th:href="${licensePurchaseUrl}" target="_blank" rel="noopener">Activar plan Tienda</a>
+            <span th:text="#{settings.plan.freeHelp(${freeCardLimit})}">El plan gratis permite hasta 300 cartas distintas.</span>
+            <a th:if="${licensePurchaseUrl != ''}" th:href="${licensePurchaseUrl}" target="_blank" rel="noopener" th:text="#{settings.plan.activate}">Activar plan Tienda</a>
         </p>
-        <p class="card-help" th:if="${license.pro && license.email != ''}" th:text="${'Licencia de ' + license.email}"></p>
+        <p class="card-help" th:if="${license.pro && license.email != ''}" th:text="#{settings.plan.licenseOf(${license.email})}"></p>
         <form method="post" th:action="@{/configuracion/licencia}" class="license-form">
             <div class="store-field">
-                <label for="licenseKey">Clave de licencia</label>
+                <label for="licenseKey" th:text="#{settings.license}">Clave de licencia</label>
                 <input id="licenseKey" name="licenseKey" type="text" autocomplete="off"
-                       th:placeholder="${license.maskedKey != '' ? license.maskedKey : 'Pegá la clave que te llegó por mail'}">
+                       th:placeholder="${license.maskedKey != ''} ? ${license.maskedKey} : #{settings.license.placeholder}">
             </div>
-            <button class="secondary-button" type="submit">Guardar licencia</button>
+            <button class="secondary-button" type="submit" th:text="#{settings.license.save}">Guardar licencia</button>
         </form>
     </section>
 </main>
 
-<div th:replace="~{fragments/layout :: loading('Guardando configuracion', 'Subiendo credenciales, preparando cache y conectando el Sheet...')}"></div>
+<div th:replace="~{fragments/layout :: loading(#{loading.settings.title}, #{loading.settings.message})}"></div>
 </body>
 </html>
 

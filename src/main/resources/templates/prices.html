@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Precios | TCG Inventory</title>
+    <title th:text="#{nav.prices} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Historial de precios')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{nav.prices})}"></header>
 <div th:replace="~{fragments/layout :: menu('prices')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Precios</p>
-            <h1>Historial de precios</h1>
-            <p class="supporting">Cada vez que sincronizás, la app anota en la hoja "Precios" de tu Sheet las cartas
+            <p class="eyebrow" th:text="#{rev.prices}">Precios</p>
+            <h1 th:text="#{nav.prices}">Historial de precios</h1>
+            <p class="supporting" th:text="#{prices.supporting}">Cada vez que sincronizás, la app anota en la hoja "Precios" de tu Sheet las cartas
                 cuyo precio cambió. Así ves qué subió y qué bajó.</p>
         </div>
     </section>
@@ -26,7 +26,7 @@
                 <p class="eyebrow" th:text="${selected.setName + (selected.setCode != null && selected.setCode != '' ? ' · ' + selected.setCode + ' ' + selected.collectorNumber : '')}">Commander Masters · CMM 410</p>
                 <h2 th:text="${selected.name}">Sol Ring</h2>
             </div>
-            <a class="secondary-button" th:href="@{/precios}">Ver todas</a>
+            <a class="secondary-button" th:href="@{/precios}" th:text="#{prices.seeAll}">Ver todas</a>
         </div>
 
         <div class="price-chart" th:if="${chart != null}">
@@ -35,7 +35,7 @@
                 <span th:text="${chart.minLabel}">$ 3.000</span>
             </div>
             <svg th:attr="viewBox=${'0 0 ' + chart.width + ' ' + chart.height}" preserveAspectRatio="none"
-                 role="img" aria-label="Evolución del precio local">
+                 role="img" th:aria-label="#{prices.chart.aria}">
                 <polyline th:attr="points=${chart.localLine}" fill="none" class="price-line"></polyline>
             </svg>
             <div class="price-chart-dates">
@@ -43,15 +43,15 @@
                 <span th:text="${chart.lastDate}">03/11/2026</span>
             </div>
         </div>
-        <p class="supporting" th:if="${chart == null}">Todavía hay un solo precio anotado. El gráfico aparece cuando
+        <p class="supporting" th:if="${chart == null}" th:text="#{prices.onePoint}">Todavía hay un solo precio anotado. El gráfico aparece cuando
             el precio cambie en una próxima sincronización.</p>
 
         <div class="table-wrap">
             <table class="price-history-table">
                 <thead>
                 <tr>
-                    <th>Fecha</th>
-                    <th>Tu precio</th>
+                    <th th:text="#{common.date}">Fecha</th>
+                    <th th:text="#{dash.col.yourPrice}">Tu precio</th>
                     <th>CK USD</th>
                     <th>TCGplayer</th>
                     <th>Cardmarket</th>
@@ -66,7 +66,7 @@
                     <td th:text="${row.cardmarket}">-</td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(historyRows)}">
-                    <td class="empty" colspan="5">Sin precios anotados para esta carta todavía.</td>
+                    <td class="empty" colspan="5" th:text="#{prices.noRows}">Sin precios anotados para esta carta todavía.</td>
                 </tr>
                 </tbody>
             </table>
@@ -77,24 +77,24 @@
         <p class="alert error" th:if="${priceError}" th:text="${priceError}"></p>
         <div class="section-head">
             <div>
-                <p class="eyebrow">Inventario</p>
-                <h2>Variación en los últimos 30 días</h2>
+                <p class="eyebrow" th:text="#{layout.section.inventory}">Inventario</p>
+                <h2 th:text="#{prices.trend.title}">Variación en los últimos 30 días</h2>
             </div>
-            <input id="price-filter" class="price-filter" type="search" placeholder="Filtrar por nombre"
-                   aria-label="Filtrar cartas por nombre">
+            <input id="price-filter" class="price-filter" type="search" th:placeholder="#{prices.filter}"
+                   th:aria-label="#{prices.filter.aria}">
         </div>
-        <p class="supporting" th:if="${!hasHistory and priceError == null}">Todavía no hay historial. Se empieza a
+        <p class="supporting" th:if="${!hasHistory and priceError == null}" th:text="#{prices.noHistory}">Todavía no hay historial. Se empieza a
             guardar en la próxima sincronización desde Inicio.</p>
 
         <div class="table-wrap" th:if="${!#lists.isEmpty(trends)}">
             <table class="price-trend-table">
                 <thead>
                 <tr>
-                    <th>Carta</th>
-                    <th>Set</th>
-                    <th>Tu precio</th>
+                    <th th:text="#{common.card}">Carta</th>
+                    <th th:text="#{common.set}">Set</th>
+                    <th th:text="#{dash.col.yourPrice}">Tu precio</th>
                     <th>CK USD</th>
-                    <th>30 días</th>
+                    <th th:text="#{prices.col.30days}">30 días</th>
                     <th></th>
                 </tr>
                 </thead>
@@ -110,7 +110,7 @@
                               th:text="${trend.formattedChange()}">+12%</span>
                         <span th:if="${trend.changePercent == null}" class="muted">-</span>
                     </td>
-                    <td><a class="text-link" th:if="${trend.points > 0}" th:href="@{/precios(card=${trend.cardId})}">Ver historial</a></td>
+                    <td><a class="text-link" th:if="${trend.points > 0}" th:href="@{/precios(card=${trend.cardId})}" th:text="#{rev.seeHistory}">Ver historial</a></td>
                 </tr>
                 </tbody>
             </table>

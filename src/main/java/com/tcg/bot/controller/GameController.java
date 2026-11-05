@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.Game;
 import com.tcg.bot.model.GamePrint;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
@@ -59,8 +60,7 @@ public class GameController {
         } catch (Exception e) {
             log.warn("No se pudo leer el inventario de {}.", game.label(), e);
             model.addAttribute("cards", List.of());
-            model.addAttribute("gameError", "No se pudo leer la pestaña " + game.sheetName()
-                    + " del Sheet. Revisá la conexión en Configuración.");
+            model.addAttribute("gameError", I18n.t("games.err.read", game.sheetName()));
         }
         return "games";
     }
@@ -84,12 +84,12 @@ public class GameController {
         try {
             var card = gameInventoryService.add(game, new GamePrint(catalogId, name, setName, setCode, number, rarity,
                     finish, "", Amounts.parseOrNull(usd), ""));
-            redirect.addFlashAttribute("gameMessage", card.getName() + ": ahora hay " + card.getQuantity() + " en stock.");
+            redirect.addFlashAttribute("gameMessage", I18n.t("games.nowInStock", card.getName(), card.getQuantity()));
         } catch (StockOperationException e) {
             redirect.addFlashAttribute("gameError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo agregar la carta de {}.", game.label(), e);
-            redirect.addFlashAttribute("gameError", "No se pudo guardar en el Sheet: " + e.getMessage());
+            redirect.addFlashAttribute("gameError", I18n.t("err.saveSheet", e.getMessage()));
         }
         return back(game, q);
     }
@@ -126,7 +126,7 @@ public class GameController {
         } catch (Exception e) {
             log.warn("No se pudo crear la fila de {}.", game.label(), e);
             return org.springframework.http.ResponseEntity.internalServerError()
-                    .body(java.util.Map.of("error", "No se pudo guardar en el Sheet: " + e.getMessage()));
+                    .body(java.util.Map.of("error", I18n.t("err.saveSheet", e.getMessage())));
         }
     }
 
@@ -138,19 +138,18 @@ public class GameController {
             root = root.getCause();
         }
         if (detail.contains("429")) {
-            return "El catálogo de " + game.label() + " pidió que esperemos: hubo demasiadas consultas seguidas. "
-                    + "Probá en unos minutos; las búsquedas que ya hiciste se guardan una hora.";
+            return I18n.t("games.err.rateLimit", game.label());
         }
         if (root instanceof java.net.http.HttpTimeoutException || root instanceof java.net.SocketTimeoutException) {
-            return "El catálogo de " + game.label() + " tardó demasiado en responder. Probá de nuevo en un rato.";
+            return I18n.t("games.err.timeout", game.label());
         }
         if (root instanceof java.net.UnknownHostException || root instanceof java.net.ConnectException) {
-            return "No hay conexión con el catálogo de " + game.label() + ". Revisá internet y probá de nuevo.";
+            return I18n.t("games.err.offline", game.label());
         }
         if (detail.contains("respondió 5")) {
-            return "El catálogo de " + game.label() + " está caído en este momento. Probá más tarde.";
+            return I18n.t("games.err.down", game.label());
         }
-        return "No se pudo consultar el catálogo de " + game.label() + " (" + e.getMessage() + "). Probá de nuevo.";
+        return I18n.t("games.err.other", game.label(), e.getMessage());
     }
 
     @PostMapping("/juegos/{slug}/stock")
@@ -168,13 +167,13 @@ public class GameController {
             boolean sale = "sale".equals(reason) && change < 0;
             var card = gameInventoryService.change(game, id, change > 0 ? 1 : -1, sale);
             redirect.addFlashAttribute("gameMessage", sale
-                    ? "Vendida " + card.getName() + " por " + card.formattedLocalPrice() + ". Ya está en la caja."
-                    : card.getName() + ": ahora hay " + card.getQuantity() + " en stock.");
+                    ? I18n.t("games.sold", card.getName(), card.formattedLocalPrice())
+                    : I18n.t("games.nowInStock", card.getName(), card.getQuantity()));
         } catch (StockOperationException e) {
             redirect.addFlashAttribute("gameError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo cambiar el stock de {}.", game.label(), e);
-            redirect.addFlashAttribute("gameError", "No se pudo guardar en el Sheet: " + e.getMessage());
+            redirect.addFlashAttribute("gameError", I18n.t("err.saveSheet", e.getMessage()));
         }
         return back(game, q);
     }
@@ -188,11 +187,11 @@ public class GameController {
         try {
             int changed = gameInventoryService.refreshPrices(game);
             redirect.addFlashAttribute("gameMessage", changed == 0
-                    ? "Precios al día: no cambió ninguno."
-                    : "Se actualizaron los precios de " + changed + (changed == 1 ? " carta." : " cartas."));
+                    ? I18n.t("games.prices.same")
+                    : I18n.t("games.prices.updated", changed));
         } catch (Exception e) {
             log.warn("No se pudieron actualizar los precios de {}.", game.label(), e);
-            redirect.addFlashAttribute("gameError", "No se pudieron actualizar los precios: " + e.getMessage());
+            redirect.addFlashAttribute("gameError", I18n.t("games.prices.error", e.getMessage()));
         }
         return back(game, null);
     }

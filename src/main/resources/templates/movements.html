@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Movimientos | TCG Inventory</title>
+    <title th:text="#{mov.title} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Historial de stock')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{mov.subtitle})}"></header>
 <div th:replace="~{fragments/layout :: menu('movements')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Historial</p>
-            <h1>Movimientos de stock</h1>
-            <p class="supporting">Revisa entradas, ventas y caja diaria desde un mismo lugar.</p>
+            <p class="eyebrow" th:text="#{mov.eyebrow}">Historial</p>
+            <h1 th:text="#{mov.h1}">Movimientos de stock</h1>
+            <p class="supporting" th:text="#{mov.supporting}">Revisa entradas, ventas y caja diaria desde un mismo lugar.</p>
         </div>
     </section>
 
@@ -25,19 +25,19 @@
         <p class="alert error" th:if="${cashError}" th:text="${cashError}"></p>
         <p class="alert success" th:if="${cashMessage}" th:text="${cashMessage}"></p>
 
-        <div class="movement-tab-list" role="tablist" aria-label="Secciones de movimientos">
+        <div class="movement-tab-list" role="tablist" th:aria-label="#{mov.tabs}">
             <button th:classappend="${activeTab == 'movements'} ? ' active' : ''"
                     class="movement-tab-button" type="button" role="tab"
                     th:attr="aria-selected=${activeTab == 'movements'}"
-                    data-tab-target="movements-tab">Movimientos</button>
+                    data-tab-target="movements-tab" th:text="#{mov.tab.movements}">Movimientos</button>
             <button th:classappend="${activeTab == 'cash'} ? ' active' : ''"
                     class="movement-tab-button" type="button" role="tab"
                     th:attr="aria-selected=${activeTab == 'cash'}"
-                    data-tab-target="cash-tab">Caja</button>
+                    data-tab-target="cash-tab" th:text="#{mov.tab.cash}">Caja</button>
             <button th:classappend="${activeTab == 'report'} ? ' active' : ''"
                     class="movement-tab-button" type="button" role="tab"
                     th:attr="aria-selected=${activeTab == 'report'}"
-                    data-tab-target="report-tab">Reporte</button>
+                    data-tab-target="report-tab" th:text="#{mov.tab.report}">Reporte</button>
         </div>
 
         <div id="movements-tab" class="movement-tab-panel" role="tabpanel"
@@ -45,27 +45,27 @@
              th:hidden="${activeTab != 'movements'}">
             <div class="section-head movement-tabs-head">
                 <div>
-                    <p class="eyebrow">Registro</p>
-                    <h2 th:text="${movementCount + ' ' + movementCountLabel}">0 movimientos hoy</h2>
+                    <p class="eyebrow" th:text="#{mov.log}">Registro</p>
+                    <h2 th:text="${movementCountLabel}">0 movimientos hoy</h2>
                 </div>
-                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar movimientos.">
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" th:data-required-date-message="#{mov.dateRequired}">
                     <input type="hidden" name="tab" value="movements">
                     <input type="hidden" name="movementFilter" value="true">
                     <div class="movement-date-field">
                         <div class="movement-date-control">
-                            <label for="movement-date">Fecha</label>
+                            <label for="movement-date" th:text="#{common.date}">Fecha</label>
                             <input id="movement-date" name="movementDate" type="date" th:value="${selectedMovementDate}"
                                    aria-describedby="movement-date-error">
                         </div>
                         <p id="movement-date-error" class="field-error"
                            th:hidden="${movementDateError == null}"
-                           th:text="${movementDateError ?: 'Elegi una fecha para filtrar movimientos.'}">
+                           th:text="${movementDateError} ?: #{mov.dateRequired}">
                             Elegi una fecha para filtrar movimientos.
                         </p>
                     </div>
-                    <button class="secondary-button" type="submit">Filtrar</button>
+                    <button class="secondary-button" type="submit" th:text="#{mov.filter}">Filtrar</button>
                     <a class="clear-search-button" th:if="${selectedMovementDate != null && selectedMovementDate != ''}"
-                       th:href="@{/movimientos(tab='movements', cashDate=${selectedCashDate})}" aria-label="Borrar filtro" title="Borrar filtro">
+                       th:href="@{/movimientos(tab='movements', cashDate=${selectedCashDate})}" th:aria-label="#{mov.clearFilter}" th:title="#{mov.clearFilter}">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M14.5 3.5 21 10l-2 2-6.5-6.5 2-2Z"/>
                             <path d="M11.8 6.2 17.8 12.2 10.8 19.2H4.5L3 17.7l8.8-11.5Z"/>
@@ -77,30 +77,30 @@
             </div>
 
             <div class="placeholder" th:if="${#lists.isEmpty(movements)}">
-                <strong>No hay movimientos registrados</strong>
-                <p>Cuando agregues, importes o vendas cartas desde la app, van a aparecer aca.</p>
+                <strong th:text="#{mov.empty.title}">No hay movimientos registrados</strong>
+                <p th:text="#{mov.empty.text}">Cuando agregues, importes o vendas cartas desde la app, van a aparecer aca.</p>
             </div>
 
             <div class="movement-month-list" th:unless="${#lists.isEmpty(movementGroups)}">
                 <details class="movement-month" th:each="group : ${movementGroups}" th:open="${group.open}">
                     <summary>
                         <span th:text="${group.label}">Junio 2026</span>
-                        <strong th:text="${group.count + ' movimientos'}">12 movimientos</strong>
+                        <strong th:text="#{mov.count(${group.count})}">12 movimientos</strong>
                     </summary>
                     <div class="table-wrap movement-table-wrap">
                         <table class="movement-table">
                             <thead>
                             <tr>
-                                <th>Fecha</th>
-                                <th>Hora</th>
-                                <th>Cant.</th>
-                                <th>Carta</th>
-                                <th>Set</th>
-                                <th>Codigo</th>
-                                <th>Nro.</th>
+                                <th th:text="#{common.date}">Fecha</th>
+                                <th th:text="#{mov.col.time}">Hora</th>
+                                <th th:text="#{mov.col.qty}">Cant.</th>
+                                <th th:text="#{common.card}">Carta</th>
+                                <th th:text="#{common.set}">Set</th>
+                                <th th:text="#{dash.col.code}">Codigo</th>
+                                <th th:text="#{dash.col.number}">Nro.</th>
                                 <th>Printing</th>
-                                <th>Stock actual</th>
-                                <th>Accion</th>
+                                <th th:text="#{mov.col.currentStock}">Stock actual</th>
+                                <th th:text="#{dash.col.action}">Accion</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -114,7 +114,7 @@
                                 <td th:text="${movement.collectorNumber != null && movement.collectorNumber != '' ? movement.collectorNumber : '-'}">410</td>
                                 <td th:text="${movement.printing != null && movement.printing != '' ? movement.printing : '-'}">nonfoil</td>
                                 <td th:text="${movement.newStock != null && movement.newStock != '' ? movement.newStock : '-'}">1</td>
-                                <td th:text="${movement.source != null && movement.source != '' ? movement.source : '-'}">Busqueda</td>
+                                <td th:text="${movement.source != null && movement.source != ''} ? (${#messages.msgOrNull('source.' + #strings.replace(movement.source, ' ', '_'))} ?: ${movement.source}) : '-'">Busqueda</td>
                             </tr>
                             </tbody>
                         </table>
@@ -128,27 +128,27 @@
              th:hidden="${activeTab != 'cash'}">
             <div class="section-head movement-tabs-head">
                 <div>
-                    <p class="eyebrow">Caja</p>
-                    <h2>Ventas registradas</h2>
+                    <p class="eyebrow" th:text="#{mov.tab.cash}">Caja</p>
+                    <h2 th:text="#{mov.cash.title}">Ventas registradas</h2>
                 </div>
-                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" data-required-date-message="Elegi una fecha para filtrar caja.">
+                <form class="movement-filter-form" method="get" th:action="@{/movimientos}" th:data-required-date-message="#{mov.cash.dateRequired}">
                     <input type="hidden" name="tab" value="cash">
                     <input type="hidden" name="cashFilter" value="true">
                     <div class="movement-date-field">
                         <div class="movement-date-control">
-                            <label for="cash-date">Fecha</label>
+                            <label for="cash-date" th:text="#{common.date}">Fecha</label>
                             <input id="cash-date" name="cashDate" type="date" th:value="${selectedCashDate}"
                                    aria-describedby="cash-date-error">
                         </div>
                         <p id="cash-date-error" class="field-error"
                            th:hidden="${cashDateError == null}"
-                           th:text="${cashDateError ?: 'Elegi una fecha para filtrar caja.'}">
+                           th:text="${cashDateError} ?: #{mov.cash.dateRequired}">
                             Elegi una fecha para filtrar caja.
                         </p>
                     </div>
-                    <button class="secondary-button" type="submit">Filtrar</button>
+                    <button class="secondary-button" type="submit" th:text="#{mov.filter}">Filtrar</button>
                     <a class="clear-search-button" th:if="${selectedCashDate != null && selectedCashDate != ''}"
-                       th:href="@{/movimientos(tab='cash', movementDate=${selectedMovementDate})}" aria-label="Borrar filtro" title="Borrar filtro">
+                       th:href="@{/movimientos(tab='cash', movementDate=${selectedMovementDate})}" th:aria-label="#{mov.clearFilter}" th:title="#{mov.clearFilter}">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M14.5 3.5 21 10l-2 2-6.5-6.5 2-2Z"/>
                             <path d="M11.8 6.2 17.8 12.2 10.8 19.2H4.5L3 17.7l8.8-11.5Z"/>
@@ -161,47 +161,47 @@
 
             <div class="cash-summary-grid">
                 <a class="cash-summary-card cash-summary-link" th:href="@{/caja/cierre}">
-                    <span>Ventas de hoy · cerrar caja →</span>
-                    <strong th:text="${'$ ' + cashTodayTotal}">$ 0</strong>
+                    <span th:text="#{mov.cash.today}">Ventas de hoy · cerrar caja →</span>
+                    <strong th:text="${currencySymbol + ' ' + cashTodayTotal}">$ 0</strong>
                 </a>
                 <div class="cash-summary-card" th:if="${selectedCashDate != null && selectedCashDate != ''}">
-                    <span>Total filtrado</span>
-                    <strong th:text="${'$ ' + cashSelectedTotal}">$ 0</strong>
+                    <span th:text="#{mov.cash.filtered}">Total filtrado</span>
+                    <strong th:text="${currencySymbol + ' ' + cashSelectedTotal}">$ 0</strong>
                 </div>
             </div>
 
             <div class="placeholder" th:if="${#lists.isEmpty(cashGroups)}">
-                <strong>No hay ventas registradas</strong>
-                <p>Cuando vendas cartas desde la app, se van a registrar automaticamente en esta caja y en la hoja Caja.</p>
+                <strong th:text="#{mov.cash.empty.title}">No hay ventas registradas</strong>
+                <p th:text="#{mov.cash.empty.text}">Cuando vendas cartas desde la app, se van a registrar automaticamente en esta caja y en la hoja Caja.</p>
             </div>
 
             <div class="movement-month-list cash-month-list" th:unless="${#lists.isEmpty(cashGroups)}">
                 <details class="movement-month cash-month" th:each="group : ${cashGroups}" th:open="${group.open}">
                     <summary>
                         <span th:text="${group.label}">Junio 2026</span>
-                        <strong th:text="${group.count + ' dias'}">1 dias</strong>
+                        <strong th:text="#{mov.days(${group.count})}">1 dias</strong>
                     </summary>
 
                     <div class="cash-day-list">
                         <details class="cash-day" th:each="day : ${group.days}" th:open="${day.open}">
                             <summary>
                                 <span th:text="${day.formattedDate}">01/06/2026</span>
-                                <strong th:text="${'$ ' + day.formattedTotal}">$ 0</strong>
+                                <strong th:text="${currencySymbol + ' ' + day.formattedTotal}">$ 0</strong>
                             </summary>
 
                             <div class="table-wrap cash-table-wrap">
                                 <table class="cash-table">
                                     <thead>
                                     <tr>
-                                        <th>Hora</th>
-                                        <th>Carta</th>
-                                        <th>Set</th>
-                                        <th>Codigo/Nro.</th>
+                                        <th th:text="#{mov.col.time}">Hora</th>
+                                        <th th:text="#{common.card}">Carta</th>
+                                        <th th:text="#{common.set}">Set</th>
+                                        <th th:text="#{dash.col.codeNumber}">Codigo/Nro.</th>
                                         <th>Printing</th>
-                                        <th>Precio</th>
-                                        <th>Cant.</th>
-                                        <th>Total</th>
-                                        <th>Estado</th>
+                                        <th th:text="#{common.price}">Precio</th>
+                                        <th th:text="#{mov.col.qty}">Cant.</th>
+                                        <th th:text="#{common.total}">Total</th>
+                                        <th th:text="#{mov.col.status}">Estado</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -212,30 +212,30 @@
                                         <td th:text="${entry.setName != null && entry.setName != '' ? entry.setName : '-'}">Commander Masters</td>
                                         <td th:text="${(entry.setCode != null && entry.setCode != '' ? entry.setCode : '-') + ' / ' + (entry.collectorNumber != null && entry.collectorNumber != '' ? entry.collectorNumber : '-')}">CMM / 410</td>
                                         <td th:text="${entry.printing != null && entry.printing != '' ? entry.printing : '-'}">nonfoil</td>
-                                        <td th:text="${entry.localPrice != null && entry.localPrice != '' ? '$ ' + entry.formattedLocalPrice : '-'}">$ 1.000</td>
+                                        <td th:text="${entry.localPrice != null && entry.localPrice != '' ? currencySymbol + ' ' + entry.formattedLocalPrice : '-'}">$ 1.000</td>
                                         <td th:text="${entry.signedQuantity()}">1</td>
-                                        <td class="nowrap" th:text="${entry.drawerAmount() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedTotal}">$ 1.000</td>
+                                        <td class="nowrap" th:text="${(entry.drawerAmount() < 0 ? '-' : '') + currencySymbol + ' ' + entry.formattedTotal}">$ 1.000</td>
                                         <td class="cash-status">
-                                            <span th:if="${entry.isClose()}" class="cash-badge close">Cierre</span>
-                                            <span th:if="${entry.isBuy()}" class="cash-badge close">Compra</span>
-                                            <span th:if="${entry.isCreditUse()}" class="cash-badge close">Crédito</span>
-                                            <span th:if="${entry.isVoid()}" class="cash-badge void">Anulación</span>
-                                            <span th:if="${entry.isVoided()}" class="cash-badge voided">Anulada</span>
+                                            <span th:if="${entry.isClose()}" class="cash-badge close" th:text="#{mov.badge.close}">Cierre</span>
+                                            <span th:if="${entry.isBuy()}" class="cash-badge close" th:text="#{mov.badge.buy}">Compra</span>
+                                            <span th:if="${entry.isCreditUse()}" class="cash-badge close" th:text="#{mov.badge.credit}">Crédito</span>
+                                            <span th:if="${entry.isVoid()}" class="cash-badge void" th:text="#{mov.badge.void}">Anulación</span>
+                                            <span th:if="${entry.isVoided()}" class="cash-badge voided" th:text="#{mov.badge.voided}">Anulada</span>
                                             <form th:if="${entry.canBeVoided()}" method="post" th:action="@{/caja/anular}"
                                                   class="cash-void-form">
                                                 <input type="hidden" name="saleId" th:value="${entry.saleId}">
                                                 <button type="submit" class="text-action"
-                                                        title="Anula la venta: resta el total en caja y devuelve las cartas al stock">
+                                                        th:title="#{mov.void.title}" th:text="#{mov.void}">
                                                     Anular
                                                 </button>
                                             </form>
-                                            <span th:if="${entry.isSale() && !entry.isVoided() && !entry.canBeVoided()}">Venta</span>
+                                            <span th:if="${entry.isSale() && !entry.isVoided() && !entry.canBeVoided()}" th:text="#{mov.badge.sale}">Venta</span>
                                         </td>
                                     </tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <a class="secondary-button cash-close-link" th:href="@{/caja/cierre(fecha=${day.date})}">Cierre de este día</a>
+                            <a class="secondary-button cash-close-link" th:href="@{/caja/cierre(fecha=${day.date})}" th:text="#{mov.cash.closeDay}">Cierre de este día</a>
                         </details>
                     </div>
                 </details>
@@ -246,46 +246,46 @@
              th:classappend="${activeTab == 'report'} ? ' active' : ''"
              th:hidden="${activeTab != 'report'}">
             <div class="placeholder" th:if="${#lists.isEmpty(cashReportMonths)}">
-                <strong>No hay reporte disponible</strong>
-                <p>Cuando haya ventas registradas, el resumen mensual se va a generar solo.</p>
+                <strong th:text="#{mov.report.empty.title}">No hay reporte disponible</strong>
+                <p th:text="#{mov.report.empty.text}">Cuando haya ventas registradas, el resumen mensual se va a generar solo.</p>
             </div>
 
             <div class="report-month-list" th:unless="${#lists.isEmpty(cashReportMonths)}">
                 <article class="report-month-card" th:each="report : ${cashReportMonths}">
                     <div class="report-month-head">
                         <div>
-                            <p class="eyebrow">Reporte mensual</p>
+                            <p class="eyebrow" th:text="#{mov.report.monthly}">Reporte mensual</p>
                             <h3 th:text="${report.label}">Junio 2026</h3>
                         </div>
-                        <strong th:text="${'$ ' + report.totalSales}">$ 0</strong>
+                        <strong th:text="${currencySymbol + ' ' + report.totalSales}">$ 0</strong>
                     </div>
 
                     <div class="report-kpi-grid">
                         <div class="report-kpi">
-                            <span>Cartas vendidas</span>
+                            <span th:text="#{mov.report.sold}">Cartas vendidas</span>
                             <strong th:text="${report.soldQuantity}">0</strong>
                         </div>
                         <div class="report-kpi">
-                            <span>Cartas ingresadas</span>
+                            <span th:text="#{mov.report.entered}">Cartas ingresadas</span>
                             <strong th:text="${report.enteredQuantity}">0</strong>
                         </div>
                         <div class="report-kpi">
-                            <span>Diferencia stock</span>
+                            <span th:text="#{mov.report.balance}">Diferencia stock</span>
                             <strong th:text="${report.balanceQuantity}">0</strong>
                         </div>
                     </div>
 
                     <div class="report-bars">
                         <div class="report-bar-row">
-                            <span>Ventas</span>
+                            <span th:text="#{mov.report.bar.sales}">Ventas</span>
                             <div class="report-bar"><i th:style="${'width:' + report.salesWidth}"></i></div>
                         </div>
                         <div class="report-bar-row">
-                            <span>Vendidas</span>
+                            <span th:text="#{mov.report.bar.sold}">Vendidas</span>
                             <div class="report-bar"><i class="sold" th:style="${'width:' + report.soldWidth}"></i></div>
                         </div>
                         <div class="report-bar-row">
-                            <span>Ingresadas</span>
+                            <span th:text="#{mov.report.bar.entered}">Ingresadas</span>
                             <div class="report-bar"><i class="entered" th:style="${'width:' + report.enteredWidth}"></i></div>
                         </div>
                     </div>
@@ -295,7 +295,7 @@
     </section>
 </main>
 
-<div th:replace="~{fragments/layout :: loading('Sincronizando inventario', 'Leyendo el Sheet, conectando la app y recalculando precios...')}"></div>
+<div th:replace="~{fragments/layout :: loading(#{loading.sync.title}, #{loading.sync.message})}"></div>
 </body>
 </html>
 

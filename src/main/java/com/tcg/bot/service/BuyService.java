@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
@@ -45,18 +46,18 @@ public class BuyService {
 
     public Result buy(String customer, String contact, Payment payment, List<Line> lines) throws Exception {
         if (lines == null || lines.isEmpty()) {
-            throw new StockOperationException("La compra no tiene cartas.");
+            throw new StockOperationException(I18n.t("buy.err.empty"));
         }
         if (payment == Payment.CREDIT && (customer == null || customer.isBlank())) {
-            throw new StockOperationException("Para pagar con crédito poné el nombre del cliente.");
+            throw new StockOperationException(I18n.t("buy.err.customer"));
         }
         for (Line line : lines) {
             if (line.quantity() <= 0 || line.unitPaid() < 0) {
-                throw new StockOperationException("Revisá cantidades y precios de " + line.card().getName() + ".");
+                throw new StockOperationException(I18n.t("buy.err.line", line.card().getName()));
             }
         }
 
-        String who = customer == null || customer.isBlank() ? "cliente" : customer.trim();
+        String who = customer == null || customer.isBlank() ? I18n.t("buy.defaultCustomer") : customer.trim();
         synchronized (StockOperationsService.writeLock()) {
             LocalDateTime now = LocalDateTime.now(stockOperations.clock);
             String reference = "C" + StockOperationsService.newSaleId();
@@ -83,14 +84,13 @@ public class BuyService {
             entry.setSaleId(reference);
             double balance = 0;
             if (payment == Payment.CASH) {
-                entry.setName("Compra a " + who + " (" + units + (units == 1 ? " carta)" : " cartas)"));
+                entry.setName(I18n.t("buy.entry.cash", who, units));
                 entry.setTotal(String.valueOf(Math.round(total)));
                 store.appendCashEntry(entry);
             } else {
-                creditService.add(who, contact, total, "Compra de " + units + (units == 1 ? " carta" : " cartas"), reference);
+                creditService.add(who, contact, total, I18n.t("buy.entry.creditReason", units), reference);
                 balance = creditService.balance(who);
-                entry.setName("Compra a " + who + " (" + units + (units == 1 ? " carta" : " cartas")
-                        + ", pagada con $ " + CreditService.ars(total) + " de crédito)");
+                entry.setName(I18n.t("buy.entry.credit", who, units, com.tcg.bot.i18n.Money.symbol() + " " + CreditService.ars(total)));
                 entry.setTotal("0");
                 store.appendCashEntry(entry);
             }

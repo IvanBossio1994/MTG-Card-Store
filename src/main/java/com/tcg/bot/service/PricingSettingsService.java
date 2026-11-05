@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -125,7 +126,7 @@ public class PricingSettingsService {
             CombineMode newCombineMode
     ) throws IOException {
         if (newCardmarketEnabled && newEurRate <= 0) {
-            throw new IllegalArgumentException("Para usar Cardmarket cargá la cotización del euro.");
+            throw new IllegalArgumentException(I18n.t("err.pricing.eur"));
         }
 
         tcgplayerEnabled = newTcgplayerEnabled;
@@ -146,19 +147,19 @@ public class PricingSettingsService {
             double newMinimumPrice
     ) throws IOException {
         if (newMarkupPercent <= -100) {
-            throw new IllegalArgumentException("El recargo tiene que ser mayor a -100%.");
+            throw new IllegalArgumentException(I18n.t("err.pricing.markup"));
         }
 
         if (newMinimumPrice < 0) {
-            throw new IllegalArgumentException("El precio minimo no puede ser negativo.");
+            throw new IllegalArgumentException(I18n.t("err.pricing.minimum"));
         }
 
         if (newCkDollarRate <= 0) {
-            throw new IllegalArgumentException("La cotizacion debe ser mayor a cero.");
+            throw new IllegalArgumentException(I18n.t("err.pricing.rate"));
         }
 
         if (newRoundMultiple <= 0) {
-            throw new IllegalArgumentException("El multiplo debe ser mayor a cero.");
+            throw new IllegalArgumentException(I18n.t("err.pricing.multiple"));
         }
 
         Properties properties = new Properties();

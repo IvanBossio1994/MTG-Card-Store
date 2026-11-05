@@ -1,3 +1,16 @@
+// Textos traducidos: los pone el servidor en window.I18N (claves js.* de messages*.properties).
+const I18N = window.I18N || {};
+const APP_LANG = window.APP_LANG || "es";
+const APP_CURRENCY = window.APP_CURRENCY || "$";
+
+function t(key, ...args) {
+    let text = Object.prototype.hasOwnProperty.call(I18N, key) ? I18N[key] : key;
+    args.forEach((value, index) => {
+        text = text.split("{" + index + "}").join(String(value));
+    });
+    return text;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const menuButton = document.getElementById("menu-button");
     const appMenu = document.getElementById("app-menu");
@@ -31,6 +44,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (event.key === "Escape") {
                 closeMenu();
             }
+        });
+    }
+
+    const languageSelect = document.getElementById("language-select");
+    if (languageSelect) {
+        languageSelect.addEventListener("change", () => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("lang", languageSelect.value);
+            window.location.href = url.toString();
         });
     }
 
@@ -109,9 +131,9 @@ document.addEventListener("DOMContentLoaded", () => {
         updateForm.addEventListener("submit", () => {
             showLoadingOverlay(
                 updateForm,
-                "Sincronizando...",
-                "Sincronizando inventario",
-                "Leyendo el Sheet, conectando la app y recalculando precios..."
+                t("syncing"),
+                t("syncTitle"),
+                t("syncMessage")
             );
         });
     }
@@ -121,9 +143,9 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             showLoadingOverlay(
                 storeForm,
-                "Guardando...",
-                "Guardando configuracion",
-                "Preparando cache, revisando credenciales y conectando el Sheet..."
+                t("saving"),
+                t("saveSettingsTitle"),
+                t("saveSettingsMessage")
             );
 
             try {
@@ -137,11 +159,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const result = await response.json();
-                hideLoadingOverlay(storeForm, "Guardar configuracion");
-                showStoreMessage(Boolean(result.success), result.message || "No se pudo guardar la configuracion.");
+                hideLoadingOverlay(storeForm, t("saveSettings"));
+                showStoreMessage(Boolean(result.success), result.message || t("saveSettingsError"));
             } catch (error) {
-                hideLoadingOverlay(storeForm, "Guardar configuracion");
-                showStoreMessage(false, "No se pudo guardar la configuracion. Revisa la conexion y volve a intentar.");
+                hideLoadingOverlay(storeForm, t("saveSettings"));
+                showStoreMessage(false, t("saveSettingsNetworkError"));
             }
         });
     }
@@ -166,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (importListError) {
                     importListError.hidden = false;
-                    importListError.textContent = "Agrega al menos una carta para analizar la lista.";
+                    importListError.textContent = t("importListRequired");
                 }
 
                 rawList.focus();
@@ -175,9 +197,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             showLoadingOverlay(
                 importAnalyzeForm,
-                "Analizando...",
-                "Analizando lista",
-                "Buscando versiones, revisando stock y comparando resultados..."
+                t("analyzing"),
+                t("importTitle"),
+                t("importMessage")
             );
         });
     }
@@ -186,9 +208,9 @@ document.addEventListener("DOMContentLoaded", () => {
         importConfirmForm.addEventListener("submit", () => {
             showLoadingOverlay(
                 importConfirmForm,
-                "Añadiendo...",
-                "Añadiendo al stock",
-                "Guardando las cartas seleccionadas en Google Sheet..."
+                t("adding"),
+                t("importConfirmTitle"),
+                t("importConfirmMessage")
             );
         });
     }
@@ -241,7 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             event.preventDefault();
             dateInput.setAttribute("aria-invalid", "true");
-            dateError.textContent = form.dataset.requiredDateMessage || "Elegi una fecha para filtrar.";
+            dateError.textContent = form.dataset.requiredDateMessage || t("dateRequired");
             dateError.hidden = false;
             dateInput.focus();
         });
@@ -297,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.hidden = index < startIndex || index >= endIndex;
             });
 
-            status.textContent = `Pagina ${currentPage} de ${totalPages}`;
+            status.textContent = t("pageOf", currentPage, totalPages);
             previousButton.disabled = currentPage <= 1;
             nextButton.disabled = currentPage >= totalPages;
         };
@@ -349,7 +371,7 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             searchControl.classList.add("invalid");
             searchInput?.setAttribute("aria-invalid", "true");
-            searchFormatError.textContent = "Completa al menos un filtro para buscar.";
+            searchFormatError.textContent = t("searchFillOne");
             searchFormatError.hidden = false;
             searchInput?.focus();
         });
@@ -505,8 +527,8 @@ document.addEventListener("DOMContentLoaded", () => {
             stockFilterButton.setAttribute("aria-pressed", String(filterActive));
             stockFilterButton.classList.toggle("active", filterActive);
             stockFilterButton.title = filterActive
-                ? "Mostrar todas las cartas"
-                : "Mostrar solo cartas con stock local";
+                ? t("showAllCards")
+                : t("showOnlyStock");
 
             stockFilterRows.forEach(row => {
                 row.hidden = filterActive && row.dataset.inStock !== "true";
@@ -535,7 +557,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const file = credentialsInput.files[0];
             credentialsFileName.textContent = file
                 ? file.name
-                : "Archivo .json privado que te pasan por fuera de GitHub";
+                : t("credentialsFile");
         });
     }
 
@@ -551,7 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             logoFileName.textContent = file
                 ? file.name
-                : "PNG, JPG o WEBP, hasta 2 MB";
+                : t("logoHelp");
 
             if (!file) {
                 logoPreview.src = defaultLogo;
@@ -571,7 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
         removeLogoButton.addEventListener("click", () => {
             logoInput.value = "";
             logoPreview.src = defaultLogo;
-            logoFileName.textContent = "PNG, JPG o WEBP, hasta 2 MB";
+            logoFileName.textContent = t("logoHelp");
 
             if (removeLogoInput) {
                 removeLogoInput.value = "true";
@@ -619,7 +641,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (selectAllImportResultsLabel) {
                 selectAllImportResultsLabel.textContent =
-                        `Seleccionar todas las cartas (${selectedCount} seleccionadas)`;
+                        t("selectAll", selectedCount);
             }
         };
 
@@ -800,7 +822,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if ((!rowIndex || rowIndex === "0") && !increase) {
                         showToast(
-                            "Primero agregá esta impresión al Sheet",
+                            t("addPrintFirst"),
                             "error"
                         );
                         return;
@@ -811,7 +833,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         if (!sku) {
                             showToast(
-                                "No se pudo identificar la carta",
+                                t("cardNotIdentified"),
                                 "error"
                             );
                             return;
@@ -834,7 +856,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         if (!response.ok) {
                             showToast(
-                                await responseMessage(response, "Error agregando carta al Sheet"),
+                                await responseMessage(response, t("addCardError")),
                                 "error"
                             );
                             return;
@@ -854,7 +876,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 decreaseButton.dataset.row = newRowIndex;
                                 decreaseButton.dataset.cardId = result.cardId || "";
                                 decreaseButton.disabled = false;
-                                decreaseButton.title = "Registrar unidad vendida";
+                                decreaseButton.title = t("registerSold");
                             }
                         }
 
@@ -868,10 +890,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
 
                         updateStockSummary();
-                        button.title = "Agregar una unidad";
+                        button.title = t("addUnit");
 
                         showToast(
-                            "Carta agregada al Sheet",
+                            t("cardAdded"),
                             "success"
                         );
 
@@ -898,7 +920,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (!response.ok) {
                         showToast(
-                            await responseMessage(response, "Error actualizando stock"),
+                            await responseMessage(response, t("stockError")),
                             "error"
                         );
 
@@ -918,8 +940,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     showToast(
                         result.message || (
                             increase
-                                ? "Unidad agregada"
-                                : "Unidad vendida"
+                                ? t("unitAdded")
+                                : t("unitSold")
                         ),
                         "success"
                     );
@@ -929,7 +951,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.error(e);
 
                     showToast(
-                        "Error actualizando stock",
+                        t("stockError"),
                         "error"
                     );
 
@@ -953,7 +975,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 0);
 
         stockSummary.hidden = total <= 0;
-        stockSummary.textContent = `STOCK LOCAL (${total})`;
+        stockSummary.textContent = t("localStock", total);
     }
 
     function syncStockRows(rowIndex, quantity, action) {
@@ -975,13 +997,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (relatedButton.classList.contains("decrease")) {
                 relatedButton.disabled = normalizedQuantity <= 0;
                 relatedButton.title = normalizedQuantity <= 0
-                        ? "No hay unidades para vender"
-                        : "Registrar unidad vendida";
+                        ? t("noUnitsToSell")
+                        : t("registerSold");
             }
 
             if (relatedButton.classList.contains("increase")) {
                 relatedButton.disabled = false;
-                relatedButton.title = "Agregar una unidad";
+                relatedButton.title = t("addUnit");
             }
         });
 
@@ -1006,7 +1028,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const status = row.querySelector(".stock-action-status");
 
                 if (status) {
-                    status.textContent = normalizedAction;
+                    const actionKey = "action." + normalizedAction.replace(/\s+/g, "_");
+                    status.textContent = Object.prototype.hasOwnProperty.call(I18N, actionKey)
+                        ? I18N[actionKey]
+                        : normalizedAction;
                     status.classList.remove("con-stock", "sin-stock");
                     status.classList.add(
                         normalizedAction.toLowerCase().replace(/\s+/g, "-")
@@ -1053,10 +1078,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // si se pierde, se vuelve a armar desde la búsqueda.
     const ORDER_KEY = "tcg-order-draft";
     const CART_OPEN_KEY = "tcg-cart-open";
-    const moneyFormat = new Intl.NumberFormat("es-AR", {maximumFractionDigits: 0});
+    const moneyFormat = new Intl.NumberFormat(APP_LANG, {maximumFractionDigits: 0});
 
     function money(value) {
-        return "$ " + moneyFormat.format(Math.round(Number(value) || 0));
+        return APP_CURRENCY + " " + moneyFormat.format(Math.round(Number(value) || 0));
     }
 
     function readOrder() {
@@ -1094,7 +1119,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const next = item.quantity + delta;
         if (delta > 0 && item.stock && next > item.stock) {
-            showToast("No hay más unidades de " + item.name + " en stock", "error");
+            showToast(t("noMoreUnitsOf", item.name), "error");
             return;
         }
         if (next <= 0) {
@@ -1112,7 +1137,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const info = document.createElement("div");
         info.className = "cart-item-info";
         const name = document.createElement("strong");
-        name.textContent = item.name || "Carta";
+        name.textContent = item.name || t("card");
         name.title = item.name || "";
         const set = document.createElement("span");
         set.textContent = item.set || "";
@@ -1120,17 +1145,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const meta = document.createElement("span");
         const price = Number(item.price) || 0;
         const left = item.stock ? Math.max(item.stock - item.quantity, 0) : null;
-        const leftText = left === null ? "" : " · quedan " + left;
+        const leftText = left === null ? "" : " · " + t("left", left);
         if (price > 0) {
-            meta.textContent = money(price) + " c/u" + leftText;
+            meta.textContent = money(price) + " " + t("each") + leftText;
         } else {
             // Sin precio: se pone acá mismo y queda guardado en el Sheet para todas las unidades.
             meta.classList.add("warn");
             const setPrice = document.createElement("button");
             setPrice.type = "button";
             setPrice.className = "set-price-inline";
-            setPrice.textContent = "sin precio · poner precio";
-            setPrice.title = "Card Kingdom no tiene precio: escribí el precio de tu local";
+            setPrice.textContent = t("noPriceSet");
+            setPrice.title = t("noPriceSetTitle");
             setPrice.addEventListener("click", () => openPriceEditor(meta,
                 {cardId: item.cardId, name: item.name},
                 result => applyManualPrice(item.cardId, result.price)));
@@ -1145,7 +1170,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const note = document.createElement("span");
             note.className = "manual-note";
             note.title = manualPriceHint(item.set);
-            note.textContent = "⚠ Último precio puesto a mano (" + manualPriceSource(item.set) + ")";
+            note.textContent = "⚠ " + t("manualPriceNote", manualPriceSource(item.set));
             info.append(note);
         }
 
@@ -1154,14 +1179,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const minus = document.createElement("button");
         minus.type = "button";
         minus.textContent = "−";
-        minus.setAttribute("aria-label", "Quitar una unidad de " + item.name);
+        minus.setAttribute("aria-label", t("removeUnitOf", item.name));
         minus.addEventListener("click", () => changeItem(index, -1));
         const count = document.createElement("span");
         count.textContent = item.quantity;
         const plus = document.createElement("button");
         plus.type = "button";
         plus.textContent = "+";
-        plus.setAttribute("aria-label", "Sumar una unidad de " + item.name);
+        plus.setAttribute("aria-label", t("addUnitOf", item.name));
         plus.addEventListener("click", () => changeItem(index, 1));
         qty.append(minus, count, plus);
 
@@ -1188,7 +1213,7 @@ document.addEventListener("DOMContentLoaded", () => {
         list.innerHTML = "";
         items.forEach((item, index) => list.appendChild(cartRow(item, index)));
         document.getElementById("cart-summary").textContent =
-            units + (units === 1 ? " carta · " : " cartas · ") + money(total);
+            t(units === 1 ? "cartSummaryOne" : "cartSummary", units, money(total));
         document.getElementById("cart-total").textContent = money(total);
         document.getElementById("cart-items-input").value = orderPayload(items);
         document.getElementById("cart-price-warning").hidden = !missingPrice;
@@ -1259,7 +1284,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const items = readOrder();
             if (items.some(item => !(Number(item.price) > 0))) {
                 event.preventDefault();
-                showToast("Hay cartas sin precio: tocá \"poner precio\" en el carrito.", "error");
+                showToast(t("cartMissingPrice"), "error");
             }
         });
     }
@@ -1272,13 +1297,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function manualPriceSource(set) {
-        return isOtherGame(set) ? "sin precio en el catálogo" : "sin precio en Card Kingdom";
+        return isOtherGame(set) ? t("noPriceCatalog") : t("noPriceCk");
     }
 
     function manualPriceHint(set) {
-        return "Este precio lo pusiste a mano porque "
-            + (isOtherGame(set) ? "el catálogo" : "Card Kingdom")
-            + " no tiene precio actualizado. Revisalo antes de vender.";
+        return isOtherGame(set) ? t("manualHintCatalog") : t("manualHintCk");
     }
 
     async function saveManualPrice(target, value) {
@@ -1302,7 +1325,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Respuesta vacía: se usa el mensaje genérico.
         }
         if (!response.ok || !result.success) {
-            throw new Error(result.message || "No se pudo guardar el precio.");
+            throw new Error(result.message || t("priceSaveError"));
         }
         return result;
     }
@@ -1351,18 +1374,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const input = document.createElement("input");
         input.type = "text";
         input.inputMode = "numeric";
-        input.placeholder = "Precio";
+        input.placeholder = t("price");
         input.value = target.current || "";
-        input.setAttribute("aria-label", "Precio de " + (target.name || "la carta"));
+        input.setAttribute("aria-label", t("priceOf", target.name || t("card")));
         const save = document.createElement("button");
         save.type = "button";
         save.className = "price-editor-save";
-        save.textContent = "Guardar";
+        save.textContent = t("save");
         const cancel = document.createElement("button");
         cancel.type = "button";
         cancel.className = "price-editor-cancel";
         cancel.textContent = "×";
-        cancel.setAttribute("aria-label", "Cancelar");
+        cancel.setAttribute("aria-label", t("cancel"));
         editor.append(input, save, cancel);
         host.replaceChildren(editor);
         input.focus();
@@ -1416,7 +1439,7 @@ document.addEventListener("DOMContentLoaded", () => {
         openPriceEditor(cell, target, result => {
             const change = button.cloneNode(false);
             change.className = "set-price-button text-action";
-            change.textContent = "Cambiar";
+            change.textContent = t("change");
             change.dataset.current = moneyFormat.format(result.price);
             if (result.cardId) {
                 change.dataset.cardId = result.cardId;
@@ -1430,7 +1453,7 @@ document.addEventListener("DOMContentLoaded", () => {
         button.addEventListener("click", () => {
             const cardId = button.dataset.cardId;
             if (!cardId) {
-                showToast("Esta carta todavía no tiene ID. Sincronizá el inventario y volvé a buscar.", "error");
+                showToast(t("noCardId"), "error");
                 return;
             }
 
@@ -1440,7 +1463,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const current = existing ? existing.quantity : 0;
 
             if (current + 1 > stock) {
-                showToast("No hay más unidades disponibles para sumar al carrito", "error");
+                showToast(t("noMoreUnits"), "error");
                 return;
             }
 
@@ -1458,7 +1481,7 @@ document.addEventListener("DOMContentLoaded", () => {
             writeOrder(items);
             const panel = document.getElementById("cart-panel");
             if (panel && panel.classList.contains("collapsed")) {
-                showToast("Agregada al carrito", "success");
+                showToast(t("addedToCart"), "success");
             }
         });
     });
@@ -1479,7 +1502,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const difference = Math.round(counted - expected);
             document.getElementById("close-counted").textContent = money(counted);
             const label = document.getElementById("close-difference");
-            label.textContent = difference === 0 ? "$ 0" : (difference > 0 ? "+" : "-") + money(Math.abs(difference));
+            label.textContent = difference === 0 ? money(0) : (difference > 0 ? "+" : "-") + money(Math.abs(difference));
             label.className = difference === 0 ? "ok" : (difference > 0 ? "over" : "short");
         };
         closeForm.addEventListener("input", update);
@@ -1520,7 +1543,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const units = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
         badge.hidden = units <= 0;
-        badge.textContent = `Compra (${units}) →`;
+        badge.textContent = t("buyBadge", units);
     }
 
     function buyPercent() {
@@ -1561,7 +1584,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const price = document.createElement("td");
             price.className = "nowrap";
-            price.textContent = Number(item.price) > 0 ? money(item.price) : "sin precio";
+            price.textContent = Number(item.price) > 0 ? money(item.price) : t("noPrice");
 
             const qty = document.createElement("td");
             const qtyBox = document.createElement("div");
@@ -1596,7 +1619,7 @@ document.addEventListener("DOMContentLoaded", () => {
             paidInput.inputMode = "numeric";
             paidInput.className = "buy-paid-input";
             paidInput.value = offered;
-            paidInput.setAttribute("aria-label", "Pagás por " + item.name);
+            paidInput.setAttribute("aria-label", t("payFor", item.name));
             paidInput.addEventListener("change", () => {
                 const next = readBuy();
                 next[index].unitPaid = Number(String(paidInput.value).replace(/\./g, "").replace(/[^0-9]/g, "")) || 0;
@@ -1613,7 +1636,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const removeButton = document.createElement("button");
             removeButton.type = "button";
             removeButton.className = "text-action";
-            removeButton.textContent = "Quitar";
+            removeButton.textContent = t("remove");
             removeButton.addEventListener("click", () => {
                 const next = readBuy();
                 next.splice(index, 1);
@@ -1641,13 +1664,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch(button.dataset.ensureUrl, {method: "POST", body});
             const data = await response.json();
             if (!response.ok || !data.id) {
-                showToast(data.error || "No se pudo guardar la carta en el Sheet", "error");
+                showToast(data.error || t("saveCardError"), "error");
                 return false;
             }
             button.dataset.cardId = data.id;
             return true;
         } catch (e) {
-            showToast("No se pudo guardar la carta en el Sheet", "error");
+            showToast(t("saveCardError"), "error");
             return false;
         }
     }
@@ -1674,7 +1697,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
             writeBuy(items);
-            showToast("Sumada a la compra", "success");
+            showToast(t("addedToBuy"), "success");
         });
     });
 
@@ -1707,7 +1730,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const payment = buyForm.querySelector("input[name=payment]:checked");
             if (payment && payment.value === "credit" && !buyForm.elements.customer.value.trim()) {
                 event.preventDefault();
-                showToast("Para pagar con crédito poné el nombre del cliente", "error");
+                showToast(t("creditNeedsCustomer"), "error");
                 buyForm.elements.customer.focus();
             }
         });

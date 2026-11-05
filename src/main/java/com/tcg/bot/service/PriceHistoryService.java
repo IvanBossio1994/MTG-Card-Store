@@ -56,13 +56,11 @@ public class PriceHistoryService {
             int points
     ) {
         public String formattedLocal() {
-            return currentLocal == null ? "-" : "$ " + new java.text.DecimalFormat("#,##0",
-                    java.text.DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(currentLocal);
+            return currentLocal == null ? "-" : com.tcg.bot.i18n.Money.format(currentLocal);
         }
 
         public String formattedCkUsd() {
-            return currentCkUsd == null ? "-" : "US$ " + new java.text.DecimalFormat("#,##0.00",
-                    java.text.DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(currentCkUsd);
+            return currentCkUsd == null ? "-" : com.tcg.bot.i18n.Money.usd(currentCkUsd);
         }
 
         public String formattedChange() {

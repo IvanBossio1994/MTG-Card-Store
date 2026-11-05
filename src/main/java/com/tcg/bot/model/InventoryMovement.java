@@ -11,7 +11,6 @@ import java.time.format.DateTimeFormatter;
 public class InventoryMovement {
 
     private static final DateTimeFormatter SHEET_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DISPLAY_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private String dateTime;
 
@@ -45,7 +44,7 @@ public class InventoryMovement {
         }
 
         try {
-            return LocalDate.parse(date, SHEET_DATE_FORMAT).format(DISPLAY_DATE_FORMAT);
+            return LocalDate.parse(date, SHEET_DATE_FORMAT).format(com.tcg.bot.i18n.Dates.shortDate());
         } catch (RuntimeException e) {
             return date;
         }

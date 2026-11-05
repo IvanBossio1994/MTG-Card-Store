@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.CashCloseService;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import com.tcg.bot.service.StoreSettingsService;
@@ -38,7 +39,7 @@ public class CashCloseController {
             model.addAttribute("day", cashCloseService.day(date));
         } catch (Exception e) {
             log.warn("No se pudo armar el cierre de caja.", e);
-            model.addAttribute("closeError", "No se pudo leer la caja del Sheet. Revisá la conexión en Configuración.");
+            model.addAttribute("closeError", I18n.t("close.err.read"));
         }
         return "cash-close";
     }
@@ -51,20 +52,20 @@ public class CashCloseController {
                         @RequestParam(required = false) String nota,
                         RedirectAttributes redirect) {
         if (fecha == null || !fecha.matches("\\d{4}-\\d{2}-\\d{2}")) {
-            redirect.addFlashAttribute("closeError", "Fecha inválida.");
+            redirect.addFlashAttribute("closeError", I18n.t("close.err.date"));
             return "redirect:/caja/cierre";
         }
         try {
             double difference = cashCloseService.close(fecha, Amounts.parse(efectivo), Amounts.parse(transferencias),
                     Amounts.parse(tarjeta), nota);
             redirect.addFlashAttribute("closeMessage", Math.round(difference) == 0
-                    ? "Caja cerrada: coincide con lo vendido."
-                    : "Caja cerrada con una diferencia de " + CashCloseService.signed(difference) + ". Quedó anotado en el Sheet.");
+                    ? I18n.t("close.done.match")
+                    : I18n.t("close.done.diff", CashCloseService.signed(difference)));
         } catch (StockOperationException e) {
             redirect.addFlashAttribute("closeError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo guardar el cierre de caja.", e);
-            redirect.addFlashAttribute("closeError", "No se pudo guardar el cierre: " + e.getMessage());
+            redirect.addFlashAttribute("closeError", I18n.t("close.err.save", e.getMessage()));
         }
         return "redirect:/caja/cierre?fecha=" + fecha;
     }

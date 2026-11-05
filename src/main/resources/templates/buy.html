@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Comprar a clientes | TCG Inventory</title>
+    <title th:text="#{nav.buy} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body th:attr="data-clear-buy=${clearBuy == true}">
-<header th:replace="~{fragments/layout :: topbar('Comprar a clientes')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{nav.buy})}"></header>
 <div th:replace="~{fragments/layout :: menu('buy')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Clientes</p>
-            <h1>Comprar cartas a un cliente</h1>
-            <p class="supporting">Buscá las cartas en <a th:href="@{/}">Inicio</a> y tocá <strong>Comprar</strong>.
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{buy.h1}">Comprar cartas a un cliente</h1>
+            <p class="supporting" th:utext="#{buy.supporting}">Buscá las cartas en <a th:href="@{/}">Inicio</a> y tocá <strong>Comprar</strong>.
                 Acá ponés cuánto pagás por cada una: en efectivo sale de la caja, con crédito queda como saldo del
                 cliente para su próxima compra. Las cartas entran solas al stock.</p>
         </div>
@@ -27,21 +27,21 @@
     <section class="panel">
         <div class="section-head">
             <div>
-                <p class="eyebrow">Compra en preparación</p>
-                <h2>Cartas que te ofrecen</h2>
+                <p class="eyebrow" th:text="#{buy.draft}">Compra en preparación</p>
+                <h2 th:text="#{buy.draft.title}">Cartas que te ofrecen</h2>
             </div>
         </div>
 
-        <p id="buy-empty" class="supporting">Todavía no sumaste cartas. Buscalas en <a th:href="@{/}">Inicio</a> y
+        <p id="buy-empty" class="supporting" th:utext="#{buy.empty}">Todavía no sumaste cartas. Buscalas en <a th:href="@{/}">Inicio</a> y
             tocá <strong>Comprar</strong>.</p>
 
         <form id="buy-form" th:action="@{/compras}" method="post" hidden>
             <div class="buy-percent">
-                <label>Pagás en efectivo
-                    <span><input id="buy-cash-percent" type="number" min="0" max="100" value="50"> % de tu precio</span>
+                <label><span th:text="#{buy.cashPercent}">Pagás en efectivo</span>
+                    <span><input id="buy-cash-percent" type="number" min="0" max="100" value="50"> <span th:text="#{buy.percentOfPrice}">% de tu precio</span></span>
                 </label>
-                <label>Pagás en crédito
-                    <span><input id="buy-credit-percent" type="number" min="0" max="100" value="60"> % de tu precio</span>
+                <label><span th:text="#{buy.creditPercent}">Pagás en crédito</span>
+                    <span><input id="buy-credit-percent" type="number" min="0" max="100" value="60"> <span th:text="#{buy.percentOfPrice}">% de tu precio</span></span>
                 </label>
             </div>
 
@@ -49,11 +49,11 @@
                 <table class="buy-table">
                     <thead>
                     <tr>
-                        <th>Carta</th>
-                        <th>Tu precio</th>
-                        <th>Cant.</th>
-                        <th>Pagás c/u</th>
-                        <th>Subtotal</th>
+                        <th th:text="#{common.card}">Carta</th>
+                        <th th:text="#{dash.col.yourPrice}">Tu precio</th>
+                        <th th:text="#{mov.col.qty}">Cant.</th>
+                        <th th:text="#{buy.col.unit}">Pagás c/u</th>
+                        <th th:text="#{buy.col.subtotal}">Subtotal</th>
                         <th></th>
                     </tr>
                     </thead>
@@ -62,18 +62,18 @@
             </div>
 
             <fieldset class="buy-payment">
-                <legend>¿Cómo le pagás?</legend>
-                <label><input type="radio" name="payment" value="cash" checked> Efectivo (sale de la caja)</label>
-                <label><input type="radio" name="payment" value="credit"> Crédito de tienda (queda como saldo)</label>
+                <legend th:text="#{buy.how}">¿Cómo le pagás?</legend>
+                <label><input type="radio" name="payment" value="cash" checked> <span th:text="#{buy.payCash}">Efectivo (sale de la caja)</span></label>
+                <label><input type="radio" name="payment" value="credit"> <span th:text="#{buy.payCredit}">Crédito de tienda (queda como saldo)</span></label>
             </fieldset>
 
             <div class="order-form-fields">
-                <label>Cliente
+                <label><span th:text="#{common.customer}">Cliente</span>
                     <input name="customer" type="text" maxlength="80" list="credit-customers"
-                           placeholder="Obligatorio si pagás con crédito">
+                           th:placeholder="#{buy.customer.placeholder}">
                 </label>
-                <label>Contacto (opcional)
-                    <input name="contact" type="text" maxlength="80" placeholder="WhatsApp, Instagram, mail">
+                <label><span th:text="#{res.contact}">Contacto (opcional)</span>
+                    <input name="contact" type="text" maxlength="80" th:placeholder="#{res.contact.placeholder}">
                 </label>
             </div>
             <datalist id="credit-customers">
@@ -82,12 +82,12 @@
 
             <input id="buy-lines-input" type="hidden" name="lines" value="[]">
             <div class="cart-total buy-total">
-                <span>Total a pagar</span>
-                <strong id="buy-total">$ 0</strong>
+                <span th:text="#{buy.total}">Total a pagar</span>
+                <strong id="buy-total" th:text="${currencySymbol} + ' 0'">$ 0</strong>
             </div>
             <div class="order-actions">
-                <button type="submit" class="primary-button">Registrar compra</button>
-                <button type="button" id="buy-clear" class="secondary-button">Vaciar</button>
+                <button type="submit" class="primary-button" th:text="#{buy.submit}">Registrar compra</button>
+                <button type="button" id="buy-clear" class="secondary-button" th:text="#{cart.clear}">Vaciar</button>
             </div>
         </form>
     </section>

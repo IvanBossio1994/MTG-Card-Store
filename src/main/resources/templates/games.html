@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,13 +13,11 @@
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Tu tienda</p>
+            <p class="eyebrow" th:text="#{dash.eyebrow}">Tu tienda</p>
             <h1 th:text="${game.label()}">Pokémon</h1>
-            <p class="supporting">
-                Tu stock de <span th:text="${game.label()}">Pokémon</span> vive en la pestaña
-                "<span th:text="${game.sheetName()}">Inventario Pokemon</span>" de tu Sheet. Los precios salen de
-                <span th:text="${game.slug() == 'pokemon' ? 'TCGdex (TCGplayer)' : 'YGOPRODeck'}">TCGdex</span>
-                y se pasan a pesos con tu misma cotización y redondeo. Carrito, reservas, compras y caja son los mismos que en Magic.
+            <p class="supporting"
+               th:text="#{games.supporting(${game.label()}, ${game.sheetName()}, ${game.slug() == 'pokemon' ? 'TCGdex (TCGplayer)' : 'YGOPRODeck'}, ${currencyCode})}">
+                Tu stock vive en tu Sheet.
             </p>
         </div>
     </section>
@@ -29,15 +27,15 @@
 
     <section class="panel">
         <form class="game-search" th:action="@{/juegos/{slug}(slug=${game.slug()})}" method="get">
-            <label for="game-q">Buscar carta</label>
+            <label for="game-q" th:text="#{dash.search.label}">Buscar carta</label>
             <div class="game-search-row">
                 <input id="game-q" name="q" type="text" th:value="${query}" autocomplete="off"
-                       th:placeholder="${game.slug() == 'pokemon' ? 'Ej: Charizard, Pikachu ex' : 'Ej: Dark Magician, Ash Blossom'}">
-                <button type="submit" class="primary-button">Buscar</button>
+                       th:placeholder="${game.slug() == 'pokemon'} ? #{games.placeholder.pokemon} : #{games.placeholder.yugioh}">
+                <button type="submit" class="primary-button" th:text="#{common.search}">Buscar</button>
             </div>
         </form>
 
-        <p class="supporting" th:if="${results != null and #lists.isEmpty(results) and gameError == null}">
+        <p class="supporting" th:if="${results != null and #lists.isEmpty(results) and gameError == null}" th:text="#{games.noResults}">
             No apareció ninguna carta con ese nombre. Probá en inglés o con menos palabras.</p>
 
         <div class="game-results" th:if="${results != null and !#lists.isEmpty(results)}">
@@ -55,32 +53,32 @@
                         <strong th:text="${result.formattedSuggested()}">$ 420.000</strong>
                     </span>
                     <span th:if="${result.stockCard != null and result.stockCard.manualPrice}" class="manual-price"
-                          title="Último precio puesto a mano. El catálogo no tiene precio actualizado para esta carta: revisalo antes de venderla.">
+                          th:title="#{games.manualPrice.title}">
                         <span aria-hidden="true">⚠</span>
-                        <span th:text="${'Tu precio ' + result.stockCard.formattedLocalPrice() + ' (puesto a mano)'}">Tu precio $ 1.000 (puesto a mano)</span>
+                        <span th:text="#{games.manualPrice(${result.stockCard.formattedLocalPrice()})}">Tu precio $ 1.000 (puesto a mano)</span>
                     </span>
                     <span class="price-cell" th:if="${result.stockCard != null and result.stockCard.localPrice <= 0 and result.stock() > 0}">
                     <button type="button" class="set-price-button price-missing"
                             th:attr="data-card-id=${result.stockCard.id},data-name=${result.print.name()},data-set=${game.label() + ' · '}"
-                            title="El catálogo no tiene precio: ponele tu precio">Sin precio · poner</button>
+                            th:title="#{games.noPrice.title}" th:text="#{dash.noPrice}">Sin precio · poner</button>
                     </span>
                 </div>
                 <div class="game-result-actions">
-                    <span class="stock-pill" th:classappend="${result.stock() == 0} ? 'out'" th:text="${result.stock() + ' en stock'}">0 en stock</span>
+                    <span class="stock-pill" th:classappend="${result.stock() == 0} ? 'out'" th:text="#{games.inStock(${result.stock()})}">0 en stock</span>
                     <form th:if="${result.stockCard != null and result.stock() > 0}" th:action="@{/juegos/{slug}/stock(slug=${game.slug()})}" method="post">
                         <input type="hidden" name="id" th:value="${result.stockCard.id}">
                         <input type="hidden" name="change" value="-1">
                         <input type="hidden" name="reason" value="sale">
                         <input type="hidden" name="q" th:value="${query}">
-                        <button type="submit" class="secondary-button compact-button" title="Registra la venta en la caja">Vender 1</button>
+                        <button type="submit" class="secondary-button compact-button" th:title="#{res.pickedUp.title}" th:text="#{games.sellOne}">Vender 1</button>
                     </form>
                     <button type="button" class="reserve-button"
                             th:if="${result.stockCard != null and result.stock() > 0}"
                             th:attr="data-card-id=${result.stockCard.id},data-name=${result.print.name()},data-set=${game.label() + ' · ' + result.print.setName()},data-stock=${result.stock()},data-price=${result.stockCard.priceValue()},data-manual-price=${result.stockCard.manualPrice}"
-                            title="Sumar al carrito para cobrar o reservar">+ Carrito</button>
+                            th:title="#{dash.addToCart.title}" th:text="#{dash.addToCart}">+ Carrito</button>
                     <button type="button" class="buy-button"
                             th:attr="data-sku=${game.slug() + ':' + result.print.catalogId()},data-card-id=${result.stockCard != null ? result.stockCard.id : ''},data-name=${result.print.name()},data-set=${game.label() + ' · ' + result.print.setName()},data-printing=${result.print.finish()},data-price=${result.referencePrice()},data-ensure-url=@{/juegos/{slug}/fila(slug=${game.slug()})},data-print=${result.printJson()}"
-                            title="Sumar a una compra a un cliente">Comprar</button>
+                            th:title="#{dash.buy.title}" th:text="#{dash.buy}">Comprar</button>
                     <form th:action="@{/juegos/{slug}/agregar(slug=${game.slug()})}" method="post">
                         <input type="hidden" name="catalogId" th:value="${result.print.catalogId()}">
                         <input type="hidden" name="name" th:value="${result.print.name()}">
@@ -91,7 +89,7 @@
                         <input type="hidden" name="finish" th:value="${result.print.finish()}">
                         <input type="hidden" name="usd" th:value="${result.print.usd()}">
                         <input type="hidden" name="q" th:value="${query}">
-                        <button type="submit" class="secondary-button compact-button">+ Sumar 1</button>
+                        <button type="submit" class="secondary-button compact-button" th:text="#{games.addOne}">+ Sumar 1</button>
                     </form>
                 </div>
             </article>
@@ -101,24 +99,24 @@
     <section class="panel">
         <div class="section-head">
             <div>
-                <p class="eyebrow">Tu stock</p>
-                <h2 th:text="${#lists.isEmpty(cards) ? 'Todavía no cargaste cartas' : #lists.size(cards) + (#lists.size(cards) == 1 ? ' carta' : ' cartas distintas')}">Cartas</h2>
+                <p class="eyebrow" th:text="#{games.yourStock}">Tu stock</p>
+                <h2 th:text="${#lists.isEmpty(cards)} ? #{games.empty} : #{games.count(${#lists.size(cards)})}">Cartas</h2>
             </div>
             <form th:unless="${#lists.isEmpty(cards)}" th:action="@{/juegos/{slug}/precios(slug=${game.slug()})}" method="post"
                   class="game-refresh-form">
-                <button type="submit" class="secondary-button">Actualizar precios</button>
+                <button type="submit" class="secondary-button" th:text="#{games.refresh}">Actualizar precios</button>
             </form>
         </div>
         <div class="table-wrap" th:unless="${#lists.isEmpty(cards)}">
             <table class="game-table">
                 <thead>
                 <tr>
-                    <th>Stock</th>
-                    <th>Carta</th>
-                    <th>Set</th>
-                    <th>Rareza</th>
+                    <th th:text="#{common.stock}">Stock</th>
+                    <th th:text="#{common.card}">Carta</th>
+                    <th th:text="#{common.set}">Set</th>
+                    <th th:text="#{games.col.rarity}">Rareza</th>
                     <th>USD</th>
-                    <th>Tu precio</th>
+                    <th th:text="#{dash.col.yourPrice}">Tu precio</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -130,13 +128,13 @@
                                 <input type="hidden" name="change" value="-1">
                                 <input type="hidden" name="reason" value="sale">
                                 <button type="submit" class="stock-button decrease" th:disabled="${card.quantity <= 0}"
-                                        title="Registrar unidad vendida">-</button>
+                                        th:title="#{dash.registerSold}">-</button>
                             </form>
                             <span class="stock-value" th:text="${card.quantity}">0</span>
                             <form th:action="@{/juegos/{slug}/stock(slug=${game.slug()})}" method="post">
                                 <input type="hidden" name="id" th:value="${card.id}">
                                 <input type="hidden" name="change" value="1">
-                                <button type="submit" class="stock-button increase" title="Agregar una unidad">+</button>
+                                <button type="submit" class="stock-button increase" th:title="#{dash.addUnit}">+</button>
                             </form>
                         </div>
                     </td>
@@ -144,14 +142,14 @@
                         <span th:text="${card.name}">Charizard</span>
                         <button type="button" class="reserve-button" th:if="${card.quantity > 0}"
                                 th:attr="data-card-id=${card.id},data-name=${card.name},data-set=${game.label() + ' · ' + card.setName},data-stock=${card.quantity},data-price=${card.priceValue()},data-manual-price=${card.manualPrice}"
-                                title="Sumar al carrito para cobrar o reservar">+ Carrito</button>
+                                th:title="#{dash.addToCart.title}" th:text="#{dash.addToCart}">+ Carrito</button>
                     </td>
                     <td th:text="${card.setName + (card.number != null and card.number != '' ? ' #' + card.number : '')}">Base #4</td>
                     <td th:text="${card.rarity + (card.finish != null and card.finish != '' ? ' · ' + card.finish : '')}">Rare Holo</td>
                     <td class="nowrap" th:text="${card.formattedUsd()}">US$ 1,00</td>
                     <td class="nowrap price-cell">
                         <span th:if="${card.manualPrice}" class="manual-price"
-                              title="Último precio puesto a mano. El catálogo no tiene precio actualizado para esta carta: revisalo antes de venderla.">
+                              th:title="#{games.manualPrice.title}">
                             <span aria-hidden="true">⚠</span>
                             <span th:text="${card.formattedLocalPrice()}">$ 1.000</span>
                         </span>
@@ -159,7 +157,7 @@
                         <button type="button" class="set-price-button price-missing"
                                 th:if="${card.localPrice <= 0 and card.quantity > 0}"
                                 th:attr="data-card-id=${card.id},data-name=${card.name},data-set=${game.label() + ' · '}"
-                                title="El catálogo no tiene precio: ponele tu precio">Sin precio · poner</button>
+                                th:title="#{games.noPrice.title}" th:text="#{dash.noPrice}">Sin precio · poner</button>
                         <th:block th:if="${card.localPrice <= 0 and card.quantity <= 0}">-</th:block>
                     </td>
                 </tr>

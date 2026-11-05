@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reservas | TCG Inventory</title>
+    <title th:text="#{nav.reservations} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body th:attr="data-clear-order=${clearOrder == true}">
-<header th:replace="~{fragments/layout :: topbar('Reservas y pedidos')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{nav.reservations})}"></header>
 <div th:replace="~{fragments/layout :: menu('reservations')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Clientes</p>
-            <h1>Reservas y pedidos</h1>
-            <p class="supporting">Apartá cartas para un cliente. Mientras están reservadas nadie más las vende;
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{nav.reservations}">Reservas y pedidos</h1>
+            <p class="supporting" th:text="#{res.supporting}">Apartá cartas para un cliente. Mientras están reservadas nadie más las vende;
                 si no las retira antes del vencimiento, vuelven solas al stock.</p>
         </div>
     </section>
@@ -26,36 +26,36 @@
 
         <div class="section-head">
             <div>
-                <p class="eyebrow">Nuevo pedido</p>
-                <h2>Pedido en preparación</h2>
+                <p class="eyebrow" th:text="#{res.new}">Nuevo pedido</p>
+                <h2 th:text="#{res.draft}">Pedido en preparación</h2>
             </div>
         </div>
 
-        <p id="order-draft-empty" class="supporting">
+        <p id="order-draft-empty" class="supporting" th:utext="#{res.draftEmpty}">
             Buscá cartas en <a th:href="@{/}">Inicio</a> y tocá <strong>+ Carrito</strong> para sumarlas acá.
         </p>
         <ul id="order-draft-list" class="cart-list order-draft-list"></ul>
         <div class="cart-total" hidden>
-            <span>Total</span>
-            <strong id="order-draft-total">$ 0</strong>
+            <span th:text="#{common.total}">Total</span>
+            <strong id="order-draft-total" th:text="${currencySymbol} + ' 0'">$ 0</strong>
         </div>
 
         <form id="order-form" method="post" th:action="@{/reservas}" hidden>
             <input id="order-items-input" type="hidden" name="items" value="[]">
             <div class="order-form-fields">
-                <label>Cliente
-                    <input name="customer" type="text" required maxlength="80" placeholder="Nombre del cliente">
+                <label><span th:text="#{common.customer}">Cliente</span>
+                    <input name="customer" type="text" required maxlength="80" th:placeholder="#{common.customerName}">
                 </label>
-                <label>Contacto (opcional)
-                    <input name="contact" type="text" maxlength="80" placeholder="WhatsApp, Instagram, mail">
+                <label><span th:text="#{res.contact}">Contacto (opcional)</span>
+                    <input name="contact" type="text" maxlength="80" th:placeholder="#{res.contact.placeholder}">
                 </label>
-                <label>Días para retirar
+                <label><span th:text="#{res.days}">Días para retirar</span>
                     <input name="days" type="number" min="0" max="60" th:value="${defaultDays}">
                 </label>
             </div>
             <div class="order-actions">
-                <button class="primary-button" type="submit">Reservar pedido</button>
-                <button class="secondary-button" type="submit" form="order-sell-form" formnovalidate>Cobrar ahora sin reservar</button>
+                <button class="primary-button" type="submit" th:text="#{res.reserve}">Reservar pedido</button>
+                <button class="secondary-button" type="submit" form="order-sell-form" formnovalidate th:text="#{res.sellNow}">Cobrar ahora sin reservar</button>
             </div>
         </form>
         <form id="order-sell-form" method="post" th:action="@{/ventas}" hidden>
@@ -66,14 +66,14 @@
     <section class="panel">
         <div class="section-head">
             <div>
-                <p class="eyebrow">Historial</p>
-                <h2>Reservas</h2>
+                <p class="eyebrow" th:text="#{mov.eyebrow}">Historial</p>
+                <h2 th:text="#{res.list}">Reservas</h2>
             </div>
         </div>
 
         <div class="placeholder" th:if="${#lists.isEmpty(orders)}">
-            <strong>No hay reservas todavía</strong>
-            <p>Las reservas se guardan en la hoja "Reservas" de tu Sheet.</p>
+            <strong th:text="#{res.empty.title}">No hay reservas todavía</strong>
+            <p th:text="#{res.empty.text}">Las reservas se guardan en la hoja "Reservas" de tu Sheet.</p>
         </div>
 
         <article class="order-card" th:each="order : ${orders}" th:classappend="${order.isActive()} ? '' : 'inactive'">
@@ -83,30 +83,30 @@
                     <span th:if="${order.contact != null && order.contact != ''}" th:text="${' · ' + order.contact}"> · @juan</span>
                     <div class="supporting">
                         <span th:text="${order.reservationId}">R1234</span>
-                        · reservado el <span th:text="${order.formattedDate}">01/11/2026</span>
-                        <span th:if="${order.isActive()}"> · vence el <strong th:text="${order.formattedExpiresOn}">08/11/2026</strong></span>
+                        · <span th:text="#{res.reservedOn(${order.formattedDate})}">reservado el 01/11/2026</span>
+                        <span th:if="${order.isActive()}"> · <strong th:text="#{res.expiresOn(${order.formattedExpiresOn})}">vence el 08/11/2026</strong></span>
                     </div>
                 </div>
                 <div>
-                    <strong th:text="${'$ ' + order.formattedTotal}">$ 0</strong>
-                    <span class="cash-badge" th:unless="${order.isActive()}" th:text="${order.status}">RETIRADA</span>
+                    <strong th:text="${currencySymbol + ' ' + order.formattedTotal}">$ 0</strong>
+                    <span class="cash-badge" th:unless="${order.isActive()}" th:text="${#messages.msgOrNull('res.status.' + order.status) ?: order.status}">RETIRADA</span>
                 </div>
             </div>
             <ul class="order-lines">
                 <li th:each="line : ${order.lines}"
-                    th:text="${line.quantity + ' × ' + line.name + ' (' + line.setName + ') · $ ' + line.formattedUnitPrice}">
+                    th:text="${line.quantity + ' × ' + line.name + ' (' + line.setName + ') · ' + currencySymbol + ' ' + line.formattedUnitPrice}">
                     1 × Sol Ring
                 </li>
             </ul>
             <div class="order-actions" th:if="${order.isActive()}">
                 <a class="secondary-button whatsapp-button" th:if="${whatsappLinks != null and whatsappLinks.containsKey(order.reservationId)}"
                    th:href="${whatsappLinks.get(order.reservationId)}" target="_blank" rel="noopener"
-                   title="Abre WhatsApp con el aviso ya escrito">Avisar por WhatsApp</a>
+                   th:title="#{res.whatsapp.title}" th:text="#{res.whatsapp}">Avisar por WhatsApp</a>
                 <form method="post" th:action="@{/reservas/{id}/retirar(id=${order.reservationId})}">
-                    <button class="primary-button" type="submit" title="Registra la venta en la caja">Retiró y pagó</button>
+                    <button class="primary-button" type="submit" th:title="#{res.pickedUp.title}" th:text="#{res.pickedUp}">Retiró y pagó</button>
                 </form>
                 <form method="post" th:action="@{/reservas/{id}/cancelar(id=${order.reservationId})}">
-                    <button class="secondary-button" type="submit" title="Las cartas vuelven al stock">Cancelar</button>
+                    <button class="secondary-button" type="submit" th:title="#{res.cancel.title}" th:text="#{common.cancel}">Cancelar</button>
                 </form>
             </div>
         </article>
