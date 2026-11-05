@@ -52,8 +52,8 @@ public class CustomersController {
     public List<Map<String, Object>> balances() {
         try {
             return creditService.accounts().stream()
-                    .filter(account -> account.balance() >= 1)
-                    .map(account -> Map.<String, Object>of("customer", account.customer(), "balance", Math.round(account.balance())))
+                    .filter(account -> com.tcg.bot.i18n.Money.round(account.balance()) > 0)
+                    .map(account -> Map.<String, Object>of("customer", account.customer(), "balance", com.tcg.bot.i18n.Money.round(account.balance())))
                     .toList();
         } catch (Exception e) {
             log.debug("No se pudo leer el crédito: {}", e.getMessage());

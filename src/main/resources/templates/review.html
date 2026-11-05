@@ -109,10 +109,10 @@
                     <span class="price-cell">
                         <span class="manual-price" th:title="#{rev.manual.hint}">
                             <span aria-hidden="true">⚠</span>
-                            <span th:text="${currencySymbol + ' ' + #numbers.formatInteger(card.localPriceValue(), 1, 'DEFAULT')}">$ 50.000</span>
+                            <span th:text="${currencySymbol + ' ' + money.number(card.localPriceValue())}">$ 50.000</span>
                         </span>
                         <button type="button" class="set-price-button text-action"
-                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name},data-current=${#numbers.formatInteger(card.localPriceValue(), 1, 'POINT')}" th:text="#{dash.change}">Cambiar</button>
+                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name},data-current=${money.number(card.localPriceValue())}" th:text="#{dash.change}">Cambiar</button>
                     </span>
                 </li>
             </ul>

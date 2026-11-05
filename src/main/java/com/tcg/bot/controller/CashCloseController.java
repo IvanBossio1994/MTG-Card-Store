@@ -58,7 +58,7 @@ public class CashCloseController {
         try {
             double difference = cashCloseService.close(fecha, Amounts.parse(efectivo), Amounts.parse(transferencias),
                     Amounts.parse(tarjeta), nota);
-            redirect.addFlashAttribute("closeMessage", Math.round(difference) == 0
+            redirect.addFlashAttribute("closeMessage", com.tcg.bot.i18n.Money.isZero(difference)
                     ? I18n.t("close.done.match")
                     : I18n.t("close.done.diff", CashCloseService.signed(difference)));
         } catch (StockOperationException e) {

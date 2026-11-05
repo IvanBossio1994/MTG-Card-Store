@@ -195,10 +195,10 @@
                     <td class="price-cell" th:if="${result.manualPrice}">
                         <span class="manual-price" th:title="#{dash.manualPrice.title}">
                             <span aria-hidden="true">⚠</span>
-                            <span th:text="${currencySymbol + ' ' + #numbers.formatInteger(result.localPrice, 1, 'DEFAULT')}">$ 50.000</span>
+                            <span th:text="${currencySymbol + ' ' + money.number(result.localPrice)}">$ 50.000</span>
                         </span>
                         <button type="button" class="set-price-button text-action"
-                                th:attr="data-card-id=${result.cardId},data-name=${result.name},data-current=${#numbers.formatInteger(result.localPrice, 1, 'POINT')}" th:text="#{dash.change}">Cambiar</button>
+                                th:attr="data-card-id=${result.cardId},data-name=${result.name},data-current=${money.number(result.localPrice)}" th:text="#{dash.change}">Cambiar</button>
                     </td>
                     <td class="price-cell" th:unless="${result.manualPrice}">
                         <th:block th:if="${result.prices.suggestedLocal != '' or result.stockQuantity <= 0 or result.localPrice > 0}"

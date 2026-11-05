@@ -753,13 +753,11 @@ public class DashboardController {
     }
 
     private String formatCashTotal(double value) {
-        return NumberFormat
-                .getIntegerInstance(com.tcg.bot.i18n.I18n.locale())
-                .format(Math.round(value));
+        return com.tcg.bot.i18n.Money.number(value);
     }
 
     private static String formatLocalPrice(String value) {
-        return formatPrice(value, 0);
+        return formatPrice(value, com.tcg.bot.i18n.Money.decimals());
     }
 
     private static String formatUsdPrice(String value) {
@@ -1398,7 +1396,7 @@ public class DashboardController {
             @RequestParam("inventorySheetName") String inventorySheetName,
             @RequestParam(name = "cacheDirectory", required = false) String cacheDirectory,
             @RequestParam("ckDollarRate") double ckDollarRate,
-            @RequestParam("roundMultiple") int roundMultiple,
+            @RequestParam("roundMultiple") double roundMultiple,
             @RequestParam(name = "markupPercent", required = false) Double markupPercent,
             @RequestParam(name = "minimumPrice", required = false) Double minimumPrice,
             @RequestParam(name = "sourcesSubmitted", defaultValue = "false") boolean sourcesSubmitted,
@@ -1535,7 +1533,7 @@ public class DashboardController {
     @PostMapping("/configuracion/precio")
     public String updatePricingRule(
             @RequestParam("ckDollarRate") double ckDollarRate,
-            @RequestParam("roundMultiple") int roundMultiple,
+            @RequestParam("roundMultiple") double roundMultiple,
             @RequestParam(name = "markupPercent", required = false) Double markupPercent,
             @RequestParam(name = "minimumPrice", required = false) Double minimumPrice,
             Model model
@@ -1773,7 +1771,7 @@ public class DashboardController {
         double suggested = quote.localPrice() == null
                 ? priceComparisonService.calculateLocalPrice(ckPrice)
                 : quote.localPrice();
-        String localPrice = String.format("%.0f", suggested);
+        String localPrice = com.tcg.bot.i18n.Money.plain(suggested);
         card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         card.setLocalPrice(localPrice);
         card.setAction(ACTION_IN_STOCK);
@@ -1902,7 +1900,7 @@ public class DashboardController {
         return new PriceComparison(
                 tcg == null ? "" : "US$ " + formatPrice(String.valueOf(tcg.price()), 2),
                 cm == null ? "" : "€ " + formatPrice(String.valueOf(cm.price()), 2),
-                quote.localPrice() == null ? "" : com.tcg.bot.i18n.Money.symbol() + " " + formatPrice(String.valueOf(quote.localPrice()), 0),
+                quote.localPrice() == null ? "" : com.tcg.bot.i18n.Money.symbol() + " " + formatPrice(String.valueOf(quote.localPrice()), com.tcg.bot.i18n.Money.decimals()),
                 quote.localPrice() == null ? 0 : quote.localPrice()
         );
     }
@@ -2165,8 +2163,8 @@ public class DashboardController {
             boolean manualPrice
     ) {
         /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido si no hay. */
-        public long referencePrice() {
-            return Math.round(localPrice > 0 ? localPrice : prices == null ? 0 : prices.suggestedValue());
+        public double referencePrice() {
+            return com.tcg.bot.i18n.Money.round(localPrice > 0 ? localPrice : prices == null ? 0 : prices.suggestedValue());
         }
 
         public String formattedNmPrice() {
@@ -2647,7 +2645,7 @@ public class DashboardController {
             double suggested = quote.localPrice() == null
                     ? priceComparisonService.calculateLocalPrice(ckPrice)
                     : quote.localPrice();
-            String localPrice = String.format("%.0f", suggested);
+            String localPrice = com.tcg.bot.i18n.Money.plain(suggested);
             card.setLocalPrice(localPrice);
             card.setCkPriceUsd(String.format(java.util.Locale.US, "%.2f", ckPrice));
         }

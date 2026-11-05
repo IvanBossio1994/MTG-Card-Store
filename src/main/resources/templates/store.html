@@ -110,9 +110,11 @@
                 <label for="currency" th:text="#{settings.currency}">Moneda de tu tienda</label>
                 <select id="currency" name="currency">
                     <option th:each="code : ${currencies}" th:value="${code}" th:text="${code}"
+                            th:attr="data-multiple=${money.suggestedRoundMultiple(code)}"
                             th:selected="${code == currencyCode}">ARS</option>
                 </select>
                 <p class="field-help" th:text="#{settings.currency.help}">La moneda en la que cobrás.</p>
+                <p class="field-help" id="currency-changed" hidden th:text="#{settings.currency.changed}">Ajustamos el redondeo y el mínimo.</p>
             </div>
             <p class="card-help" th:text="#{settings.pricing.formula(${currencyCode})}">Precio = precio CK en USD × cotización × (1 + recargo).</p>
             <div class="pricing-config-grid">
@@ -123,8 +125,8 @@
                 </div>
                 <div class="store-field">
                     <label for="roundMultiple" th:text="#{settings.roundMultiple}">Redondear al multiplo de</label>
-                    <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
-                           th:value="${roundMultiple}" required>
+                    <input id="roundMultiple" name="roundMultiple" type="number" min="0.01" step="any"
+                           th:value="${money.plainNumber(roundMultiple)}" required>
                 </div>
                 <div class="store-field">
                     <label for="markupPercent" th:text="#{settings.markup}">Recargo sobre CK (%)</label>
@@ -133,8 +135,8 @@
                 </div>
                 <div class="store-field">
                     <label for="minimumPrice" th:text="#{settings.minimumPrice(${currencyCode})}">Precio mínimo por carta (ARS)</label>
-                    <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="1"
-                           th:value="${minimumPrice}">
+                    <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="any"
+                           th:value="${money.plainNumber(minimumPrice)}">
                 </div>
             </div>
             <div class="price-sources">

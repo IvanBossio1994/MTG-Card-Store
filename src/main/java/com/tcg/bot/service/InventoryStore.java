@@ -91,9 +91,9 @@ public interface InventoryStore {
     }
 
     /** Guarda el precio local de una carta de cualquier juego en su pestaña (todas sus unidades). */
-    default void updateAnyLocalPrice(InventoryCard card, long price) throws Exception {
+    default void updateAnyLocalPrice(InventoryCard card, double price) throws Exception {
         if (card.getGame() == null) {
-            updateLocalPrice(card.getRowIndex(), String.valueOf(price));
+            updateLocalPrice(card.getRowIndex(), com.tcg.bot.i18n.Money.plain(price));
             return;
         }
         com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
