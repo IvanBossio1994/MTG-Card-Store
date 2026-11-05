@@ -34,3 +34,18 @@ h2 { font-size: 1.25rem; margin: 32px 0 8px; }
 a { color: var(--blue); }
 footer { margin-top: 48px; color: var(--muted); font-size: 0.9rem; }
 code { background: var(--blue-soft); padding: 1px 5px; border-radius: 4px; }
+
+.download {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    background: #4f46e5;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.download:hover {
+    background: #4338ca;
+}
