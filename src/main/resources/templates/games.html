@@ -54,6 +54,16 @@
                         <span th:text="${result.formattedUsd()}">US$ 350,00</span>
                         <strong th:text="${result.formattedSuggested()}">$ 420.000</strong>
                     </span>
+                    <span th:if="${result.stockCard != null and result.stockCard.manualPrice}" class="manual-price"
+                          title="Último precio puesto a mano. El catálogo no tiene precio actualizado para esta carta: revisalo antes de venderla.">
+                        <span aria-hidden="true">⚠</span>
+                        <span th:text="${'Tu precio ' + result.stockCard.formattedLocalPrice() + ' (puesto a mano)'}">Tu precio $ 1.000 (puesto a mano)</span>
+                    </span>
+                    <span class="price-cell" th:if="${result.stockCard != null and result.stockCard.localPrice <= 0 and result.stock() > 0}">
+                    <button type="button" class="set-price-button price-missing"
+                            th:attr="data-card-id=${result.stockCard.id},data-name=${result.print.name()},data-set=${game.label() + ' · '}"
+                            title="El catálogo no tiene precio: ponele tu precio">Sin precio · poner</button>
+                    </span>
                 </div>
                 <div class="game-result-actions">
                     <span class="stock-pill" th:classappend="${result.stock() == 0} ? 'out'" th:text="${result.stock() + ' en stock'}">0 en stock</span>
@@ -66,7 +76,7 @@
                     </form>
                     <button type="button" class="reserve-button"
                             th:if="${result.stockCard != null and result.stock() > 0}"
-                            th:attr="data-card-id=${result.stockCard.id},data-name=${result.print.name()},data-set=${game.label() + ' · ' + result.print.setName()},data-stock=${result.stock()},data-price=${result.stockCard.priceValue()}"
+                            th:attr="data-card-id=${result.stockCard.id},data-name=${result.print.name()},data-set=${game.label() + ' · ' + result.print.setName()},data-stock=${result.stock()},data-price=${result.stockCard.priceValue()},data-manual-price=${result.stockCard.manualPrice}"
                             title="Sumar al carrito para cobrar o reservar">+ Carrito</button>
                     <button type="button" class="buy-button"
                             th:attr="data-sku=${game.slug() + ':' + result.print.catalogId()},data-card-id=${result.stockCard != null ? result.stockCard.id : ''},data-name=${result.print.name()},data-set=${game.label() + ' · ' + result.print.setName()},data-printing=${result.print.finish()},data-price=${result.referencePrice()},data-ensure-url=@{/juegos/{slug}/fila(slug=${game.slug()})},data-print=${result.printJson()}"
@@ -133,13 +143,25 @@
                     <td>
                         <span th:text="${card.name}">Charizard</span>
                         <button type="button" class="reserve-button" th:if="${card.quantity > 0}"
-                                th:attr="data-card-id=${card.id},data-name=${card.name},data-set=${game.label() + ' · ' + card.setName},data-stock=${card.quantity},data-price=${card.priceValue()}"
+                                th:attr="data-card-id=${card.id},data-name=${card.name},data-set=${game.label() + ' · ' + card.setName},data-stock=${card.quantity},data-price=${card.priceValue()},data-manual-price=${card.manualPrice}"
                                 title="Sumar al carrito para cobrar o reservar">+ Carrito</button>
                     </td>
                     <td th:text="${card.setName + (card.number != null and card.number != '' ? ' #' + card.number : '')}">Base #4</td>
                     <td th:text="${card.rarity + (card.finish != null and card.finish != '' ? ' · ' + card.finish : '')}">Rare Holo</td>
                     <td class="nowrap" th:text="${card.formattedUsd()}">US$ 1,00</td>
-                    <td class="nowrap" th:text="${card.formattedLocalPrice()}">$ 1.000</td>
+                    <td class="nowrap price-cell">
+                        <span th:if="${card.manualPrice}" class="manual-price"
+                              title="Último precio puesto a mano. El catálogo no tiene precio actualizado para esta carta: revisalo antes de venderla.">
+                            <span aria-hidden="true">⚠</span>
+                            <span th:text="${card.formattedLocalPrice()}">$ 1.000</span>
+                        </span>
+                        <th:block th:if="${!card.manualPrice and card.localPrice > 0}" th:text="${card.formattedLocalPrice()}">$ 1.000</th:block>
+                        <button type="button" class="set-price-button price-missing"
+                                th:if="${card.localPrice <= 0 and card.quantity > 0}"
+                                th:attr="data-card-id=${card.id},data-name=${card.name},data-set=${game.label() + ' · '}"
+                                title="El catálogo no tiene precio: ponele tu precio">Sin precio · poner</button>
+                        <th:block th:if="${card.localPrice <= 0 and card.quantity <= 0}">-</th:block>
+                    </td>
                 </tr>
                 </tbody>
             </table>

@@ -62,6 +62,11 @@ public class GameCard {
                 java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(Math.round(localPrice)) : "-";
     }
 
+    /** Precio puesto a mano: tiene precio local pero el catálogo no da precio en dólares. */
+    public boolean isManualPrice() {
+        return localPrice > 0 && (usd == null || usd <= 0);
+    }
+
     public long priceValue() {
         return Math.round(localPrice);
     }

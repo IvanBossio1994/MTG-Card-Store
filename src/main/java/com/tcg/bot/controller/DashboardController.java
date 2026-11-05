@@ -1894,9 +1894,10 @@ public class DashboardController {
 
         var product = cardKingdomApiService.findProduct(card, priceList);
 
+        // Sin precio en Card Kingdom se conserva el precio local: es el que se puso a mano
+        // (o el último conocido) y se muestra con un aviso para revisarlo antes de vender.
         if (product == null) {
             card.setCkPriceUsd("");
-            card.setLocalPrice("");
             card.setAction(ACTION_NO_CK_MATCH);
 
             return new UpdateResult(
@@ -1917,7 +1918,6 @@ public class DashboardController {
 
         if (ckPrice == null) {
             card.setCkPriceUsd("");
-            card.setLocalPrice("");
             card.setAction(ACTION_NO_CK_PRICE);
 
             return new UpdateResult(
@@ -2032,7 +2032,8 @@ public class DashboardController {
                 rowIndex,
                 cardId,
                 comparePrices(product, foil, extraPrices),
-                target == null ? 0 : com.tcg.bot.util.Amounts.parse(target.getLocalPrice())
+                target == null ? 0 : com.tcg.bot.util.Amounts.parse(target.getLocalPrice()),
+                target != null && target.isManualPrice()
         );
     }
 
@@ -2310,7 +2311,8 @@ public class DashboardController {
             int rowIndex,
             String cardId,
             PriceComparison prices,
-            double localPrice
+            double localPrice,
+            boolean manualPrice
     ) {
         /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido si no hay. */
         public long referencePrice() {

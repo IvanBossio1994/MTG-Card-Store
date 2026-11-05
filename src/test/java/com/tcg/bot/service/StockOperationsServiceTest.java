@@ -239,6 +239,15 @@ class StockOperationsServiceTest {
         }
 
         @Override
+        public void updateLocalPrice(int rowIndex, String localPrice) {
+            cards.stream()
+                    .filter(card -> card.getRowIndex() == rowIndex)
+                    .findFirst()
+                    .orElseThrow()
+                    .setLocalPrice(localPrice);
+        }
+
+        @Override
         public void updateStockState(int rowIndex, InventoryCard updated) {
             InventoryCard target = cards.stream()
                     .filter(card -> card.getRowIndex() == rowIndex)

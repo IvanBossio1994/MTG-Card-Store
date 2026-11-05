@@ -80,4 +80,49 @@ class SearchPageTest {
                 .andExpect(content().string(containsString("reserve-button")))
                 .andExpect(content().string(containsString("data-card-id=\"sol\"")));
     }
+
+    @Test
+    void cardsWithoutCardKingdomPriceCanGetAPriceByHandAndShowAWarning() throws Exception {
+        CardKingdomProduct edgar = new CardKingdomProduct();
+        edgar.setName("Edgar Markov");
+        edgar.setEdition("Commander 2017");
+        edgar.setSku("C17-036");
+        edgar.setFoil("false");
+        CardKingdomProduct sol = new CardKingdomProduct();
+        sol.setName("Sol Ring");
+        sol.setEdition("Commander");
+        sol.setSku("CMD-261");
+        sol.setFoil("false");
+        when(cardKingdomApiService.searchProducts(anyString())).thenReturn(List.of(edgar, sol));
+        when(scryfallPriceService.prices(any())).thenReturn(Map.of());
+
+        InventoryCard manual = new InventoryCard();
+        manual.setId("edgar");
+        manual.setRowIndex(2);
+        manual.setName("Edgar Markov");
+        manual.setSetCode("C17");
+        manual.setSetName("Commander 2017");
+        manual.setCollectorNumber("036");
+        manual.setPrinting("nonfoil");
+        manual.setQuantity("2");
+        manual.setLocalPrice("50000");
+        InventoryCard missing = new InventoryCard();
+        missing.setId("sol-cmd");
+        missing.setRowIndex(3);
+        missing.setName("Sol Ring");
+        missing.setSetCode("CMD");
+        missing.setSetName("Commander");
+        missing.setCollectorNumber("261");
+        missing.setPrinting("nonfoil");
+        missing.setQuantity("1");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(manual, missing));
+
+        mvc.perform(get("/").param("q", "Commander"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("manual-price")))
+                .andExpect(content().string(containsString("$ 50.000")))
+                .andExpect(content().string(containsString("data-manual-price=\"true\"")))
+                .andExpect(content().string(containsString("Sin precio · poner")))
+                .andExpect(content().string(containsString("data-card-id=\"sol-cmd\"")));
+    }
 }

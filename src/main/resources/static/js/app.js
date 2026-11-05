@@ -1120,16 +1120,34 @@ document.addEventListener("DOMContentLoaded", () => {
         const meta = document.createElement("span");
         const price = Number(item.price) || 0;
         const left = item.stock ? Math.max(item.stock - item.quantity, 0) : null;
-        meta.textContent = (price > 0 ? money(price) + " c/u" : "sin precio")
-            + (left === null ? "" : " · quedan " + left);
-        if (price <= 0) {
+        const leftText = left === null ? "" : " · quedan " + left;
+        if (price > 0) {
+            meta.textContent = money(price) + " c/u" + leftText;
+        } else {
+            // Sin precio: se pone acá mismo y queda guardado en el Sheet para todas las unidades.
             meta.classList.add("warn");
+            const setPrice = document.createElement("button");
+            setPrice.type = "button";
+            setPrice.className = "set-price-inline";
+            setPrice.textContent = "sin precio · poner precio";
+            setPrice.title = "Card Kingdom no tiene precio: escribí el precio de tu local";
+            setPrice.addEventListener("click", () => openPriceEditor(meta,
+                {cardId: item.cardId, name: item.name},
+                result => applyManualPrice(item.cardId, result.price)));
+            meta.append(setPrice, document.createTextNode(leftText));
         }
         info.append(name);
         if (item.set) {
             info.append(set);
         }
         info.append(meta);
+        if (price > 0 && item.manual) {
+            const note = document.createElement("span");
+            note.className = "manual-note";
+            note.title = manualPriceHint(item.set);
+            note.textContent = "⚠ Último precio puesto a mano (" + manualPriceSource(item.set) + ")";
+            info.append(note);
+        }
 
         const qty = document.createElement("div");
         qty.className = "cart-qty";
@@ -1241,10 +1259,172 @@ document.addEventListener("DOMContentLoaded", () => {
             const items = readOrder();
             if (items.some(item => !(Number(item.price) > 0))) {
                 event.preventDefault();
-                showToast("Hay cartas sin precio. Sincronizá precios antes de cobrar.", "error");
+                showToast("Hay cartas sin precio: tocá \"poner precio\" en el carrito.", "error");
             }
         });
     }
+
+    // ---- Precio manual para cartas sin precio ----
+    // Se guarda en la columna de precio local del Sheet. Una carta con precio local y sin precio
+    // de Card Kingdom (o del catálogo) se muestra con ⚠ para revisarla antes de vender.
+    function isOtherGame(set) {
+        return /^(Pokémon|Yu-Gi-Oh!)\s·/.test(set || "");
+    }
+
+    function manualPriceSource(set) {
+        return isOtherGame(set) ? "sin precio en el catálogo" : "sin precio en Card Kingdom";
+    }
+
+    function manualPriceHint(set) {
+        return "Este precio lo pusiste a mano porque "
+            + (isOtherGame(set) ? "el catálogo" : "Card Kingdom")
+            + " no tiene precio actualizado. Revisalo antes de vender.";
+    }
+
+    async function saveManualPrice(target, value) {
+        const body = new URLSearchParams();
+        if (target.cardId) {
+            body.set("cardId", target.cardId);
+        }
+        if (target.row) {
+            body.set("row", target.row);
+        }
+        body.set("price", value);
+        const response = await fetch("/api/cartas/precio", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+            body
+        });
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (e) {
+            // Respuesta vacía: se usa el mensaje genérico.
+        }
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || "No se pudo guardar el precio.");
+        }
+        return result;
+    }
+
+    function applyManualPrice(cardId, price) {
+        if (!cardId) {
+            return;
+        }
+        const items = readOrder();
+        let touched = false;
+        items.forEach(item => {
+            if (item.cardId === cardId) {
+                item.price = price;
+                item.manual = true;
+                touched = true;
+            }
+        });
+        if (touched) {
+            writeOrder(items);
+        }
+        document.querySelectorAll(".reserve-button").forEach(button => {
+            if (button.dataset.cardId === cardId) {
+                button.dataset.price = price;
+                button.dataset.manualPrice = "true";
+            }
+        });
+    }
+
+    function manualPriceBadge(price, set) {
+        const badge = document.createElement("span");
+        badge.className = "manual-price";
+        badge.title = manualPriceHint(set);
+        const icon = document.createElement("span");
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = "⚠";
+        const text = document.createElement("span");
+        text.textContent = money(price);
+        badge.append(icon, text);
+        return badge;
+    }
+
+    function openPriceEditor(host, target, onSaved) {
+        const previous = Array.from(host.childNodes);
+        const editor = document.createElement("span");
+        editor.className = "price-editor";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.inputMode = "numeric";
+        input.placeholder = "Precio";
+        input.value = target.current || "";
+        input.setAttribute("aria-label", "Precio de " + (target.name || "la carta"));
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "price-editor-save";
+        save.textContent = "Guardar";
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "price-editor-cancel";
+        cancel.textContent = "×";
+        cancel.setAttribute("aria-label", "Cancelar");
+        editor.append(input, save, cancel);
+        host.replaceChildren(editor);
+        input.focus();
+        input.select();
+
+        const close = () => host.replaceChildren(...previous);
+        const submit = async () => {
+            if (!input.value.trim()) {
+                input.focus();
+                return;
+            }
+            save.disabled = true;
+            input.disabled = true;
+            try {
+                const result = await saveManualPrice(target, input.value);
+                showToast(result.message, "success");
+                onSaved(result);
+            } catch (error) {
+                showToast(error.message, "error");
+                save.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        };
+        save.addEventListener("click", submit);
+        cancel.addEventListener("click", close);
+        input.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                submit();
+            } else if (event.key === "Escape") {
+                close();
+            }
+        });
+    }
+
+    // Botones "Sin precio · poner" y "Cambiar" de la búsqueda, el Sheet sincronizado y las pestañas de juegos.
+    document.addEventListener("click", event => {
+        const button = event.target.closest(".set-price-button");
+        if (!button) {
+            return;
+        }
+        const cell = button.closest(".price-cell") || button.parentElement;
+        const target = {
+            cardId: button.dataset.cardId || "",
+            row: button.dataset.row || "",
+            name: button.dataset.name || "",
+            current: button.dataset.current || ""
+        };
+        const set = button.dataset.set || "";
+        openPriceEditor(cell, target, result => {
+            const change = button.cloneNode(false);
+            change.className = "set-price-button text-action";
+            change.textContent = "Cambiar";
+            change.dataset.current = moneyFormat.format(result.price);
+            if (result.cardId) {
+                change.dataset.cardId = result.cardId;
+            }
+            cell.replaceChildren(manualPriceBadge(result.price, set), document.createTextNode(" "), change);
+            applyManualPrice(result.cardId || target.cardId, result.price);
+        });
+    });
 
     document.querySelectorAll(".reserve-button").forEach(button => {
         button.addEventListener("click", () => {
@@ -1265,12 +1445,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const price = Number(button.dataset.price) || 0;
+            const manual = button.dataset.manualPrice === "true";
             if (existing) {
                 existing.quantity += 1;
                 existing.stock = stock;
                 existing.price = price;
+                existing.manual = manual;
             } else {
-                items.push({cardId, quantity: 1, name: button.dataset.name || "", set: button.dataset.set || "", price, stock});
+                items.push({cardId, quantity: 1, name: button.dataset.name || "", set: button.dataset.set || "", price, stock, manual});
             }
 
             writeOrder(items);

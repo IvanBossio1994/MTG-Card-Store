@@ -298,7 +298,9 @@ public class GameInventoryService {
                     card.setCatalogId(print.catalogId());
                 }
                 double local = localPrice(usd);
-                if (newId || !java.util.Objects.equals(usd, card.getUsd()) || Math.round(local) != Math.round(card.getLocalPrice())) {
+                // Sin precio del catálogo se conserva el precio local (puesto a mano o el último conocido).
+                boolean priceMoved = local > 0 && Math.round(local) != Math.round(card.getLocalPrice());
+                if (newId || !java.util.Objects.equals(usd, card.getUsd()) || priceMoved) {
                     card.setUsd(usd);
                     if (local > 0) {
                         card.setLocalPrice(local);
