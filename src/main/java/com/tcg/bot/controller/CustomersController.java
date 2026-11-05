@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.CreditService;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import com.tcg.bot.service.StoreSettingsService;
@@ -71,14 +72,14 @@ public class CustomersController {
             double value = Math.abs(Amounts.parse(amount));
             boolean subtract = "subtract".equals(operation);
             creditService.add(customer, contact, subtract ? -value : value,
-                    reason == null || reason.isBlank() ? (subtract ? "Descuento manual" : "Carga manual") : reason, "");
-            redirect.addFlashAttribute("creditMessage", customer.trim() + " ahora tiene $ "
-                    + CreditService.ars(creditService.balance(customer)) + " de crédito.");
+                    reason == null || reason.isBlank() ? (subtract ? I18n.t("cust.manualSubtract") : I18n.t("cust.manualAdd")) : reason, "");
+            redirect.addFlashAttribute("creditMessage", I18n.t("cust.nowHas", customer.trim(),
+                    com.tcg.bot.i18n.Money.symbol() + " " + CreditService.ars(creditService.balance(customer))));
         } catch (StockOperationException e) {
             redirect.addFlashAttribute("creditError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo actualizar el crédito.", e);
-            redirect.addFlashAttribute("creditError", "No se pudo guardar en el Sheet: " + e.getMessage());
+            redirect.addFlashAttribute("creditError", I18n.t("err.saveSheet", e.getMessage()));
         }
         return "redirect:/clientes";
     }
@@ -94,7 +95,7 @@ public class CustomersController {
         } catch (Exception e) {
             log.warn("No se pudo leer el crédito de clientes.", e);
             model.addAttribute("accounts", List.of());
-            model.addAttribute("creditError", "No se pudo leer la hoja Credito. Revisá la conexión en Configuración.");
+            model.addAttribute("creditError", I18n.t("cust.err.read"));
         }
     }
 }

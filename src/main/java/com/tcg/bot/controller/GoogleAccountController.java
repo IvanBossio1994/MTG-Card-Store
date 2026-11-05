@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.GoogleAccountService;
 import com.tcg.bot.service.GoogleAccountService.GoogleLoginException;
 import com.tcg.bot.service.GoogleSheetsService;
@@ -56,13 +57,13 @@ public class GoogleAccountController {
         try {
             var status = googleAccountService.completeLogin(state, code, error);
             redirectAttributes.addFlashAttribute("googleSuccess", status.email().isBlank()
-                    ? "Cuenta de Google conectada."
-                    : "Conectaste " + status.email() + ".");
+                    ? I18n.t("google.connected")
+                    : I18n.t("google.connectedAs", status.email()));
         } catch (GoogleLoginException e) {
             redirectAttributes.addFlashAttribute("googleError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo completar el login con Google.", e);
-            redirectAttributes.addFlashAttribute("googleError", "No se pudo conectar con Google: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("googleError", I18n.t("google.err.connect", e.getMessage()));
         }
         return "redirect:/configuracion";
     }
@@ -71,15 +72,15 @@ public class GoogleAccountController {
     public String createSheet(RedirectAttributes redirectAttributes) {
         try {
             String title = storeSettingsService.getStoreName() == null || storeSettingsService.getStoreName().isBlank()
-                    ? "Inventario TCG"
-                    : "Inventario " + storeSettingsService.getStoreName().trim();
+                    ? I18n.t("google.sheetTitle.default")
+                    : I18n.t("google.sheetTitle", storeSettingsService.getStoreName().trim());
             String spreadsheetId = googleSheetsService.createSpreadsheet(title);
             storeSettingsService.useSpreadsheet(spreadsheetId);
             redirectAttributes.addFlashAttribute("googleSuccess",
-                    "Listo: creamos \"" + title + "\" en tu Drive y la app ya lo usa.");
+                    I18n.t("google.sheetCreated", title));
         } catch (Exception e) {
             log.warn("No se pudo crear el Sheet.", e);
-            redirectAttributes.addFlashAttribute("googleError", "No se pudo crear el Sheet: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("googleError", I18n.t("google.err.create", e.getMessage()));
         }
         return "redirect:/configuracion";
     }
@@ -88,9 +89,9 @@ public class GoogleAccountController {
     public String disconnect(RedirectAttributes redirectAttributes) {
         try {
             googleAccountService.disconnect();
-            redirectAttributes.addFlashAttribute("googleSuccess", "Desconectaste la cuenta de Google.");
+            redirectAttributes.addFlashAttribute("googleSuccess", I18n.t("google.disconnected"));
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("googleError", "No se pudo desconectar: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("googleError", I18n.t("google.err.disconnect", e.getMessage()));
         }
         return "redirect:/configuracion";
     }

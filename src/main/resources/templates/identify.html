@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Completar ediciones | TCG Inventory</title>
+    <title th:text="#{nav.identify} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Completar ediciones')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{nav.identify})}"></header>
 <div th:replace="~{fragments/layout :: menu('identify')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Inventario</p>
-            <h1>Completar ediciones</h1>
-            <p class="supporting">Estas cartas no tienen edición o número en tu Sheet, así que no se les puede buscar
+            <p class="eyebrow" th:text="#{layout.section.inventory}">Inventario</p>
+            <h1 th:text="#{nav.identify}">Completar ediciones</h1>
+            <p class="supporting" th:text="#{ident.supporting}">Estas cartas no tienen edición o número en tu Sheet, así que no se les puede buscar
                 precio. Elegí la edición correcta y la app completa la fila. Podés buscar por el nombre real, por el
                 nombre alternativo de una edición especial (por ejemplo Elli's Rage) o por el nombre en otro idioma.</p>
         </div>
@@ -27,22 +27,22 @@
     <section class="panel" th:if="${selected != null}">
         <div class="section-head">
             <div>
-                <p class="eyebrow" th:text="${'Fila ' + selected.rowIndex + ' del Sheet'}">Fila 12 del Sheet</p>
-                <h2 th:text="${'¿Qué ' + selected.name + ' es?'}">¿Qué Sol Ring es?</h2>
+                <p class="eyebrow" th:text="#{ident.row(${selected.rowIndex})}">Fila 12 del Sheet</p>
+                <h2 th:text="#{ident.which(${selected.name})}">¿Qué Sol Ring es?</h2>
             </div>
-            <a class="secondary-button" th:href="@{/completar}">Volver a la lista</a>
+            <a class="secondary-button" th:href="@{/completar}" th:text="#{ident.back}">Volver a la lista</a>
         </div>
 
         <form class="identify-search" th:action="@{/completar}" method="get">
             <input type="hidden" name="row" th:value="${selected.rowIndex}">
             <label>
-                <span>Buscar con otro nombre</span>
+                <span th:text="#{ident.otherName}">Buscar con otro nombre</span>
                 <input type="text" name="buscar" th:value="${searchName}" autocomplete="off">
             </label>
-            <button type="submit" class="secondary-button">Buscar</button>
+            <button type="submit" class="secondary-button" th:text="#{common.search}">Buscar</button>
         </form>
 
-        <p class="supporting" th:if="${candidates != null and #lists.isEmpty(candidates) and identifyError == null}">
+        <p class="supporting" th:if="${candidates != null and #lists.isEmpty(candidates) and identifyError == null}" th:text="#{ident.noCandidates}">
             No apareció ninguna carta con ese nombre. Probá escribirlo distinto, en inglés o con el nombre
             alternativo.</p>
 
@@ -59,12 +59,12 @@
                 <div class="candidate-body">
                     <strong th:text="${candidate.name}">Dictate of Erebos</strong>
                     <span class="candidate-alias" th:if="${candidate.alternateName != ''}"
-                          th:text="${'También: ' + candidate.alternateName}">También: Elli's Rage</span>
+                          th:text="#{ident.alsoKnown(${candidate.alternateName})}">También: Elli's Rage</span>
                     <span th:text="${candidate.setName + ' · ' + candidate.setCode + ' #' + candidate.collectorNumber}">Secret Lair · SLD 1234</span>
                     <span class="candidate-meta"
                           th:text="${(candidate.releasedAt.length() >= 4 ? candidate.releasedAt.substring(0, 4) + ' · ' : '') + candidate.finishesLabel()}">2023 · Foil</span>
                 </div>
-                <button type="submit" class="primary-button">Es esta</button>
+                <button type="submit" class="primary-button" th:text="#{ident.thisOne}">Es esta</button>
             </form>
         </div>
     </section>
@@ -72,29 +72,29 @@
     <section class="panel">
         <div class="section-head">
             <div>
-                <p class="eyebrow">Pendientes</p>
-                <h2 th:text="${#lists.isEmpty(pending) ? 'No hay cartas para completar' : #lists.size(pending) + ' cartas sin edición o número'}">3 cartas sin edición o número</h2>
+                <p class="eyebrow" th:text="#{ident.pending}">Pendientes</p>
+                <h2 th:text="${#lists.isEmpty(pending)} ? #{ident.none} : #{rev.noEdition.title(${#lists.size(pending)})}">3 cartas sin edición o número</h2>
             </div>
         </div>
-        <p class="supporting" th:if="${#lists.isEmpty(pending)}">Todas las cartas de tu Sheet tienen edición y número.</p>
+        <p class="supporting" th:if="${#lists.isEmpty(pending)}" th:text="#{ident.allDone}">Todas las cartas de tu Sheet tienen edición y número.</p>
         <div class="table-wrap" th:unless="${#lists.isEmpty(pending)}">
             <table class="identify-table">
                 <thead>
                 <tr>
-                    <th>Carta</th>
-                    <th>Edición</th>
-                    <th>Número</th>
-                    <th>Stock</th>
+                    <th th:text="#{common.card}">Carta</th>
+                    <th th:text="#{rev.col.edition}">Edición</th>
+                    <th th:text="#{dash.search.number}">Número</th>
+                    <th th:text="#{common.stock}">Stock</th>
                     <th></th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="card : ${pending}" th:classappend="${selected != null and selected.rowIndex == card.rowIndex} ? 'selected-row'">
                     <td th:text="${card.name}">Sol Ring</td>
-                    <td th:text="${card.setName != null and card.setName != '' ? card.setName : (card.setCode != null and card.setCode != '' ? card.setCode : 'Falta')}">Falta</td>
-                    <td th:text="${card.collectorNumber != null and card.collectorNumber != '' ? card.collectorNumber : 'Falta'}">Falta</td>
+                    <td th:text="${card.setName != null and card.setName != '' ? card.setName : (card.setCode != null and card.setCode != '' ? card.setCode : #messages.msg('ident.missing'))}">Falta</td>
+                    <td th:text="${card.collectorNumber != null and card.collectorNumber != '' ? card.collectorNumber : #messages.msg('ident.missing')}">Falta</td>
                     <td th:text="${card.quantity}">3</td>
-                    <td><a class="secondary-button" th:href="@{/completar(row=${card.rowIndex})}">Elegir edición</a></td>
+                    <td><a class="secondary-button" th:href="@{/completar(row=${card.rowIndex})}" th:text="#{ident.choose}">Elegir edición</a></td>
                 </tr>
                 </tbody>
             </table>

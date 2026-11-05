@@ -55,7 +55,7 @@ class IdentifyPageTest {
 
         mvc.perform(get("/completar"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("1 cartas sin edición o número")));
+                .andExpect(content().string(containsString("1 carta sin edición o número")));
 
         mvc.perform(get("/completar").param("row", "5"))
                 .andExpect(status().isOk())

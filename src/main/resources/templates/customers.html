@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Crédito de clientes | TCG Inventory</title>
+    <title th:text="#{nav.customers} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Crédito de clientes')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{nav.customers})}"></header>
 <div th:replace="~{fragments/layout :: menu('customers')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Clientes</p>
-            <h1>Crédito de tienda</h1>
-            <p class="supporting">Saldo a favor de cada cliente. Se suma cuando le comprás cartas con crédito y se usa
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{cust.h1}">Crédito de tienda</h1>
+            <p class="supporting" th:text="#{cust.supporting}">Saldo a favor de cada cliente. Se suma cuando le comprás cartas con crédito y se usa
                 al cobrar desde el carrito. Todo queda en la hoja "Credito" de tu Sheet.</p>
         </div>
     </section>
@@ -26,23 +26,23 @@
     <section class="panel">
         <div class="section-head">
             <div>
-                <p class="eyebrow">Ajuste manual</p>
-                <h2>Cargar o descontar saldo</h2>
+                <p class="eyebrow" th:text="#{cust.manual}">Ajuste manual</p>
+                <h2 th:text="#{cust.manual.title}">Cargar o descontar saldo</h2>
             </div>
         </div>
         <form class="credit-form" th:action="@{/clientes/credito}" method="post">
-            <label>Cliente
+            <label><span th:text="#{common.customer}">Cliente</span>
                 <input name="customer" type="text" required maxlength="80" list="credit-customer-names">
             </label>
-            <label>Monto
+            <label><span th:text="#{cust.amount}">Monto</span>
                 <input name="amount" type="text" inputmode="numeric" required placeholder="0">
             </label>
-            <label>Motivo (opcional)
-                <input name="reason" type="text" maxlength="100" placeholder="Ej: premio de torneo">
+            <label><span th:text="#{cust.reason}">Motivo (opcional)</span>
+                <input name="reason" type="text" maxlength="100" th:placeholder="#{cust.reason.placeholder}">
             </label>
             <div class="order-actions">
-                <button type="submit" name="operation" value="add" class="primary-button">Cargar saldo</button>
-                <button type="submit" name="operation" value="subtract" class="secondary-button">Descontar</button>
+                <button type="submit" name="operation" value="add" class="primary-button" th:text="#{cust.add}">Cargar saldo</button>
+                <button type="submit" name="operation" value="subtract" class="secondary-button" th:text="#{cust.subtract}">Descontar</button>
             </div>
             <datalist id="credit-customer-names">
                 <option th:each="account : ${accounts}" th:value="${account.customer}"></option>
@@ -53,10 +53,10 @@
     <section class="panel">
         <div class="section-head">
             <div>
-                <p class="eyebrow">Saldos</p>
-                <h2 th:text="${#lists.isEmpty(accounts) ? 'Ningún cliente tiene crédito todavía' : #lists.size(accounts) + (#lists.size(accounts) == 1 ? ' cliente' : ' clientes')}">Clientes</h2>
+                <p class="eyebrow" th:text="#{cust.balances}">Saldos</p>
+                <h2 th:text="${#lists.isEmpty(accounts)} ? #{cust.none} : #{cust.count(${#lists.size(accounts)})}">Clientes</h2>
             </div>
-            <a class="secondary-button" th:href="@{/compras}">Comprar cartas a un cliente</a>
+            <a class="secondary-button" th:href="@{/compras}" th:text="#{buy.h1}">Comprar cartas a un cliente</a>
         </div>
         <div class="credit-accounts">
             <details class="credit-account" th:each="account : ${accounts}">
@@ -65,7 +65,7 @@
                         <strong th:text="${account.customer}">Juan</strong>
                         <small th:if="${account.contact != ''}" th:text="${account.contact}">11 5555-1234</small>
                     </span>
-                    <strong th:classappend="${account.balance >= 1} ? 'credit-positive'" th:text="${'$ ' + account.formattedBalance()}">$ 0</strong>
+                    <strong th:classappend="${account.balance >= 1} ? 'credit-positive'" th:text="${currencySymbol + ' ' + account.formattedBalance()}">$ 0</strong>
                 </summary>
                 <ul>
                     <li th:each="entry : ${account.history}">

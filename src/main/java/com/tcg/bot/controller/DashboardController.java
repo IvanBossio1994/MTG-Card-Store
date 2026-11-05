@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import static com.tcg.bot.service.ImportListParser.*;
 
 import com.tcg.bot.dto.CardKingdomProduct;
@@ -66,7 +67,6 @@ public class DashboardController {
     private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
     private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
     private static final String ACTION_NO_CK_PRICE = "SIN PRECIO CK";
-    private static final Locale ARGENTINA_LOCALE = new Locale("es", "AR");
     private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
     private static final DateTimeFormatter MOVEMENT_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -132,7 +132,7 @@ public class DashboardController {
 
         if (isBlank(query) && isBlank(setFilter) && isBlank(numberFilter)) {
             if (searchRequested) {
-                model.addAttribute("searchFormatError", "Completa al menos un filtro para buscar.");
+                model.addAttribute("searchFormatError", I18n.t("dash.search.fillOne"));
             }
 
             addLatestUpdates(model);
@@ -158,7 +158,7 @@ public class DashboardController {
         if (!isValidSearchQuery(trimmedQuery, trimmedSet, trimmedNumber)) {
             model.addAttribute(
                     "searchFormatError",
-                    "Formato invalido. Busca por nombre (ej: Sol Ring) o usa: Sol Ring, cmm, Commander Masters, 410"
+                    I18n.t("err.search.format")
             );
             return "dashboard";
         }
@@ -176,7 +176,7 @@ public class DashboardController {
                     && products.isEmpty() && sheetOnly.isEmpty()) {
                 model.addAttribute(
                         "searchFormatError",
-                        "No se encontro esa carta o falta una coma. Para filtrar usa: Sol Ring, cmm."
+                        I18n.t("err.search.notFound")
                 );
                 return "dashboard";
             }
@@ -199,7 +199,7 @@ public class DashboardController {
                     .mapToInt(SearchResult::stockQuantity)
                     .sum());
         } catch (Exception e) {
-            model.addAttribute("error", "No se pudo consultar Card Kingdom o el inventario configurado.");
+            model.addAttribute("error", I18n.t("err.search.failed"));
         }
 
         return "dashboard";
@@ -377,18 +377,18 @@ public class DashboardController {
         model.addAttribute("activeTab", activeTab);
 
         if ("true".equalsIgnoreCase(movementFilter) && selectedMovementDate.isBlank()) {
-            model.addAttribute("movementDateError", "Elegi una fecha para filtrar movimientos.");
+            model.addAttribute("movementDateError", I18n.t("mov.dateRequired"));
         }
 
         if ("true".equalsIgnoreCase(cashFilter) && selectedCashDate.isBlank()) {
-            model.addAttribute("cashDateError", "Elegi una fecha para filtrar caja.");
+            model.addAttribute("cashDateError", I18n.t("mov.cash.dateRequired"));
         }
 
         if (model.containsAttribute("movementDateError") || model.containsAttribute("cashDateError")) {
             model.addAttribute("movements", List.of());
             model.addAttribute("movementGroups", List.of());
             model.addAttribute("movementCount", 0);
-            model.addAttribute("movementCountLabel", "Movimientos hoy");
+            model.addAttribute("movementCountLabel", I18n.t("mov.countToday", 0));
             model.addAttribute("cashEntries", List.of());
             model.addAttribute("cashGroups", List.of());
             model.addAttribute("cashTodayTotal", "0");
@@ -412,26 +412,27 @@ public class DashboardController {
                         .toList();
 
                 if (movements.isEmpty()) {
-                    model.addAttribute("error", "No hay movimientos registrados para esa fecha.");
+                    model.addAttribute("error", I18n.t("mov.noneOnDate"));
                 }
             }
 
             model.addAttribute("movements", movements);
             model.addAttribute("movementGroups", groupMovementsByMonth(movements, selectedMovementDate));
-            model.addAttribute("movementCount", countMovementsForDate(
+            long movementCount = countMovementsForDate(
                     selectedMovementDate.isBlank() ? allMovements : movements,
                     countDate
-            ));
+            );
+            model.addAttribute("movementCount", movementCount);
             model.addAttribute(
                     "movementCountLabel",
-                    selectedMovementDate.isBlank() ? "Movimientos hoy" : "Movimientos del dia"
+                    I18n.t(selectedMovementDate.isBlank() ? "mov.countToday" : "mov.countDay", movementCount)
             );
         } catch (Exception e) {
-            model.addAttribute("error", "No se pudieron cargar los movimientos.");
+            model.addAttribute("error", I18n.t("mov.loadError"));
             model.addAttribute("movements", List.of());
             model.addAttribute("movementGroups", List.of());
             model.addAttribute("movementCount", 0);
-            model.addAttribute("movementCountLabel", "movimientos hoy");
+            model.addAttribute("movementCountLabel", I18n.t("mov.countToday", 0));
         }
 
         addCashRegisterModel(model, selectedCashDate, allMovements);
@@ -626,12 +627,16 @@ public class DashboardController {
 
     private String monthLabel(String monthKey) {
         if ("sin-fecha".equals(monthKey)) {
-            return "Sin fecha";
+            return I18n.t("mov.noDate");
         }
 
         YearMonth month = YearMonth.parse(monthKey);
         String monthName = month.getMonth()
-                .getDisplayName(TextStyle.FULL, new Locale("es", "AR"));
+                .getDisplayName(TextStyle.FULL_STANDALONE, com.tcg.bot.i18n.I18n.locale());
+
+        if ("ja".equals(com.tcg.bot.i18n.I18n.locale().getLanguage())) {
+            return month.getYear() + "年" + month.getMonthValue() + "月";
+        }
 
         return monthName.substring(0, 1).toUpperCase()
                 + monthName.substring(1)
@@ -661,7 +666,7 @@ public class DashboardController {
             model.addAttribute("cashTodayTotal", "0");
             model.addAttribute("cashSelectedTotal", "0");
             model.addAttribute("cashReportMonths", List.of());
-            model.addAttribute("cashError", "No se pudo cargar la caja.");
+            model.addAttribute("cashError", I18n.t("mov.cash.loadError"));
         }
     }
 
@@ -749,7 +754,7 @@ public class DashboardController {
 
     private String formatCashTotal(double value) {
         return NumberFormat
-                .getIntegerInstance(ARGENTINA_LOCALE)
+                .getIntegerInstance(com.tcg.bot.i18n.I18n.locale())
                 .format(Math.round(value));
     }
 
@@ -767,7 +772,7 @@ public class DashboardController {
             return "";
         }
 
-        NumberFormat formatter = NumberFormat.getNumberInstance(ARGENTINA_LOCALE);
+        NumberFormat formatter = NumberFormat.getNumberInstance(com.tcg.bot.i18n.I18n.locale());
         formatter.setMinimumFractionDigits(fractionDigits);
         formatter.setMaximumFractionDigits(fractionDigits);
         return formatter.format(parsedValue);
@@ -936,7 +941,7 @@ public class DashboardController {
             return populateImportAnalysisModel(
                     rawList,
                     model,
-                    "Agrega al menos una carta para analizar la lista."
+                    I18n.t("imp.listRequired")
             );
         }
 
@@ -954,7 +959,7 @@ public class DashboardController {
             return populateImportAnalysisModel(
                     rawList,
                     model,
-                    "Selecciona al menos una carta para agregar al stock."
+                    I18n.t("imp.selectOne")
             );
         }
 
@@ -1016,8 +1021,7 @@ public class DashboardController {
                 return populateImportAnalysisModel(
                         rawList,
                         model,
-                        licenseService.limitMessage() + " Esta lista suma " + cardsToAppend.size()
-                                + " cartas nuevas y te quedan " + remaining + "."
+                        licenseService.limitMessage() + " " + I18n.t("imp.overLimit", cardsToAppend.size(), remaining)
                 );
             }
 
@@ -1029,11 +1033,11 @@ public class DashboardController {
 
             redirectAttributes.addFlashAttribute(
                     "success",
-                    added + " carta(s) nuevas agregadas y " + updated + " carta(s) existentes actualizadas."
+                    I18n.t("imp.done", added, updated)
             );
         } catch (Exception e) {
             log.warn("No se pudo importar la lista.", e);
-            return populateImportAnalysisModel(rawList, model, "No se pudo importar la lista.");
+            return populateImportAnalysisModel(rawList, model, I18n.t("imp.error"));
         }
 
         return "redirect:/importar-lista";
@@ -1058,7 +1062,7 @@ public class DashboardController {
                             : result.alternatives().size())
                     .sum());
         } catch (Exception e) {
-            model.addAttribute("error", "No se pudo analizar la lista.");
+            model.addAttribute("error", I18n.t("imp.analyzeError"));
             model.addAttribute("importResults", List.of());
             model.addAttribute("totalCount", 0);
             model.addAttribute("readyCount", 0);
@@ -1121,7 +1125,7 @@ public class DashboardController {
         var priceList = cardKingdomApiService.getPriceList();
 
         if (priceList == null || priceList.getData() == null) {
-            throw new IllegalStateException("No hay lista de precios de Card Kingdom.");
+            throw new IllegalStateException(I18n.t("err.ck.noPricelist"));
         }
 
         Map<String, List<CardKingdomProduct>> productsByName =
@@ -1402,6 +1406,7 @@ public class DashboardController {
             @RequestParam(name = "cardmarketEnabled", defaultValue = "false") boolean cardmarketEnabled,
             @RequestParam(name = "eurRate", required = false) Double eurRate,
             @RequestParam(name = "combineMode", required = false) String combineMode,
+            @RequestParam(name = "currency", required = false) String currency,
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
@@ -1429,6 +1434,9 @@ public class DashboardController {
                 );
             }
             storeSettingsService.update(storeName, spreadsheetId, inventorySheetName, cacheDirectory);
+            if (currency != null) {
+                storeSettingsService.updateCurrency(currency);
+            }
 
             if (removeLogo) {
                 storeSettingsService.removeLogo();
@@ -1443,7 +1451,7 @@ public class DashboardController {
                             asyncRequest,
                             redirectAttributes,
                             true,
-                            "Configuracion guardada e inventario sincronizado.",
+                            I18n.t("settings.saved.synced"),
                             HttpStatus.OK
                     );
                 } else {
@@ -1451,7 +1459,7 @@ public class DashboardController {
                             asyncRequest,
                             redirectAttributes,
                             false,
-                            "Configuracion guardada, pero no se pudo sincronizar Card Kingdom en este momento.",
+                            I18n.t("settings.saved.ckDown"),
                             HttpStatus.SERVICE_UNAVAILABLE
                     );
                 }
@@ -1461,13 +1469,13 @@ public class DashboardController {
                         asyncRequest,
                         redirectAttributes,
                         false,
-                        "Configuracion guardada, pero no se pudo sincronizar: " + syncErrorMessage(syncException),
+                        I18n.t("settings.saved.syncError", syncErrorMessage(syncException)),
                         HttpStatus.INTERNAL_SERVER_ERROR
                 );
             }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("submittedInventorySheetName", inventorySheetName);
-            if (e.getMessage().toLowerCase().contains("hoja")) {
+            if (I18n.t("err.sheetName.required").equals(e.getMessage())) {
                 redirectAttributes.addFlashAttribute("inventorySheetError", e.getMessage());
                 return configurationResponse(
                         asyncRequest,
@@ -1490,7 +1498,7 @@ public class DashboardController {
                     asyncRequest,
                     redirectAttributes,
                     false,
-                    "No se pudo guardar la configuracion de la tienda: " + syncErrorMessage(e),
+                    I18n.t("settings.saveError", syncErrorMessage(e)),
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
@@ -1540,14 +1548,14 @@ public class DashboardController {
                     minimumPrice == null ? pricingSettingsService.getMinimumPrice() : minimumPrice
             );
             if (synchronizeInventory(false)) {
-                model.addAttribute("success", "Regla de precio guardada e inventario sincronizado.");
+                model.addAttribute("success", I18n.t("pricing.saved.synced"));
             } else {
-                model.addAttribute("success", "Regla de precio guardada. No se pudo sincronizar Card Kingdom en este momento.");
+                model.addAttribute("success", I18n.t("pricing.saved.ckDown"));
             }
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
         } catch (Exception e) {
-            model.addAttribute("error", "No se pudo guardar o sincronizar la regla de precio.");
+            model.addAttribute("error", I18n.t("pricing.saveError"));
         }
 
         addBaseModel(model, "");
@@ -1565,7 +1573,7 @@ public class DashboardController {
         try {
             ensureInventorySetup();
             if (!synchronizeInventory(true)) {
-                model.addAttribute("error", "No se pudo obtener la lista actualizada de Card Kingdom.");
+                model.addAttribute("error", I18n.t("err.ck.download"));
                 return "dashboard";
             }
             addLatestUpdates(model);
@@ -1573,7 +1581,7 @@ public class DashboardController {
             model.addAttribute("error", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo actualizar el inventario.", e);
-            model.addAttribute("error", "No se pudo actualizar el inventario: " + syncErrorMessage(e));
+            model.addAttribute("error", I18n.t("err.sync", syncErrorMessage(e)));
         }
 
         return "dashboard";
@@ -1589,36 +1597,35 @@ public class DashboardController {
                     : googleException.getDetails().getMessage();
 
             if ((statusCode == 403 || statusCode == 404) && inventoryService.usesGoogleAccount()) {
-                return "Con la cuenta de Google conectada, la app solo puede abrir los Sheets que creó ella. "
-                        + "Tocá \"Crear mi Sheet de inventario\" en Configuración, o desconectá la cuenta para usar tu Sheet compartido con el bot.";
+                return I18n.t("err.google.ownSheetsOnly");
             }
 
             if (statusCode == 403) {
-                return "Google rechazo el acceso. Revisa que el Sheet este compartido como Editor con el mail de Configuracion y que Google Sheets API este habilitada para esas credenciales.";
+                return I18n.t("err.google.403");
             }
 
             if (statusCode == 404) {
-                return "Google no encontro el Sheet. Revisa que el ID o enlace sea correcto y que el mail editor tenga acceso.";
+                return I18n.t("err.google.404");
             }
 
             if (statusCode == 400 && details != null && details.toLowerCase().contains("unable to parse range")) {
-                return "Google no pudo leer la pestaña configurada. Revisa el nombre de la pestaña en Configuracion.";
+                return I18n.t("err.google.range");
             }
 
             if (details != null && !details.isBlank()) {
-                return "Google Sheets respondio " + statusCode + ": " + details;
+                return I18n.t("err.google.statusDetails", String.valueOf(statusCode), details);
             }
 
-            return "Google Sheets respondio " + statusCode + ".";
+            return I18n.t("err.google.status", String.valueOf(statusCode));
         }
 
         if (root instanceof java.net.UnknownHostException) {
-            return "no hay conexion a internet o no se pudo resolver el servidor externo.";
+            return I18n.t("err.noInternet");
         }
 
         String message = root.getMessage();
         if (message == null || message.isBlank()) {
-            return "revisa permisos del Sheet, credenciales y conexion a Card Kingdom.";
+            return I18n.t("err.generic.sync");
         }
 
         return message;
@@ -1678,14 +1685,13 @@ public class DashboardController {
     private void ensureInventorySetup() {
         if (!storeSettingsService.hasSpreadsheetConfigured()) {
             throw new IllegalStateException(
-                    "Configura primero el Google Sheet desde Configuracion. Copia su enlace o ID y guarda los cambios."
+                    I18n.t("err.setup.noSheet")
             );
         }
 
         if (!inventoryService.hasCredentialsConfigured()) {
             throw new IllegalStateException(
-                    "Falta google-credentials.json. Copialo en " + inventoryService.getConfiguredCredentialsPath()
-                            + " o configura GOOGLE_APPLICATION_CREDENTIALS."
+                    I18n.t("err.setup.noCredentials", String.valueOf(inventoryService.getConfiguredCredentialsPath()))
             );
         }
     }
@@ -1868,7 +1874,7 @@ public class DashboardController {
                 card.getName(),
                 card.getSetName(),
                 "",
-                "No está en Card Kingdom",
+                I18n.t("dash.notInCk"),
                 card.isFoil() ? "Foil" : "No Foil",
                 "",
                 quantity(card),
@@ -1896,7 +1902,7 @@ public class DashboardController {
         return new PriceComparison(
                 tcg == null ? "" : "US$ " + formatPrice(String.valueOf(tcg.price()), 2),
                 cm == null ? "" : "€ " + formatPrice(String.valueOf(cm.price()), 2),
-                quote.localPrice() == null ? "" : "$ " + formatPrice(String.valueOf(quote.localPrice()), 0),
+                quote.localPrice() == null ? "" : com.tcg.bot.i18n.Money.symbol() + " " + formatPrice(String.valueOf(quote.localPrice()), 0),
                 quote.localPrice() == null ? 0 : quote.localPrice()
         );
     }
@@ -2029,6 +2035,7 @@ public class DashboardController {
         model.addAttribute("eurRate", pricingSettingsService.getEurRate());
         model.addAttribute("combineMode", pricingSettingsService.getCombineMode().name());
         model.addAttribute("combineModes", com.tcg.bot.service.PricingSettingsService.CombineMode.values());
+        model.addAttribute("currencies", com.tcg.bot.i18n.Money.SYMBOLS.keySet());
         model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("sheetEditorEmail", inventoryService.getServiceAccountEmail());
@@ -2232,7 +2239,7 @@ public class DashboardController {
         public String formattedDate() {
             try {
                 return LocalDate.parse(date, MOVEMENT_DATE_FORMAT)
-                        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                        .format(com.tcg.bot.i18n.Dates.shortDate());
             } catch (RuntimeException e) {
                 return date == null ? "" : date;
             }
@@ -2453,8 +2460,8 @@ public class DashboardController {
         try {
             var result = stockOperationsService.voidSale(saleId);
             redirectAttributes.addFlashAttribute("cashMessage", result.stockRestored()
-                    ? "Venta anulada: se restó de la caja y las cartas volvieron al stock."
-                    : "Venta anulada en caja. No se encontró la carta en el inventario, revisá el stock a mano.");
+                    ? I18n.t("cash.voided")
+                    : I18n.t("cash.voided.noStock"));
         } catch (StockOperationsService.StockOperationException e) {
             redirectAttributes.addFlashAttribute("cashError", e.getMessage());
         } catch (Exception e) {
@@ -2481,7 +2488,7 @@ public class DashboardController {
         try {
             com.google.gson.JsonArray array = com.google.gson.JsonParser.parseString(lines).getAsJsonArray();
             if (array.isEmpty()) {
-                throw new StockOperationsService.StockOperationException("La compra no tiene cartas.");
+                throw new StockOperationsService.StockOperationException(I18n.t("buy.err.empty"));
             }
             com.tcg.bot.service.BuyService.Result result;
             synchronized (StockOperationsService.writeLock()) {
@@ -2502,7 +2509,7 @@ public class DashboardController {
                         CardKingdomProduct product = findProductBySku(sku);
                         if (product == null) {
                             throw new StockOperationsService.StockOperationException(
-                                    "No se encontró una de las cartas en Card Kingdom. Volvé a buscarla.");
+                                    I18n.t("buy.err.cardNotFound"));
                         }
                         card = findSamePrinting(current, product);
                         if (card == null) {
@@ -2524,10 +2531,9 @@ public class DashboardController {
                         buyLines);
             }
             redirect.addFlashAttribute("buyMessage", result.payment() == com.tcg.bot.service.BuyService.Payment.CASH
-                    ? "Compra registrada: " + result.units() + (result.units() == 1 ? " carta" : " cartas")
-                            + " por $ " + result.formattedTotal() + " en efectivo. Ya están en el stock."
-                    : "Compra registrada: " + result.units() + (result.units() == 1 ? " carta" : " cartas")
-                            + ". " + customer.trim() + " ahora tiene $ " + result.formattedBalance() + " de crédito.");
+                    ? I18n.t("buy.done.cash", result.units(), com.tcg.bot.i18n.Money.symbol() + " " + result.formattedTotal())
+                    : I18n.t("buy.done.credit", result.units(), customer.trim(),
+                            com.tcg.bot.i18n.Money.symbol() + " " + result.formattedBalance()));
             redirect.addFlashAttribute("clearBuy", true);
         } catch (StockOperationsService.StockOperationException e) {
             redirect.addFlashAttribute("buyError", e.getMessage());
@@ -2546,7 +2552,7 @@ public class DashboardController {
 
             if (product == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiMessage(false, "No se encontro la carta en Card Kingdom."));
+                        .body(new ApiMessage(false, I18n.t("err.ck.cardNotFound")));
             }
 
             InventoryCard card;

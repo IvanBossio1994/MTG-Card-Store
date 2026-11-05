@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.model.InventoryMovement;
@@ -98,8 +99,7 @@ public interface InventoryStore {
         com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
                 .filter(candidate -> card.getId() != null && card.getId().equals(candidate.getId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(card.getName() + " ya no está en la pestaña "
-                        + card.getGame().sheetName() + "."));
+                .orElseThrow(() -> new IllegalStateException(I18n.t("games.err.cardGone", card.getName(), card.getGame().sheetName())));
         row.setLocalPrice(price);
         updateGameCard(card.getGame(), row);
     }
@@ -113,8 +113,7 @@ public interface InventoryStore {
         com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
                 .filter(candidate -> card.getId() != null && card.getId().equals(candidate.getId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(card.getName() + " ya no está en la pestaña "
-                        + card.getGame().sheetName() + "."));
+                .orElseThrow(() -> new IllegalStateException(I18n.t("games.err.cardGone", card.getName(), card.getGame().sheetName())));
         row.setQuantity(Math.max(com.tcg.bot.util.Amounts.parseInt(card.getQuantity()), 0));
         updateGameCard(card.getGame(), row);
     }

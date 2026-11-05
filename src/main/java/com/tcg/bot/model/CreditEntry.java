@@ -14,9 +14,8 @@ public record CreditEntry(
         String reference
 ) {
     public String formattedAmount() {
-        String value = new java.text.DecimalFormat("#,##0",
-                java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(Math.round(Math.abs(amount)));
-        return (amount < 0 ? "-$ " : "+$ ") + value;
+        String value = com.tcg.bot.i18n.Money.number(Math.round(Math.abs(amount)));
+        return (amount < 0 ? "-" : "+") + com.tcg.bot.i18n.Money.symbol() + " " + value;
     }
 
     /** Clave para sumar el saldo: sin mayúsculas ni espacios de más. */

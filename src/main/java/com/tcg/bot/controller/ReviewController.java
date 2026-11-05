@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.ReviewService;
 import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ public class ReviewController {
             model.addAttribute("review", reviewService.review());
         } catch (Exception e) {
             log.warn("No se pudo armar la lista para revisar.", e);
-            model.addAttribute("reviewError", "No se pudo leer el Sheet. Revisá la conexión en Configuración.");
+            model.addAttribute("reviewError", I18n.t("err.readSheet"));
         }
         return "review";
     }

@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.slf4j.Logger;
@@ -109,23 +110,22 @@ public class LicenseService {
     }
 
     public String limitMessage() {
-        return "Llegaste al límite del plan gratis (" + FREE_CARD_LIMIT + " cartas distintas). "
-                + "Podés seguir vendiendo y reservando; para sumar cartas nuevas activá el plan Tienda en Configuración.";
+        return I18n.t("license.limit", FREE_CARD_LIMIT);
     }
 
     public synchronized Status status() {
         if (isPro()) {
             return new Status(true, "Tienda", lastValidation.email(), lastValidation.expiresAt(),
-                    "Plan Tienda activo.", mask(licenseKey));
+                    I18n.t("license.active"), mask(licenseKey));
         }
 
-        String message = "Plan gratis: hasta " + FREE_CARD_LIMIT + " cartas distintas.";
+        String message = I18n.t("license.free", FREE_CARD_LIMIT);
         if (!licenseKey.isBlank() && lastValidation != null && lastValidation.error() != null && !lastValidation.error().isBlank()) {
-            message = "La licencia no está activa: " + lastValidation.error();
+            message = I18n.t("license.notActive", lastValidation.error());
         } else if (!licenseKey.isBlank() && lastValidation != null && !usable(lastValidation.status())) {
-            message = "La licencia está " + translate(lastValidation.status()) + ".";
+            message = I18n.t("license.status", translate(lastValidation.status()));
         } else if (!licenseKey.isBlank()) {
-            message = "No se pudo validar la licencia hace más de " + OFFLINE_GRACE.toDays() + " días. Revisá la conexión.";
+            message = I18n.t("license.offline", OFFLINE_GRACE.toDays());
         }
 
         return new Status(false, "Gratis", lastValidation == null ? "" : lastValidation.email(), "", message, mask(licenseKey));
@@ -252,10 +252,10 @@ public class LicenseService {
 
     private static String translate(String status) {
         return switch (status == null ? "" : status.toLowerCase()) {
-            case "expired" -> "vencida";
-            case "disabled" -> "desactivada";
-            case "inactive" -> "inactiva";
-            default -> "sin validar";
+            case "expired" -> I18n.t("license.state.expired");
+            case "disabled" -> I18n.t("license.state.disabled");
+            case "inactive" -> I18n.t("license.state.inactive");
+            default -> I18n.t("license.state.unknown");
         };
     }
 

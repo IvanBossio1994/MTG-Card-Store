@@ -1,5 +1,6 @@
 package com.tcg.bot.service.games;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.model.Game;
 import com.tcg.bot.model.GameCard;
@@ -64,8 +65,7 @@ public class GameInventoryService {
         }
 
         public String formattedSuggested() {
-            return suggestedLocal > 0 ? "$ " + new java.text.DecimalFormat("#,##0",
-                    java.text.DecimalFormatSymbols.getInstance(new java.util.Locale("es", "AR"))).format(Math.round(suggestedLocal)) : "-";
+            return suggestedLocal > 0 ? com.tcg.bot.i18n.Money.format(suggestedLocal) : "-";
         }
 
         /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido. */
@@ -88,7 +88,7 @@ public class GameInventoryService {
         }
 
         public String formattedUsd() {
-            return print.usd() == null ? "-" : "US$ " + String.format(java.util.Locale.US, "%.2f", print.usd()).replace('.', ',');
+            return print.usd() == null ? "-" : com.tcg.bot.i18n.Money.usd(print.usd());
         }
     }
 
@@ -227,15 +227,15 @@ public class GameInventoryService {
             GameCard card = store.getGameCards(game).stream()
                     .filter(candidate -> id != null && id.equals(candidate.getId()))
                     .findFirst()
-                    .orElseThrow(() -> new StockOperationException("La carta ya no está en la pestaña " + game.sheetName() + "."));
+                    .orElseThrow(() -> new StockOperationException(I18n.t("games.err.gone", game.sheetName())));
             int previous = card.getQuantity();
             int next = Math.max(previous + delta, 0);
             if (next == previous) {
-                throw new StockOperationException("No hay unidades de " + card.getName() + " para descontar.");
+                throw new StockOperationException(I18n.t("err.noUnits", card.getName()));
             }
             boolean isSale = sale && delta < 0;
             if (isSale && card.getLocalPrice() <= 0) {
-                throw new StockOperationException(card.getName() + " no tiene precio. Actualizá precios o usá \"Ajuste\".");
+                throw new StockOperationException(I18n.t("games.err.noPrice", card.getName()));
             }
 
             card.setQuantity(next);

@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Cierre de caja | TCG Inventory</title>
+    <title th:text="#{close.title} + ' | TCG Inventory'">TCG Inventory</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app.js}"></script>
 </head>
 <body>
-<header th:replace="~{fragments/layout :: topbar('Cierre de caja')}"></header>
+<header th:replace="~{fragments/layout :: topbar(#{close.title})}"></header>
 <div th:replace="~{fragments/layout :: menu('movements')}"></div>
 <main class="page">
     <section class="hero">
         <div class="hero-copy">
-            <p class="eyebrow">Caja</p>
-            <h1 th:text="${day != null ? 'Cierre del ' + day.formattedDate : 'Cierre de caja'}">Cierre del 03/11/2026</h1>
-            <p class="supporting no-print">Contá lo que entró hoy y comparalo con lo que la app registró. El cierre queda
+            <p class="eyebrow" th:text="#{mov.tab.cash}">Caja</p>
+            <h1 th:text="${day != null} ? #{close.of(${day.formattedDate})} : #{close.title}">Cierre del 03/11/2026</h1>
+            <p class="supporting no-print" th:text="#{close.supporting}">Contá lo que entró hoy y comparalo con lo que la app registró. El cierre queda
                 anotado en la hoja Caja de tu Sheet.</p>
         </div>
         <div class="hero-actions no-print">
             <form th:action="@{/caja/cierre}" method="get" class="close-date-form">
-                <input type="date" name="fecha" th:value="${day != null ? day.date : ''}" aria-label="Fecha">
-                <button type="submit" class="secondary-button">Ver</button>
+                <input type="date" name="fecha" th:value="${day != null ? day.date : ''}" th:aria-label="#{common.date}">
+                <button type="submit" class="secondary-button" th:text="#{rev.see}">Ver</button>
             </form>
         </div>
     </section>
@@ -32,60 +32,60 @@
     <th:block th:if="${day != null}">
         <section class="summary-strip close-strip">
             <div class="summary-tile">
-                <span class="summary-label">Ventas</span>
-                <strong th:text="${'$ ' + day.grossSales}">$ 0</strong>
-                <span class="summary-note" th:text="${day.salesCount + (day.salesCount == 1 ? ' venta · ' : ' ventas · ') + day.units + (day.units == 1 ? ' carta' : ' cartas')}">0 ventas</span>
+                <span class="summary-label" th:text="#{mov.report.bar.sales}">Ventas</span>
+                <strong th:text="${currencySymbol + ' ' + day.grossSales}">$ 0</strong>
+                <span class="summary-note" th:text="#{close.salesUnits(${day.salesCount}, ${day.units})}">0 ventas</span>
             </div>
             <div class="summary-tile">
-                <span class="summary-label">Anulaciones</span>
-                <strong th:text="${'-$ ' + day.voids}">-$ 0</strong>
-                <span class="summary-note">Ya descontadas</span>
+                <span class="summary-label" th:text="#{close.voids}">Anulaciones</span>
+                <strong th:text="${'-' + currencySymbol + ' ' + day.voids}">-$ 0</strong>
+                <span class="summary-note" th:text="#{close.voids.note}">Ya descontadas</span>
             </div>
             <div class="summary-tile" th:if="${day.purchases != '0' or day.creditUsed != '0'}">
-                <span class="summary-label">Compras y crédito</span>
-                <strong th:text="${'-$ ' + day.purchases}">-$ 0</strong>
-                <span class="summary-note" th:text="${'Compras pagadas · $ ' + day.creditUsed + ' cobrado con crédito'}">Compras pagadas</span>
+                <span class="summary-label" th:text="#{close.purchases}">Compras y crédito</span>
+                <strong th:text="${'-' + currencySymbol + ' ' + day.purchases}">-$ 0</strong>
+                <span class="summary-note" th:text="#{close.purchases.note(${currencySymbol + ' ' + day.creditUsed})}">Compras pagadas</span>
             </div>
             <div class="summary-tile">
-                <span class="summary-label">Tendría que haber</span>
-                <strong id="close-expected" th:attr="data-expected=${day.expectedValue}" th:text="${day.expected.startsWith('-') ? '-$ ' + day.expected.substring(1) : '$ ' + day.expected}">$ 0</strong>
-                <span class="summary-note">Ventas menos anulaciones, compras y crédito</span>
+                <span class="summary-label" th:text="#{close.expected}">Tendría que haber</span>
+                <strong id="close-expected" th:attr="data-expected=${day.expectedValue}" th:text="${day.expected.startsWith('-') ? '-' + currencySymbol + ' ' + day.expected.substring(1) : currencySymbol + ' ' + day.expected}">$ 0</strong>
+                <span class="summary-note" th:text="#{close.expected.note}">Ventas menos anulaciones, compras y crédito</span>
             </div>
             <div class="summary-tile" th:if="${day.lastClose() != null}">
-                <span class="summary-label">Último cierre</span>
+                <span class="summary-label" th:text="#{close.last}">Último cierre</span>
                 <strong th:text="${day.lastClose().time}">20:00</strong>
-                <span class="summary-note">Ver detalle abajo</span>
+                <span class="summary-note" th:text="#{close.last.note}">Ver detalle abajo</span>
             </div>
         </section>
 
         <section class="panel no-print">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Contar la caja</p>
-                    <h2>¿Cuánto entró?</h2>
+                    <p class="eyebrow" th:text="#{close.count}">Contar la caja</p>
+                    <h2 th:text="#{close.count.title}">¿Cuánto entró?</h2>
                 </div>
             </div>
             <form id="close-form" class="close-form" th:action="@{/caja/cierre}" method="post">
                 <input type="hidden" name="fecha" th:value="${day.date}">
-                <label>Efectivo
+                <label><span th:text="#{close.cash}">Efectivo</span>
                     <input type="text" inputmode="numeric" name="efectivo" placeholder="0" autocomplete="off">
                 </label>
-                <label>Transferencias / Mercado Pago
+                <label><span th:text="#{close.transfers}">Transferencias / Mercado Pago</span>
                     <input type="text" inputmode="numeric" name="transferencias" placeholder="0" autocomplete="off">
                 </label>
-                <label>Tarjeta
+                <label><span th:text="#{close.card}">Tarjeta</span>
                     <input type="text" inputmode="numeric" name="tarjeta" placeholder="0" autocomplete="off">
                 </label>
-                <label class="close-note">Nota (opcional)
-                    <input type="text" name="nota" maxlength="140" placeholder="Ej: faltan $ 500 de cambio">
+                <label class="close-note"><span th:text="#{close.note}">Nota (opcional)</span>
+                    <input type="text" name="nota" maxlength="140" th:placeholder="#{close.note.placeholder(${currencySymbol})}">
                 </label>
                 <div class="close-result">
-                    <span>Contado <strong id="close-counted">$ 0</strong></span>
-                    <span>Diferencia <strong id="close-difference">$ 0</strong></span>
+                    <span><span th:text="#{close.counted}">Contado</span> <strong id="close-counted" th:text="${currencySymbol} + ' 0'">$ 0</strong></span>
+                    <span><span th:text="#{close.difference}">Diferencia</span> <strong id="close-difference" th:text="${currencySymbol} + ' 0'">$ 0</strong></span>
                 </div>
                 <div class="order-actions">
-                    <button type="submit" class="primary-button">Guardar cierre</button>
-                    <button type="button" class="secondary-button" data-print>Imprimir resumen</button>
+                    <button type="submit" class="primary-button" th:text="#{close.save}">Guardar cierre</button>
+                    <button type="button" class="secondary-button" data-print th:text="#{close.print}">Imprimir resumen</button>
                 </div>
             </form>
         </section>
@@ -93,33 +93,33 @@
         <section class="panel">
             <div class="section-head">
                 <div>
-                    <p class="eyebrow">Detalle</p>
-                    <h2>Movimientos de caja del día</h2>
+                    <p class="eyebrow" th:text="#{close.detail}">Detalle</p>
+                    <h2 th:text="#{close.detail.title}">Movimientos de caja del día</h2>
                 </div>
             </div>
-            <p class="supporting" th:if="${#lists.isEmpty(day.sales)}">No hubo ventas este día.</p>
+            <p class="supporting" th:if="${#lists.isEmpty(day.sales)}" th:text="#{close.noSales}">No hubo ventas este día.</p>
             <div class="table-wrap" th:unless="${#lists.isEmpty(day.sales)}">
                 <table class="close-table">
                     <thead>
                     <tr>
-                        <th>Hora</th>
-                        <th>Carta</th>
-                        <th>Cant.</th>
-                        <th>Total</th>
+                        <th th:text="#{mov.col.time}">Hora</th>
+                        <th th:text="#{common.card}">Carta</th>
+                        <th th:text="#{mov.col.qty}">Cant.</th>
+                        <th th:text="#{common.total}">Total</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="entry : ${day.sales}" th:classappend="${entry.drawerAmount() < 0} ? 'cash-row-void' : ''">
                         <td th:text="${entry.time}">12:00</td>
-                        <td th:text="${entry.name + (entry.isVoid() ? ' (anulación)' : '')}">Sol Ring</td>
+                        <td th:text="${entry.name} + (${entry.isVoid()} ? ' (' + #{close.voidTag} + ')' : '')">Sol Ring</td>
                         <td th:text="${entry.isCreditUse() ? '-' : entry.signedQuantity()}">1</td>
-                        <td class="nowrap" th:text="${entry.drawerAmount() < 0 ? '-$ ' + entry.formattedTotal : '$ ' + entry.formattedTotal}">$ 1.000</td>
+                        <td class="nowrap" th:text="${(entry.drawerAmount() < 0 ? '-' : '') + currencySymbol + ' ' + entry.formattedTotal}">$ 1.000</td>
                     </tr>
                     </tbody>
                     <tfoot>
                     <tr>
-                        <td colspan="3">Total</td>
-                        <td class="nowrap" th:text="${day.expected.startsWith('-') ? '-$ ' + day.expected.substring(1) : '$ ' + day.expected}">$ 0</td>
+                        <td colspan="3" th:text="#{common.total}">Total</td>
+                        <td class="nowrap" th:text="${day.expected.startsWith('-') ? '-' + currencySymbol + ' ' + day.expected.substring(1) : currencySymbol + ' ' + day.expected}">$ 0</td>
                     </tr>
                     </tfoot>
                 </table>

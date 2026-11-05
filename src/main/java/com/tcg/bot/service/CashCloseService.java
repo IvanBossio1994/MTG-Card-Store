@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.CashRegisterEntry;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import org.springframework.stereotype.Service;
@@ -78,7 +79,7 @@ public class CashCloseService {
     /** Guarda el cierre. Los montos contados se separan por medio de pago porque en la tienda conviven. */
     public double close(String date, double cash, double transfers, double cards, String note) throws Exception {
         if (cash < 0 || transfers < 0 || cards < 0) {
-            throw new StockOperationException("Los montos contados no pueden ser negativos.");
+            throw new StockOperationException(I18n.t("close.err.negative"));
         }
 
         synchronized (StockOperationsService.writeLock()) {
@@ -116,18 +117,18 @@ public class CashCloseService {
     public static String signed(double value) {
         long rounded = Math.round(value);
         if (rounded == 0) {
-            return "$ 0";
+            return com.tcg.bot.i18n.Money.symbol() + " " + "0";
         }
-        return (rounded > 0 ? "+$ " : "-$ ") + ars(Math.abs(rounded));
+        return (rounded > 0 ? "+" : "-") + com.tcg.bot.i18n.Money.symbol() + " " + ars(Math.abs(rounded));
     }
 
     static String ars(double value) {
-        return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(Math.round(value));
+        return com.tcg.bot.i18n.Money.number(Math.round(value));
     }
 
     private static String formatDate(String date) {
         try {
-            return LocalDate.parse(date, DATE_FORMAT).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            return LocalDate.parse(date, DATE_FORMAT).format(com.tcg.bot.i18n.Dates.shortDate());
         } catch (RuntimeException e) {
             return date;
         }

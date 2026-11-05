@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -45,8 +46,8 @@ public class ReservationController {
             int expired = reservationService.releaseExpired();
             if (expired > 0 && !model.containsAttribute("reservationMessage")) {
                 model.addAttribute("reservationMessage", expired == 1
-                        ? "Se venció 1 reserva y sus cartas volvieron al stock."
-                        : "Se vencieron " + expired + " reservas y sus cartas volvieron al stock.");
+                        ? I18n.t("res.expiredOne")
+                        : I18n.t("res.expiredMany", expired));
             }
             var orders = reservationService.orders();
             model.addAttribute("orders", orders);
@@ -61,7 +62,7 @@ public class ReservationController {
             log.warn("No se pudieron cargar las reservas.", e);
             model.addAttribute("orders", List.of());
             if (!model.containsAttribute("reservationError")) {
-                model.addAttribute("reservationError", "No se pudieron cargar las reservas. Revisá la conexión con el Sheet en Configuración.");
+                model.addAttribute("reservationError", I18n.t("res.err.load"));
             }
         }
 
@@ -79,13 +80,13 @@ public class ReservationController {
         try {
             String reservationId = reservationService.create(customer, contact, days, parseItems(items));
             redirectAttributes.addFlashAttribute("reservationMessage",
-                    "Reserva " + reservationId + " creada para " + customer.trim() + ". Las cartas ya no figuran como disponibles.");
+                    I18n.t("res.created", reservationId, customer.trim()));
             redirectAttributes.addFlashAttribute("clearOrder", true);
         } catch (StockOperationException e) {
             redirectAttributes.addFlashAttribute("reservationError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo crear la reserva.", e);
-            redirectAttributes.addFlashAttribute("reservationError", "No se pudo crear la reserva: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("reservationError", I18n.t("res.err.create", e.getMessage()));
         }
 
         return "redirect:/reservas";
@@ -96,12 +97,12 @@ public class ReservationController {
         try {
             var order = reservationService.pickUp(id);
             redirectAttributes.addFlashAttribute("reservationMessage",
-                    order.customer() + " retiró su pedido. Se registraron $ " + order.formattedTotal() + " en la caja.");
+                    I18n.t("res.pickedUpDone", order.customer(), com.tcg.bot.i18n.Money.symbol() + " " + order.formattedTotal()));
         } catch (StockOperationException e) {
             redirectAttributes.addFlashAttribute("reservationError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo registrar el retiro de {}.", id, e);
-            redirectAttributes.addFlashAttribute("reservationError", "No se pudo registrar el retiro: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("reservationError", I18n.t("res.err.pickup", e.getMessage()));
         }
 
         return "redirect:/reservas";
@@ -112,12 +113,12 @@ public class ReservationController {
         try {
             var order = reservationService.cancel(id);
             redirectAttributes.addFlashAttribute("reservationMessage",
-                    "Reserva de " + order.customer() + " cancelada. Las cartas volvieron al stock.");
+                    I18n.t("res.cancelled", order.customer()));
         } catch (StockOperationException e) {
             redirectAttributes.addFlashAttribute("reservationError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo cancelar la reserva {}.", id, e);
-            redirectAttributes.addFlashAttribute("reservationError", "No se pudo cancelar la reserva: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("reservationError", I18n.t("res.err.cancel", e.getMessage()));
         }
 
         return "redirect:/reservas";
@@ -128,15 +129,15 @@ public class ReservationController {
      * (se asume Argentina cuando no tiene código de país); si no, WhatsApp deja elegir a quién mandarlo.
      */
     static String whatsappLink(ReservationService.Order order, String storeName) {
-        StringBuilder text = new StringBuilder("¡Hola ").append(order.customer()).append("! ");
+        StringBuilder text = new StringBuilder(I18n.t("res.wa.hello", order.customer())).append(" ");
         if (storeName != null && !storeName.isBlank()) {
-            text.append("Te escribimos de ").append(storeName.trim()).append(". ");
+            text.append(I18n.t("res.wa.from", storeName.trim())).append(" ");
         }
-        text.append("Tu reserva te espera hasta el ").append(order.formattedExpiresOn()).append(":\n");
+        text.append(I18n.t("res.wa.until", order.formattedExpiresOn())).append("\n");
         for (var line : order.lines()) {
             text.append("• ").append(line.getQuantity()).append(" × ").append(line.getName()).append("\n");
         }
-        text.append("Total: $ ").append(order.formattedTotal()).append(". ¡Te esperamos!");
+        text.append(I18n.t("res.wa.total", com.tcg.bot.i18n.Money.symbol() + " " + order.formattedTotal()));
 
         String phone = whatsappNumber(order.contact());
         String encoded = java.net.URLEncoder.encode(text.toString(), java.nio.charset.StandardCharsets.UTF_8)
@@ -177,7 +178,7 @@ public class ReservationController {
                 items.add(new ReservationService.Item(cardId, quantity));
             }
         } catch (RuntimeException e) {
-            throw new StockOperationException("No se pudo leer el pedido. Volvé a armarlo desde la búsqueda.");
+            throw new StockOperationException(I18n.t("res.err.parse"));
         }
         return items;
     }

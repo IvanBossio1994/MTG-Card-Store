@@ -1,5 +1,6 @@
 package com.tcg.bot.service;
 
+import com.tcg.bot.i18n.I18n;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +41,7 @@ public class StoreSettingsService {
     private volatile String cacheDirectory;
     private volatile String logoFilename = "";
     private volatile boolean tutorialCompleted = false;
+    private volatile String currency = com.tcg.bot.i18n.Money.DEFAULT_CURRENCY;
 
     public StoreSettingsService(
             @Value("${store.default-spreadsheet-id}") String defaultSpreadsheetId,
@@ -51,6 +53,7 @@ public class StoreSettingsService {
         this.spreadsheetId = defaultSpreadsheetId;
         this.cacheDirectory = configDirectory.resolve("cache").toString();
         load();
+        com.tcg.bot.i18n.Money.setCurrency(currency);
     }
 
     public String getStoreName() {
@@ -123,7 +126,7 @@ public class StoreSettingsService {
             String cacheDirectory
     ) {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Ingresa el nombre de la tienda.");
+            throw new IllegalArgumentException(I18n.t("err.storeName.required"));
         }
 
         validateSheetName(sheetName);
@@ -137,7 +140,7 @@ public class StoreSettingsService {
         }
 
         if (logo.getSize() > MAX_LOGO_BYTES) {
-            throw new IllegalArgumentException("El logo no puede superar los 2 MB.");
+            throw new IllegalArgumentException(I18n.t("err.logo.size"));
         }
 
         extensionFor(logo.getContentType());
@@ -149,7 +152,7 @@ public class StoreSettingsService {
         }
 
         if (credentialsFile.getSize() > MAX_CREDENTIALS_BYTES) {
-            throw new IllegalArgumentException("El archivo de credenciales no puede superar los 32 KB.");
+            throw new IllegalArgumentException(I18n.t("err.credentials.size"));
         }
 
         String filename = credentialsFile.getOriginalFilename() == null
@@ -157,7 +160,7 @@ public class StoreSettingsService {
                 : credentialsFile.getOriginalFilename().toLowerCase();
 
         if (!filename.endsWith(".json")) {
-            throw new IllegalArgumentException("Las credenciales deben ser un archivo .json.");
+            throw new IllegalArgumentException(I18n.t("err.credentials.json"));
         }
     }
 
@@ -183,6 +186,17 @@ public class StoreSettingsService {
     public synchronized void useInventorySheetName(String sheetName) throws IOException {
         validateSheetName(sheetName);
         inventorySheetName = sheetName.trim();
+        save();
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    /** Moneda en la que cobra la tienda (ARS, USD, EUR...). Solo cambia como se muestran los precios. */
+    public synchronized void updateCurrency(String code) throws IOException {
+        currency = com.tcg.bot.i18n.Money.normalize(code);
+        com.tcg.bot.i18n.Money.setCurrency(currency);
         save();
     }
 
@@ -241,7 +255,7 @@ public class StoreSettingsService {
 
     private void validateSheetName(String sheetName) {
         if (sheetName == null || sheetName.isBlank()) {
-            throw new IllegalArgumentException("Ingresa el nombre de la hoja que contiene el inventario.");
+            throw new IllegalArgumentException(I18n.t("err.sheetName.required"));
         }
     }
 
@@ -257,13 +271,13 @@ public class StoreSettingsService {
         try {
             return Paths.get(value.trim()).normalize().toString();
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException("La carpeta de cache no es valida.");
+            throw new IllegalArgumentException(I18n.t("err.cache.invalid"));
         }
     }
 
     private String extractSpreadsheetId(String reference) {
         if (reference == null || reference.isBlank()) {
-            throw new IllegalArgumentException("Ingresa el enlace o ID del Google Sheet.");
+            throw new IllegalArgumentException(I18n.t("err.sheet.required"));
         }
 
         String value = reference.trim();
@@ -276,7 +290,7 @@ public class StoreSettingsService {
             return value;
         }
 
-        throw new IllegalArgumentException("El enlace o ID del Google Sheet no es valido.");
+        throw new IllegalArgumentException(I18n.t("err.sheet.invalid"));
     }
 
     private String extensionFor(String contentType) {
@@ -289,7 +303,7 @@ public class StoreSettingsService {
         if ("image/webp".equalsIgnoreCase(contentType)) {
             return "webp";
         }
-        throw new IllegalArgumentException("El logo debe ser una imagen PNG, JPG o WEBP.");
+        throw new IllegalArgumentException(I18n.t("err.logo.type"));
     }
 
     private void load() {
@@ -306,6 +320,7 @@ public class StoreSettingsService {
             cacheDirectory = properties.getProperty("store.cache-directory", configDirectory.resolve("cache").toString());
             logoFilename = properties.getProperty("store.logo-filename", "");
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
+            currency = com.tcg.bot.i18n.Money.normalize(properties.getProperty("store.currency", com.tcg.bot.i18n.Money.DEFAULT_CURRENCY));
         } catch (IOException e) {
             storeName = "Inventory Manager";
             spreadsheetId = defaultSpreadsheetId;
@@ -327,6 +342,7 @@ public class StoreSettingsService {
         properties.setProperty("store.cache-directory", cacheDirectory);
         properties.setProperty("store.logo-filename", logoFilename);
         properties.setProperty("tutorial.completed", String.valueOf(tutorialCompleted));
+        properties.setProperty("store.currency", currency);
 
         try (OutputStream output = Files.newOutputStream(configFile)) {
             properties.store(output, "Configuracion local de la tienda");

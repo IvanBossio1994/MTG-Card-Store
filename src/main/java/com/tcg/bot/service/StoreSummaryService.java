@@ -108,6 +108,6 @@ public class StoreSummaryService {
     }
 
     private static String ars(double value) {
-        return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(value);
+        return com.tcg.bot.i18n.Money.number(value);
     }
 }

@@ -15,12 +15,7 @@ import java.util.Locale;
 @Setter
 public class CashRegisterEntry {
 
-    private static final DecimalFormat ARS_FORMAT = new DecimalFormat(
-            "#,##0",
-            DecimalFormatSymbols.getInstance(new Locale("es", "AR"))
-    );
     private static final DateTimeFormatter SHEET_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DISPLAY_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private String date;
     private String time;
@@ -58,7 +53,7 @@ public class CashRegisterEntry {
         }
 
         try {
-            return LocalDate.parse(date, SHEET_DATE_FORMAT).format(DISPLAY_DATE_FORMAT);
+            return LocalDate.parse(date, SHEET_DATE_FORMAT).format(com.tcg.bot.i18n.Dates.shortDate());
         } catch (RuntimeException e) {
             return date;
         }
@@ -124,7 +119,7 @@ public class CashRegisterEntry {
     }
 
     public String getFormattedSignedTotal() {
-        return ARS_FORMAT.format(signedTotal());
+        return com.tcg.bot.i18n.Money.number(signedTotal());
     }
 
     public boolean canBeVoided() {
@@ -136,6 +131,6 @@ public class CashRegisterEntry {
             return "";
         }
 
-        return ARS_FORMAT.format(Amounts.parse(value));
+        return com.tcg.bot.i18n.Money.number(Amounts.parse(value));
     }
 }

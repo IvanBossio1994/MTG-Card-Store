@@ -1,5 +1,6 @@
 package com.tcg.bot.controller;
 
+import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.PricePoint;
 import com.tcg.bot.service.InventoryStore;
 import com.tcg.bot.service.PriceHistoryService;
@@ -73,7 +74,7 @@ public class PriceHistoryController {
             log.warn("No se pudo cargar el historial de precios.", e);
             model.addAttribute("trends", List.of());
             model.addAttribute("hasHistory", false);
-            model.addAttribute("priceError", "No se pudo leer el historial. Revisá la conexión con el Sheet en Configuración.");
+            model.addAttribute("priceError", I18n.t("prices.err.read"));
         }
 
         return "prices";
@@ -85,7 +86,7 @@ public class PriceHistoryController {
             PricePoint point = history.get(index);
             rows.add(new Row(
                     displayDate(point.date()),
-                    point.localPrice() == null ? "-" : "$ " + ars(point.localPrice()),
+                    point.localPrice() == null ? "-" : com.tcg.bot.i18n.Money.symbol() + " " + ars(point.localPrice()),
                     point.ckUsd() == null ? "-" : "US$ " + decimal(point.ckUsd()),
                     point.tcgplayerUsd() == null ? "-" : "US$ " + decimal(point.tcgplayerUsd()),
                     point.cardmarketEur() == null ? "-" : "€ " + decimal(point.cardmarketEur())
@@ -118,24 +119,24 @@ public class PriceHistoryController {
             line.append(String.format(Locale.ROOT, "%.1f,%.1f", x, y));
         }
 
-        return new Chart(line.toString(), "", "$ " + ars(min), "$ " + ars(max),
+        return new Chart(line.toString(), "", com.tcg.bot.i18n.Money.symbol() + " " + ars(min), com.tcg.bot.i18n.Money.symbol() + " " + ars(max),
                 displayDate(points.get(0).date()), displayDate(points.get(points.size() - 1).date()),
                 CHART_WIDTH, CHART_HEIGHT);
     }
 
     private static String displayDate(String date) {
         try {
-            return LocalDate.parse(date.trim()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            return LocalDate.parse(date.trim()).format(com.tcg.bot.i18n.Dates.shortDate());
         } catch (RuntimeException e) {
             return date;
         }
     }
 
     static String ars(double value) {
-        return new DecimalFormat("#,##0", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(value);
+        return com.tcg.bot.i18n.Money.number(value);
     }
 
     private static String decimal(double value) {
-        return new DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(new Locale("es", "AR"))).format(value);
+        return com.tcg.bot.i18n.Money.decimal(value);
     }
 }
