@@ -4428,3 +4428,101 @@ td {
 .game-table .reserve-button {
     margin-left: 8px;
 }
+
+/* ---- Precio manual para cartas sin precio ---- */
+.manual-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--amber);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.price-cell .text-action {
+    margin-left: 6px;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.set-price-button.price-missing,
+.set-price-inline {
+    padding: 2px 8px;
+    border: 1px dashed var(--amber);
+    border-radius: 999px;
+    background: var(--amber-soft);
+    color: var(--amber);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.set-price-button.price-missing:hover,
+.set-price-inline:hover {
+    border-style: solid;
+}
+
+.set-price-inline {
+    padding: 0 6px;
+    font-size: 0.78rem;
+}
+
+.price-editor {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.price-editor input {
+    width: 80px;
+    padding: 4px 6px;
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    font: inherit;
+    font-size: 0.85rem;
+}
+
+.price-editor-save {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--blue);
+    color: #fff;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.price-editor-save:disabled {
+    opacity: 0.6;
+}
+
+.price-editor-cancel {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.cart-item-info span.manual-note {
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.25;
+    color: var(--amber);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: help;
+}
+
+.cart-item-info span.warn {
+    overflow: visible;
+}
+
+.cart-item-info .price-editor input {
+    width: 70px;
+}

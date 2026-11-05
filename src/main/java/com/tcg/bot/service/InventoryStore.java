@@ -84,6 +84,26 @@ public interface InventoryStore {
         return all;
     }
 
+    /** Escribe solo el precio local de una fila de Magic. */
+    default void updateLocalPrice(int rowIndex, String localPrice) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
+    /** Guarda el precio local de una carta de cualquier juego en su pestaña (todas sus unidades). */
+    default void updateAnyLocalPrice(InventoryCard card, long price) throws Exception {
+        if (card.getGame() == null) {
+            updateLocalPrice(card.getRowIndex(), String.valueOf(price));
+            return;
+        }
+        com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
+                .filter(candidate -> card.getId() != null && card.getId().equals(candidate.getId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(card.getName() + " ya no está en la pestaña "
+                        + card.getGame().sheetName() + "."));
+        row.setLocalPrice(price);
+        updateGameCard(card.getGame(), row);
+    }
+
     /** Guarda la cantidad de una carta de cualquier juego en su pestaña. */
     default void updateAnyStock(InventoryCard card) throws Exception {
         if (card.getGame() == null) {

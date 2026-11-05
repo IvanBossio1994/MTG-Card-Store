@@ -20,6 +20,7 @@ import java.util.Map;
  *     <li>Cartas con stock cuyo precio cambió mucho en el último mes.</li>
  *     <li>Cartas que se vienen vendiendo y quedan pocas o ninguna.</li>
  *     <li>Cartas con stock sin precio de venta.</li>
+ *     <li>Cartas con precio puesto a mano porque Card Kingdom no tiene precio.</li>
  *     <li>Cartas sin edición o número (no consiguen precio).</li>
  * </ul>
  */
@@ -53,10 +54,11 @@ public class ReviewService {
             List<PriceHistoryService.Trend> priceMoves,
             List<LowStock> lowStock,
             List<InventoryCard> withoutPrice,
-            List<InventoryCard> withoutEdition
+            List<InventoryCard> withoutEdition,
+            List<InventoryCard> manualPrice
     ) {
         public int total() {
-            return priceMoves.size() + lowStock.size() + withoutPrice.size() + withoutEdition.size();
+            return priceMoves.size() + lowStock.size() + withoutPrice.size() + withoutEdition.size() + manualPrice.size();
         }
     }
 
@@ -94,6 +96,7 @@ public class ReviewService {
         List<LowStock> low = new ArrayList<>();
         List<InventoryCard> withoutPrice = new ArrayList<>();
         List<InventoryCard> withoutEdition = new ArrayList<>();
+        List<InventoryCard> manualPrice = new ArrayList<>();
         for (InventoryCard card : cards) {
             int stock = StockOperationsService.quantity(card);
             int soldUnits = card.getId() == null ? 0 : sold.getOrDefault(card.getId(), 0);
@@ -103,13 +106,16 @@ public class ReviewService {
             if (stock > 0 && Amounts.parse(card.getLocalPrice()) <= 0) {
                 withoutPrice.add(card);
             }
+            if (stock > 0 && card.isManualPrice()) {
+                manualPrice.add(card);
+            }
             if (CardIdentifyService.needsIdentification(card)) {
                 withoutEdition.add(card);
             }
         }
         low.sort(Comparator.comparingInt(LowStock::soldLastMonth).reversed());
 
-        return new Review(moves, low, withoutPrice, withoutEdition);
+        return new Review(moves, low, withoutPrice, withoutEdition, manualPrice);
     }
 
     private static int stockOf(List<InventoryCard> cards, String cardId) {

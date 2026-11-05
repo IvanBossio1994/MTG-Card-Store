@@ -233,9 +233,19 @@ class StockOperationsServiceTest {
                 copy.setSetCode(card.getSetCode());
                 copy.setCollectorNumber(card.getCollectorNumber());
                 copy.setPrinting(card.getPrinting());
+                copy.setCkPriceUsd(card.getCkPriceUsd());
                 copies.add(copy);
             }
             return copies;
+        }
+
+        @Override
+        public void updateLocalPrice(int rowIndex, String localPrice) {
+            cards.stream()
+                    .filter(card -> card.getRowIndex() == rowIndex)
+                    .findFirst()
+                    .orElseThrow()
+                    .setLocalPrice(localPrice);
         }
 
         @Override

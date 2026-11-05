@@ -133,6 +133,7 @@ public class InventoryService implements InventoryStore {
         googleSheetsService.sortInventoryByName();
     }
 
+    @Override
     public void updateLocalPrice(int rowIndex, String localPrice) throws Exception {
         googleSheetsService.updateLocalPrice(rowIndex, localPrice);
     }

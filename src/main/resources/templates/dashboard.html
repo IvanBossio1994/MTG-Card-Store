@@ -163,7 +163,7 @@
                             <button type="button"
                                     class="reserve-button"
                                     th:if="${result.stockQuantity > 0}"
-                                    th:attr="data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-stock=${result.stockQuantity},data-price=${result.localPrice}"
+                                    th:attr="data-card-id=${result.cardId},data-name=${result.name},data-set=${result.edition},data-stock=${result.stockQuantity},data-price=${result.localPrice},data-manual-price=${result.manualPrice}"
                                     title="Sumar al carrito para cobrar o reservar">
                                 + Carrito
                             </button>
@@ -192,7 +192,22 @@
                     <td th:text="${result.nmPrice != null && result.nmPrice != '' ? '$ ' + result.formattedNmPrice : '-'}">$ 2,49</td>
                     <td th:if="${showTcgplayer}" th:text="${result.prices.tcgplayer != '' ? result.prices.tcgplayer : '-'}">US$ 2,10</td>
                     <td th:if="${showCardmarket}" th:text="${result.prices.cardmarket != '' ? result.prices.cardmarket : '-'}">€ 1,80</td>
-                    <td th:text="${result.prices.suggestedLocal != '' ? result.prices.suggestedLocal : '-'}">$ 4.500</td>
+                    <td class="price-cell" th:if="${result.manualPrice}">
+                        <span class="manual-price" th:title="${'Último precio puesto a mano. Card Kingdom no tiene precio actualizado para esta carta: revisalo antes de venderla.'}">
+                            <span aria-hidden="true">⚠</span>
+                            <span th:text="${'$ ' + #numbers.formatInteger(result.localPrice, 1, 'POINT')}">$ 50.000</span>
+                        </span>
+                        <button type="button" class="set-price-button text-action"
+                                th:attr="data-card-id=${result.cardId},data-name=${result.name},data-current=${#numbers.formatInteger(result.localPrice, 1, 'POINT')}">Cambiar</button>
+                    </td>
+                    <td class="price-cell" th:unless="${result.manualPrice}">
+                        <th:block th:if="${result.prices.suggestedLocal != '' or result.stockQuantity <= 0 or result.localPrice > 0}"
+                                  th:text="${result.prices.suggestedLocal != '' ? result.prices.suggestedLocal : '-'}">$ 4.500</th:block>
+                        <button type="button" class="set-price-button price-missing"
+                                th:if="${result.prices.suggestedLocal == '' and result.stockQuantity > 0 and result.localPrice <= 0 and result.cardId != ''}"
+                                th:attr="data-card-id=${result.cardId},data-name=${result.name}"
+                                title="Card Kingdom no tiene precio: ponele tu precio">Sin precio · poner</button>
+                    </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(results)}">
                     <td class="empty" colspan="10">No se encontraron cartas para esa búsqueda.</td>
@@ -273,7 +288,19 @@
                         <td th:text="${update.edition != null && update.edition != '' ? update.edition : '-'}">Commander Masters</td>
                         <td th:text="${update.setCode != null && update.setCode != '' ? update.setCode : '-'}">CMM</td>
                         <td th:text="${update.collectorNumber != null && update.collectorNumber != '' ? update.collectorNumber : '-'}">410</td>
-                        <td th:text="${update.localPrice != null && update.localPrice != '' ? '$ ' + update.formattedLocalPrice : '-'}">-</td>
+                        <td class="price-cell" th:with="hasLocal=${update.localPrice != null && update.localPrice != ''},hasCk=${update.ckPriceUsd != null && update.ckPriceUsd != ''}">
+                            <span th:if="${hasLocal and !hasCk}" class="manual-price"
+                                  title="Último precio puesto a mano. Card Kingdom no tiene precio actualizado para esta carta: revisalo antes de venderla.">
+                                <span aria-hidden="true">⚠</span>
+                                <span th:text="${'$ ' + update.formattedLocalPrice}">$ 50.000</span>
+                            </span>
+                            <th:block th:if="${hasLocal and hasCk}" th:text="${'$ ' + update.formattedLocalPrice}">$ 1.000</th:block>
+                            <button type="button" class="set-price-button price-missing"
+                                    th:if="${!hasLocal and update.stockQuantity > 0 and update.rowIndex > 0}"
+                                    th:attr="data-row=${update.rowIndex},data-name=${update.name}"
+                                    title="Card Kingdom no tiene precio: ponele tu precio">Sin precio · poner</button>
+                            <th:block th:if="${!hasLocal and (update.stockQuantity <= 0 or update.rowIndex <= 0)}">-</th:block>
+                        </td>
                         <td th:text="${update.ckPriceUsd != null && update.ckPriceUsd != '' ? '$ ' + update.formattedCkPriceUsd : '-'}">-</td>
                         <td>
                             <span class="status stock-action-status" th:classappend="${update.action != null ? update.action.toLowerCase().replace(' ', '-') : ''}"
