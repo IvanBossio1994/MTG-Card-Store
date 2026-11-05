@@ -55,6 +55,11 @@ public class InventoryCard {
      * Precio puesto a mano: tiene precio local pero Card Kingdom no da precio (columna CK vacía).
      * Solo aplica a Magic; las otras pestañas usan {@link GameCard#isManualPrice()}.
      */
+    /** Precio local como número entero (0 si no tiene). */
+    public long localPriceValue() {
+        return Math.round(com.tcg.bot.util.Amounts.parse(localPrice));
+    }
+
     public boolean isManualPrice() {
         return game == null
                 && com.tcg.bot.util.Amounts.parse(localPrice) > 0

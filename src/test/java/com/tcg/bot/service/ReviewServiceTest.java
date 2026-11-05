@@ -46,6 +46,8 @@ class ReviewServiceTest {
         bare.setSetName("");
         bare.setCollectorNumber("");
         store.cards.add(bare);
+        store.cards.forEach(card -> card.setCkPriceUsd("1.00"));
+        store.cards.add(card("edgar", 6, "Edgar Markov", 2, "50000"));
         store.cash.add(sale("2026-10-20", "sol", 2));
         store.cash.add(sale("2026-08-01", "cs", 3));
         store.points.add(new PricePoint("2026-09-01", "sol", "Sol Ring", "", "CMM", "410", "", 2.0, null, null, 4000.0));
@@ -59,6 +61,7 @@ class ReviewServiceTest {
         assertThat(review.priceMoves()).extracting(PriceHistoryService.Trend::cardId).containsExactly("sol");
         assertThat(review.withoutPrice()).extracting(InventoryCard::getId).containsExactly("np");
         assertThat(review.withoutEdition()).extracting(InventoryCard::getId).containsExactly("bare");
-        assertThat(review.total()).isEqualTo(4);
+        assertThat(review.manualPrice()).extracting(InventoryCard::getId).containsExactly("edgar");
+        assertThat(review.total()).isEqualTo(5);
     }
 }

@@ -125,4 +125,33 @@ class SearchPageTest {
                 .andExpect(content().string(containsString("Sin precio · poner")))
                 .andExpect(content().string(containsString("data-card-id=\"sol-cmd\"")));
     }
+
+    @Test
+    void cardsThatCardKingdomDoesNotHaveStillShowUpFromTheSheet() throws Exception {
+        when(cardKingdomApiService.searchProducts(anyString())).thenReturn(List.of());
+        when(scryfallPriceService.prices(any())).thenReturn(Map.of());
+
+        InventoryCard promo = new InventoryCard();
+        promo.setId("promo");
+        promo.setRowIndex(4);
+        promo.setName("Édgar Markov");
+        promo.setSetCode("PLST");
+        promo.setSetName("The List");
+        promo.setCollectorNumber("007");
+        promo.setPrinting("nonfoil");
+        promo.setQuantity("1");
+        InventoryCard other = new InventoryCard();
+        other.setId("other");
+        other.setRowIndex(5);
+        other.setName("Sol Ring");
+        other.setQuantity("1");
+        when(inventoryService.getInventoryCards()).thenReturn(List.of(promo, other));
+
+        mvc.perform(get("/").param("q", "edgar"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("No está en Card Kingdom")))
+                .andExpect(content().string(containsString("Sin precio · poner")))
+                .andExpect(content().string(containsString("data-card-id=\"promo\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("data-card-id=\"other\""))));
+    }
 }

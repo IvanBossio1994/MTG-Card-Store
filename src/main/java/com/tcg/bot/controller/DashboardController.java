@@ -171,8 +171,15 @@ public class DashboardController {
 
         try {
             var products = cardKingdomApiService.searchProducts(buildSearchQuery(trimmedQuery, trimmedSet, trimmedNumber));
+            var inventoryCards = inventoryService.getInventoryCards();
 
-            if (!trimmedQuery.isBlank() && trimmedSet.isBlank() && trimmedNumber.isBlank() && products.isEmpty()) {
+            // Cartas del Sheet que Card Kingdom no tiene: se muestran igual para poder venderlas.
+            var sheetOnly = com.tcg.bot.service.SheetSearch.find(inventoryCards, trimmedQuery, trimmedSet, trimmedNumber,
+                    card -> products.stream().anyMatch(product -> matchesInventoryCard(card, product,
+                            collectorNumber(product.getSku()), "true".equalsIgnoreCase(product.getFoil()))));
+
+            if (!trimmedQuery.isBlank() && trimmedSet.isBlank() && trimmedNumber.isBlank()
+                    && products.isEmpty() && sheetOnly.isEmpty()) {
                 model.addAttribute(
                         "searchFormatError",
                         "No se encontro esa carta o falta una coma. Para filtrar usa: Sol Ring, cmm."
@@ -180,16 +187,16 @@ public class DashboardController {
                 return "dashboard";
             }
 
-            var inventoryCards = inventoryService.getInventoryCards();
             Map<String, ScryfallPriceService.Prices> extraPrices = pricingSettingsService.usesExtraSources()
                     ? scryfallPriceService.prices(products.stream()
                             .limit(150)
                             .map(product -> new ScryfallPriceService.CardRef(setCode(product.getSku()), collectorNumber(product.getSku())))
                             .toList())
                     : Map.of();
-            var results = products.stream()
+            List<SearchResult> results = new ArrayList<>(products.stream()
                     .map(product -> createSearchResult(product, inventoryCards, extraPrices))
-                    .toList();
+                    .toList());
+            sheetOnly.forEach(card -> results.add(sheetOnlyResult(card)));
             model.addAttribute("showTcgplayer", pricingSettingsService.isTcgplayerEnabled());
             model.addAttribute("showCardmarket", pricingSettingsService.isCardmarketEnabled());
 
@@ -2034,6 +2041,24 @@ public class DashboardController {
                 comparePrices(product, foil, extraPrices),
                 target == null ? 0 : com.tcg.bot.util.Amounts.parse(target.getLocalPrice()),
                 target != null && target.isManualPrice()
+        );
+    }
+
+    /** Una carta del Sheet que Card Kingdom no tiene: sin precios de referencia, con el precio local del Sheet. */
+    private SearchResult sheetOnlyResult(InventoryCard card) {
+        return new SearchResult(
+                card.getName(),
+                card.getSetName(),
+                "",
+                "No está en Card Kingdom",
+                card.isFoil() ? "Foil" : "No Foil",
+                "",
+                quantity(card),
+                card.getRowIndex(),
+                card.getId() == null ? "" : card.getId(),
+                new PriceComparison("", "", "", 0),
+                com.tcg.bot.util.Amounts.parse(card.getLocalPrice()),
+                card.isManualPrice()
         );
     }
 

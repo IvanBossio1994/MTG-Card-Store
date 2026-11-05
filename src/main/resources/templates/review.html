@@ -82,11 +82,39 @@
                     <h2>Tienen stock pero no precio de venta</h2>
                 </div>
             </div>
-            <p class="supporting">No se pueden cobrar ni reservar. Sincronizá el inventario para calcular el precio,
-                o cargalo a mano en tu Sheet.</p>
+            <p class="supporting">No se pueden cobrar ni reservar hasta tener precio. Sincronizá el inventario
+                para calcularlo, o ponele el precio de tu local acá mismo.</p>
             <ul class="review-list">
-                <li th:each="card : ${review.withoutPrice}"
-                    th:text="${card.name + (card.setName != null and card.setName != '' ? ' · ' + card.setName : '')}">Sol Ring</li>
+                <li th:each="card : ${review.withoutPrice}">
+                    <span th:text="${card.name + (card.setName != null and card.setName != '' ? ' · ' + card.setName : '')}">Sol Ring</span>
+                    <span class="price-cell">
+                        <button type="button" class="set-price-button price-missing"
+                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name}">Poner precio</button>
+                    </span>
+                </li>
+            </ul>
+        </section>
+
+        <section class="panel" th:unless="${#lists.isEmpty(review.manualPrice)}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Precio a mano</p>
+                    <h2>Card Kingdom no tiene precio para estas cartas</h2>
+                </div>
+            </div>
+            <p class="supporting">Les pusiste el precio a mano. Revisalo de vez en cuando por si cambió el mercado.</p>
+            <ul class="review-list">
+                <li th:each="card : ${review.manualPrice}">
+                    <span th:text="${card.name + (card.setName != null and card.setName != '' ? ' · ' + card.setName : '')}">Edgar Markov</span>
+                    <span class="price-cell">
+                        <span class="manual-price" title="Último precio puesto a mano. Card Kingdom no tiene precio actualizado para esta carta.">
+                            <span aria-hidden="true">⚠</span>
+                            <span th:text="${'$ ' + #numbers.formatInteger(card.localPriceValue(), 1, 'POINT')}">$ 50.000</span>
+                        </span>
+                        <button type="button" class="set-price-button text-action"
+                                th:attr="data-card-id=${card.id},data-row=${card.rowIndex},data-name=${card.name},data-current=${#numbers.formatInteger(card.localPriceValue(), 1, 'POINT')}">Cambiar</button>
+                    </span>
+                </li>
             </ul>
         </section>
 
