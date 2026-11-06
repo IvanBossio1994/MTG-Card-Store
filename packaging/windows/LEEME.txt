@@ -1,9 +1,12 @@
 TCG Store Helper
 
 1. Descomprimi esta carpeta donde quieras (por ejemplo, en Documentos).
-2. Doble clic en TCGStoreHelper.exe. Se abre el navegador con la app.
-3. Para cerrar la app, cerra la ventana negra.
+2. Doble clic en TCGStoreHelper.exe.
+   Si Windows muestra "Windows protegio su PC", toca "Mas informacion" y despues "Ejecutar de todas formas".
+   (Aparece porque la app todavia no tiene firma digital.)
+3. Se abre el navegador con la app. Entra con tu cuenta de Google y segui los pasos.
+4. Para cerrar la app, cerra la ventana negra.
 
 No hace falta instalar Java: ya viene incluido.
-Tus datos y claves quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
-Ahi va el archivo google-oauth.properties para el login con Google.
+Tus datos quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
+La version gratis permite hasta 300 cartas.

@@ -55,3 +55,4 @@ ck-pricelist.json
 /dist/
 google-oauth.properties
 google-account.properties
+src/main/resources/google-oauth-bundled.properties

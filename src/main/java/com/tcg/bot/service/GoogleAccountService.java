@@ -78,6 +78,8 @@ public class GoogleAccountService {
         }
     }
 
+    static final String BUNDLED_CLIENT = "google-oauth-bundled.properties";
+
     private final Path clientFile;
     private final Path accountFile;
     private final FormPoster poster;
@@ -103,7 +105,27 @@ public class GoogleAccountService {
             return new Client(envId.trim(), envSecret.trim());
         }
 
-        Properties properties = load(clientFile);
+        Client local = fromProperties(load(clientFile));
+        return local != null ? local : fromProperties(loadBundled());
+    }
+
+    /**
+     * La version para Windows trae el cliente OAuth adentro (lo escribe el armado desde los secretos
+     * de GitHub), asi quien la descarga no tiene que configurar nada. Un archivo local tiene prioridad.
+     */
+    private static Properties loadBundled() {
+        Properties properties = new Properties();
+        try (InputStream input = GoogleAccountService.class.getClassLoader().getResourceAsStream(BUNDLED_CLIENT)) {
+            if (input != null) {
+                properties.load(input);
+            }
+        } catch (IOException e) {
+            log.warn("No se pudo leer {}: {}", BUNDLED_CLIENT, e.getMessage());
+        }
+        return properties;
+    }
+
+    private static Client fromProperties(Properties properties) {
         String id = properties.getProperty("google.oauth.client-id", "").trim();
         String secret = properties.getProperty("google.oauth.client-secret", "").trim();
         return notBlank(id) && notBlank(secret) ? new Client(id, secret) : null;
