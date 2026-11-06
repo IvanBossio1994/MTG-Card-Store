@@ -1538,8 +1538,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // se proponen valores para la nueva moneda, que se pueden corregir antes de guardar.
     const currencySelect = document.getElementById("currency");
     if (currencySelect) {
+        let shownCurrency = currencySelect.value;
         currencySelect.addEventListener("change", () => {
             const option = currencySelect.selectedOptions[0];
+            // Las etiquetas ("Cotización ARS por USD de CK", "Precio mínimo (ARS)") pasan a la moneda elegida.
+            document.querySelectorAll("[data-currency-text]").forEach((element) => {
+                element.textContent = element.textContent.split(shownCurrency).join(currencySelect.value);
+            });
+            shownCurrency = currencySelect.value;
             const multiple = document.getElementById("roundMultiple");
             const minimum = document.getElementById("minimumPrice");
             const rate = document.getElementById("ckDollarRate");

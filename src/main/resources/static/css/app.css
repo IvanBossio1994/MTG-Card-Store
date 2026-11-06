@@ -2578,7 +2578,7 @@ tr.in-stock {
 }
 
 .google-card a.primary-button {
-    display: inline-block;
+    display: inline-flex;
     text-decoration: none;
 }
 

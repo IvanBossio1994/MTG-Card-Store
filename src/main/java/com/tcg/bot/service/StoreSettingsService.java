@@ -35,7 +35,9 @@ public class StoreSettingsService {
     private final Path configDirectory;
     private final Path configFile;
 
-    private volatile String storeName = "Inventory Manager";
+    private static final String LEGACY_DEFAULT_NAME = "Inventory Manager";
+
+    private volatile String storeName = "";
     private volatile String spreadsheetId;
     private volatile String inventorySheetName = "Inventario";
     private volatile String cacheDirectory;
@@ -56,8 +58,9 @@ public class StoreSettingsService {
         com.tcg.bot.i18n.Money.setCurrency(currency);
     }
 
+    /** Nombre de la tienda; si nunca se eligió, "Mi tienda" en el idioma de la app. */
     public String getStoreName() {
-        return storeName;
+        return storeName == null || storeName.isBlank() ? com.tcg.bot.i18n.I18n.t("store.defaultName") : storeName;
     }
 
     public String getSpreadsheetId() {
@@ -315,6 +318,10 @@ public class StoreSettingsService {
         try (InputStream input = Files.newInputStream(configFile)) {
             properties.load(input);
             storeName = properties.getProperty("store.name", storeName);
+            if (LEGACY_DEFAULT_NAME.equals(storeName)) {
+                // Nombre en inglés que traían las versiones viejas sin que nadie lo eligiera.
+                storeName = "";
+            }
             spreadsheetId = properties.getProperty("store.spreadsheet-id", defaultSpreadsheetId);
             inventorySheetName = properties.getProperty("store.inventory-sheet-name", "Inventario");
             cacheDirectory = properties.getProperty("store.cache-directory", configDirectory.resolve("cache").toString());
@@ -322,7 +329,7 @@ public class StoreSettingsService {
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
             currency = com.tcg.bot.i18n.Money.normalize(properties.getProperty("store.currency", com.tcg.bot.i18n.Money.DEFAULT_CURRENCY));
         } catch (IOException e) {
-            storeName = "Inventory Manager";
+            storeName = "";
             spreadsheetId = defaultSpreadsheetId;
             inventorySheetName = "Inventario";
             cacheDirectory = configDirectory.resolve("cache").toString();
