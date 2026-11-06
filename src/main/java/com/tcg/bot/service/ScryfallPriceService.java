@@ -45,7 +45,16 @@ public class ScryfallPriceService {
         }
     }
 
-    public record Prices(Double usd, Double usdFoil, Double eur, Double eurFoil) {
+    /** Identificadores de la carta en otros sitios: sirven para subir el stock a Cardmarket, TCGplayer y otros. */
+    public record Ids(String scryfallId, String tcgplayerId, String cardmarketId) {
+        public static final Ids NONE = new Ids("", "", "");
+    }
+
+    public record Prices(Double usd, Double usdFoil, Double eur, Double eurFoil, Ids ids) {
+        public Prices(Double usd, Double usdFoil, Double eur, Double eurFoil) {
+            this(usd, usdFoil, eur, eurFoil, Ids.NONE);
+        }
+
         public Double tcgplayer(boolean foil) {
             return foil ? (usdFoil != null ? usdFoil : usd) : (usd != null ? usd : usdFoil);
         }
@@ -154,7 +163,8 @@ public class ScryfallPriceService {
                     number(prices, "usd"),
                     number(prices, "usd_foil"),
                     number(prices, "eur"),
-                    number(prices, "eur_foil")
+                    number(prices, "eur_foil"),
+                    new Ids(string(card, "id"), string(card, "tcgplayer_id"), string(card, "cardmarket_id"))
             ));
         }
 

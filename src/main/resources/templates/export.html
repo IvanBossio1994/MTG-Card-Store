@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.export} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.export})}"></header>
+<div th:replace="~{fragments/layout :: menu('export')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{layout.section.inventory}">Inventario</p>
+            <h1 th:text="#{export.h1}">Exportar el stock</h1>
+            <p class="supporting" th:text="#{export.supporting}">Bajá un archivo CSV con todo lo que tenés en stock para subirlo a otro sitio.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">Magic</p>
+                <h2 th:text="#{export.magic.title}">Magic: The Gathering</h2>
+            </div>
+            <a class="primary-button" th:href="@{/exportar/stock.csv(game='magic')}" th:text="#{export.download}">Bajar CSV</a>
+        </div>
+        <ul class="export-help">
+            <li th:utext="#{export.help.moxfield}">Moxfield, ManaBox y Deckbox lo importan directo.</li>
+            <li th:utext="#{export.help.powertools}">Cardmarket y CardTrader: subilo con TCG PowerTools y elegí la columna Cardmarket ID.</li>
+            <li th:utext="#{export.help.tcgplayer}">TCGplayer: la columna TCGplayer ID identifica cada carta para herramientas que la usen.</li>
+        </ul>
+        <p class="section-note" th:text="#{export.ids.note}">Los IDs salen de Scryfall. Si Scryfall no responde, el archivo se baja igual sin esas columnas.</p>
+    </section>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="#{export.other.eyebrow}">Otros juegos</p>
+                <h2 th:text="#{export.other.title}">Pokémon y Yu-Gi-Oh!</h2>
+            </div>
+            <div class="store-actions">
+                <a class="secondary-button" th:each="game : ${games}" th:href="@{/exportar/stock.csv(game=${game.slug()})}"
+                   th:text="${game.label()}">Pokémon</a>
+            </div>
+        </div>
+        <p class="section-note" th:text="#{export.other.note}">Con nombre, edición, número, terminación, precio y ubicación.</p>
+    </section>
+</main>
+</body>
+</html>

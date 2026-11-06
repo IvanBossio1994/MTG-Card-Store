@@ -4786,3 +4786,9 @@ a.wanted-alert:hover {
 .deck-wanted-form {
     margin-top: 14px;
 }
+
+.export-help {
+    margin: 0 0 10px;
+    padding-left: 20px;
+    line-height: 1.6;
+}

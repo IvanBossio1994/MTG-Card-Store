@@ -98,6 +98,9 @@
             <a th:classappend="${active == 'import'} ? 'active'" th:href="@{/importar-lista}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5V3Zm1.5 1.5v15h11V7.6l-3.1-3.1H6.5ZM8 11h8v1.5H8V11Zm0 3h8v1.5H8V14Z"/></svg>
                 <span th:text="#{nav.import}">Importar lista</span></a>
+            <a th:classappend="${active == 'export'} ? 'active'" th:href="@{/exportar}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.25 3h1.5v10.19l3.47-3.47 1.06 1.06L12 16.06l-5.28-5.28 1.06-1.06 3.47 3.47V3ZM4 15h1.5v4.5h13V15H20v6H4v-6Z"/></svg>
+                <span th:text="#{nav.export}">Exportar stock</span></a>
             <a th:classappend="${active == 'identify'} ? 'active'" th:href="@{/completar}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v1.5H5.5v13h13V13H20v7H4V4Zm14.2-1.3 3.1 3.1-8.6 8.6-3.9.8.8-3.9 8.6-8.6Zm0 2.1-7.2 7.2-.3 1.5 1.5-.3 7.2-7.2-1.2-1.2Z"/></svg>
                 <span th:text="#{nav.identify}">Completar ediciones</span></a>
