@@ -4693,6 +4693,11 @@ body.setup-pending main .alert.error {
     text-decoration: none;
 }
 
+.alert.warning {
+    color: var(--amber);
+    background: var(--amber-soft);
+}
+
 .menu-feedback-email {
     display: block;
     color: var(--muted);
