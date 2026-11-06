@@ -49,7 +49,7 @@ public class StockOperationsService {
     }
 
     private static final Logger log = LoggerFactory.getLogger(StockOperationsService.class);
-    private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
+    private static final ZoneId APP_ZONE = ZoneId.systemDefault();
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -106,7 +106,7 @@ public class StockOperationsService {
         double unitPrice = Amounts.parse(card.getLocalPrice());
         if (isSale && unitPrice <= 0) {
             throw new StockOperationException(
-                    "La carta " + card.getName() + " no tiene precio local. Sincronizá precios o usá \"Ajuste\" si no es una venta."
+                    I18n.t("err.noLocalPrice", card.getName())
             );
         }
 
@@ -207,7 +207,7 @@ public class StockOperationsService {
                     .filter(card -> cardId.equals(card.getId()))
                     .findFirst()
                     .orElseThrow(() -> new StockOperationException(
-                            "No se encontró la carta en el inventario. Volvé a buscarla: puede que el Sheet haya cambiado."));
+                            I18n.t("err.cardGone")));
         }
 
         // Sin ID (Sheet viejo sin la columna): se usa la fila, como antes.

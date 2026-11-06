@@ -3,7 +3,6 @@ package com.tcg.bot.controller;
 import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.Game;
 import com.tcg.bot.service.StockExportService;
-import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -24,17 +23,13 @@ public class ExportController {
     private static final Logger log = LoggerFactory.getLogger(ExportController.class);
 
     private final StockExportService exportService;
-    private final StoreSettingsService storeSettingsService;
 
-    public ExportController(StockExportService exportService, StoreSettingsService storeSettingsService) {
+    public ExportController(StockExportService exportService) {
         this.exportService = exportService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/exportar")
     public String page(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("games", Game.values());
         return "export";
     }

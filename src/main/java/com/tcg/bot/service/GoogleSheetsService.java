@@ -559,37 +559,6 @@ public class GoogleSheetsService {
         ));
     }
 
-    public void updateQuantity(int rowIndex, int change) throws Exception {
-        Sheets sheetsService = getSheetsService();
-        SheetColumns columns = sheetColumns(sheetsService);
-        String quantityRange = range(columns.cell(ColumnKey.QUANTITY, rowIndex));
-
-        var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), quantityRange)
-                .execute();
-
-        List<List<Object>> values = response.getValues();
-        int currentQuantity = 0;
-
-        if (values != null && !values.isEmpty() && !values.get(0).isEmpty()) {
-            try {
-                currentQuantity = Integer.parseInt(values.get(0).get(0).toString());
-            } catch (NumberFormatException e) {
-                currentQuantity = 0;
-            }
-        }
-
-        int updatedQuantity = Math.max(currentQuantity + change, 0);
-
-        var body = new com.google.api.services.sheets.v4.model.ValueRange()
-                .setValues(List.of(List.of(updatedQuantity)));
-
-        sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), quantityRange, body)
-                .setValueInputOption("RAW")
-                .execute();
-    }
-
     public int appendInventoryCard(InventoryCard card) throws Exception {
         Sheets sheetsService = getSheetsService();
         SheetColumns columns = sheetColumns(sheetsService);
@@ -889,7 +858,9 @@ public class GoogleSheetsService {
         Sheets sheetsService = getSheetsService();
         ensureCashSheet(sheetsService);
 
-        double dayTotal = totalCashSalesForDate(sheetsService, entry.getDate()) + entry.signedTotal();
+        // "Total del día" es de ventas: una compra o un pago de consignación no lo suben.
+        double dayTotal = totalCashSalesForDate(sheetsService, entry.getDate())
+                + (entry.affectsCash() ? entry.signedTotal() : 0);
 
         appendCashRow(sheetsService, List.of(
                 safe(entry.getDate()),

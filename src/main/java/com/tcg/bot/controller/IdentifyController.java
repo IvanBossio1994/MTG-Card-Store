@@ -5,7 +5,6 @@ import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.service.CardIdentifyService;
 import com.tcg.bot.service.InventoryStore;
 import com.tcg.bot.service.StockOperationsService;
-import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -29,21 +28,16 @@ public class IdentifyController {
 
     private final InventoryStore store;
     private final CardIdentifyService identifyService;
-    private final StoreSettingsService storeSettingsService;
 
-    public IdentifyController(InventoryStore store, CardIdentifyService identifyService,
-                              StoreSettingsService storeSettingsService) {
+    public IdentifyController(InventoryStore store, CardIdentifyService identifyService) {
         this.store = store;
         this.identifyService = identifyService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/completar")
     public String page(@RequestParam(name = "row", required = false) Integer row,
                        @RequestParam(name = "buscar", required = false) String searchName,
                        Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
 
         List<InventoryCard> pending;
         try {

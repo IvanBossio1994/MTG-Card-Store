@@ -16,4 +16,18 @@ class WhatsappLinkTest {
         assertThat(com.tcg.bot.util.Whatsapp.number("juan@mail.com")).isNull();
         assertThat(com.tcg.bot.util.Whatsapp.number("")).isNull();
     }
+
+    @Test
+    void outsideArgentinaNeedsTheCountryCode() {
+        String before = com.tcg.bot.i18n.Money.currency();
+        try {
+            com.tcg.bot.i18n.Money.setCurrency("EUR");
+            assertThat(com.tcg.bot.util.Whatsapp.number("612 345 678")).isNull();
+            assertThat(com.tcg.bot.util.Whatsapp.number("+34 612 345 678")).isEqualTo("34612345678");
+            assertThat(com.tcg.bot.util.Whatsapp.number("0034 612 345 678")).isEqualTo("34612345678");
+            assertThat(com.tcg.bot.util.Whatsapp.link("612 345 678", "hola")).isEqualTo("https://wa.me/?text=hola");
+        } finally {
+            com.tcg.bot.i18n.Money.setCurrency(before);
+        }
+    }
 }

@@ -38,8 +38,6 @@ public class ReservationController {
 
     @GetMapping("/reservas")
     public String reservations(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("defaultDays", ReservationService.DEFAULT_DAYS);
 
         try {

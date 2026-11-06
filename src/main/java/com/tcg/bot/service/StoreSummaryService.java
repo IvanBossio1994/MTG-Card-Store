@@ -28,7 +28,7 @@ public class StoreSummaryService {
 
     @Autowired
     public StoreSummaryService(InventoryStore store) {
-        this(store, Clock.system(ZoneId.of("America/Buenos_Aires")));
+        this(store, Clock.system(ZoneId.systemDefault()));
     }
 
     StoreSummaryService(InventoryStore store, Clock clock) {

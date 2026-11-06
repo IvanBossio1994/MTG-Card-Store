@@ -34,7 +34,7 @@ public class PriceHistoryService {
 
     @Autowired
     public PriceHistoryService(InventoryStore store) {
-        this(store, Clock.system(ZoneId.of("America/Buenos_Aires")));
+        this(store, Clock.system(ZoneId.systemDefault()));
     }
 
     PriceHistoryService(InventoryStore store, Clock clock) {

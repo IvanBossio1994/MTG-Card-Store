@@ -98,7 +98,7 @@ public class ReservationService {
                         .filter(candidate -> entry.getKey().equals(candidate.getId()))
                         .findFirst()
                         .orElseThrow(() -> new StockOperationException(
-                                "Una de las cartas ya no está en el inventario. Volvé a armar el pedido."));
+                                I18n.t("err.orderCardGone")));
 
                 if (Amounts.parse(card.getLocalPrice()) <= 0) {
                     throw new StockOperationException(card.getName()

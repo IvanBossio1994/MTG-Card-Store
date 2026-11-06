@@ -2,7 +2,6 @@ package com.tcg.bot.controller;
 
 import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.ReportService;
-import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -21,17 +20,13 @@ public class ReportController {
     private static final Logger log = LoggerFactory.getLogger(ReportController.class);
 
     private final ReportService reportService;
-    private final StoreSettingsService storeSettingsService;
 
-    public ReportController(ReportService reportService, StoreSettingsService storeSettingsService) {
+    public ReportController(ReportService reportService) {
         this.reportService = reportService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/reportes")
     public String page(@RequestParam(name = "dias", defaultValue = "30") int days, Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         int period = PERIODS.contains(days) ? days : 30;
         model.addAttribute("periods", PERIODS);
         model.addAttribute("period", period);

@@ -4,7 +4,6 @@ import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.PricePoint;
 import com.tcg.bot.service.InventoryStore;
 import com.tcg.bot.service.PriceHistoryService;
-import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -31,16 +30,13 @@ public class PriceHistoryController {
 
     private final InventoryStore store;
     private final PriceHistoryService priceHistoryService;
-    private final StoreSettingsService storeSettingsService;
 
     public PriceHistoryController(
             InventoryStore store,
-            PriceHistoryService priceHistoryService,
-            StoreSettingsService storeSettingsService
+            PriceHistoryService priceHistoryService
     ) {
         this.store = store;
         this.priceHistoryService = priceHistoryService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     public record Row(String date, String local, String ckUsd, String tcgplayer, String cardmarket) {
@@ -52,8 +48,6 @@ public class PriceHistoryController {
 
     @GetMapping("/precios")
     public String prices(@RequestParam(name = "card", required = false) String cardId, Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("selectedCardId", cardId == null ? "" : cardId);
 
         try {

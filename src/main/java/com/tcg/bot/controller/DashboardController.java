@@ -67,7 +67,7 @@ public class DashboardController {
     private static final String ACTION_OUT_OF_STOCK = "SIN STOCK";
     private static final String ACTION_NO_CK_MATCH = "SIN MATCH CK";
     private static final String ACTION_NO_CK_PRICE = "SIN PRECIO CK";
-    private static final ZoneId APP_ZONE = ZoneId.of("America/Buenos_Aires");
+    private static final ZoneId APP_ZONE = ZoneId.systemDefault();
     private static final DateTimeFormatter MOVEMENT_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter MOVEMENT_DATE_FORMAT =
@@ -994,77 +994,80 @@ public class DashboardController {
         }
 
         try {
-            var inventoryCards = inventoryService.getInventoryCards();
-            var priceList = cardKingdomApiService.getPriceList();
-            Map<String, CardKingdomProduct> productsBySku = indexProductsBySku(
-                    priceList == null ? List.of() : priceList.getData()
-            );
-            Map<String, InventoryCard> inventoryByProductKey = indexInventoryCardsByProductKey(inventoryCards);
-            Map<Integer, Integer> quantitiesByRow = new HashMap<>();
-            Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
-            List<InventoryCard> cardsToAppend = new ArrayList<>();
-            List<InventoryMovement> movements = new ArrayList<>();
-            int added = 0;
-            int updated = 0;
+            // Suma sobre las cantidades que acaba de leer: con el candado, una venta no se pisa en el medio.
+            synchronized (StockOperationsService.writeLock()) {
+                var inventoryCards = inventoryService.getInventoryCards();
+                var priceList = cardKingdomApiService.getPriceList();
+                Map<String, CardKingdomProduct> productsBySku = indexProductsBySku(
+                        priceList == null ? List.of() : priceList.getData()
+                );
+                Map<String, InventoryCard> inventoryByProductKey = indexInventoryCardsByProductKey(inventoryCards);
+                Map<Integer, Integer> quantitiesByRow = new HashMap<>();
+                Map<Integer, InventoryCard> cardsToWrite = new HashMap<>();
+                List<InventoryCard> cardsToAppend = new ArrayList<>();
+                List<InventoryMovement> movements = new ArrayList<>();
+                int added = 0;
+                int updated = 0;
 
-            for (String selection : selected) {
-                String[] parts = selection.split("\\|", -1);
+                for (String selection : selected) {
+                    String[] parts = selection.split("\\|", -1);
 
-                if (parts.length != 2) {
-                    continue;
+                    if (parts.length != 2) {
+                        continue;
+                    }
+
+                    CardKingdomProduct product = productsBySku.get(parts[0].toLowerCase());
+                    int quantity = parsePositiveQuantity(parts[1]);
+
+                    if (product == null || quantity <= 0) {
+                        continue;
+                    }
+
+                    String productKey = productInventoryKey(product);
+                    InventoryCard existingCard = inventoryByProductKey.get(productKey);
+
+                    if (existingCard == null) {
+                        InventoryCard newCard = createInventoryCard(product);
+                        newCard.setQuantity(String.valueOf(quantity));
+                        cardsToAppend.add(newCard);
+                        movements.add(createMovement("ENTRADA", quantity, newCard, 0, quantity, "Importar lista"));
+                        added++;
+                        continue;
+                    }
+
+                    int previousQuantity = quantity(existingCard);
+                    int updatedQuantity = quantitiesByRow.getOrDefault(
+                            existingCard.getRowIndex(),
+                            previousQuantity
+                    ) + quantity;
+                    quantitiesByRow.put(existingCard.getRowIndex(), updatedQuantity);
+                    existingCard.setQuantity(String.valueOf(updatedQuantity));
+                    applyStockAction(existingCard);
+                    cardsToWrite.put(existingCard.getRowIndex(), existingCard);
+                    movements.add(createMovement("ENTRADA", quantity, existingCard, updatedQuantity - quantity, updatedQuantity, "Importar lista"));
+                    updated++;
                 }
 
-                CardKingdomProduct product = productsBySku.get(parts[0].toLowerCase());
-                int quantity = parsePositiveQuantity(parts[1]);
-
-                if (product == null || quantity <= 0) {
-                    continue;
+                int remaining = licenseService.remainingNewCards(distinctCards(inventoryCards));
+                if (cardsToAppend.size() > remaining) {
+                    return populateImportAnalysisModel(
+                            rawList,
+                            model,
+                            licenseService.limitMessage() + " " + I18n.t("imp.overLimit", cardsToAppend.size(), remaining)
+                    );
                 }
 
-                String productKey = productInventoryKey(product);
-                InventoryCard existingCard = inventoryByProductKey.get(productKey);
+                inventoryService.updateQuantities(quantitiesByRow);
+                inventoryService.updateInventoryRows(cardsToWrite);
+                inventoryService.appendInventoryCards(cardsToAppend);
+                inventoryService.appendMovements(movements);
+                refreshLatestUpdatesFromInventory();
 
-                if (existingCard == null) {
-                    InventoryCard newCard = createInventoryCard(product);
-                    newCard.setQuantity(String.valueOf(quantity));
-                    cardsToAppend.add(newCard);
-                    movements.add(createMovement("ENTRADA", quantity, newCard, 0, quantity, "Importar lista"));
-                    added++;
-                    continue;
-                }
-
-                int previousQuantity = quantity(existingCard);
-                int updatedQuantity = quantitiesByRow.getOrDefault(
-                        existingCard.getRowIndex(),
-                        previousQuantity
-                ) + quantity;
-                quantitiesByRow.put(existingCard.getRowIndex(), updatedQuantity);
-                existingCard.setQuantity(String.valueOf(updatedQuantity));
-                applyStockAction(existingCard);
-                cardsToWrite.put(existingCard.getRowIndex(), existingCard);
-                movements.add(createMovement("ENTRADA", quantity, existingCard, updatedQuantity - quantity, updatedQuantity, "Importar lista"));
-                updated++;
-            }
-
-            int remaining = licenseService.remainingNewCards(distinctCards(inventoryCards));
-            if (cardsToAppend.size() > remaining) {
-                return populateImportAnalysisModel(
-                        rawList,
-                        model,
-                        licenseService.limitMessage() + " " + I18n.t("imp.overLimit", cardsToAppend.size(), remaining)
+                redirectAttributes.addFlashAttribute(
+                        "success",
+                        I18n.t("imp.done", added, updated)
                 );
             }
-
-            inventoryService.updateQuantities(quantitiesByRow);
-            inventoryService.updateInventoryRows(cardsToWrite);
-            inventoryService.appendInventoryCards(cardsToAppend);
-            inventoryService.appendMovements(movements);
-            refreshLatestUpdatesFromInventory();
-
-            redirectAttributes.addFlashAttribute(
-                    "success",
-                    I18n.t("imp.done", added, updated)
-            );
         } catch (Exception e) {
             log.warn("No se pudo importar la lista.", e);
             return populateImportAnalysisModel(rawList, model, I18n.t("imp.error"));

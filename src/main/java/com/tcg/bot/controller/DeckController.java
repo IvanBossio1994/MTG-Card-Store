@@ -2,7 +2,6 @@ package com.tcg.bot.controller;
 
 import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.DeckCheckService;
-import com.tcg.bot.service.StoreSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -25,11 +24,9 @@ public class DeckController {
     private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final DeckCheckService deckCheckService;
-    private final StoreSettingsService storeSettingsService;
 
-    public DeckController(DeckCheckService deckCheckService, StoreSettingsService storeSettingsService) {
+    public DeckController(DeckCheckService deckCheckService) {
         this.deckCheckService = deckCheckService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/mazo")
@@ -81,7 +78,5 @@ public class DeckController {
     }
 
     private void addBase(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
     }
 }

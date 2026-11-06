@@ -2,7 +2,6 @@ package com.tcg.bot.controller;
 
 import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.PublicCatalogService;
-import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,18 +22,14 @@ public class PublicCatalogController {
     private static final Logger log = LoggerFactory.getLogger(PublicCatalogController.class);
 
     private final PublicCatalogService catalog;
-    private final StoreSettingsService storeSettingsService;
 
-    public PublicCatalogController(PublicCatalogService catalog, StoreSettingsService storeSettingsService) {
+    public PublicCatalogController(PublicCatalogService catalog) {
         this.catalog = catalog;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/publico")
     public String page(Model model) {
         var settings = catalog.settings();
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("settings", settings);
         model.addAttribute("available", catalog.available());
         if (settings.published()) {

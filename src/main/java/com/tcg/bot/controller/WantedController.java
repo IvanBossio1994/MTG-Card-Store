@@ -34,8 +34,6 @@ public class WantedController {
 
     @GetMapping("/buscadas")
     public String page(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         try {
             List<WantedService.View> views = wantedService.open();
             Map<String, String> links = new HashMap<>();

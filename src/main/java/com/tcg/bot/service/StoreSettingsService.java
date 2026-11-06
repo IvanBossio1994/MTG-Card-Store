@@ -47,7 +47,7 @@ public class StoreSettingsService {
 
     public StoreSettingsService(
             @Value("${store.default-spreadsheet-id}") String defaultSpreadsheetId,
-            @Value("${app.storage-dir:D:/TCG-inventory/data}") String storageDirectory
+            @Value("${app.storage-dir:./data}") String storageDirectory
     ) {
         this.defaultSpreadsheetId = defaultSpreadsheetId;
         this.configDirectory = Paths.get(storageDirectory);
