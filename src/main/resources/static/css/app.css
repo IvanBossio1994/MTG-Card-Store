@@ -4817,3 +4817,14 @@ a.wanted-alert:hover {
     background: var(--blue-soft);
     color: var(--blue);
 }
+
+/* Catálogo y buylist públicos */
+.public-link {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font: inherit;
+    color: var(--text);
+    background: var(--surface, transparent);
+}

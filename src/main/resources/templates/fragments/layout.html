@@ -88,6 +88,9 @@
             <a th:classappend="${active == 'movements'} ? 'active'" th:href="@{/movimientos}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.5v11h15v-11h-15ZM6 9h6v1.5H6V9Zm0 3h9v1.5H6V12Z"/></svg>
                 <span th:text="#{nav.movements}">Caja y movimientos</span></a>
+            <a th:classappend="${active == 'public'} ? 'active'" th:href="@{/publico}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Zm0 1.5c-.9 0-2.2 1.9-2.8 5.25h5.6C14.2 5.9 12.9 4 12 4Zm-4.32 5.25C8 7.4 8.6 5.8 9.4 4.7A8 8 0 0 0 4.6 9.25h3.08Zm-3.5 1.5a8 8 0 0 0 0 2.5h3.35a20 20 0 0 1 0-2.5H4.18Zm4.86 0a18 18 0 0 0 0 2.5h5.92a18 18 0 0 0 0-2.5H9.04Zm7.43 0a20 20 0 0 1 0 2.5h3.35a8 8 0 0 0 0-2.5h-3.35Zm2.93 4h-3.08c-.32 1.85-.92 3.45-1.72 4.55a8 8 0 0 0 4.8-4.55Zm-4.6 0H9.2C9.8 18.1 11.1 20 12 20s2.2-1.9 2.8-5.25Zm-7.12 0H4.6a8 8 0 0 0 4.8 4.55c-.8-1.1-1.4-2.7-1.72-4.55Zm8.64-5.5h3.08a8 8 0 0 0-4.8-4.55c.8 1.1 1.4 2.7 1.72 4.55Z"/></svg>
+                <span th:text="#{nav.public}">Catálogo y buylist</span></a>
             <a th:classappend="${active == 'reports'} ? 'active'" th:href="@{/reportes}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16v1.5H4V20Zm1-9h3v8H5v-8Zm5.5-5h3v13h-3V6Zm5.5 3h3v10h-3V9Z"/></svg>
                 <span th:text="#{nav.reports}">Reportes</span></a>

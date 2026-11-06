@@ -195,6 +195,90 @@ public class GoogleSheetsService {
                 .getSpreadsheetId();
     }
 
+    /**
+     * Escribe pestañas en un Sheet aparte para publicar (catálogo y buylist). Si {@code spreadsheetId} está vacío
+     * o ya no se puede usar (lo borraron o es de otra cuenta), crea uno nuevo. Devuelve el ID del Sheet usado.
+     * Las pestañas van por posición: la primera se llama como el primer nombre, y así. Los valores se escriben
+     * tal cual (RAW) para que nada se tome como fórmula.
+     */
+    public String writePublicSpreadsheet(String spreadsheetId, String title, Map<String, List<List<Object>>> tabs)
+            throws Exception {
+        GoogleCredentials credentials = googleAccountService.credentials();
+        if (credentials == null) {
+            throw new IllegalStateException(I18n.t("err.google.connectFirst"));
+        }
+        Sheets sheets = buildSheets(credentials);
+        List<String> names = new ArrayList<>(tabs.keySet());
+
+        List<com.google.api.services.sheets.v4.model.Sheet> existing = null;
+        if (spreadsheetId != null && !spreadsheetId.isBlank()) {
+            try {
+                existing = sheets.spreadsheets().get(spreadsheetId).setFields("sheets.properties").execute().getSheets();
+            } catch (com.google.api.client.googleapis.json.GoogleJsonResponseException e) {
+                if (e.getStatusCode() != 403 && e.getStatusCode() != 404) {
+                    throw e;
+                }
+                existing = null;
+            }
+        }
+        if (existing == null) {
+            var created = new com.google.api.services.sheets.v4.model.Spreadsheet()
+                    .setProperties(new com.google.api.services.sheets.v4.model.SpreadsheetProperties().setTitle(title))
+                    .setSheets(names.stream().map(name -> new com.google.api.services.sheets.v4.model.Sheet()
+                            .setProperties(new com.google.api.services.sheets.v4.model.SheetProperties().setTitle(name)))
+                            .toList());
+            spreadsheetId = sheets.spreadsheets().create(created).setFields("spreadsheetId").execute().getSpreadsheetId();
+        } else {
+            // Renombra las pestañas por posición (por si cambió el idioma) y agrega las que falten.
+            List<com.google.api.services.sheets.v4.model.Request> requests = new ArrayList<>();
+            requests.add(new com.google.api.services.sheets.v4.model.Request()
+                    .setUpdateSpreadsheetProperties(new com.google.api.services.sheets.v4.model.UpdateSpreadsheetPropertiesRequest()
+                            .setProperties(new com.google.api.services.sheets.v4.model.SpreadsheetProperties().setTitle(title))
+                            .setFields("title")));
+            for (int i = 0; i < names.size(); i++) {
+                var properties = new com.google.api.services.sheets.v4.model.SheetProperties().setTitle(names.get(i));
+                if (i < existing.size()) {
+                    properties.setSheetId(existing.get(i).getProperties().getSheetId());
+                    requests.add(new com.google.api.services.sheets.v4.model.Request()
+                            .setUpdateSheetProperties(new com.google.api.services.sheets.v4.model.UpdateSheetPropertiesRequest()
+                                    .setProperties(properties).setFields("title")));
+                } else {
+                    requests.add(new com.google.api.services.sheets.v4.model.Request()
+                            .setAddSheet(new com.google.api.services.sheets.v4.model.AddSheetRequest().setProperties(properties)));
+                }
+            }
+            sheets.spreadsheets().batchUpdate(spreadsheetId,
+                    new com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest().setRequests(requests)).execute();
+        }
+
+        for (String name : names) {
+            String range = "'" + name.replace("'", "''") + "'";
+            sheets.spreadsheets().values()
+                    .clear(spreadsheetId, range, new com.google.api.services.sheets.v4.model.ClearValuesRequest())
+                    .execute();
+            sheets.spreadsheets().values()
+                    .update(spreadsheetId, range + "!A1",
+                            new com.google.api.services.sheets.v4.model.ValueRange().setValues(tabs.get(name)))
+                    .setValueInputOption("RAW")
+                    .execute();
+        }
+        // En cada publicación (no solo al crear): si una vez falló o alguien lo cerró, se vuelve a abrir. Repetirlo no duplica nada.
+        shareWithAnyone(credentials, spreadsheetId);
+        return spreadsheetId;
+    }
+
+    /** Deja el archivo visible (solo lectura) para cualquiera que tenga el link. Con drive.file alcanza porque lo creó la app. */
+    private void shareWithAnyone(GoogleCredentials credentials, String fileId) throws Exception {
+        var url = new com.google.api.client.http.GenericUrl(
+                "https://www.googleapis.com/drive/v3/files/" + fileId + "/permissions");
+        var content = new com.google.api.client.http.json.JsonHttpContent(GsonFactory.getDefaultInstance(),
+                Map.of("role", "reader", "type", "anyone"));
+        transport.createRequestFactory(new HttpCredentialsAdapter(credentials))
+                .buildPostRequest(url, content)
+                .execute()
+                .disconnect();
+    }
+
     private Sheets buildSheets(GoogleCredentials credentials) throws Exception {
         return new Sheets.Builder(
                 transport,

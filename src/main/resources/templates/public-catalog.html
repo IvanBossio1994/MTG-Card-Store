@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.public} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.public})}"></header>
+<div th:replace="~{fragments/layout :: menu('public')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{public.h1}">Catálogo y buylist para compartir</h1>
+            <p class="supporting" th:text="#{public.supporting}">Un Google Sheet aparte, de solo lectura, con lo que tenés en stock y lo que comprás. Pasá el link por WhatsApp o ponelo en Instagram.</p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${publicError}" th:text="${publicError}"></p>
+    <p class="alert success" th:if="${publicMessage}" th:text="${publicMessage}"></p>
+    <p class="alert" th:unless="${available}" th:text="#{public.err.needsGoogle}">Para publicar hace falta entrar con tu cuenta de Google.</p>
+
+    <section class="panel" th:if="${settings.published()}">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="#{public.link.eyebrow}">Tu link</p>
+                <h2 th:text="#{public.link.title}">Así lo ven tus clientes</h2>
+            </div>
+            <div class="store-actions">
+                <a class="secondary-button" th:href="${settings.link()}" target="_blank" rel="noopener" th:text="#{public.open}">Abrir</a>
+                <a class="secondary-button whatsapp-button" th:href="${whatsappShare}" target="_blank" rel="noopener" th:text="#{public.shareWhatsapp}">Compartir por WhatsApp</a>
+            </div>
+        </div>
+        <input class="public-link" type="text" readonly th:value="${settings.link()}" onclick="this.select()">
+        <p class="section-note" th:if="${settings.lastPublished() != ''}" th:text="#{public.lastPublished(${settings.lastPublished()})}">Actualizado el 2026-11-06 10:00.</p>
+    </section>
+
+    <section class="panel">
+        <form method="post" th:action="@{/publico}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="#{public.buylist.eyebrow}">Buylist</p>
+                    <h2 th:text="#{public.buylist.title}">Qué comprás y cuánto pagás</h2>
+                </div>
+            </div>
+            <div class="buy-percent">
+                <label><span th:text="#{buy.cashPercent}">Pagás en efectivo</span>
+                    <span><input name="cashPercent" type="number" min="0" max="100" th:value="${settings.cashPercent()}"> <span th:text="#{buy.percentOfPrice}">% de tu precio</span></span>
+                </label>
+                <label><span th:text="#{buy.creditPercent}">Pagás en crédito</span>
+                    <span><input name="creditPercent" type="number" min="0" max="100" th:value="${settings.creditPercent()}"> <span th:text="#{buy.percentOfPrice}">% de tu precio</span></span>
+                </label>
+                <label><span th:text="#{public.target}">Querés tener hasta</span>
+                    <span><input name="target" type="number" min="1" max="99" th:value="${settings.target()}"> <span th:text="#{public.copies}">copias de cada carta</span></span>
+                </label>
+                <label><span th:text="#{public.minPrice}">Solo cartas desde</span>
+                    <span><input name="minPrice" type="text" inputmode="decimal" th:value="${settings.minPrice() > 0 ? #numbers.formatDecimal(settings.minPrice(), 1, 0) : ''}" placeholder="0"></span>
+                </label>
+            </div>
+            <p class="section-note" th:text="#{public.buylist.note}">En la buylist entran las cartas con precio de las que tenés menos copias que ese número.</p>
+            <div class="order-actions">
+                <button class="primary-button" type="submit" th:disabled="${!available}"
+                        th:text="${settings.published()} ? #{public.update} : #{public.create}">Publicar</button>
+            </div>
+        </form>
+        <p class="section-note" th:text="#{public.privacy}">Al Sheet público solo van nombre, edición, estado, precio y cantidad. Tu Sheet principal (caja, crédito, costos) no se comparte.</p>
+    </section>
+</main>
+</body>
+</html>
