@@ -4826,5 +4826,43 @@ a.wanted-alert:hover {
     border-radius: 9px;
     font: inherit;
     color: var(--text);
-    background: var(--surface, transparent);
+    background: var(--panel);
+}
+
+/* Compras: modo consignación */
+#buy-form .buy-consign-only {
+    display: none;
+}
+
+#buy-form.consigning .buy-consign-only {
+    display: revert;
+}
+
+#buy-form.consigning .buy-pay-only {
+    display: none;
+}
+
+.buy-percent label.buy-consign-only {
+    display: none;
+}
+
+#buy-form.consigning .buy-percent label.buy-consign-only {
+    display: grid;
+}
+
+/* Consignación */
+.inline-form {
+    display: inline;
+    margin-left: 8px;
+}
+
+.text-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--blue);
+    font: inherit;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    cursor: pointer;
 }

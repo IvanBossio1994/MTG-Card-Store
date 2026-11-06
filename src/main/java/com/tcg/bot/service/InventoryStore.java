@@ -72,6 +72,19 @@ public interface InventoryStore {
         throw new UnsupportedOperationException("No disponible");
     }
 
+    /** Cartas en consignación (pestaña "Consignacion"). */
+    default List<com.tcg.bot.model.Consignment> getConsignments() throws Exception {
+        return List.of();
+    }
+
+    default void appendConsignments(List<com.tcg.bot.model.Consignment> items) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
+    default void updateConsignment(com.tcg.bot.model.Consignment item) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
     /** Agrega una fila nueva al inventario y devuelve su número de fila. */
     default int appendInventoryCard(InventoryCard card) throws Exception {
         throw new UnsupportedOperationException("No disponible");

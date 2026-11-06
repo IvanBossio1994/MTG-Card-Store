@@ -82,6 +82,9 @@
             <a th:classappend="${active == 'buy'} ? 'active'" th:href="@{/compras}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 1 4 4h3l1 14H4L5 7h3a4 4 0 0 1 4-4Zm0 1.5A2.5 2.5 0 0 0 9.5 7h5A2.5 2.5 0 0 0 12 4.5ZM6.4 8.5l-.8 11h12.8l-.8-11H6.4ZM11.25 10h1.5v2.25H15v1.5h-2.25V16h-1.5v-2.25H9v-1.5h2.25V10Z"/></svg>
                 <span th:text="#{nav.buy}">Comprar a clientes</span></a>
+            <a th:classappend="${active == 'consignment'} ? 'active'" th:href="@{/consignacion}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4V7Zm1.5 1.5v10h13v-10h-13ZM8 3h8v4h-1.5V4.5h-5V7H8V3Zm1 9h6v1.5H9V12Z"/></svg>
+                <span th:text="#{nav.consignment}">Consignación</span></a>
             <a th:classappend="${active == 'customers'} ? 'active'" th:href="@{/clientes}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 1.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6h-1.5c0-2.3-2.8-4.5-6.5-4.5S5.5 17.7 5.5 20H4Z"/></svg>
                 <span th:text="#{nav.customers}">Crédito de clientes</span></a>

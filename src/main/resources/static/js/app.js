@@ -1758,7 +1758,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function buyPercent() {
         const form = document.getElementById("buy-form");
         const payment = form ? form.querySelector("input[name=payment]:checked") : null;
-        const input = document.getElementById(payment && payment.value === "credit" ? "buy-credit-percent" : "buy-cash-percent");
+        const mode = payment ? payment.value : "cash";
+        form.classList.toggle("consigning", mode === "consign");
+        const input = document.getElementById("buy-" + mode + "-percent");
         return input ? Math.min(Math.max(Number(input.value) || 0, 0), 100) : 50;
     }
 
@@ -1917,16 +1919,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (saved) {
                 document.getElementById("buy-cash-percent").value = saved.cash;
                 document.getElementById("buy-credit-percent").value = saved.credit;
+                if (saved.consign) {
+                    document.getElementById("buy-consign-percent").value = saved.consign;
+                }
             }
         } catch (e) {
             // Porcentajes por defecto.
         }
         buyForm.addEventListener("change", event => {
-            if (event.target.name === "payment" || event.target.id === "buy-cash-percent" || event.target.id === "buy-credit-percent") {
+            if (event.target.name === "payment" || /^buy-(cash|credit|consign)-percent$/.test(event.target.id)) {
                 try {
                     localStorage.setItem(BUY_PERCENT_KEY, JSON.stringify({
                         cash: document.getElementById("buy-cash-percent").value,
-                        credit: document.getElementById("buy-credit-percent").value
+                        credit: document.getElementById("buy-credit-percent").value,
+                        consign: document.getElementById("buy-consign-percent").value
                     }));
                 } catch (e) {
                     // Preferencia opcional.
@@ -1937,7 +1943,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         buyForm.addEventListener("submit", event => {
             const payment = buyForm.querySelector("input[name=payment]:checked");
-            if (payment && payment.value === "credit" && !buyForm.elements.customer.value.trim()) {
+            if (payment && (payment.value === "credit" || payment.value === "consign") && !buyForm.elements.customer.value.trim()) {
                 event.preventDefault();
                 showToast(t("creditNeedsCustomer"), "error");
                 buyForm.elements.customer.focus();

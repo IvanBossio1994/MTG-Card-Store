@@ -82,6 +82,7 @@ public class DashboardController {
     private final com.tcg.bot.service.StoreSummaryService storeSummaryService;
     private final com.tcg.bot.service.ReviewService reviewService;
     private final com.tcg.bot.service.BuyService buyService;
+    private final com.tcg.bot.service.ConsignmentService consignmentService;
 
     public DashboardController(
             InventoryService inventoryService,
@@ -95,11 +96,13 @@ public class DashboardController {
             com.tcg.bot.service.PriceHistoryService priceHistoryService,
             com.tcg.bot.service.StoreSummaryService storeSummaryService,
             com.tcg.bot.service.ReviewService reviewService,
-            com.tcg.bot.service.BuyService buyService
+            com.tcg.bot.service.BuyService buyService,
+            com.tcg.bot.service.ConsignmentService consignmentService
     ) {
         this.storeSummaryService = storeSummaryService;
         this.reviewService = reviewService;
         this.buyService = buyService;
+        this.consignmentService = consignmentService;
         this.priceHistoryService = priceHistoryService;
         this.scryfallPriceService = scryfallPriceService;
         this.stockOperationsService = stockOperationsService;
@@ -2533,8 +2536,10 @@ public class DashboardController {
             @RequestParam(required = false) String customer,
             @RequestParam(required = false) String contact,
             @RequestParam(defaultValue = "cash") String payment,
+            @RequestParam(defaultValue = "0") double consignPercent,
             RedirectAttributes redirect
     ) {
+        boolean consign = "consign".equalsIgnoreCase(payment);
         try {
             com.google.gson.JsonArray array = com.google.gson.JsonParser.parseString(lines).getAsJsonArray();
             if (array.isEmpty()) {
@@ -2575,6 +2580,15 @@ public class DashboardController {
                     }
                     buyLines.add(new com.tcg.bot.service.BuyService.Line(card, quantity, unitPaid));
                 }
+                if (consign) {
+                    var received = consignmentService.receive(customer, contact, consignPercent, buyLines.stream()
+                            .map(line -> new com.tcg.bot.service.ConsignmentService.Line(line.card(), line.quantity()))
+                            .toList());
+                    redirect.addFlashAttribute("consignMessage", I18n.t("consign.received",
+                            received.stream().mapToInt(com.tcg.bot.model.Consignment::getQuantity).sum(), customer.trim()));
+                    redirect.addFlashAttribute("clearBuy", true);
+                    return "redirect:/consignacion";
+                }
                 result = buyService.buy(customer, contact,
                         "credit".equalsIgnoreCase(payment) ? com.tcg.bot.service.BuyService.Payment.CREDIT
                                 : com.tcg.bot.service.BuyService.Payment.CASH,
@@ -2595,7 +2609,7 @@ public class DashboardController {
             redirect.addFlashAttribute("buyError", e.getMessage());
         } catch (Exception e) {
             log.warn("No se pudo registrar la compra.", e);
-            redirect.addFlashAttribute("buyError", "No se pudo registrar la compra: " + e.getMessage());
+            redirect.addFlashAttribute("buyError", I18n.t("buy.err.save", e.getMessage()));
         }
         return "redirect:/compras";
     }
