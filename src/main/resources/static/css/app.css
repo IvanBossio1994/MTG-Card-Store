@@ -4692,3 +4692,10 @@ body.setup-pending main .alert.error {
     display: inline-flex;
     text-decoration: none;
 }
+
+.menu-feedback-email {
+    display: block;
+    color: var(--muted);
+    font-size: 0.8rem;
+    user-select: all;
+}

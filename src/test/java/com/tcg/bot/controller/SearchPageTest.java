@@ -78,6 +78,7 @@ class SearchPageTest {
                 .andExpect(content().string(containsString("€ 3,00")))
                 .andExpect(content().string(containsString("$ 3.300")))
                 .andExpect(content().string(containsString("reserve-button")))
+                .andExpect(content().string(containsString("href=\"mailto:tcgstorehelper@gmail.com?subject=")))
                 .andExpect(content().string(containsString("data-card-id=\"sol\"")));
     }
 
