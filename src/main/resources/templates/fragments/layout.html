@@ -108,6 +108,10 @@
             <form th:action="@{/tutorial/reset}" method="post">
                 <button type="submit" class="menu-link-button" th:text="#{nav.tutorialAgain}">Ver tutorial de nuevo</button>
             </form>
+            <a class="menu-feedback" th:href="${feedbackMailto}" th:title="${feedbackEmail}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.9v10.6h15V6.9L12 12.6 4.5 6.9Zm1.4-.4L12 11l6.1-4.5H5.9Z"/></svg>
+                <span><span th:text="#{nav.feedback}">Reportar un problema o sugerir algo</span>
+                    <small class="menu-feedback-email" th:text="${feedbackEmail}">tcgstorehelper@gmail.com</small></span></a>
         </nav>
     </aside>
 </div>

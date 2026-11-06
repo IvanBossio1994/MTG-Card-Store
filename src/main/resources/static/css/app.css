@@ -4697,3 +4697,10 @@ body.setup-pending main .alert.error {
     color: var(--amber);
     background: var(--amber-soft);
 }
+
+.menu-feedback-email {
+    display: block;
+    color: var(--muted);
+    font-size: 0.8rem;
+    user-select: all;
+}
