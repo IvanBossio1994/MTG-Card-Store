@@ -27,7 +27,7 @@
            th:attrappend="aria-current=${activeGame == 'yugioh'} ? 'page'">
             <span class="game-tab-dot" aria-hidden="true"></span><span class="game-tab-long">Yu-Gi-Oh!</span><span class="game-tab-short">YGO</span></a>
     </nav>
-    <div th:if="${appUpdate != null && appUpdate.ready}" id="update-toast" class="update-toast" role="status"
+    <div th:if="${appUpdate != null && appUpdate.ready && remoteRegister != true}" id="update-toast" class="update-toast" role="status"
          th:attr="data-update-version=${appUpdate.latestVersion}" hidden>
         <div class="update-toast-text">
             <strong th:text="#{update.toast.title(${appUpdate.latestVersion})}">Hay una versión nueva (1.1.0)</strong>
@@ -73,6 +73,10 @@
             <a th:classappend="${active == 'reservations'} ? 'active'" th:href="@{/reservas}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Zm1.5 1.5v13.7l4.5-3 4.5 3V4.5h-9Z"/></svg>
                 <span th:text="#{nav.reservations}">Reservas y pedidos</span></a>
+            <th:block th:unless="${remoteRegister}">
+            <a th:classappend="${active == 'lan'} ? 'active'" th:href="@{/segunda-caja}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 1.5a.5.5 0 0 0-.5.5v16c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V4a.5.5 0 0 0-.5-.5H7Zm3.5 14h3V19h-3v-1.5Z"/></svg>
+                <span th:text="#{nav.lan}">Caja en el celular</span></a>
             <a th:classappend="${active == 'deck'} ? 'active'" th:href="@{/mazo}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm0 1.5a.5.5 0 0 0-.5.5v14c0 .28.22.5.5.5h10a.5.5 0 0 0 .5-.5V5a.5.5 0 0 0-.5-.5H7ZM8.5 7h7v1.5h-7V7Zm0 3.5h7V12h-7v-1.5Zm0 3.5h4.5v1.5H8.5V14Z"/></svg>
                 <span th:text="#{nav.deck}">Pegar un mazo</span></a>
@@ -130,6 +134,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.9v10.6h15V6.9L12 12.6 4.5 6.9Zm1.4-.4L12 11l6.1-4.5H5.9Z"/></svg>
                 <span><span th:text="#{nav.feedback}">Reportar un problema o sugerir algo</span>
                     <small class="menu-feedback-email" th:text="${feedbackEmail}">tcgstorehelper@gmail.com</small></span></a>
+            </th:block>
         </nav>
     </aside>
 </div>
