@@ -1434,6 +1434,11 @@ public class DashboardController {
             @RequestParam(name = "storeLogo", required = false) MultipartFile storeLogo,
             @RequestParam(name = "googleCredentials", required = false) MultipartFile googleCredentials,
             @RequestParam(defaultValue = "false") boolean removeLogo,
+            @RequestParam(name = "decorationSubmitted", defaultValue = "false") boolean decorationSubmitted,
+            @RequestParam(name = "backdropStyle", required = false) String backdropStyle,
+            @RequestParam(name = "backdropIntensity", required = false) Integer backdropIntensity,
+            @RequestParam(name = "useLogoColors", defaultValue = "false") boolean useLogoColors,
+            @RequestParam(name = "logoAccent", required = false) String logoAccent,
             @RequestHeader(name = "X-Requested-With", required = false) String requestedWith,
             RedirectAttributes redirectAttributes
     ) {
@@ -1466,6 +1471,9 @@ public class DashboardController {
                 storeSettingsService.removeLogo();
             }
             storeSettingsService.saveLogo(storeLogo);
+            if (decorationSubmitted) {
+                storeSettingsService.updateDecoration(backdropStyle, backdropIntensity, useLogoColors, logoAccent);
+            }
             storeSettingsService.saveGoogleCredentials(googleCredentials);
             inventoryService.clearServiceAccountEmailCache();
 
@@ -1551,6 +1559,8 @@ public class DashboardController {
     public ResponseEntity<Resource> storeLogo() {
         return storeSettingsService.getLogoPath()
                 .map(path -> ResponseEntity.ok()
+                        // Que el navegador pregunte siempre: si se cambió el logo, se ve el nuevo enseguida.
+                        .cacheControl(org.springframework.http.CacheControl.noCache())
                         .contentType(MediaType.parseMediaType(storeSettingsService.getLogoContentType()))
                         .body((Resource) new FileSystemResource(path)))
                 .orElseGet(() -> ResponseEntity.notFound().build());

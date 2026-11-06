@@ -62,14 +62,53 @@
             <div class="store-field">
                 <label th:text="#{settings.logo}">Logo de mi tienda</label>
                 <label class="upload-zone" for="storeLogo">
-                    <img class="store-logo-preview" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}"
-                         th:alt="#{settings.logo.alt}">
+                    <img id="store-logo-preview" class="store-logo-preview"
+                         th:src="${hasStoreLogo} ? @{/configuracion/logo(v=${storeLogoVersion})} : ''"
+                         th:hidden="${!hasStoreLogo}" th:alt="#{settings.logo.alt}">
                     <span class="upload-button" th:text="#{settings.logo.upload}">Subir imagen</span>
                     <span id="logo-file-name" class="upload-help" th:text="#{settings.logo.help}">PNG, JPG o WEBP, hasta 2 MB</span>
                 </label>
                 <input class="file-input" id="storeLogo" name="storeLogo" type="file"
                        accept="image/png,image/jpeg,image/webp">
+                <input id="removeLogo" name="removeLogo" type="hidden" value="false">
+                <button id="remove-logo-button" class="text-action remove-logo-link" type="button"
+                        th:hidden="${!hasStoreLogo}" th:text="#{settings.logo.remove}">Quitar logo</button>
             </div>
+            <fieldset id="logo-decoration" class="store-field logo-decoration" th:disabled="${!hasStoreLogo}"
+                      th:attr="data-has-logo=${hasStoreLogo}">
+                <legend th:text="#{settings.decor.title}">Decorar la app con el logo</legend>
+                <p class="field-help" th:text="#{settings.decor.help}">El logo queda de fondo, muy suave, detrás del contenido. Las tarjetas y los textos se siguen leyendo igual.</p>
+                <p class="field-help logo-decoration-empty" th:text="#{settings.decor.needsLogo}">Subí un logo para poder usarlo de fondo.</p>
+                <input type="hidden" name="decorationSubmitted" value="true">
+                <input id="logoAccent" type="hidden" name="logoAccent" th:value="${storeLogoAccent}">
+                <div class="decor-options" role="radiogroup">
+                    <label class="decor-option">
+                        <input type="radio" name="backdropStyle" value="none" th:checked="${storeBackdropStyle == 'none'}">
+                        <span class="decor-swatch decor-swatch--none" aria-hidden="true"></span>
+                        <span th:text="#{settings.decor.none}">Sin fondo</span>
+                    </label>
+                    <label class="decor-option">
+                        <input type="radio" name="backdropStyle" value="watermark" th:checked="${storeBackdropStyle == 'watermark'}">
+                        <span class="decor-swatch decor-swatch--watermark" aria-hidden="true"></span>
+                        <span th:text="#{settings.decor.watermark}">Logo grande al centro</span>
+                    </label>
+                    <label class="decor-option">
+                        <input type="radio" name="backdropStyle" value="pattern" th:checked="${storeBackdropStyle == 'pattern'}">
+                        <span class="decor-swatch decor-swatch--pattern" aria-hidden="true"></span>
+                        <span th:text="#{settings.decor.pattern}">Mosaico de logos</span>
+                    </label>
+                </div>
+                <label class="decor-range" for="backdropIntensity">
+                    <span th:text="#{settings.decor.intensity}">Intensidad</span>
+                    <input id="backdropIntensity" name="backdropIntensity" type="range" min="1" max="10" step="1"
+                           th:value="${storeBackdropIntensity}">
+                </label>
+                <label class="decor-check">
+                    <input id="useLogoColors" name="useLogoColors" type="checkbox" value="true" th:checked="${storeUseLogoColors}">
+                    <span th:text="#{settings.decor.colors}">Usar los colores del logo en botones y detalles</span>
+                </label>
+                <p id="logo-colors-note" class="field-help" hidden th:text="#{settings.decor.noColor}">Tu logo no tiene un color marcado: se quedan los colores de siempre.</p>
+            </fieldset>
         </section>
 
         <section class="settings-card">

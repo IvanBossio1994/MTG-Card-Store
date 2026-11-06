@@ -31,6 +31,16 @@ public class StoreSettingsService {
     private static final long MAX_LOGO_BYTES = 2L * 1024L * 1024L;
     private static final long MAX_CREDENTIALS_BYTES = 32L * 1024L;
 
+    /** Cómo se usa el logo de fondo: nada, una marca de agua grande en el centro, o un mosaico chico. */
+    public static final String BACKDROP_NONE = "none";
+    public static final String BACKDROP_WATERMARK = "watermark";
+    public static final String BACKDROP_PATTERN = "pattern";
+    private static final java.util.Set<String> BACKDROP_STYLES =
+            java.util.Set.of(BACKDROP_NONE, BACKDROP_WATERMARK, BACKDROP_PATTERN);
+    public static final int MIN_BACKDROP_INTENSITY = 1;
+    public static final int MAX_BACKDROP_INTENSITY = 10;
+    private static final int DEFAULT_BACKDROP_INTENSITY = 4;
+
     private final String defaultSpreadsheetId;
     private final Path configDirectory;
     private final Path configFile;
@@ -44,6 +54,10 @@ public class StoreSettingsService {
     private volatile String logoFilename = "";
     private volatile boolean tutorialCompleted = false;
     private volatile String currency = com.tcg.bot.i18n.Money.DEFAULT_CURRENCY;
+    private volatile String backdropStyle = BACKDROP_WATERMARK;
+    private volatile int backdropIntensity = DEFAULT_BACKDROP_INTENSITY;
+    private volatile boolean useLogoColors = false;
+    private volatile String logoAccent = "";
 
     public StoreSettingsService(
             @Value("${store.default-spreadsheet-id}") String defaultSpreadsheetId,
@@ -112,6 +126,61 @@ public class StoreSettingsService {
         return Files.exists(logoPath) ? Optional.of(logoPath) : Optional.empty();
     }
 
+    /** Cambia cada vez que se sube un logo nuevo, para que el navegador no muestre el anterior guardado. */
+    public long getLogoVersion() {
+        return getLogoPath().map(path -> {
+            try {
+                return Files.getLastModifiedTime(path).toMillis();
+            } catch (IOException e) {
+                return 0L;
+            }
+        }).orElse(0L);
+    }
+
+    public String getBackdropStyle() {
+        return backdropStyle;
+    }
+
+    /** De 1 (casi invisible) a 10 (bien marcado). */
+    public int getBackdropIntensity() {
+        return backdropIntensity;
+    }
+
+    public boolean isUseLogoColors() {
+        return useLogoColors;
+    }
+
+    /** Color principal del logo tal como lo calculó el navegador ("#rrggbb" o ""). */
+    public String getLogoAccent() {
+        return logoAccent;
+    }
+
+    /**
+     * Decoración con el logo: fondo y colores. Lo que no se reconoce vuelve al valor por defecto, y la
+     * intensidad se limita a 1..10, así un valor raro nunca tapa el contenido.
+     */
+    public synchronized void updateDecoration(String style, Integer intensity, boolean useColors, String accent)
+            throws IOException {
+        backdropStyle = normalizeBackdropStyle(style);
+        backdropIntensity = normalizeBackdropIntensity(intensity);
+        useLogoColors = useColors;
+        if (accent != null) {
+            logoAccent = StoreTheme.normalizeHex(accent);
+        }
+        save();
+    }
+
+    static String normalizeBackdropStyle(String style) {
+        return style != null && BACKDROP_STYLES.contains(style) ? style : BACKDROP_WATERMARK;
+    }
+
+    static int normalizeBackdropIntensity(Integer intensity) {
+        if (intensity == null) {
+            return DEFAULT_BACKDROP_INTENSITY;
+        }
+        return Math.max(MIN_BACKDROP_INTENSITY, Math.min(MAX_BACKDROP_INTENSITY, intensity));
+    }
+
     public String getLogoContentType() {
         if (logoFilename.endsWith(".png")) {
             return "image/png";
@@ -146,7 +215,26 @@ public class StoreSettingsService {
             throw new IllegalArgumentException(I18n.t("err.logo.size"));
         }
 
-        extensionFor(logo.getContentType());
+        logoExtension(logo);
+    }
+
+    /** Por el tipo que manda el navegador; si no lo manda (o manda uno genérico), por la extensión del archivo. */
+    private String logoExtension(MultipartFile logo) {
+        try {
+            return extensionFor(logo.getContentType());
+        } catch (IllegalArgumentException e) {
+            String name = logo.getOriginalFilename() == null ? "" : logo.getOriginalFilename().toLowerCase(java.util.Locale.ROOT);
+            if (name.endsWith(".png")) {
+                return "png";
+            }
+            if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
+                return "jpg";
+            }
+            if (name.endsWith(".webp")) {
+                return "webp";
+            }
+            throw e;
+        }
     }
 
     public void validateGoogleCredentials(MultipartFile credentialsFile) {
@@ -219,7 +307,7 @@ public class StoreSettingsService {
         }
 
         validateLogo(logo);
-        String filename = "store-logo." + extensionFor(logo.getContentType());
+        String filename = "store-logo." + logoExtension(logo);
 
         Files.createDirectories(configDirectory);
         try (InputStream input = logo.getInputStream()) {
@@ -253,6 +341,7 @@ public class StoreSettingsService {
         }
 
         logoFilename = "";
+        logoAccent = "";
         save();
     }
 
@@ -300,7 +389,8 @@ public class StoreSettingsService {
         if ("image/png".equalsIgnoreCase(contentType)) {
             return "png";
         }
-        if ("image/jpeg".equalsIgnoreCase(contentType)) {
+        if ("image/jpeg".equalsIgnoreCase(contentType) || "image/jpg".equalsIgnoreCase(contentType)
+                || "image/pjpeg".equalsIgnoreCase(contentType)) {
             return "jpg";
         }
         if ("image/webp".equalsIgnoreCase(contentType)) {
@@ -328,6 +418,10 @@ public class StoreSettingsService {
             logoFilename = properties.getProperty("store.logo-filename", "");
             tutorialCompleted = Boolean.parseBoolean(properties.getProperty("tutorial.completed", "false"));
             currency = com.tcg.bot.i18n.Money.normalize(properties.getProperty("store.currency", com.tcg.bot.i18n.Money.DEFAULT_CURRENCY));
+            backdropStyle = normalizeBackdropStyle(properties.getProperty("store.backdrop-style", BACKDROP_WATERMARK));
+            backdropIntensity = parseIntensity(properties.getProperty("store.backdrop-intensity"));
+            useLogoColors = Boolean.parseBoolean(properties.getProperty("store.use-logo-colors", "false"));
+            logoAccent = StoreTheme.normalizeHex(properties.getProperty("store.logo-accent", ""));
         } catch (IOException e) {
             storeName = "";
             spreadsheetId = defaultSpreadsheetId;
@@ -335,6 +429,14 @@ public class StoreSettingsService {
             cacheDirectory = configDirectory.resolve("cache").toString();
             logoFilename = "";
             tutorialCompleted = false;
+        }
+    }
+
+    private static int parseIntensity(String value) {
+        try {
+            return normalizeBackdropIntensity(value == null ? null : Integer.parseInt(value.trim()));
+        } catch (NumberFormatException e) {
+            return DEFAULT_BACKDROP_INTENSITY;
         }
     }
 
@@ -350,6 +452,10 @@ public class StoreSettingsService {
         properties.setProperty("store.logo-filename", logoFilename);
         properties.setProperty("tutorial.completed", String.valueOf(tutorialCompleted));
         properties.setProperty("store.currency", currency);
+        properties.setProperty("store.backdrop-style", backdropStyle);
+        properties.setProperty("store.backdrop-intensity", String.valueOf(backdropIntensity));
+        properties.setProperty("store.use-logo-colors", String.valueOf(useLogoColors));
+        properties.setProperty("store.logo-accent", logoAccent);
 
         try (OutputStream output = Files.newOutputStream(configFile)) {
             properties.store(output, "Configuracion local de la tienda");
