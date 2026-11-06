@@ -213,7 +213,7 @@ code { background: var(--blue-soft); padding: 1px 5px; border-radius: 4px; }
     .hero { grid-template-columns: 1fr; gap: 36px; padding: 28px 16px 64px; }
     .hero-sheet { padding-top: 96px; }
     .hero-cat { width: 180px; right: 12px; }
-    .sheet { transform: none; overflow-x: auto; }
+    .sheet { transform: none; }
     .topbar { padding: 14px 16px; }
     .topbar nav { gap: 14px; font-size: .95rem; }
     .topbar nav a:not(:last-child) { display: none; }
@@ -224,8 +224,16 @@ code { background: var(--blue-soft); padding: 1px 5px; border-radius: 4px; }
     .how-cat { width: 180px; justify-self: center; }
     .cta, .site-footer { padding-left: 16px; padding-right: 16px; }
 }
-@media (max-width: 420px) {
+@media (max-width: 600px) {
+    .landing { overflow-wrap: anywhere; }
+    .sheet { overflow: hidden; }
+    .sheet table { font-size: .8rem; }
+    .sheet th, .sheet td { padding: 6px 6px; white-space: normal; }
+    .sheet tbody th { width: 22px; }
     .sheet th:nth-child(4), .sheet td:nth-child(4) { display: none; }
+    .game::before { display: none; }
+    .hero-cat { width: 150px; }
+    .hero-sheet { padding-top: 80px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .button { transition: none; }
