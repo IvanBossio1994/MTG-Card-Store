@@ -14,6 +14,7 @@ import java.util.Map;
 public class InventoryService implements InventoryStore {
 
     private static final String WANTED_TAB = "Buscadas";
+    private static final String CONSIGNMENT_TAB = "Consignacion";
 
     private final GoogleSheetsService googleSheetsService;
 
@@ -117,6 +118,35 @@ public class InventoryService implements InventoryStore {
     @Override
     public void updateWantedCard(com.tcg.bot.model.WantedCard card) throws Exception {
         googleSheetsService.updateTabRow(WANTED_TAB, com.tcg.bot.model.WantedCard.HEADER, card.getRowIndex(), card.toRow());
+    }
+
+    @Override
+    public List<com.tcg.bot.model.Consignment> getConsignments() throws Exception {
+        var rows = googleSheetsService.getTabRows(CONSIGNMENT_TAB, com.tcg.bot.model.Consignment.HEADER);
+        List<com.tcg.bot.model.Consignment> items = new java.util.ArrayList<>();
+        for (int index = 0; index < rows.size(); index++) {
+            if (!rows.get(index).get(3).isBlank()) {
+                items.add(com.tcg.bot.model.Consignment.fromRow(rows.get(index), index + 2));
+            }
+        }
+        return items;
+    }
+
+    @Override
+    public void appendConsignments(List<com.tcg.bot.model.Consignment> items) throws Exception {
+        if (items.isEmpty()) {
+            return;
+        }
+        int first = googleSheetsService.appendTabRows(CONSIGNMENT_TAB, com.tcg.bot.model.Consignment.HEADER,
+                items.stream().map(com.tcg.bot.model.Consignment::toRow).toList());
+        for (int index = 0; index < items.size(); index++) {
+            items.get(index).setRowIndex(first + index);
+        }
+    }
+
+    @Override
+    public void updateConsignment(com.tcg.bot.model.Consignment item) throws Exception {
+        googleSheetsService.updateTabRow(CONSIGNMENT_TAB, com.tcg.bot.model.Consignment.HEADER, item.getRowIndex(), item.toRow());
     }
 
     @Override

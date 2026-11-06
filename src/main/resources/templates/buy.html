@@ -38,11 +38,14 @@
 
         <form id="buy-form" th:action="@{/compras}" method="post" hidden>
             <div class="buy-percent">
-                <label><span th:text="#{buy.cashPercent}">Pagás en efectivo</span>
+                <label class="buy-pay-only"><span th:text="#{buy.cashPercent}">Pagás en efectivo</span>
                     <span><input id="buy-cash-percent" type="number" min="0" max="100" value="50"> <span th:text="#{buy.percentOfPrice}">% de tu precio</span></span>
                 </label>
-                <label><span th:text="#{buy.creditPercent}">Pagás en crédito</span>
+                <label class="buy-pay-only"><span th:text="#{buy.creditPercent}">Pagás en crédito</span>
                     <span><input id="buy-credit-percent" type="number" min="0" max="100" value="60"> <span th:text="#{buy.percentOfPrice}">% de tu precio</span></span>
+                </label>
+                <label class="buy-consign-only"><span th:text="#{consign.percent}">Para el dueño</span>
+                    <span><input id="buy-consign-percent" name="consignPercent" type="number" min="1" max="100" value="70"> <span th:text="#{consign.percentOfSale}">% de cada venta</span></span>
                 </label>
             </div>
 
@@ -53,7 +56,7 @@
                         <th th:text="#{common.card}">Carta</th>
                         <th th:text="#{dash.col.yourPrice}">Tu precio</th>
                         <th th:text="#{mov.col.qty}">Cant.</th>
-                        <th th:text="#{buy.col.unit}">Pagás c/u</th>
+                        <th><span class="buy-pay-only" th:text="#{buy.col.unit}">Pagás c/u</span><span class="buy-consign-only" th:text="#{consign.col.unit}">Para el dueño c/u</span></th>
                         <th th:text="#{buy.col.subtotal}">Subtotal</th>
                         <th></th>
                     </tr>
@@ -66,6 +69,7 @@
                 <legend th:text="#{buy.how}">¿Cómo le pagás?</legend>
                 <label><input type="radio" name="payment" value="cash" checked> <span th:text="#{buy.payCash}">Efectivo (sale de la caja)</span></label>
                 <label><input type="radio" name="payment" value="credit"> <span th:text="#{buy.payCredit}">Crédito de tienda (queda como saldo)</span></label>
+                <label><input type="radio" name="payment" value="consign"> <span th:text="#{consign.pay}">Consignación (le pagás cuando se venda)</span></label>
             </fieldset>
 
             <div class="order-form-fields">
@@ -81,13 +85,15 @@
                 <option th:each="account : ${accounts}" th:value="${account.customer}"></option>
             </datalist>
 
+            <p class="section-note buy-consign-only" th:text="#{consign.note}">No pagás nada ahora. Cada carta queda en el stock como una fila aparte con la ubicación “Consignación: dueño”. Cuando se vende, al dueño le toca su parte y la ves en Consignación.</p>
             <input id="buy-lines-input" type="hidden" name="lines" value="[]">
             <div class="cart-total buy-total">
-                <span th:text="#{buy.total}">Total a pagar</span>
+                <span class="buy-pay-only" th:text="#{buy.total}">Total a pagar</span>
+                <span class="buy-consign-only" th:text="#{consign.total}">Si se vende todo, le pagás</span>
                 <strong id="buy-total" th:text="${currencySymbol} + ' 0'">$ 0</strong>
             </div>
             <div class="order-actions">
-                <button type="submit" class="primary-button" th:text="#{buy.submit}">Registrar compra</button>
+                <button type="submit" class="primary-button"><span class="buy-pay-only" th:text="#{buy.submit}">Registrar compra</span><span class="buy-consign-only" th:text="#{consign.submit}">Recibir en consignación</span></button>
                 <button type="button" id="buy-clear" class="secondary-button" th:text="#{cart.clear}">Vaciar</button>
             </div>
         </form>

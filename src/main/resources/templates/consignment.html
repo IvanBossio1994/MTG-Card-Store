@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.consignment} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.consignment})}"></header>
+<div th:replace="~{fragments/layout :: menu('consignment')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{consign.h1}">Consignación</h1>
+            <p class="supporting" th:utext="#{consign.supporting}">Cartas que te dejan para vender. Para recibir cartas, sumalas en <a href="/compras">Comprar</a> y elegí <strong>Consignación</strong>.</p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${consignError}" th:text="${consignError}"></p>
+    <p class="alert success" th:if="${consignMessage}" th:text="${consignMessage}"></p>
+
+    <div class="placeholder" th:if="${#lists.isEmpty(owners)}">
+        <strong th:text="#{consign.empty.title}">No hay cartas en consignación</strong>
+        <p th:text="#{consign.empty.text}">Se guardan en la hoja "Consignacion" de tu Sheet.</p>
+    </div>
+
+    <section class="panel" th:unless="${#lists.isEmpty(owners)}">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="#{consign.owners.eyebrow}">Dueños</p>
+                <h2 th:text="#{consign.owners.title(${totalOwed})}">Debés $ 0 en total</h2>
+            </div>
+        </div>
+        <article class="order-card" th:each="owner : ${owners}">
+            <div class="order-card-head">
+                <div>
+                    <strong th:text="${owner.name()}">Juan</strong>
+                    <div class="supporting">
+                        <span th:if="${owner.contact() != ''}" th:text="${owner.contact() + ' · '}">11 5555-1234 · </span>
+                        <span th:text="#{consign.summary(${owner.inStock()}, ${owner.sold()})}">3 a la venta · 2 vendidas</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="status" th:text="#{consign.owed(${owner.formattedOwed()})}">Le debés $ 0</span>
+                </div>
+            </div>
+            <ul class="order-lines">
+                <li th:each="item : ${owner.items()}">
+                    <span th:text="${item.consignment().quantity + ' × ' + item.consignment().name + ' (' + item.consignment().edition + ')'}">2 × Sheoldred (DMU)</span>
+                    <span class="supporting" th:text="#{consign.item(${item.inStock()}, ${item.sold()}, ${#numbers.formatDecimal(item.consignment().percent, 1, 0)}, ${item.consignment().formattedDate})}">quedan 1 · vendidas 1 · 70 % · desde el 01/11</span>
+                    <form method="post" th:action="@{/consignacion/devolver}" th:if="${item.inStock() > 0}" class="inline-form">
+                        <input type="hidden" name="id" th:value="${item.consignment().id}">
+                        <button class="text-button" type="submit" th:text="#{consign.giveBack}">Devolver lo que queda</button>
+                    </form>
+                </li>
+            </ul>
+            <div class="order-actions" th:if="${owner.owed() > 0}">
+                <a class="secondary-button whatsapp-button" th:if="${whatsappLinks.get(owner.name())}" th:href="${whatsappLinks.get(owner.name())}"
+                   target="_blank" rel="noopener" th:text="#{res.whatsapp}">Avisar por WhatsApp</a>
+                <form method="post" th:action="@{/consignacion/pagar}">
+                    <input type="hidden" name="owner" th:value="${owner.name()}">
+                    <input type="hidden" name="payout" value="cash">
+                    <button class="primary-button" type="submit" th:text="#{consign.payCash}">Pagar en efectivo</button>
+                </form>
+                <form method="post" th:action="@{/consignacion/pagar}">
+                    <input type="hidden" name="owner" th:value="${owner.name()}">
+                    <input type="hidden" name="payout" value="credit">
+                    <button class="secondary-button" type="submit" th:text="#{consign.payCredit}">Darle crédito</button>
+                </form>
+            </div>
+        </article>
+    </section>
+</main>
+</body>
+</html>

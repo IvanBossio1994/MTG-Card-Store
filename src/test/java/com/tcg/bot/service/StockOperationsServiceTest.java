@@ -216,6 +216,7 @@ class StockOperationsServiceTest {
         final List<Reservation> reservations = new ArrayList<>();
         final List<com.tcg.bot.model.CreditEntry> credits = new ArrayList<>();
         final List<com.tcg.bot.model.WantedCard> wanted = new ArrayList<>();
+        final List<com.tcg.bot.model.Consignment> consignments = new ArrayList<>();
         final java.util.Map<com.tcg.bot.model.Game, List<com.tcg.bot.model.GameCard>> games = new java.util.EnumMap<>(com.tcg.bot.model.Game.class);
         boolean failCash;
         boolean failMovements;
@@ -361,6 +362,28 @@ class StockOperationsServiceTest {
         @Override
         public void updateWantedCard(com.tcg.bot.model.WantedCard card) {
             wanted.set(card.getRowIndex() - 2, card);
+        }
+
+        @Override
+        public List<com.tcg.bot.model.Consignment> getConsignments() {
+            List<com.tcg.bot.model.Consignment> copies = new ArrayList<>();
+            for (var item : consignments) {
+                copies.add(com.tcg.bot.model.Consignment.fromRow(item.toRow().stream().map(String::valueOf).toList(), item.getRowIndex()));
+            }
+            return copies;
+        }
+
+        @Override
+        public void appendConsignments(List<com.tcg.bot.model.Consignment> items) {
+            for (var item : items) {
+                item.setRowIndex(consignments.size() + 2);
+                consignments.add(item);
+            }
+        }
+
+        @Override
+        public void updateConsignment(com.tcg.bot.model.Consignment item) {
+            consignments.set(item.getRowIndex() - 2, item);
         }
 
         @Override
