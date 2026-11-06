@@ -115,15 +115,15 @@ public class CashCloseService {
     }
 
     public static String signed(double value) {
-        long rounded = Math.round(value);
+        double rounded = com.tcg.bot.i18n.Money.round(value);
         if (rounded == 0) {
-            return com.tcg.bot.i18n.Money.symbol() + " " + "0";
+            return com.tcg.bot.i18n.Money.symbol() + " " + ars(0);
         }
         return (rounded > 0 ? "+" : "-") + com.tcg.bot.i18n.Money.symbol() + " " + ars(Math.abs(rounded));
     }
 
     static String ars(double value) {
-        return com.tcg.bot.i18n.Money.number(Math.round(value));
+        return com.tcg.bot.i18n.Money.number(value);
     }
 
     private static String formatDate(String date) {

@@ -176,7 +176,7 @@ public class StockOperationsService {
         voidEntry.setPrinting(sale.getPrinting());
         voidEntry.setLocalPrice(sale.getLocalPrice());
         voidEntry.setQuantity(String.valueOf(units));
-        voidEntry.setTotal(String.valueOf(Math.abs(sale.signedTotal())));
+        voidEntry.setTotal(com.tcg.bot.i18n.Money.plain(Math.abs(sale.signedTotal())));
         voidEntry.setSaleId(newSaleId());
         voidEntry.setVoidsSaleId(saleId);
         voidEntry.setCardId(sale.getCardId());
@@ -268,9 +268,9 @@ public class StockOperationsService {
         entry.setSetCode(card.getSetCode());
         entry.setCollectorNumber(card.getCollectorNumber());
         entry.setPrinting(card.getPrinting());
-        entry.setLocalPrice(String.valueOf(unitPrice));
+        entry.setLocalPrice(com.tcg.bot.i18n.Money.plain(unitPrice));
         entry.setQuantity(String.valueOf(units));
-        entry.setTotal(String.valueOf(unitPrice * units));
+        entry.setTotal(com.tcg.bot.i18n.Money.plain(unitPrice * units));
         entry.setCardId(card.getId());
         return entry;
     }

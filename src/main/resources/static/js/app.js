@@ -1078,10 +1078,35 @@ document.addEventListener("DOMContentLoaded", () => {
     // si se pierde, se vuelve a armar desde la búsqueda.
     const ORDER_KEY = "tcg-order-draft";
     const CART_OPEN_KEY = "tcg-cart-open";
-    const moneyFormat = new Intl.NumberFormat(APP_LANG, {maximumFractionDigits: 0});
+    const MONEY_DECIMALS = Number(window.APP_CURRENCY_DECIMALS) || 0;
+    const moneyFormat = new Intl.NumberFormat(APP_LANG, {
+        minimumFractionDigits: MONEY_DECIMALS,
+        maximumFractionDigits: MONEY_DECIMALS
+    });
+
+    // Redondea a los decimales de la moneda: enteros en pesos, centavos en dólares o euros.
+    function roundMoney(value) {
+        const factor = Math.pow(10, MONEY_DECIMALS);
+        return Math.round((Number(value) || 0) * factor) / factor;
+    }
 
     function money(value) {
-        return APP_CURRENCY + " " + moneyFormat.format(Math.round(Number(value) || 0));
+        return APP_CURRENCY + " " + moneyFormat.format(roundMoney(value));
+    }
+
+    // Lee "1.500", "1,500", "4,50", "4.50" o "$ 1.500,50" como lo escribiría cualquiera.
+    function parseAmount(value) {
+        let text = String(value || "").replace(/[^0-9.,-]/g, "");
+        const lastDot = text.lastIndexOf(".");
+        const lastComma = text.lastIndexOf(",");
+        if (lastDot >= 0 && lastComma >= 0) {
+            text = lastComma > lastDot ? text.replace(/\./g, "").replace(",", ".") : text.replace(/,/g, "");
+        } else if (/^-?\d{1,3}([.,]\d{3})+$/.test(text)) {
+            text = text.replace(/[.,]/g, "");
+        } else {
+            text = text.replace(",", ".");
+        }
+        return Number(text) || 0;
     }
 
     function readOrder() {
@@ -1373,7 +1398,7 @@ document.addEventListener("DOMContentLoaded", () => {
         editor.className = "price-editor";
         const input = document.createElement("input");
         input.type = "text";
-        input.inputMode = "numeric";
+        input.inputMode = MONEY_DECIMALS > 0 ? "decimal" : "numeric";
         input.placeholder = t("price");
         input.value = target.current || "";
         input.setAttribute("aria-label", t("priceOf", target.name || t("card")));
@@ -1492,14 +1517,38 @@ document.addEventListener("DOMContentLoaded", () => {
         renderOrder(readOrder());
     }
 
+    // Al cambiar la moneda, el redondeo y el mínimo viejos no sirven (500 pesos no son 500 dólares):
+    // se proponen valores para la nueva moneda, que se pueden corregir antes de guardar.
+    const currencySelect = document.getElementById("currency");
+    if (currencySelect) {
+        currencySelect.addEventListener("change", () => {
+            const option = currencySelect.selectedOptions[0];
+            const multiple = document.getElementById("roundMultiple");
+            const minimum = document.getElementById("minimumPrice");
+            const rate = document.getElementById("ckDollarRate");
+            if (multiple && option && option.dataset.multiple) {
+                multiple.value = Number(option.dataset.multiple);
+            }
+            if (minimum) {
+                minimum.value = 0;
+            }
+            if (rate && currencySelect.value === "USD") {
+                rate.value = 1;
+            }
+            const note = document.getElementById("currency-changed");
+            if (note) {
+                note.hidden = false;
+            }
+        });
+    }
+
     const closeForm = document.getElementById("close-form");
     if (closeForm) {
         const expected = Number(document.getElementById("close-expected").dataset.expected) || 0;
-        const parseAmount = value => Number(String(value || "").replace(/\$/g, "").replace(/\./g, "").replace(",", ".").trim()) || 0;
         const update = () => {
             const counted = ["efectivo", "transferencias", "tarjeta"]
                 .reduce((sum, name) => sum + parseAmount(closeForm.elements[name].value), 0);
-            const difference = Math.round(counted - expected);
+            const difference = roundMoney(counted - expected);
             document.getElementById("close-counted").textContent = money(counted);
             const label = document.getElementById("close-difference");
             label.textContent = difference === 0 ? money(0) : (difference > 0 ? "+" : "-") + money(Math.abs(difference));
@@ -1569,7 +1618,7 @@ document.addEventListener("DOMContentLoaded", () => {
         list.innerHTML = "";
         let total = 0;
         items.forEach((item, index) => {
-            const offered = item.manual ? Number(item.unitPaid) || 0 : Math.round((Number(item.price) || 0) * percent / 100);
+            const offered = item.manual ? Number(item.unitPaid) || 0 : roundMoney((Number(item.price) || 0) * percent / 100);
             item.unitPaid = offered;
             total += offered * item.quantity;
 
@@ -1616,13 +1665,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const paid = document.createElement("td");
             const paidInput = document.createElement("input");
             paidInput.type = "text";
-            paidInput.inputMode = "numeric";
+            paidInput.inputMode = MONEY_DECIMALS > 0 ? "decimal" : "numeric";
             paidInput.className = "buy-paid-input";
             paidInput.value = offered;
             paidInput.setAttribute("aria-label", t("payFor", item.name));
             paidInput.addEventListener("change", () => {
                 const next = readBuy();
-                next[index].unitPaid = Number(String(paidInput.value).replace(/\./g, "").replace(/[^0-9]/g, "")) || 0;
+                next[index].unitPaid = Math.max(roundMoney(parseAmount(paidInput.value)), 0);
                 next[index].manual = true;
                 writeBuy(next);
             });

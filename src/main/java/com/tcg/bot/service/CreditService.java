@@ -67,17 +67,17 @@ public class CreditService {
         if (customer == null || customer.isBlank()) {
             throw new StockOperationException(I18n.t("err.customer.required"));
         }
-        if (Math.round(amount) == 0) {
+        if (com.tcg.bot.i18n.Money.isZero(amount)) {
             throw new StockOperationException(I18n.t("cust.err.zero"));
         }
         synchronized (StockOperationsService.writeLock()) {
-            if (amount < 0 && balance(customer) + amount < -0.5) {
+            if (amount < 0 && com.tcg.bot.i18n.Money.round(balance(customer) + amount) < 0) {
                 throw new StockOperationException(I18n.t("cust.err.notEnough", customer.trim(), com.tcg.bot.i18n.Money.symbol() + " " + ars(balance(customer)),
                         com.tcg.bot.i18n.Money.symbol() + " " + ars(-amount)));
             }
             LocalDateTime now = LocalDateTime.now(stockOperations.clock);
             CreditEntry entry = new CreditEntry(now.format(DATE_FORMAT), now.format(TIME_FORMAT), customer.trim(),
-                    contact == null ? "" : contact.trim(), Math.round(amount), reason == null ? "" : reason.trim(),
+                    contact == null ? "" : contact.trim(), com.tcg.bot.i18n.Money.round(amount), reason == null ? "" : reason.trim(),
                     reference == null ? "" : reference);
             store.appendCreditEntry(entry);
             return entry;
@@ -85,6 +85,6 @@ public class CreditService {
     }
 
     public static String ars(double value) {
-        return com.tcg.bot.i18n.Money.number(Math.round(value));
+        return com.tcg.bot.i18n.Money.number(value);
     }
 }

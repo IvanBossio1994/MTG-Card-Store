@@ -14,7 +14,7 @@ public record CreditEntry(
         String reference
 ) {
     public String formattedAmount() {
-        String value = com.tcg.bot.i18n.Money.number(Math.round(Math.abs(amount)));
+        String value = com.tcg.bot.i18n.Money.number(Math.abs(amount));
         return (amount < 0 ? "-" : "+") + com.tcg.bot.i18n.Money.symbol() + " " + value;
     }
 

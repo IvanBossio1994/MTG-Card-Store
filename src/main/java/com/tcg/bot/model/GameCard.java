@@ -50,7 +50,7 @@ public class GameCard {
         row.add(safe(number));
         row.add(safe(rarity));
         row.add(safe(finish));
-        row.add(localPrice > 0 ? Math.round(localPrice) : "");
+        row.add(localPrice > 0 ? com.tcg.bot.i18n.Money.sheetValue(localPrice) : "");
         row.add(usd == null ? "" : usd);
         row.add(safe(id));
         row.add(safe(catalogId));
@@ -66,8 +66,8 @@ public class GameCard {
         return localPrice > 0 && (usd == null || usd <= 0);
     }
 
-    public long priceValue() {
-        return Math.round(localPrice);
+    public double priceValue() {
+        return com.tcg.bot.i18n.Money.round(localPrice);
     }
 
     public String formattedUsd() {
@@ -85,7 +85,7 @@ public class GameCard {
         card.setCollectorNumber(number);
         card.setPrinting(finish);
         card.setQuantity(String.valueOf(quantity));
-        card.setLocalPrice(localPrice > 0 ? String.valueOf(Math.round(localPrice)) : "");
+        card.setLocalPrice(localPrice > 0 ? com.tcg.bot.i18n.Money.plain(localPrice) : "");
         card.setGame(game);
         return card;
     }

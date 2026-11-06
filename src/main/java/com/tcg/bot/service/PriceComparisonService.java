@@ -27,7 +27,7 @@ public class PriceComparisonService {
     public double finalizeLocalPrice(double baseArs) {
         double rawPrice = baseArs * (1 + pricingSettingsService.getMarkupPercent() / 100.0);
         double rounded = roundUpToMultiple(rawPrice, pricingSettingsService.getRoundMultiple());
-        return Math.max(rounded, pricingSettingsService.getMinimumPrice());
+        return com.tcg.bot.i18n.Money.round(Math.max(rounded, pricingSettingsService.getMinimumPrice()));
     }
 
     /** Precio de una fuente, en su moneda y convertido a ARS (sin recargo ni redondeo). */
@@ -86,8 +86,12 @@ public class PriceComparisonService {
         return new Quote(sources, base == null ? null : finalizeLocalPrice(base));
     }
 
-    private double roundUpToMultiple(double value, int multiple) {
-        return Math.ceil(value / multiple) * multiple;
+    private double roundUpToMultiple(double value, double multiple) {
+        if (multiple <= 0) {
+            return value;
+        }
+        // El margen evita que 4.5 / 0.25 = 18.000000001 suba un escalón de más.
+        return Math.ceil(value / multiple - 1e-9) * multiple;
     }
 
     public Double extractConditionPrice(CardKingdomProduct product, String condition) {
