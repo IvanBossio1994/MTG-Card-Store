@@ -4759,3 +4759,15 @@ body.setup-pending main .alert.error {
     font-size: 0.8rem;
     user-select: all;
 }
+
+/* Pegar un mazo: lista de faltantes para copiar */
+.deck-missing {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+}

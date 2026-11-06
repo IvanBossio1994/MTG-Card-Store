@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.deck} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.deck})}"></header>
+<div th:replace="~{fragments/layout :: menu('deck')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{deck.h1}">Pegar un mazo</h1>
+            <p class="supporting" th:text="#{deck.supporting}">Pegá la lista que trae el cliente y mirá qué cartas tenés, cuánto sale todo y qué falta.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <p class="alert error" th:if="${deckError}" th:text="${deckError}"></p>
+        <form class="import-form" method="post" th:action="@{/mazo}">
+            <label for="deckList" th:text="#{deck.list}">Lista del mazo</label>
+            <textarea id="deckList" name="deckList" rows="10" required
+                      placeholder="4 Lightning Bolt&#10;1 Sol Ring (CMM) 410&#10;Sideboard&#10;2 Fatal Push"
+                      th:text="${deckList}"></textarea>
+            <p class="section-note" th:text="#{deck.formats}">Sirve la exportación de Moxfield, Arena o una carta por renglón.</p>
+            <div class="store-actions">
+                <button class="primary-button" type="submit" th:text="#{deck.check}">Ver qué hay</button>
+                <a class="secondary-button link-button" th:href="@{/mazo}" th:text="#{imp.clear}">Limpiar</a>
+            </div>
+        </form>
+    </section>
+
+    <th:block th:if="${deck != null}">
+        <section class="summary-strip">
+            <div class="summary-tile">
+                <span class="summary-label" th:text="#{deck.found}">Hay en stock</span>
+                <strong th:text="#{deck.foundOf(${deck.found()}, ${deck.wanted()})}">0 de 0</strong>
+                <span class="summary-note" th:text="#{deck.cardsNote}">cartas</span>
+            </div>
+            <div class="summary-tile">
+                <span class="summary-label" th:text="#{common.total}">Total</span>
+                <strong th:text="${currencySymbol + ' ' + money.number(deck.total())}">$ 0</strong>
+                <span class="summary-note" th:text="#{deck.totalNote}">De lo que hay, con tus precios</span>
+            </div>
+            <div class="summary-tile" th:if="${deck.found() < deck.wanted()}">
+                <span class="summary-label" th:text="#{deck.missing}">Faltan</span>
+                <strong th:text="${deck.wanted() - deck.found()}">0</strong>
+                <span class="summary-note" th:text="#{deck.missingNote}">cartas</span>
+            </div>
+        </section>
+
+        <section class="panel" th:unless="${#lists.isEmpty(deckItems)}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="#{deck.found}">Hay en stock</p>
+                    <h2 th:text="#{deck.foundTitle}">Lo que podés venderle</h2>
+                </div>
+                <button type="button" class="primary-button" id="deck-add-to-cart"
+                        th:attr="data-items=${deckItemsJson}"
+                        th:text="#{deck.addToCart}">Sumar todo al carrito</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th th:text="#{common.card}">Carta</th>
+                        <th th:text="#{common.set}">Edición</th>
+                        <th th:text="#{deck.col.take}">Llevar</th>
+                        <th th:text="#{details.location}">Dónde está</th>
+                        <th th:text="#{deck.col.price}">Precio</th>
+                        <th th:text="#{buy.col.subtotal}">Subtotal</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <th:block th:each="line : ${deck.lines()}">
+                        <tr th:each="pick : ${line.picks()}">
+                            <td>
+                                <span th:text="${pick.card().name}">Sol Ring</span>
+                                <span class="status warn" th:if="${line.missing() > 0 and pickStat.last}"
+                                      th:text="#{deck.partial(${line.missing()})}">faltan 2</span>
+                            </td>
+                            <td th:text="${pick.setLabel() + (pick.card().printing != null and pick.card().foil ? ' · Foil' : '')}">CMM</td>
+                            <td th:text="${pick.quantity()}">1</td>
+                            <td>
+                                <span class="location-chip" th:if="${pick.card().location != null and pick.card().location != ''}" th:text="${pick.card().location}">Carpeta 3</span>
+                            </td>
+                            <td class="nowrap" th:text="${pick.card().localPriceValue() > 0 ? currencySymbol + ' ' + money.number(pick.card().localPriceValue()) : #messages.msg('deck.noPrice')}">$ 0</td>
+                            <td class="nowrap" th:text="${currencySymbol + ' ' + money.number(pick.subtotal())}">$ 0</td>
+                        </tr>
+                    </th:block>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel" th:if="${deck.missingText() != ''}">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="#{deck.missing}">Faltan</p>
+                    <h2 th:text="#{deck.missingTitle}">No las tenés (o no alcanzan)</h2>
+                </div>
+                <button type="button" class="secondary-button" id="deck-copy-missing"
+                        th:text="#{deck.copyMissing}">Copiar lista de faltantes</button>
+            </div>
+            <pre class="deck-missing" id="deck-missing-text" th:text="${deck.missingText()}">2 Fatal Push</pre>
+        </section>
+    </th:block>
+</main>
+</body>
+</html>
