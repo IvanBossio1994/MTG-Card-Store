@@ -235,6 +235,9 @@ class StockOperationsServiceTest {
                 copy.setCollectorNumber(card.getCollectorNumber());
                 copy.setPrinting(card.getPrinting());
                 copy.setCkPriceUsd(card.getCkPriceUsd());
+                copy.setSetName(card.getSetName());
+                copy.setCondition(card.getCondition());
+                copy.setLanguage(card.getLanguage());
                 copy.setCost(card.getCost());
                 copy.setLocation(card.getLocation());
                 copies.add(copy);
