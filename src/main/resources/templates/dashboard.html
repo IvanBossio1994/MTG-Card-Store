@@ -195,10 +195,10 @@
                     <td class="price-cell" th:if="${result.manualPrice}">
                         <span class="manual-price" th:title="#{dash.manualPrice.title}">
                             <span aria-hidden="true">⚠</span>
-                            <span th:text="${currencySymbol + ' ' + #numbers.formatInteger(result.localPrice, 1, 'DEFAULT')}">$ 50.000</span>
+                            <span th:text="${currencySymbol + ' ' + money.number(result.localPrice)}">$ 50.000</span>
                         </span>
                         <button type="button" class="set-price-button text-action"
-                                th:attr="data-card-id=${result.cardId},data-name=${result.name},data-current=${#numbers.formatInteger(result.localPrice, 1, 'POINT')}" th:text="#{dash.change}">Cambiar</button>
+                                th:attr="data-card-id=${result.cardId},data-name=${result.name},data-current=${money.number(result.localPrice)}" th:text="#{dash.change}">Cambiar</button>
                     </td>
                     <td class="price-cell" th:unless="${result.manualPrice}">
                         <th:block th:if="${result.prices.suggestedLocal != '' or result.stockQuantity <= 0 or result.localPrice > 0}"
@@ -233,10 +233,13 @@
                 <p class="sync-inventory-description" th:text="#{dash.sync.description}">Lee tu Google Sheet.</p>
                 <div class="setup-notice" th:if="${sheetConfigured == false || credentialsConfigured == false}">
                     <strong th:text="#{dash.setup.title}">Configuracion pendiente</strong>
-                <p th:utext="#{dash.setup.intro}">Antes de sincronizar...</p>
+                    <p th:if="${googleAccount.configured}" th:text="#{dash.setup.google}">Conectá tu cuenta de Google en Configuración.</p>
+                    <th:block th:unless="${googleAccount.configured}">
+                    <p th:utext="#{dash.setup.intro}">Antes de sincronizar...</p>
                     <p th:if="${sheetConfigured == false}" th:text="#{dash.setup.noSheet}">Falta agregar el Google Sheet en Configuracion.</p>
                     <p th:if="${credentialsConfigured == false}"><span th:text="#{dash.setup.noCredentials}">Falta el archivo de credenciales local:</span> <code th:text="${credentialsPath}">./data/google-credentials.json</code></p>
                     <p><span th:utext="#{dash.setup.shareWith}">Compartir el Sheet como Editor con:</span> <code class="inline-code" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code></p>
+                    </th:block>
                     <a class="secondary-button link-button" th:href="@{/configuracion}" th:text="#{dash.setup.goSettings}">Ir a Configuracion</a>
                 </div>
                 <form id="update-form" class="sync-inventory-form" method="post" th:action="@{/actualizar}">
@@ -346,7 +349,11 @@
             <p class="eyebrow" th:text="#{tutorial.step(1)}">Paso 1</p>
             <h2 th:text="#{tutorial.s1.title}">Conecta tu tienda</h2>
 
-            <div class="tutorial-copy">
+            <div class="tutorial-copy" th:if="${googleAccount.configured}">
+                <p th:text="#{tutorial.s1.google1}">En Configuración tocás Conectar con Google.</p>
+                <p th:text="#{tutorial.s1.google2}">Solo pide permiso para ver tu mail y los archivos que crea ella.</p>
+            </div>
+            <div class="tutorial-copy" th:unless="${googleAccount.configured}">
                 <p th:text="#{tutorial.s1.p1}">En "Configuracion" cargas nombre, logo, credenciales privadas de Google, carpeta de cache, regla de precio y el Google Sheet que va a usar la app.</p>
                 <p th:text="#{tutorial.s1.p2}">El Sheet puede estar vacio o ya tener cartas. Si tiene una pestaña existente, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas del inventario sin pisar la original.</p>
                 <p th:utext="#{tutorial.s1.p3}">Antes de sincronizar, adjunta el google-credentials.json de esta instalacion y comparti tu Google Sheet como Editor con este mail:</p>

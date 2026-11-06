@@ -2,7 +2,10 @@ TCG Store Helper
 
 1. Descomprimi esta carpeta donde quieras (por ejemplo, en Documentos).
 2. Doble clic en TCGStoreHelper.exe. Se abre el navegador con la app.
+   Si Windows muestra "Windows protegio su PC", toca "Mas informacion" y despues "Ejecutar de todas formas".
+   Aparece porque la app es nueva y todavia no tiene firma digital; pasa solo la primera vez.
 3. Para cerrar la app, cerra la ventana negra.
+   Si cerraste el navegador, volve a abrir la app o entra a http://localhost:8080
 
 No hace falta instalar Java: ya viene incluido.
 Tus datos y claves quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
@@ -11,3 +14,21 @@ Ahi va el archivo google-oauth.properties para el login con Google.
 Actualizaciones: la app busca versiones nuevas sola al abrirse y las descarga en segundo plano.
 Te avisa con un boton "Actualizar ahora"; si no lo tocas, se instala sola la proxima vez que la abras.
 Tus datos, tu configuracion y tu licencia no se tocan.
+
+-------------------------------------------------------------------------------
+
+TCG Store Helper (English)
+
+1. Unzip this folder anywhere (for example, in Documents).
+2. Double-click TCGStoreHelper.exe. Your browser opens with the app.
+   If Windows shows "Windows protected your PC", click "More info" and then "Run anyway".
+   It appears because the app is new and not digitally signed yet; it only happens the first time.
+3. To close the app, close the black window.
+   If you closed the browser, open the app again or go to http://localhost:8080
+
+You don't need to install Java: it is included.
+Your data and keys are kept in the TCGStoreHelper\data folder inside your user folder.
+
+Updates: the app checks for new versions when it opens and downloads them in the background.
+It shows an "Update now" button; if you don't click it, the update installs the next time you open the app.
+Your data, settings and license are not touched.

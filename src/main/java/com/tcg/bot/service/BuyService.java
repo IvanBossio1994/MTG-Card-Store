@@ -73,7 +73,7 @@ public class BuyService {
                 stockOperations.appendMovementQuietly(stockOperations.movement(
                         now, line.quantity(), card, previous, next, SOURCE_BOUGHT + " (" + who + ")"));
                 units += line.quantity();
-                total += Math.round(line.unitPaid()) * line.quantity();
+                total += com.tcg.bot.i18n.Money.round(line.unitPaid()) * line.quantity();
             }
 
             CashRegisterEntry entry = new CashRegisterEntry();
@@ -85,7 +85,7 @@ public class BuyService {
             double balance = 0;
             if (payment == Payment.CASH) {
                 entry.setName(I18n.t("buy.entry.cash", who, units));
-                entry.setTotal(String.valueOf(Math.round(total)));
+                entry.setTotal(com.tcg.bot.i18n.Money.plain(total));
                 store.appendCashEntry(entry);
             } else {
                 creditService.add(who, contact, total, I18n.t("buy.entry.creditReason", units), reference);

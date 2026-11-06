@@ -120,7 +120,7 @@ public class GameController {
             return org.springframework.http.ResponseEntity.ok(java.util.Map.of(
                     "id", card.getId(),
                     "stock", card.getQuantity(),
-                    "price", Math.round(card.getLocalPrice())));
+                    "price", com.tcg.bot.i18n.Money.round(card.getLocalPrice())));
         } catch (StockOperationException e) {
             return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         } catch (Exception e) {

@@ -28,11 +28,11 @@ public class PricingSettingsService {
             "pricing.minimum-price";
 
     private final double defaultCkDollarRate;
-    private final int defaultRoundMultiple;
+    private final double defaultRoundMultiple;
     private final Path settingsFile;
 
     private volatile double ckDollarRate;
-    private volatile int roundMultiple;
+    private volatile double roundMultiple;
     private volatile double markupPercent;
     private volatile double minimumPrice;
     private volatile boolean tcgplayerEnabled;
@@ -69,7 +69,7 @@ public class PricingSettingsService {
 
     public PricingSettingsService(
             @Value("${pricing.ck-dollar-rate:1650.0}") double defaultCkDollarRate,
-            @Value("${pricing.round-multiple:500}") int defaultRoundMultiple,
+            @Value("${pricing.round-multiple:500}") double defaultRoundMultiple,
             @Value("${app.storage-dir:D:/TCG-inventory/data}") String storageDirectory
     ) {
         this.defaultCkDollarRate = defaultCkDollarRate;
@@ -84,7 +84,7 @@ public class PricingSettingsService {
         return ckDollarRate;
     }
 
-    public int getRoundMultiple() {
+    public double getRoundMultiple() {
         return roundMultiple;
     }
 
@@ -136,13 +136,13 @@ public class PricingSettingsService {
         update(ckDollarRate, roundMultiple, markupPercent, minimumPrice);
     }
 
-    public synchronized void update(double newCkDollarRate, int newRoundMultiple) throws IOException {
+    public synchronized void update(double newCkDollarRate, double newRoundMultiple) throws IOException {
         update(newCkDollarRate, newRoundMultiple, markupPercent, minimumPrice);
     }
 
     public synchronized void update(
             double newCkDollarRate,
-            int newRoundMultiple,
+            double newRoundMultiple,
             double newMarkupPercent,
             double newMinimumPrice
     ) throws IOException {
@@ -164,7 +164,7 @@ public class PricingSettingsService {
 
         Properties properties = new Properties();
         properties.setProperty(DOLLAR_RATE_KEY, Double.toString(newCkDollarRate));
-        properties.setProperty(ROUND_MULTIPLE_KEY, Integer.toString(newRoundMultiple));
+        properties.setProperty(ROUND_MULTIPLE_KEY, Double.toString(newRoundMultiple));
         properties.setProperty(MARKUP_PERCENT_KEY, Double.toString(newMarkupPercent));
         properties.setProperty(MINIMUM_PRICE_KEY, Double.toString(newMinimumPrice));
         properties.setProperty("pricing.source.tcgplayer", Boolean.toString(tcgplayerEnabled));
@@ -184,6 +184,17 @@ public class PricingSettingsService {
         minimumPrice = newMinimumPrice;
     }
 
+    /** Redondeo sugerido para cada moneda: 500 pesos no son 500 dólares. */
+    public static double suggestedRoundMultiple(String currency) {
+        return switch (com.tcg.bot.i18n.Money.normalize(currency)) {
+            case "USD", "EUR", "GBP", "CAD", "AUD" -> 0.25;
+            case "BRL", "PEN" -> 0.5;
+            case "MXN", "UYU", "JPY" -> 10;
+            case "COP" -> 1000;
+            default -> 500;
+        };
+    }
+
     private void load() {
         if (!Files.exists(settingsFile)) {
             return;
@@ -197,7 +208,7 @@ public class PricingSettingsService {
                     properties.getProperty(DOLLAR_RATE_KEY),
                     defaultCkDollarRate
             );
-            roundMultiple = parsePositiveInt(
+            roundMultiple = parsePositiveDouble(
                     properties.getProperty(ROUND_MULTIPLE_KEY),
                     defaultRoundMultiple
             );
@@ -225,15 +236,6 @@ public class PricingSettingsService {
     private double parseDouble(String value, double fallback) {
         try {
             return Double.parseDouble(value);
-        } catch (NumberFormatException | NullPointerException e) {
-            return fallback;
-        }
-    }
-
-    private int parsePositiveInt(String value, int fallback) {
-        try {
-            int parsedValue = Integer.parseInt(value);
-            return parsedValue > 0 ? parsedValue : fallback;
         } catch (NumberFormatException | NullPointerException e) {
             return fallback;
         }

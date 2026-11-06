@@ -69,8 +69,8 @@ public class GameInventoryService {
         }
 
         /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido. */
-        public long referencePrice() {
-            return Math.round(stockCard != null && stockCard.getLocalPrice() > 0 ? stockCard.getLocalPrice() : suggestedLocal);
+        public double referencePrice() {
+            return com.tcg.bot.i18n.Money.round(stockCard != null && stockCard.getLocalPrice() > 0 ? stockCard.getLocalPrice() : suggestedLocal);
         }
 
         /** Los datos de la impresión, para crear la fila desde el botón Comprar. */
@@ -299,7 +299,7 @@ public class GameInventoryService {
                 }
                 double local = localPrice(usd);
                 // Sin precio del catálogo se conserva el precio local (puesto a mano o el último conocido).
-                boolean priceMoved = local > 0 && Math.round(local) != Math.round(card.getLocalPrice());
+                boolean priceMoved = local > 0 && com.tcg.bot.i18n.Money.round(local) != com.tcg.bot.i18n.Money.round(card.getLocalPrice());
                 if (newId || !java.util.Objects.equals(usd, card.getUsd()) || priceMoved) {
                     card.setUsd(usd);
                     if (local > 0) {

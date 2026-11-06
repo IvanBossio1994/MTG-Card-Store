@@ -4579,3 +4579,116 @@ td {
         align-items: stretch;
     }
 }
+
+.store-field + .card-help {
+    margin-top: 14px;
+}
+
+.service-account-details {
+    margin-top: 21px;
+}
+
+.service-account-details > summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.service-account-details[open] > summary {
+    margin-bottom: 14px;
+}
+
+/* Instalación nueva sin Sheet: un solo aviso amable en vez de errores rojos por sección. */
+.setup-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 20px;
+    padding: 18px 20px;
+    border: 1px solid #f3d38a;
+    border-radius: var(--radius);
+    background: var(--amber-soft);
+    color: var(--text);
+}
+
+.setup-banner strong {
+    display: block;
+    font-size: 16px;
+}
+
+.setup-banner p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.setup-banner .primary-button {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+body.setup-pending main .alert.error {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .setup-banner {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+}
+
+.plan-meter {
+    height: 8px;
+    margin: -4px 0 14px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.plan-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--brand-gradient);
+}
+
+/* Página de error propia (404 y errores inesperados). */
+.error-page {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: 24px 16px;
+}
+
+.error-card {
+    max-width: 460px;
+    padding: 36px 28px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.error-card img {
+    width: 140px;
+    height: auto;
+}
+
+.error-card h1 {
+    margin: 12px 0 8px;
+    font-size: 24px;
+}
+
+.error-card p {
+    margin: 0 0 22px;
+    color: var(--muted);
+}
+
+.error-card .primary-button {
+    display: inline-flex;
+    text-decoration: none;
+}

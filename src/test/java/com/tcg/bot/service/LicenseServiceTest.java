@@ -17,6 +17,7 @@ class LicenseServiceTest {
     Path dir;
 
     private final AtomicReference<Object> next = new AtomicReference<>();
+    private final AtomicReference<String> google = new AtomicReference<>("tienda@example.com");
 
     private LicenseService at(Instant now, String productId) {
         return new LicenseService(dir.resolve("license.properties"), key -> {
@@ -25,7 +26,7 @@ class LicenseServiceTest {
                 throw e;
             }
             return (LicenseService.Validation) value;
-        }, Clock.fixed(now, ZoneOffset.UTC), productId, "");
+        }, Clock.fixed(now, ZoneOffset.UTC), productId, "https://tienda.lemonsqueezy.com/buy/abc", google::get);
     }
 
     private static LicenseService.Validation active(String productId) {
@@ -107,5 +108,33 @@ class LicenseServiceTest {
         assertThat(validation.status()).isEqualTo("active");
         assertThat(validation.productId()).isEqualTo("123");
         assertThat(validation.email()).isEqualTo("a@b.com");
+    }
+
+    @Test
+    void licenseOnlyWorksWithTheBuyersGoogleAccount() throws Exception {
+        next.set(active("123"));
+        LicenseService service = at(Instant.parse("2026-11-03T00:00:00Z"), "123");
+        assertThat(service.activate("ABCD-EFGH-1234").pro()).isTrue();
+
+        google.set("Tienda@Example.com");
+        assertThat(service.isPro()).as("mail sin importar mayusculas").isTrue();
+
+        google.set("otra@example.com");
+        assertThat(service.isPro()).isFalse();
+        assertThat(service.status().message()).contains("tienda@example.com");
+
+        google.set("");
+        assertThat(service.isPro()).isFalse();
+        assertThat(service.status().message()).contains("tienda@example.com");
+    }
+
+    @Test
+    void purchaseLinkCarriesTheGoogleEmail() {
+        LicenseService service = at(Instant.parse("2026-11-03T00:00:00Z"), "");
+        assertThat(service.getPurchaseUrl())
+                .isEqualTo("https://tienda.lemonsqueezy.com/buy/abc?checkout%5Bemail%5D=tienda%40example.com");
+
+        google.set("");
+        assertThat(service.getPurchaseUrl()).isEqualTo("https://tienda.lemonsqueezy.com/buy/abc");
     }
 }
