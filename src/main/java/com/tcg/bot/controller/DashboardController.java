@@ -2585,6 +2585,12 @@ public class DashboardController {
                     : I18n.t("buy.done.credit", result.units(), customer.trim(),
                             com.tcg.bot.i18n.Money.symbol() + " " + result.formattedBalance()));
             redirect.addFlashAttribute("clearBuy", true);
+            if (!result.waiting().isEmpty()) {
+                redirect.addFlashAttribute("buyWanted", I18n.t("buy.wantedArrived", result.waiting().stream()
+                        .map(wanted -> wanted.getName() + " (" + wanted.getCustomer() + ")")
+                        .distinct()
+                        .collect(java.util.stream.Collectors.joining(", "))));
+            }
         } catch (StockOperationsService.StockOperationException e) {
             redirect.addFlashAttribute("buyError", e.getMessage());
         } catch (Exception e) {

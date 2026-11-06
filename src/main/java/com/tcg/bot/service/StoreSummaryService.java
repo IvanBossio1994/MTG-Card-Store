@@ -44,7 +44,8 @@ public class StoreSummaryService {
             int unitsInStock,
             int distinctInStock,
             String stockValue,
-            int cardsWithoutPrice
+            int cardsWithoutPrice,
+            int wantedArrived
     ) {
     }
 
@@ -58,9 +59,12 @@ public class StoreSummaryService {
         int distinct = 0;
         double value = 0;
         int withoutPrice = 0;
+        int wantedArrived = 0;
+        List<InventoryCard> stock = List.of();
 
         try {
-            for (InventoryCard card : store.getAllStockCards()) {
+            stock = store.getAllStockCards();
+            for (InventoryCard card : stock) {
                 int quantity = Math.max(Amounts.parseInt(card.getQuantity()), 0);
                 if (quantity <= 0 || card.getName() == null || card.getName().isBlank()) {
                     continue;
@@ -104,7 +108,13 @@ public class StoreSummaryService {
             log.debug("Resumen: no se pudieron leer las reservas: {}", e.getMessage());
         }
 
-        return new Summary(ars(sales), salesCount, active, dueToday, units, distinct, ars(value), withoutPrice);
+        try {
+            wantedArrived = WantedService.arrivedCount(store.getWantedCards(), stock);
+        } catch (Exception e) {
+            log.debug("Resumen: no se pudieron leer las cartas buscadas: {}", e.getMessage());
+        }
+
+        return new Summary(ars(sales), salesCount, active, dueToday, units, distinct, ars(value), withoutPrice, wantedArrived);
     }
 
     private static String ars(double value) {

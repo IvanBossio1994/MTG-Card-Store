@@ -48,6 +48,9 @@
         </a>
     </section>
 
+    <a class="alert success wanted-alert" th:if="${summary != null and summary.wantedArrived > 0}" th:href="@{/buscadas}"
+       th:text="#{dash.wantedArrived(${summary.wantedArrived})}">Entraron 2 cartas que buscan tus clientes. Avisales →</a>
+
     <section class="panel search-panel">
         <form class="search-form" method="get" th:action="@{/}">
             <label for="q" th:text="#{dash.search.label}">Buscar carta</label>

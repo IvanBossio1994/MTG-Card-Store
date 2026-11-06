@@ -24,7 +24,9 @@ public class BuyService {
     public record Line(InventoryCard card, int quantity, double unitPaid) {
     }
 
-    public record Result(int units, double total, Payment payment, double newCreditBalance) {
+    /** {@code waiting}: clientes que buscaban alguna de las cartas que acaban de entrar. */
+    public record Result(int units, double total, Payment payment, double newCreditBalance,
+                         List<com.tcg.bot.model.WantedCard> waiting) {
         public String formattedTotal() {
             return CreditService.ars(total);
         }
@@ -37,11 +39,24 @@ public class BuyService {
     private final InventoryStore store;
     private final StockOperationsService stockOperations;
     private final CreditService creditService;
+    private final WantedService wantedService;
 
-    public BuyService(InventoryStore store, StockOperationsService stockOperations, CreditService creditService) {
+    public BuyService(InventoryStore store, StockOperationsService stockOperations, CreditService creditService,
+                      WantedService wantedService) {
         this.store = store;
         this.stockOperations = stockOperations;
         this.creditService = creditService;
+        this.wantedService = wantedService;
+    }
+
+    /** El aviso de cartas buscadas es una ayuda: si falla la lectura, la compra igual queda registrada. */
+    private List<com.tcg.bot.model.WantedCard> waitingQuietly(List<Line> lines) {
+        try {
+            return wantedService.waitingFor(lines.stream().map(Line::card).toList());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(BuyService.class).debug("No se pudieron revisar las buscadas: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     /** El costo es un dato de ayuda: si no se puede guardar, la compra igual queda registrada. */
@@ -106,7 +121,7 @@ public class BuyService {
                 entry.setTotal("0");
                 store.appendCashEntry(entry);
             }
-            return new Result(units, total, payment, balance);
+            return new Result(units, total, payment, balance, waitingQuietly(lines));
         }
     }
 }
