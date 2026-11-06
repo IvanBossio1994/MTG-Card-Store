@@ -154,4 +154,23 @@ class SearchPageTest {
                 .andExpect(content().string(containsString("data-card-id=\"promo\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(containsString("data-card-id=\"other\""))));
     }
+
+    @Test
+    void showsCardKingdomResultsWhenTheSheetCannotBeRead() throws Exception {
+        CardKingdomProduct product = new CardKingdomProduct();
+        product.setName("Lightning Bolt");
+        product.setEdition("Magic 2010");
+        product.setSku("M10-0146");
+        product.setFoil("false");
+        CardKingdomProduct.ConditionValues values = new CardKingdomProduct.ConditionValues();
+        values.setNmPrice("2.00");
+        product.setConditionValues(values);
+        when(cardKingdomApiService.searchProducts(anyString())).thenReturn(List.of(product));
+        when(inventoryService.getInventoryCards()).thenThrow(new RuntimeException("sin credenciales"));
+
+        mvc.perform(get("/").param("q", "Lightning Bolt"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Magic 2010")))
+                .andExpect(content().string(containsString("no se pudo leer tu Sheet")));
+    }
 }

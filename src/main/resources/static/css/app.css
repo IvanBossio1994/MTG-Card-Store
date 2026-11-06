@@ -4692,3 +4692,8 @@ body.setup-pending main .alert.error {
     display: inline-flex;
     text-decoration: none;
 }
+
+.alert.warning {
+    color: var(--amber);
+    background: var(--amber-soft);
+}
