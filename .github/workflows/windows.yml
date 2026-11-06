@@ -25,8 +25,25 @@ jobs:
           java-version: "21"
           cache: maven
 
+      - name: Incluir el login con Google
+        shell: pwsh
+        env:
+          CLIENT_ID: ${{ secrets.TCG_GOOGLE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.TCG_GOOGLE_CLIENT_SECRET }}
+        run: |
+          if ($env:CLIENT_ID -and $env:CLIENT_SECRET) {
+            $lines = @("google.oauth.client-id=$env:CLIENT_ID", "google.oauth.client-secret=$env:CLIENT_SECRET")
+            Set-Content -Path src/main/resources/google-oauth-bundled.properties -Value $lines -Encoding ascii
+            Write-Host "Login con Google incluido."
+          } elseif ($env:GITHUB_REF -like "refs/tags/*") {
+            Write-Error "Faltan los secretos TCG_GOOGLE_CLIENT_ID y TCG_GOOGLE_CLIENT_SECRET: sin ellos el login con Google no anda."
+            exit 1
+          } else {
+            Write-Host "Sin secretos de Google: el armado sigue, pero sin login incluido."
+          }
+
       - name: Compilar
-        run: mvn -B -q package
+        run: mvn -B -q package -DskipTests
 
       - name: Armar la app con Java incluido
         shell: pwsh
@@ -71,3 +88,5 @@ jobs:
           files: |
             TCGStoreHelper-windows.zip
             TCGStoreHelper-windows.zip.sha256
+          # Las versiones de prueba (v0.9.0-beta.1, etc.) salen como pre-release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
