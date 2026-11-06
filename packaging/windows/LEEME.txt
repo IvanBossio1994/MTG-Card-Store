@@ -10,7 +10,7 @@ TCG Store Helper
 
 No hace falta instalar Java: ya viene incluido.
 Tus datos quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
-La version gratis permite hasta 300 cartas.
+La version gratis permite hasta 300 ventas o compras por mes (el inventario no tiene limite).
 
 Actualizaciones: la app busca versiones nuevas sola al abrirse y las descarga en segundo plano.
 Te avisa con un boton "Actualizar ahora"; si no lo tocas, se instala sola la proxima vez que la abras.
@@ -30,7 +30,7 @@ TCG Store Helper (English)
 
 You don't need to install Java: it is included.
 Your data is kept in the TCGStoreHelper\data folder inside your user folder.
-The free version allows up to 300 cards.
+The free version allows up to 300 sales or purchases per month (inventory is unlimited).
 
 Updates: the app checks for new versions when it opens and downloads them in the background.
 It shows an "Update now" button; if you don't click it, the update installs the next time you open the app.

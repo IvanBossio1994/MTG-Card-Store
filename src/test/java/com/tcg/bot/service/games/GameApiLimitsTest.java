@@ -4,7 +4,6 @@ import com.tcg.bot.model.Game;
 import com.tcg.bot.model.GameCard;
 import com.tcg.bot.model.GamePrint;
 import com.tcg.bot.service.CreditService;
-import com.tcg.bot.service.LicenseService;
 import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.ReservationService;
 import com.tcg.bot.service.SalesService;
@@ -24,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,8 +41,6 @@ class GameApiLimitsTest {
     @BeforeEach
     void setUp() {
         store = TestStores.fake();
-        LicenseService license = mock(LicenseService.class);
-        when(license.remainingNewCards(anyInt())).thenReturn(10);
         PriceComparisonService prices = mock(PriceComparisonService.class);
         when(prices.calculateLocalPrice(anyDouble())).thenAnswer(call -> (double) call.getArgument(0) * 1000);
         stock = TestStores.stock(store);
@@ -58,7 +54,7 @@ class GameApiLimitsTest {
                 return List.of(PIKACHU);
             }
         };
-        service = new GameInventoryService(store, new StockOperationsBridge(store, stock), prices, license, List.of(catalog));
+        service = new GameInventoryService(store, new StockOperationsBridge(store, stock), prices, List.of(catalog));
     }
 
     @Test

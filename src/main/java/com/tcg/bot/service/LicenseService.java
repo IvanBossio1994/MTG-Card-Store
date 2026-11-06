@@ -1,6 +1,7 @@
 package com.tcg.bot.service;
 
 import com.tcg.bot.i18n.I18n;
+import com.tcg.bot.model.CashRegisterEntry;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.slf4j.Logger;
@@ -25,14 +26,20 @@ import java.nio.file.Paths;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
  * Plan gratis / plan Tienda.
  * <p>
- * Gratis: hasta {@link #FREE_CARD_LIMIT} cartas distintas en el inventario, con todo lo demas habilitado.
- * Al pasarse se puede seguir buscando, vendiendo y reservando, pero no sumar cartas nuevas.
+ * Gratis: hasta {@link #FREE_OPERATION_LIMIT} operaciones de caja (ventas y compras) por mes calendario, con todo
+ * lo demas habilitado y el inventario sin limite. Al llegar, se puede seguir cargando stock, buscando y reservando,
+ * pero no cobrar ventas ni registrar compras nuevas hasta el mes siguiente. Se cuenta leyendo la hoja Caja del
+ * Sheet de cada tienda (ver {@link #countOperations}), asi que no hace falta base de datos propia.
  * <p>
  * Tienda: una clave de licencia de Lemon Squeezy, validada directo contra su API publica de licencias
  * (no hace falta servidor propio ni base de datos). El resultado se guarda en data/license.properties y
@@ -45,7 +52,7 @@ import java.util.function.Supplier;
 @Service
 public class LicenseService {
 
-    public static final int FREE_CARD_LIMIT = 300;
+    public static final int FREE_OPERATION_LIMIT = 300;
     static final Duration OFFLINE_GRACE = Duration.ofDays(7);
 
     private static final Logger log = LoggerFactory.getLogger(LicenseService.class);
@@ -130,16 +137,36 @@ public class LicenseService {
         return email == null ? "" : email.trim();
     }
 
-    /** Cuantas cartas distintas mas se pueden agregar. Integer.MAX_VALUE en plan Tienda. */
-    public int remainingNewCards(int currentDistinctCards) {
-        if (isPro()) {
-            return Integer.MAX_VALUE;
+    /**
+     * Operaciones del plan gratis en ese mes: cada venta o compra terminada cuenta una vez, no cada carta.
+     * <ul>
+     *   <li>Las lineas de un mismo cobro (carrito, retiro de reserva) se escriben con la misma fecha y hora.</li>
+     *   <li>Las lineas de una compra comparten la referencia.</li>
+     *   <li>Una venta anulada sigue contando: la operacion se hizo (si no, vender y anular dejaria el contador igual).</li>
+     *   <li>No cuentan: anulaciones, cierres de caja, la parte pagada con credito ni el pago a un consignador.</li>
+     * </ul>
+     * La hoja Caja es una sola para Magic, Pokemon y Yu-Gi-Oh, asi que cuenta todos los juegos juntos.
+     */
+    public static int countOperations(List<CashRegisterEntry> entries, YearMonth month) {
+        String prefix = month.toString();
+        Set<String> operations = new HashSet<>();
+        for (CashRegisterEntry entry : entries) {
+            if (!entry.isSale() && !entry.isBuy()) {
+                continue;
+            }
+            String date = nullToEmpty(entry.getDate()).trim();
+            if (!date.startsWith(prefix)) {
+                continue;
+            }
+            String reference = nullToEmpty(entry.getSaleId()).trim();
+            if (entry.isBuy() && reference.startsWith("K")) {
+                continue;
+            }
+            operations.add(entry.isBuy() && !reference.isEmpty()
+                    ? "C|" + reference
+                    : entry.getType().toUpperCase() + "|" + date + "|" + nullToEmpty(entry.getTime()).trim());
         }
-        return Math.max(FREE_CARD_LIMIT - currentDistinctCards, 0);
-    }
-
-    public String limitMessage() {
-        return I18n.t("license.limit", FREE_CARD_LIMIT);
+        return operations.size();
     }
 
     public synchronized Status status() {
@@ -148,7 +175,7 @@ public class LicenseService {
                     I18n.t("license.active"), mask(licenseKey));
         }
 
-        String message = I18n.t("license.free", FREE_CARD_LIMIT);
+        String message = I18n.t("license.free", FREE_OPERATION_LIMIT);
         boolean paidKey = !licenseKey.isBlank() && lastValidation != null && lastValidation.valid()
                 && usable(lastValidation.status());
         if (paidKey && !accountMatches()) {
