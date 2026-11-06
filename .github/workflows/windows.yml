@@ -4,6 +4,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Versión a publicar (ej. v0.9.0-beta.1). Vacío: solo arma el zip."
+        required: false
+        default: ""
   pull_request:
     paths:
       - ".github/workflows/windows.yml"
@@ -30,12 +35,13 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.TCG_GOOGLE_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.TCG_GOOGLE_CLIENT_SECRET }}
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
           if ($env:CLIENT_ID -and $env:CLIENT_SECRET) {
             $lines = @("google.oauth.client-id=$env:CLIENT_ID", "google.oauth.client-secret=$env:CLIENT_SECRET")
             Set-Content -Path src/main/resources/google-oauth-bundled.properties -Value $lines -Encoding ascii
             Write-Host "Login con Google incluido."
-          } elseif ($env:GITHUB_REF -like "refs/tags/*") {
+          } elseif ($env:GITHUB_REF -like "refs/tags/*" -or $env:RELEASE_TAG) {
             Write-Error "Faltan los secretos TCG_GOOGLE_CLIENT_ID y TCG_GOOGLE_CLIENT_SECRET: sin ellos el login con Google no anda."
             exit 1
           } else {
@@ -82,11 +88,14 @@ jobs:
             TCGStoreHelper-windows.zip.sha256
 
       - name: Publicar en Releases
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          # Desde "Run workflow" con una versión, crea el tag sobre el commit armado.
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: |
             TCGStoreHelper-windows.zip
             TCGStoreHelper-windows.zip.sha256
           # Las versiones de prueba (v0.9.0-beta.1, etc.) salen como pre-release.
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
