@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.lan} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.lan})}"></header>
+<div th:replace="~{fragments/layout :: menu('lan')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{layout.section.daily}">Día a día</p>
+            <h1 th:text="#{lan.h1}">Segunda caja en el celular</h1>
+            <p class="supporting" th:text="#{lan.supporting}">Con el celular conectado al mismo Wi-Fi que esta PC podés buscar cartas, vender y anotar reservas. Todo queda en el mismo Sheet. La PC tiene que estar prendida con la app abierta.</p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${lanError}" th:text="${lanError}"></p>
+    <p class="alert success" th:if="${lanMessage}" th:text="${lanMessage}"></p>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="${lanEnabled} ? #{lan.state.on} : #{lan.state.off}">Apagada</p>
+                <h2 th:text="#{lan.title}">Usar el celular como caja</h2>
+            </div>
+            <form method="post" th:action="@{/segunda-caja}">
+                <input type="hidden" name="enabled" th:value="${!lanEnabled}">
+                <button type="submit" th:class="${lanEnabled} ? 'secondary-button' : 'primary-button'"
+                        th:text="${lanEnabled} ? #{lan.turnOff} : #{lan.turnOn}">Prender</button>
+            </form>
+        </div>
+
+        <div th:if="${lanEnabled}">
+            <p class="alert error" th:unless="${lanOpen}" th:text="#{lan.notOpen}">Está prendida pero el puerto no se pudo abrir. Apagala y prendela de nuevo.</p>
+            <ol class="lan-steps">
+                <li th:text="#{lan.step.wifi}">Conectá el celular al mismo Wi-Fi que esta PC.</li>
+                <li>
+                    <span th:text="#{lan.step.open}">En el navegador del celular abrí:</span>
+                    <strong class="lan-link" th:each="link : ${lanLinks}" th:text="${link}">http://192.168.0.10:8090</strong>
+                    <span th:if="${#lists.isEmpty(lanLinks)}" th:text="#{lan.noAddress}">No se encontró la dirección de esta PC en la red. Revisá que esté conectada al Wi-Fi o por cable.</span>
+                </li>
+                <li>
+                    <span th:text="#{lan.step.pin}">Poné este PIN:</span>
+                    <strong class="lan-pin" th:text="${lanPin}">123456</strong>
+                </li>
+            </ol>
+            <p class="section-note" th:text="#{lan.firewall}">La primera vez Windows puede preguntar si dejás que la app use la red: elegí “Redes privadas” y aceptá.</p>
+            <form method="post" th:action="@{/segunda-caja/pin}">
+                <button class="secondary-button" type="submit" th:text="#{lan.changePin}">Cambiar el PIN</button>
+            </form>
+            <p class="section-note" th:text="#{lan.changePin.note}">Al cambiarlo, los celulares que ya entraron tienen que poner el PIN nuevo.</p>
+        </div>
+        <p class="section-note" th:text="#{lan.limits}">Desde el celular se puede buscar, vender y manejar reservas. La configuración, la caja, los reportes y la cuenta de Google solo se usan desde esta PC.</p>
+    </section>
+</main>
+</body>
+</html>

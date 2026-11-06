@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.lan} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page lan-login">
+    <section class="panel">
+        <p class="eyebrow" th:text="${storeName}">Mi tienda</p>
+        <h1 th:text="#{lan.login.title}">Entrar a la caja</h1>
+        <p class="supporting" th:text="#{lan.login.text}">Poné el PIN que aparece en la PC, en Segunda caja en el celular.</p>
+        <p class="alert error" th:if="${loginError}" th:text="${loginError}"></p>
+        <p class="alert error" th:if="${locked} and ${loginError == null}" th:text="#{lan.login.locked}"></p>
+        <form method="post" th:action="@{/celular}">
+            <input class="lan-pin-input" name="pin" type="text" inputmode="numeric" autocomplete="one-time-code"
+                   maxlength="6" pattern="[0-9]{6}" required autofocus placeholder="••••••">
+            <button class="primary-button" type="submit" th:text="#{lan.login.enter}">Entrar</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>
