@@ -119,10 +119,10 @@
                 <p class="field-help" th:text="#{settings.currency.help}">La moneda en la que cobrás.</p>
                 <p class="field-help" id="currency-changed" hidden th:text="#{settings.currency.changed}">Ajustamos el redondeo y el mínimo.</p>
             </div>
-            <p class="card-help" th:text="#{settings.pricing.formula(${currencyCode})}">Precio = precio CK en USD × cotización × (1 + recargo).</p>
+            <p class="card-help" data-currency-text th:text="#{settings.pricing.formula(${currencyCode})}">Precio = precio CK en USD × cotización × (1 + recargo).</p>
             <div class="pricing-config-grid">
                 <div class="store-field">
-                    <label for="ckDollarRate" th:text="#{settings.usdRate(${currencyCode})}">Cotizacion ARS por CK USD</label>
+                    <label for="ckDollarRate" data-currency-text th:text="#{settings.usdRate(${currencyCode})}">Cotizacion ARS por CK USD</label>
                     <input id="ckDollarRate" name="ckDollarRate" type="number" min="0.01" step="0.01"
                            th:value="${ckDollarRate}" required>
                 </div>
@@ -137,7 +137,7 @@
                            th:value="${markupPercent}">
                 </div>
                 <div class="store-field">
-                    <label for="minimumPrice" th:text="#{settings.minimumPrice(${currencyCode})}">Precio mínimo por carta (ARS)</label>
+                    <label for="minimumPrice" data-currency-text th:text="#{settings.minimumPrice(${currencyCode})}">Precio mínimo por carta (ARS)</label>
                     <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="any"
                            th:value="${money.plainNumber(minimumPrice)}">
                 </div>
@@ -153,7 +153,7 @@
                                                    th:checked="${cardmarketEnabled}"> <span th:text="#{settings.sources.cardmarket}">Cardmarket (EUR, vía Scryfall)</span></label>
                 <div class="pricing-config-grid">
                     <div class="store-field">
-                        <label for="eurRate" th:text="#{settings.eurRate(${currencyCode})}">Cotización ARS por EUR (para Cardmarket)</label>
+                        <label for="eurRate" data-currency-text th:text="#{settings.eurRate(${currencyCode})}">Cotización ARS por EUR (para Cardmarket)</label>
                         <input id="eurRate" name="eurRate" type="number" min="0" step="0.01" th:value="${eurRate}">
                     </div>
                     <div class="store-field">
