@@ -1089,11 +1089,11 @@ public class DashboardController {
             var results = analyzeImportLines(rawList);
             model.addAttribute("importResults", results);
             model.addAttribute("totalCount", results.size());
+            // Una línea cuenta una sola vez aunque tenga varias versiones para elegir:
+            // antes sumaba cada versión y mostraba "39 seleccionables" para una lista de 5.
             model.addAttribute("readyCount", results.stream()
-                    .mapToLong(result -> result.selectable()
-                            ? 1
-                            : result.alternatives().size())
-                    .sum());
+                    .filter(result -> result.selectable() || !result.alternatives().isEmpty())
+                    .count());
         } catch (Exception e) {
             model.addAttribute("error", I18n.t("imp.analyzeError"));
             model.addAttribute("importResults", List.of());
