@@ -48,6 +48,13 @@ jobs:
       - name: Armar la app con Java incluido
         shell: pwsh
         run: |
+          # La version sale del tag (v1.2.0 -> 1.2.0). Las compilaciones de prueba quedan como "dev" y no se actualizan solas.
+          $version = "dev"
+          $appVersion = "1.0.0"
+          if ("${{ github.ref_type }}" -eq "tag" -and "${{ github.ref_name }}" -match '^v(\d+\.\d+\.\d+)$') {
+            $version = $Matches[1]
+            $appVersion = $Matches[1]
+          }
           $jar = Get-ChildItem target/*.jar | Where-Object { $_.Name -notlike "*plain*" } | Select-Object -First 1
           New-Item -ItemType Directory -Force input | Out-Null
           Copy-Item $jar.FullName input/app.jar
@@ -55,22 +62,31 @@ jobs:
             --name TCGStoreHelper `
             --input input `
             --main-jar app.jar `
+            --app-version $appVersion `
             --java-options "-Dspring.profiles.active=desktop" `
+            --java-options "-Dapp.version=$version" `
             --java-options "-Dfile.encoding=UTF-8" `
             --win-console `
             --dest dist
           Copy-Item packaging/windows/LEEME.txt dist/TCGStoreHelper/
           Compress-Archive -Path dist/TCGStoreHelper -DestinationPath TCGStoreHelper-windows.zip
+          # Huella del .zip: la app la usa para comprobar que la actualizacion se descargo entera.
+          $hash = (Get-FileHash TCGStoreHelper-windows.zip -Algorithm SHA256).Hash.ToLower()
+          Set-Content -Path TCGStoreHelper-windows.zip.sha256 -Value "$hash  TCGStoreHelper-windows.zip" -NoNewline
 
       - uses: actions/upload-artifact@v4
         with:
           name: TCGStoreHelper-windows
-          path: TCGStoreHelper-windows.zip
+          path: |
+            TCGStoreHelper-windows.zip
+            TCGStoreHelper-windows.zip.sha256
 
       - name: Publicar en Releases
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: TCGStoreHelper-windows.zip
+          files: |
+            TCGStoreHelper-windows.zip
+            TCGStoreHelper-windows.zip.sha256
           # Las versiones de prueba (v0.9.0-beta.1, etc.) salen como pre-release.
           prerelease: ${{ contains(github.ref_name, '-') }}

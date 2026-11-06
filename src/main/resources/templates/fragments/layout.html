@@ -27,6 +27,17 @@
            th:attrappend="aria-current=${activeGame == 'yugioh'} ? 'page'">
             <span class="game-tab-dot" aria-hidden="true"></span><span class="game-tab-long">Yu-Gi-Oh!</span><span class="game-tab-short">YGO</span></a>
     </nav>
+    <div th:if="${appUpdate != null && appUpdate.ready}" id="update-toast" class="update-toast" role="status"
+         th:attr="data-update-version=${appUpdate.latestVersion}" hidden>
+        <div class="update-toast-text">
+            <strong th:text="#{update.toast.title(${appUpdate.latestVersion})}">Hay una versión nueva (1.1.0)</strong>
+            <span class="update-toast-message" th:text="#{update.toast.message}">Ya está descargada. Si no la instalás ahora, se instala sola la próxima vez que abras la app. Tus datos no se tocan.</span>
+        </div>
+        <div class="update-toast-actions">
+            <button class="primary-button" type="button" data-update-install th:text="#{update.installNow}">Actualizar ahora</button>
+            <button class="text-action" type="button" data-update-later th:text="#{update.later}">Más tarde</button>
+        </div>
+    </div>
     <script th:inline="javascript">
         window.I18N = /*[[${jsMessages}]]*/ {};
         window.APP_LANG = /*[[${lang}]]*/ "es";
@@ -97,6 +108,10 @@
             <form th:action="@{/tutorial/reset}" method="post">
                 <button type="submit" class="menu-link-button" th:text="#{nav.tutorialAgain}">Ver tutorial de nuevo</button>
             </form>
+            <a class="menu-feedback" th:href="${feedbackMailto}" th:title="${feedbackEmail}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3V5Zm1.5 1.9v10.6h15V6.9L12 12.6 4.5 6.9Zm1.4-.4L12 11l6.1-4.5H5.9Z"/></svg>
+                <span><span th:text="#{nav.feedback}">Reportar un problema o sugerir algo</span>
+                    <small class="menu-feedback-email" th:text="${feedbackEmail}">tcgstorehelper@gmail.com</small></span></a>
         </nav>
     </aside>
 </div>
