@@ -7,3 +7,7 @@ TCG Store Helper
 No hace falta instalar Java: ya viene incluido.
 Tus datos y claves quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
 Ahi va el archivo google-oauth.properties para el login con Google.
+
+Actualizaciones: la app busca versiones nuevas sola al abrirse y las descarga en segundo plano.
+Te avisa con un boton "Actualizar ahora"; si no lo tocas, se instala sola la proxima vez que la abras.
+Tus datos, tu configuracion y tu licencia no se tocan.

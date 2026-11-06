@@ -34,6 +34,8 @@ class SettingsPageTest {
                 .andExpect(content().string(containsString("name=\"cardmarketEnabled\"")))
                 .andExpect(content().string(containsString("Promedio de las fuentes")))
                 .andExpect(content().string(containsString("Cuenta de Google")))
-                .andExpect(content().string(containsString("google-oauth.properties")));
+                .andExpect(content().string(containsString("google-oauth.properties")))
+                .andExpect(content().string(containsString("Actualizaciones")))
+                .andExpect(content().string(containsString("Las actualizaciones automáticas funcionan en la versión para Windows")));
     }
 }
