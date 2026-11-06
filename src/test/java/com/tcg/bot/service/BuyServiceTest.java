@@ -27,7 +27,7 @@ class BuyServiceTest {
         store.cards.add(card("sol", 2, "Sol Ring", 1, "1500"));
         var stock = new StockOperationsService(store, Clock.fixed(Instant.parse("2026-11-03T15:00:00Z"), ZoneId.of("America/Buenos_Aires")));
         credit = new CreditService(store, stock);
-        service = new BuyService(store, stock, credit);
+        service = new BuyService(store, stock, credit, new WantedService(store, stock));
     }
 
     @Test

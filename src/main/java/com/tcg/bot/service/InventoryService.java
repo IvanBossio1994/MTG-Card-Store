@@ -13,6 +13,8 @@ import java.util.Map;
 @Service
 public class InventoryService implements InventoryStore {
 
+    private static final String WANTED_TAB = "Buscadas";
+
     private final GoogleSheetsService googleSheetsService;
 
     public InventoryService(GoogleSheetsService googleSheetsService) {
@@ -86,6 +88,35 @@ public class InventoryService implements InventoryStore {
     @Override
     public void updateGameCard(com.tcg.bot.model.Game game, com.tcg.bot.model.GameCard card) throws Exception {
         googleSheetsService.updateTabRow(game.sheetName(), com.tcg.bot.model.Game.HEADER, card.getRowIndex(), card.toRow());
+    }
+
+    @Override
+    public List<com.tcg.bot.model.WantedCard> getWantedCards() throws Exception {
+        var rows = googleSheetsService.getTabRows(WANTED_TAB, com.tcg.bot.model.WantedCard.HEADER);
+        List<com.tcg.bot.model.WantedCard> cards = new java.util.ArrayList<>();
+        for (int index = 0; index < rows.size(); index++) {
+            if (!rows.get(index).get(3).isBlank()) {
+                cards.add(com.tcg.bot.model.WantedCard.fromRow(rows.get(index), index + 2));
+            }
+        }
+        return cards;
+    }
+
+    @Override
+    public void appendWantedCards(List<com.tcg.bot.model.WantedCard> cards) throws Exception {
+        if (cards.isEmpty()) {
+            return;
+        }
+        int first = googleSheetsService.appendTabRows(WANTED_TAB, com.tcg.bot.model.WantedCard.HEADER,
+                cards.stream().map(com.tcg.bot.model.WantedCard::toRow).toList());
+        for (int index = 0; index < cards.size(); index++) {
+            cards.get(index).setRowIndex(first + index);
+        }
+    }
+
+    @Override
+    public void updateWantedCard(com.tcg.bot.model.WantedCard card) throws Exception {
+        googleSheetsService.updateTabRow(WANTED_TAB, com.tcg.bot.model.WantedCard.HEADER, card.getRowIndex(), card.toRow());
     }
 
     @Override

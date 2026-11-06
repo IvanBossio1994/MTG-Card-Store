@@ -54,6 +54,19 @@ public interface InventoryStore {
         throw new UnsupportedOperationException("No disponible");
     }
 
+    /** Cartas que buscan los clientes (pestaña "Buscadas"). */
+    default List<com.tcg.bot.model.WantedCard> getWantedCards() throws Exception {
+        return List.of();
+    }
+
+    default void appendWantedCards(List<com.tcg.bot.model.WantedCard> cards) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
+    default void updateWantedCard(com.tcg.bot.model.WantedCard card) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
     /** Agrega una fila nueva al inventario y devuelve su número de fila. */
     default int appendInventoryCard(InventoryCard card) throws Exception {
         throw new UnsupportedOperationException("No disponible");

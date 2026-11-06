@@ -4771,3 +4771,18 @@ body.setup-pending main .alert.error {
     font-size: 0.85rem;
     white-space: pre-wrap;
 }
+
+/* Aviso de cartas buscadas que ya entraron (Inicio y Comprar a clientes) */
+a.wanted-alert {
+    display: block;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+a.wanted-alert:hover {
+    text-decoration: underline;
+}
+
+.deck-wanted-form {
+    margin-top: 14px;
+}

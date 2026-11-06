@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.wanted} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.wanted})}"></header>
+<div th:replace="~{fragments/layout :: menu('wanted')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{res.eyebrow}">Clientes</p>
+            <h1 th:text="#{wanted.h1}">Cartas buscadas</h1>
+            <p class="supporting" th:text="#{wanted.supporting}">Anotá lo que te piden y no tenés. Cuando la carta entra al stock aparece arriba para avisarle al cliente.</p>
+        </div>
+    </section>
+
+    <p class="alert error" th:if="${wantedError}" th:text="${wantedError}"></p>
+    <p class="alert success" th:if="${wantedMessage}" th:text="${wantedMessage}"></p>
+
+    <section class="panel" th:unless="${#lists.isEmpty(arrived)}">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="#{wanted.arrived.eyebrow}">Ya entraron</p>
+                <h2 th:text="#{wanted.arrived.title}">Avisale al cliente</h2>
+            </div>
+        </div>
+        <article class="order-card" th:each="view : ${arrived}" th:classappend="${view.wanted().notified} ? 'inactive'">
+            <div class="order-card-head">
+                <div>
+                    <strong th:text="${view.wanted().quantity + ' × ' + view.wanted().name}">1 × Sheoldred</strong>
+                    <span th:if="${view.wanted().setCode != ''}" th:text="${' (' + view.wanted().setCode + ')'}"> (DMU)</span>
+                    <div class="supporting">
+                        <span th:text="${view.wanted().customer}">Juan</span>
+                        <span th:if="${view.wanted().contact != ''}" th:text="${' · ' + view.wanted().contact}"> · 11 5555-1234</span>
+                        · <span th:text="#{wanted.since(${view.wanted().formattedDate})}">desde el 01/11</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="status" th:text="#{wanted.available(${view.available()})}">Hay 1</span>
+                    <span class="cash-badge" th:if="${view.wanted().notified}" th:text="#{wanted.notified}">Avisado</span>
+                </div>
+            </div>
+            <ul class="order-lines">
+                <li th:each="card : ${view.matches()}">
+                    <span th:text="${card.quantity + ' × ' + card.name + ' (' + (card.setName != null and card.setName != '' ? card.setName : card.setCode) + ')'}">1 × Sheoldred (DMU)</span>
+                    <span class="location-chip" th:if="${card.location != null and card.location != ''}" th:text="${card.location}">Carpeta 3</span>
+                </li>
+            </ul>
+            <div class="order-actions">
+                <a class="secondary-button whatsapp-button" th:href="${whatsappLinks.get(view.wanted().id)}" target="_blank" rel="noopener"
+                   th:title="#{res.whatsapp.title}" th:text="#{res.whatsapp}">Avisar por WhatsApp</a>
+                <form method="post" th:action="@{/buscadas/avisado}" th:unless="${view.wanted().notified}">
+                    <input type="hidden" name="id" th:value="${view.wanted().id}">
+                    <button class="primary-button" type="submit" th:text="#{wanted.markNotified}">Ya le avisé</button>
+                </form>
+                <form method="post" th:action="@{/buscadas/cerrar}">
+                    <input type="hidden" name="id" th:value="${view.wanted().id}">
+                    <button class="secondary-button" type="submit" th:title="#{wanted.close.title}" th:text="#{wanted.close}">Listo</button>
+                </form>
+            </div>
+        </article>
+    </section>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="#{res.new}">Nuevo pedido</p>
+                <h2 th:text="#{wanted.add.title}">Anotar cartas buscadas</h2>
+            </div>
+        </div>
+        <form method="post" th:action="@{/buscadas}">
+            <div class="order-form-fields">
+                <label><span th:text="#{common.customer}">Cliente</span>
+                    <input name="customer" type="text" required maxlength="80" th:value="${draftCustomer}" th:placeholder="#{common.customerName}">
+                </label>
+                <label><span th:text="#{res.contact}">Contacto (opcional)</span>
+                    <input name="contact" type="text" maxlength="80" th:value="${draftContact}" th:placeholder="#{res.contact.placeholder}">
+                </label>
+            </div>
+            <label class="import-form"><span th:text="#{wanted.cards}">Cartas (una por renglón)</span>
+                <textarea name="cards" rows="4" required placeholder="1 Sheoldred, the Apocalypse&#10;2 Fatal Push (2XM)" th:text="${draftCards}"></textarea>
+            </label>
+            <div class="order-actions">
+                <button class="primary-button" type="submit" th:text="#{wanted.add}">Anotar</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow" th:text="#{wanted.waiting.eyebrow}">Todavía no entraron</p>
+                <h2 th:text="#{wanted.waiting.title}">Buscando</h2>
+            </div>
+        </div>
+        <div class="placeholder" th:if="${#lists.isEmpty(waiting)}">
+            <strong th:text="#{wanted.empty.title}">No hay cartas buscadas</strong>
+            <p th:text="#{wanted.empty.text}">Se guardan en la hoja "Buscadas" de tu Sheet.</p>
+        </div>
+        <div class="table-wrap" th:unless="${#lists.isEmpty(waiting)}">
+            <table>
+                <thead>
+                <tr>
+                    <th th:text="#{common.card}">Carta</th>
+                    <th th:text="#{common.customer}">Cliente</th>
+                    <th th:text="#{res.contact}">Contacto</th>
+                    <th th:text="#{wanted.col.since}">Desde</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="view : ${waiting}">
+                    <td th:text="${view.wanted().quantity + ' × ' + view.wanted().name + (view.wanted().setCode != '' ? ' (' + view.wanted().setCode + ')' : '')}">1 × Sheoldred</td>
+                    <td th:text="${view.wanted().customer}">Juan</td>
+                    <td th:text="${view.wanted().contact}">11 5555-1234</td>
+                    <td class="nowrap" th:text="${view.wanted().formattedDate}">01/11/2026</td>
+                    <td>
+                        <form method="post" th:action="@{/buscadas/cerrar}">
+                            <input type="hidden" name="id" th:value="${view.wanted().id}">
+                            <button class="text-action" type="submit" th:title="#{wanted.remove.title}" th:text="#{wanted.remove}">Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

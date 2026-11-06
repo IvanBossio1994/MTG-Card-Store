@@ -23,6 +23,7 @@
 
     <p class="alert error" th:if="${buyError}" th:text="${buyError}"></p>
     <p class="alert success" th:if="${buyMessage}" th:text="${buyMessage}"></p>
+    <a class="alert success wanted-alert" th:if="${buyWanted}" th:href="@{/buscadas}" th:text="${buyWanted}">Entró Sheoldred (Juan). Avisale →</a>
 
     <section class="panel">
         <div class="section-head">

@@ -1004,10 +1004,15 @@ public class GoogleSheetsService {
 
     /** Agrega una fila al final de la pestaña y devuelve su número de fila. */
     public int appendTabRow(String tab, List<String> header, List<Object> values) throws Exception {
+        return appendTabRows(tab, header, List.of(values));
+    }
+
+    /** Agrega varias filas de una sola vez y devuelve el número de fila de la primera. */
+    public int appendTabRows(String tab, List<String> header, List<List<Object>> rows) throws Exception {
         Sheets sheetsService = getSheetsService();
         ensureSheetWithHeader(sheetsService, tab, header);
         String lastColumn = SheetColumns.columnLetter(header.size() - 1);
-        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(List.of(values));
+        var body = new com.google.api.services.sheets.v4.model.ValueRange().setValues(new ArrayList<>(rows));
         var response = sheetsService.spreadsheets().values()
                 .append(storeSettingsService.getSpreadsheetId(), sheetRange(tab, "A:" + lastColumn), body)
                 .setValueInputOption("RAW")
@@ -1018,7 +1023,7 @@ public class GoogleSheetsService {
         if (matcher != null && matcher.find()) {
             return Integer.parseInt(matcher.group(1));
         }
-        return getTabRows(tab, header).size() + 1;
+        return getTabRows(tab, header).size() + 2 - rows.size();
     }
 
     public void updateTabRow(String tab, List<String> header, int rowIndex, List<Object> values) throws Exception {

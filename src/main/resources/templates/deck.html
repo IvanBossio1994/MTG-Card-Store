@@ -80,7 +80,7 @@
                         <tr th:each="pick : ${line.picks()}">
                             <td>
                                 <span th:text="${pick.card().name}">Sol Ring</span>
-                                <span class="status warn" th:if="${line.missing() > 0 and pickStat.last}"
+                                <span class="status otra-version" th:if="${line.missing() > 0 and pickStat.last}"
                                       th:text="#{deck.partial(${line.missing()})}">faltan 2</span>
                             </td>
                             <td th:text="${pick.setLabel() + (pick.card().printing != null and pick.card().foil ? ' · Foil' : '')}">CMM</td>
@@ -107,6 +107,21 @@
                         th:text="#{deck.copyMissing}">Copiar lista de faltantes</button>
             </div>
             <pre class="deck-missing" id="deck-missing-text" th:text="${deck.missingText()}">2 Fatal Push</pre>
+            <form class="deck-wanted-form" method="post" th:action="@{/buscadas}">
+                <input type="hidden" name="cards" th:value="${deck.missingText()}">
+                <p class="section-note" th:text="#{deck.wanted.note}">¿Se las conseguís? Anotalas como buscadas y la app te avisa cuando entren.</p>
+                <div class="order-form-fields">
+                    <label><span th:text="#{common.customer}">Cliente</span>
+                        <input name="customer" type="text" required maxlength="80" th:placeholder="#{common.customerName}">
+                    </label>
+                    <label><span th:text="#{res.contact}">Contacto (opcional)</span>
+                        <input name="contact" type="text" maxlength="80" th:placeholder="#{res.contact.placeholder}">
+                    </label>
+                </div>
+                <div class="order-actions">
+                    <button class="secondary-button" type="submit" th:text="#{deck.wanted.save}">Anotar como buscadas</button>
+                </div>
+            </form>
         </section>
     </th:block>
 </main>
