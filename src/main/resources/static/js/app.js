@@ -1491,6 +1491,55 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // "Pegar un mazo": suma al carrito todo lo encontrado, sin pasarse del stock de cada carta.
+    const deckAdd = document.getElementById("deck-add-to-cart");
+    if (deckAdd) {
+        deckAdd.addEventListener("click", () => {
+            let found = [];
+            try {
+                found = JSON.parse(deckAdd.dataset.items || "[]");
+            } catch (e) {
+                found = [];
+            }
+            const items = readOrder();
+            let added = 0;
+            found.forEach(card => {
+                const existing = items.find(item => item.cardId === card.cardId);
+                const already = existing ? existing.quantity : 0;
+                const room = Math.max((card.stock || 0) - already, 0);
+                const take = Math.min(card.quantity, room);
+                if (take <= 0) {
+                    return;
+                }
+                if (existing) {
+                    existing.quantity += take;
+                    existing.stock = card.stock;
+                    existing.price = card.price;
+                    existing.manual = card.manual;
+                } else {
+                    items.push({cardId: card.cardId, quantity: take, name: card.name, set: card.set,
+                        price: card.price, stock: card.stock, manual: card.manual});
+                }
+                added += take;
+            });
+            writeOrder(items);
+            showToast(added > 0 ? t("deckAdded", added) : t("deckNothingAdded"), added > 0 ? "success" : "error");
+        });
+    }
+
+    const deckCopy = document.getElementById("deck-copy-missing");
+    if (deckCopy) {
+        deckCopy.addEventListener("click", async () => {
+            const text = (document.getElementById("deck-missing-text") || {}).textContent || "";
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(t("deckCopied"), "success");
+            } catch (e) {
+                showToast(t("deckCopyError"), "error");
+            }
+        });
+    }
+
     // Botón "Costo y lugar": edita en el lugar el costo por unidad y dónde está guardada la carta.
     document.addEventListener("click", event => {
         const button = event.target.closest(".details-button");
