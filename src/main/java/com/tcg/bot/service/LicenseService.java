@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 /**
  * Plan gratis / plan Tienda.
@@ -36,6 +37,10 @@ import java.util.Properties;
  * Tienda: una clave de licencia de Lemon Squeezy, validada directo contra su API publica de licencias
  * (no hace falta servidor propio ni base de datos). El resultado se guarda en data/license.properties y
  * vale {@link #OFFLINE_GRACE} sin conexion, para que un corte de internet no frene la tienda.
+ * <p>
+ * Una licencia = una cuenta de Google: la clave solo habilita el plan si la cuenta de Google conectada en la app
+ * tiene el mismo mail con el que se compro. Asi se puede usar en varias PCs con la misma cuenta, pero no
+ * prestarla a otra tienda.
  */
 @Service
 public class LicenseService {
@@ -63,6 +68,7 @@ public class LicenseService {
     private final Clock clock;
     private final String expectedProductId;
     private final String purchaseUrl;
+    private final Supplier<String> googleEmail;
 
     private String licenseKey = "";
     private Validation lastValidation;
@@ -72,13 +78,16 @@ public class LicenseService {
     public LicenseService(
             @Value("${app.storage-dir:./data}") String storageDirectory,
             @Value("${license.lemonsqueezy.product-id:}") String expectedProductId,
-            @Value("${license.purchase-url:}") String purchaseUrl
+            @Value("${license.purchase-url:}") String purchaseUrl,
+            GoogleAccountService googleAccountService
     ) {
         this(Paths.get(storageDirectory).resolve("license.properties"), lemonSqueezyValidator(), Clock.systemUTC(),
-                expectedProductId, purchaseUrl);
+                expectedProductId, purchaseUrl, () -> googleAccountService.status().email());
     }
 
-    LicenseService(Path file, Validator validator, Clock clock, String expectedProductId, String purchaseUrl) {
+    LicenseService(Path file, Validator validator, Clock clock, String expectedProductId, String purchaseUrl,
+                   Supplier<String> googleEmail) {
+        this.googleEmail = googleEmail;
         this.file = file;
         this.validator = validator;
         this.clock = clock;
@@ -87,8 +96,14 @@ public class LicenseService {
         load();
     }
 
+    /** Link de compra, con el mail de la cuenta de Google ya cargado para que la clave quede a su nombre. */
     public String getPurchaseUrl() {
-        return purchaseUrl;
+        String email = currentGoogleEmail();
+        if (purchaseUrl.isEmpty() || email.isEmpty()) {
+            return purchaseUrl;
+        }
+        return purchaseUrl + (purchaseUrl.contains("?") ? "&" : "?")
+                + "checkout%5Bemail%5D=" + URLEncoder.encode(email, StandardCharsets.UTF_8);
     }
 
     public synchronized boolean isPro() {
@@ -98,7 +113,21 @@ public class LicenseService {
 
         boolean active = lastValidation.valid() && usable(lastValidation.status());
         boolean fresh = validatedAt.plus(OFFLINE_GRACE).isAfter(clock.instant());
-        return active && fresh;
+        return active && fresh && accountMatches();
+    }
+
+    /** La clave es de quien la compro: el mail de compra tiene que ser el de la cuenta de Google conectada. */
+    private boolean accountMatches() {
+        String buyer = nullToEmpty(lastValidation.email()).trim();
+        if (buyer.isEmpty()) {
+            return true;
+        }
+        return buyer.equalsIgnoreCase(currentGoogleEmail());
+    }
+
+    private String currentGoogleEmail() {
+        String email = googleEmail == null ? null : googleEmail.get();
+        return email == null ? "" : email.trim();
     }
 
     /** Cuantas cartas distintas mas se pueden agregar. Integer.MAX_VALUE en plan Tienda. */
@@ -120,7 +149,13 @@ public class LicenseService {
         }
 
         String message = I18n.t("license.free", FREE_CARD_LIMIT);
-        if (!licenseKey.isBlank() && lastValidation != null && lastValidation.error() != null && !lastValidation.error().isBlank()) {
+        boolean paidKey = !licenseKey.isBlank() && lastValidation != null && lastValidation.valid()
+                && usable(lastValidation.status());
+        if (paidKey && !accountMatches()) {
+            message = currentGoogleEmail().isEmpty()
+                    ? I18n.t("license.needsGoogle", lastValidation.email())
+                    : I18n.t("license.otherAccount", lastValidation.email());
+        } else if (!licenseKey.isBlank() && lastValidation != null && lastValidation.error() != null && !lastValidation.error().isBlank()) {
             message = I18n.t("license.notActive", lastValidation.error());
         } else if (!licenseKey.isBlank() && lastValidation != null && !usable(lastValidation.status())) {
             message = I18n.t("license.status", translate(lastValidation.status()));
