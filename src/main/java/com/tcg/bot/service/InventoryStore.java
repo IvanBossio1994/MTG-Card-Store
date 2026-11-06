@@ -21,6 +21,11 @@ public interface InventoryStore {
 
     void appendMovement(InventoryMovement movement) throws Exception;
 
+    /** Movimientos de stock (hoja "Movimientos"). */
+    default List<InventoryMovement> getRecentMovements() throws Exception {
+        return List.of();
+    }
+
     List<CashRegisterEntry> getCashRegisterEntries() throws Exception;
 
     void appendCashEntry(CashRegisterEntry entry) throws Exception;

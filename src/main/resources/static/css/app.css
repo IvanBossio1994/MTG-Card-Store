@@ -4792,3 +4792,28 @@ a.wanted-alert:hover {
     padding-left: 20px;
     line-height: 1.6;
 }
+
+/* Reportes: elegir el período */
+.period-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-self: flex-end;
+}
+
+.period-tabs a {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.period-tabs a.active {
+    border-color: var(--blue);
+    background: var(--blue-soft);
+    color: var(--blue);
+}
