@@ -107,6 +107,18 @@ class GoogleAccountServiceTest {
         assertThrows(GoogleLoginException.class, () -> service.authorizationUrl("http://127.0.0.1:8080/oauth2/callback"));
     }
 
+    @Test
+    void usesClientBundledWithTheAppWhenThereIsNoLocalFile() throws Exception {
+        Files.delete(dir.resolve("google-oauth.properties"));
+        java.util.Properties bundled = new java.util.Properties();
+        bundled.setProperty("google.oauth.client-id", "bundled-id.apps.googleusercontent.com");
+        bundled.setProperty("google.oauth.client-secret", "bundled-secret");
+        GoogleAccountService withBundle = new GoogleAccountService(dir, (url, form) -> "{}", java.time.Clock.systemUTC(), bundled);
+
+        assertTrue(withBundle.status().configured());
+        assertEquals("bundled-id.apps.googleusercontent.com", withBundle.client().id());
+    }
+
     private static Map<String, String> query(String url) {
         Map<String, String> params = new HashMap<>();
         for (String pair : URI.create(url).getRawQuery().split("&")) {

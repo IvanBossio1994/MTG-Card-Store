@@ -121,11 +121,11 @@ class LicenseServiceTest {
 
         google.set("otra@example.com");
         assertThat(service.isPro()).isFalse();
-        assertThat(service.status().message()).contains("tienda@example.com");
+        assertThat(service.status().email()).isEqualTo("tienda@example.com");
 
         google.set("");
         assertThat(service.isPro()).isFalse();
-        assertThat(service.status().message()).contains("tienda@example.com");
+        assertThat(service.status().email()).isEqualTo("tienda@example.com");
     }
 
     @Test

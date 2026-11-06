@@ -82,14 +82,21 @@ public class GoogleAccountService {
     private final Path accountFile;
     private final FormPoster poster;
     private final Clock clock;
+    /** Cliente OAuth que trae el build de Windows (lo escribe el workflow desde los secrets de GitHub). */
+    private final Properties bundled;
     private final Map<String, PendingLogin> pending = new ConcurrentHashMap<>();
 
     @Autowired
     public GoogleAccountService(@Value("${app.storage-dir:./data}") String storageDirectory) {
-        this(Path.of(storageDirectory), GoogleAccountService::httpPost, Clock.systemUTC());
+        this(Path.of(storageDirectory), GoogleAccountService::httpPost, Clock.systemUTC(), bundledClient());
     }
 
     GoogleAccountService(Path storageDirectory, FormPoster poster, Clock clock) {
+        this(storageDirectory, poster, clock, new Properties());
+    }
+
+    GoogleAccountService(Path storageDirectory, FormPoster poster, Clock clock, Properties bundled) {
+        this.bundled = bundled;
         this.clientFile = storageDirectory.resolve("google-oauth.properties");
         this.accountFile = storageDirectory.resolve("google-account.properties");
         this.poster = poster;
@@ -103,10 +110,26 @@ public class GoogleAccountService {
             return new Client(envId.trim(), envSecret.trim());
         }
 
-        Properties properties = load(clientFile);
+        Client local = fromProperties(load(clientFile));
+        return local != null ? local : fromProperties(bundled);
+    }
+
+    private static Client fromProperties(Properties properties) {
         String id = properties.getProperty("google.oauth.client-id", "").trim();
         String secret = properties.getProperty("google.oauth.client-secret", "").trim();
         return notBlank(id) && notBlank(secret) ? new Client(id, secret) : null;
+    }
+
+    private static Properties bundledClient() {
+        Properties properties = new Properties();
+        try (InputStream input = GoogleAccountService.class.getResourceAsStream("/google-oauth.properties")) {
+            if (input != null) {
+                properties.load(input);
+            }
+        } catch (IOException e) {
+            log.warn("No se pudo leer el cliente OAuth incluido en la app.", e);
+        }
+        return properties;
     }
 
     public boolean isConfigured() {
