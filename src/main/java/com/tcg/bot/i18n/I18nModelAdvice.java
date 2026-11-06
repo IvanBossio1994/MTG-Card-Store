@@ -37,6 +37,18 @@ public class I18nModelAdvice {
         return I18n.locale().getLanguage();
     }
 
+    private static final MoneyView MONEY_VIEW = new MoneyView();
+
+    @ModelAttribute("money")
+    public MoneyView money() {
+        return MONEY_VIEW;
+    }
+
+    @ModelAttribute("currencyDecimals")
+    public int currencyDecimals() {
+        return Money.decimals();
+    }
+
     @ModelAttribute("currencySymbol")
     public String currencySymbol() {
         return Money.symbol();

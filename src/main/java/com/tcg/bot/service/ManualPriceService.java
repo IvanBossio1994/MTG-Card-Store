@@ -22,7 +22,7 @@ public class ManualPriceService {
 
     /** Guarda el precio y devuelve la carta actualizada. Busca por ID; si no hay, por fila de Magic. */
     public InventoryCard setPrice(String cardId, int rowIndex, String rawPrice) throws Exception {
-        long price = Math.round(Amounts.parse(rawPrice == null ? "" : rawPrice.replace("$", "").trim()));
+        double price = com.tcg.bot.i18n.Money.round(Amounts.parse(rawPrice == null ? "" : rawPrice.replace("$", "").trim()));
         if (price <= 0) {
             throw new StockOperationException(I18n.t("price.err.zero"));
         }
@@ -34,9 +34,9 @@ public class ManualPriceService {
                             : candidate.getGame() == null && rowIndex > 0 && candidate.getRowIndex() == rowIndex)
                     .findFirst()
                     .orElseThrow(() -> new StockOperationException(
-                            "No se encontró la carta en el Sheet. Sincronizá y volvé a buscarla."));
+                            I18n.t("err.cardNotInInventory")));
             store.updateAnyLocalPrice(card, price);
-            card.setLocalPrice(String.valueOf(price));
+            card.setLocalPrice(com.tcg.bot.i18n.Money.plain(price));
             return card;
         }
     }

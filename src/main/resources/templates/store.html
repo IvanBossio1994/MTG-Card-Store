@@ -84,12 +84,14 @@
                 <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
                        th:placeholder="#{settings.sheet.placeholder}">
                 <p class="field-help" th:text="#{settings.sheet.help}">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas de la app.</p>
+            </div>
+            <details class="service-account-details" th:open="${!googleAccount.configured}">
+                <summary th:text="#{settings.serviceAccount}">Usar un Sheet compartido con el bot (avanzado)</summary>
                 <div class="setup-notice compact">
                     <strong th:text="#{settings.permission}">Permiso necesario</strong>
                     <p th:utext="#{settings.permission.share}">Compartir este Sheet como Editor con:</p>
                     <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
                 </div>
-            </div>
             <div class="store-field">
                 <label th:text="#{settings.credentials}">Credenciales privadas de Google Sheets</label>
                 <label class="upload-zone compact" for="googleCredentials">
@@ -103,6 +105,7 @@
                        accept="application/json,.json">
                 <p class="field-help" th:text="#{settings.credentials.help}">La app lo guarda como data/google-credentials.json en esta PC. Despues comparti el Sheet con el mail que aparece arriba; solo cargar el mail no alcanza para autenticar la API.</p>
             </div>
+            </details>
         </section>
         <section class="settings-card">
             <h2 th:text="#{settings.pricing}">Regla de precio</h2>
@@ -110,9 +113,11 @@
                 <label for="currency" th:text="#{settings.currency}">Moneda de tu tienda</label>
                 <select id="currency" name="currency">
                     <option th:each="code : ${currencies}" th:value="${code}" th:text="${code}"
+                            th:attr="data-multiple=${money.suggestedRoundMultiple(code)}"
                             th:selected="${code == currencyCode}">ARS</option>
                 </select>
                 <p class="field-help" th:text="#{settings.currency.help}">La moneda en la que cobrás.</p>
+                <p class="field-help" id="currency-changed" hidden th:text="#{settings.currency.changed}">Ajustamos el redondeo y el mínimo.</p>
             </div>
             <p class="card-help" th:text="#{settings.pricing.formula(${currencyCode})}">Precio = precio CK en USD × cotización × (1 + recargo).</p>
             <div class="pricing-config-grid">
@@ -123,8 +128,8 @@
                 </div>
                 <div class="store-field">
                     <label for="roundMultiple" th:text="#{settings.roundMultiple}">Redondear al multiplo de</label>
-                    <input id="roundMultiple" name="roundMultiple" type="number" min="1" step="1"
-                           th:value="${roundMultiple}" required>
+                    <input id="roundMultiple" name="roundMultiple" type="number" min="0.01" step="any"
+                           th:value="${money.plainNumber(roundMultiple)}" required>
                 </div>
                 <div class="store-field">
                     <label for="markupPercent" th:text="#{settings.markup}">Recargo sobre CK (%)</label>
@@ -133,8 +138,8 @@
                 </div>
                 <div class="store-field">
                     <label for="minimumPrice" th:text="#{settings.minimumPrice(${currencyCode})}">Precio mínimo por carta (ARS)</label>
-                    <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="1"
-                           th:value="${minimumPrice}">
+                    <input id="minimumPrice" name="minimumPrice" type="number" min="0" step="any"
+                           th:value="${money.plainNumber(minimumPrice)}">
                 </div>
             </div>
             <div class="price-sources">

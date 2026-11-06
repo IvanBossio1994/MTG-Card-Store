@@ -31,6 +31,7 @@
         window.I18N = /*[[${jsMessages}]]*/ {};
         window.APP_LANG = /*[[${lang}]]*/ "es";
         window.APP_CURRENCY = /*[[${currencySymbol}]]*/ "$";
+        window.APP_CURRENCY_DECIMALS = /*[[${currencyDecimals}]]*/ 0;
     </script>
     <template id="setup-banner-template" th:if="${setupPending == true}">
         <section class="setup-banner" role="status">
