@@ -4526,3 +4526,22 @@ td {
 .cart-item-info .price-editor input {
     width: 70px;
 }
+
+.store-field + .card-help {
+    margin-top: 14px;
+}
+
+.service-account-details {
+    margin-top: 21px;
+}
+
+.service-account-details > summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.service-account-details[open] > summary {
+    margin-bottom: 14px;
+}

@@ -84,12 +84,14 @@
                 <input id="spreadsheetId" name="spreadsheetId" type="text" th:value="${spreadsheetId}"
                        th:placeholder="#{settings.sheet.placeholder}">
                 <p class="field-help" th:text="#{settings.sheet.help}">Si ya tenes una hoja con cartas, la app busca nombres en cualquier columna y crea una pestaña nueva con las columnas de la app.</p>
+            </div>
+            <details class="service-account-details" th:open="${!googleAccount.configured}">
+                <summary th:text="#{settings.serviceAccount}">Usar un Sheet compartido con el bot (avanzado)</summary>
                 <div class="setup-notice compact">
                     <strong th:text="#{settings.permission}">Permiso necesario</strong>
                     <p th:utext="#{settings.permission.share}">Compartir este Sheet como Editor con:</p>
                     <code class="tutorial-editor-email" th:text="${sheetEditorEmail}">tcg-bot-service@tcg-inventory-bot.iam.gserviceaccount.com</code>
                 </div>
-            </div>
             <div class="store-field">
                 <label th:text="#{settings.credentials}">Credenciales privadas de Google Sheets</label>
                 <label class="upload-zone compact" for="googleCredentials">
@@ -103,6 +105,7 @@
                        accept="application/json,.json">
                 <p class="field-help" th:text="#{settings.credentials.help}">La app lo guarda como data/google-credentials.json en esta PC. Despues comparti el Sheet con el mail que aparece arriba; solo cargar el mail no alcanza para autenticar la API.</p>
             </div>
+            </details>
         </section>
         <section class="settings-card">
             <h2 th:text="#{settings.pricing}">Regla de precio</h2>
