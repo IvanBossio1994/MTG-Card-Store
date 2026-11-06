@@ -10,7 +10,7 @@ public enum Game {
 
     public static final List<String> HEADER = List.of(
             "Cantidad", "Nombre", "Set", "Codigo", "Numero", "Rareza", "Terminacion",
-            "Precio Local", "Precio USD", "ID", "ID catalogo");
+            "Precio Local", "Precio USD", "ID", "ID catalogo", "Costo", "Ubicacion");
 
     private final String slug;
     private final String label;

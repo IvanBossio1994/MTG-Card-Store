@@ -46,15 +46,17 @@ public class InventoryCard {
     // ---- ID estable de la carta (columna ID del Sheet) ----
     private String id;
 
+    // ---- Costo por unidad: lo que se pagó (promedio si se compró varias veces). Vacío = no se sabe ----
+    private String cost;
+
+    // ---- Dónde está guardada: "Carpeta 3", "Caja de rares"... ----
+    private String location;
+
     // ---- Guarda el indice real de la fila en Google Sheet ----
     private int rowIndex;
 
     // ---------------------- HELPER ---------------------- //
 
-    /**
-     * Precio puesto a mano: tiene precio local pero Card Kingdom no da precio (columna CK vacía).
-     * Solo aplica a Magic; las otras pestañas usan {@link GameCard#isManualPrice()}.
-     */
     /** Precio local redondeado a la moneda de la tienda (0 si no tiene). */
     public double localPriceValue() {
         return com.tcg.bot.i18n.Money.round(com.tcg.bot.util.Amounts.parse(localPrice));
@@ -65,6 +67,16 @@ public class InventoryCard {
         return com.tcg.bot.i18n.Money.number(localPriceValue());
     }
 
+    /** Costo por unidad, o null si no se cargó. */
+    public Double costValue() {
+        Double value = com.tcg.bot.util.Amounts.parseOrNull(cost);
+        return value == null || value < 0 ? null : com.tcg.bot.i18n.Money.round(value);
+    }
+
+    /**
+     * Precio puesto a mano: tiene precio local pero Card Kingdom no da precio (columna CK vacía).
+     * Solo aplica a Magic; las otras pestañas usan {@link GameCard#isManualPrice()}.
+     */
     public boolean isManualPrice() {
         return game == null
                 && com.tcg.bot.util.Amounts.parse(localPrice) > 0
@@ -72,7 +84,6 @@ public class InventoryCard {
     }
 
     public boolean isFoil() {
-
         return printing != null
                 && printing.equalsIgnoreCase("foil");
     }

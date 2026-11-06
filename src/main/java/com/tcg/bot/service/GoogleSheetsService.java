@@ -340,6 +340,8 @@ public class GoogleSheetsService {
             card.setLocalPrice(columns.get(row, ColumnKey.LOCAL_PRICE));
             card.setCkPriceUsd(columns.get(row, ColumnKey.CK_PRICE_USD));
             card.setAction(columns.get(row, ColumnKey.ACTION));
+            card.setCost(columns.get(row, ColumnKey.COST));
+            card.setLocation(columns.get(row, ColumnKey.LOCATION));
             if (hasIdColumn) {
                 card.setId(columns.get(row, ColumnKey.ID).trim());
                 if (card.getId().isBlank() && card.getName() != null && !card.getName().isBlank()) {
@@ -423,6 +425,23 @@ public class GoogleSheetsService {
         SheetColumns columns = sheetColumns(sheetsService);
 
         batchUpdate(sheetsService, automaticUpdateRanges(rowIndex, card, columns));
+    }
+
+    /** Escribe costo y ubicación de una fila (las columnas se crean solas si faltan). */
+    public void updateCardDetails(int rowIndex, InventoryCard card) throws Exception {
+        Sheets sheetsService = getSheetsService();
+        SheetColumns columns = sheetColumns(sheetsService);
+        List<com.google.api.services.sheets.v4.model.ValueRange> data = new ArrayList<>();
+        if (columns.has(ColumnKey.COST)) {
+            Double cost = card.costValue();
+            data.add(valueRange(columns.cell(ColumnKey.COST, rowIndex), cost == null ? "" : com.tcg.bot.i18n.Money.sheetValue(cost)));
+        }
+        if (columns.has(ColumnKey.LOCATION)) {
+            data.add(valueRange(columns.cell(ColumnKey.LOCATION, rowIndex), card.getLocation() == null ? "" : card.getLocation().trim()));
+        }
+        if (!data.isEmpty()) {
+            batchUpdate(sheetsService, data);
+        }
     }
 
     /** Escribe solo las columnas que identifican la carta; no toca stock ni precios. */
@@ -743,7 +762,7 @@ public class GoogleSheetsService {
         ensureCashSheet(sheetsService);
 
         var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), cashRange("A2:O"))
+                .get(storeSettingsService.getSpreadsheetId(), cashRange("A2:P"))
                 .setValueRenderOption("UNFORMATTED_VALUE")
                 .execute();
 
@@ -759,7 +778,9 @@ public class GoogleSheetsService {
         for (var row : values) {
             CashRegisterEntry entry = cashEntryFromRow(row);
 
-            if (entry.affectsCash()) {
+            // Todas las filas: ventas, anulaciones, compras, crédito usado y cierres. Antes solo se devolvían
+            // ventas y anulaciones, y el cierre de caja no veía las compras pagadas en efectivo.
+            if (entry.getType() != null && !entry.getType().isBlank()) {
                 entries.add(entry);
             }
 
@@ -801,7 +822,8 @@ public class GoogleSheetsService {
                 safe(entry.getType()).toUpperCase(),
                 safe(entry.getSaleId()),
                 safe(entry.getVoidsSaleId()),
-                safe(entry.getCardId())
+                safe(entry.getCardId()),
+                entry.unitCostValue() == null ? "" : formatCashNumber(entry.unitCostValue())
         ));
     }
 
@@ -1167,6 +1189,7 @@ public class GoogleSheetsService {
         entry.setSaleId(getColumnValue(row, 12).trim());
         entry.setVoidsSaleId(getColumnValue(row, 13).trim());
         entry.setCardId(getColumnValue(row, 14).trim());
+        entry.setUnitCost(getColumnValue(row, 15).trim());
         return entry;
     }
 
@@ -1286,6 +1309,8 @@ public class GoogleSheetsService {
         set(values, columns.index(ColumnKey.LOCAL_PRICE), card.getLocalPrice());
         set(values, columns.index(ColumnKey.CK_PRICE_USD), card.getCkPriceUsd());
         set(values, columns.index(ColumnKey.ACTION), card.getAction());
+        set(values, columns.index(ColumnKey.COST), card.getCost());
+        set(values, columns.index(ColumnKey.LOCATION), card.getLocation());
         if (card.getId() == null || card.getId().isBlank()) {
             card.setId(newCardId());
         }
@@ -1923,7 +1948,8 @@ public class GoogleSheetsService {
                 continue;
             }
 
-            int blankIndex = key == ColumnKey.ID ? -1 : firstBlankIndex(header);
+            // Las columnas nuevas van al final: así no se mueve nada de lo que la tienda ya tenía.
+            int blankIndex = key.ordinal() >= ColumnKey.ID.ordinal() ? -1 : firstBlankIndex(header);
             if (blankIndex >= 0) {
                 header.set(blankIndex, headerName(key));
             } else {
@@ -2055,6 +2081,8 @@ public class GoogleSheetsService {
             case CK_PRICE_USD -> "Precio CK USD";
             case ACTION -> "Accion";
             case ID -> "ID";
+            case COST -> "Costo";
+            case LOCATION -> "Ubicacion";
         };
     }
 
@@ -2169,7 +2197,7 @@ public class GoogleSheetsService {
         }
 
         var headerResponse = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), cashRange("A1:O1"))
+                .get(storeSettingsService.getSpreadsheetId(), cashRange("A1:P1"))
                 .execute();
 
         List<String> cashHeader = List.of(
@@ -2187,7 +2215,8 @@ public class GoogleSheetsService {
                 "Tipo",
                 "ID venta",
                 "Anula venta",
-                "ID carta"
+                "ID carta",
+                "Costo unitario"
         );
 
         if (headerResponse.getValues() != null
@@ -2200,7 +2229,7 @@ public class GoogleSheetsService {
                 .setValues(List.of(new ArrayList<>(cashHeader)));
 
         sheetsService.spreadsheets().values()
-                .update(storeSettingsService.getSpreadsheetId(), cashRange("A1:O1"), headerBody)
+                .update(storeSettingsService.getSpreadsheetId(), cashRange("A1:P1"), headerBody)
                 .setValueInputOption("RAW")
                 .execute();
     }
@@ -2210,7 +2239,7 @@ public class GoogleSheetsService {
                 .setValues(List.of(values));
 
         sheetsService.spreadsheets().values()
-                .append(storeSettingsService.getSpreadsheetId(), cashRange("A:O"), body)
+                .append(storeSettingsService.getSpreadsheetId(), cashRange("A:P"), body)
                 .setValueInputOption("RAW")
                 .setInsertDataOption("INSERT_ROWS")
                 .execute();
@@ -2218,7 +2247,7 @@ public class GoogleSheetsService {
 
     private double totalCashSalesForDate(Sheets sheetsService, String date) throws Exception {
         var response = sheetsService.spreadsheets().values()
-                .get(storeSettingsService.getSpreadsheetId(), cashRange("A2:O"))
+                .get(storeSettingsService.getSpreadsheetId(), cashRange("A2:P"))
                 .setValueRenderOption("UNFORMATTED_VALUE")
                 .execute();
 
@@ -2331,7 +2360,9 @@ public class GoogleSheetsService {
         LOCAL_PRICE,
         CK_PRICE_USD,
         ACTION,
-        ID
+        ID,
+        COST,
+        LOCATION
     }
 
     private record SheetColumns(EnumMap<ColumnKey, Integer> indexes, int width) {
@@ -2409,6 +2440,8 @@ public class GoogleSheetsService {
                 case CK_PRICE_USD -> List.of("Precio CK USD", "CK USD", "Card Kingdom USD", "CK Price", "USD");
                 case ACTION -> List.of("Accion", "Action", "Estado", "Stock status");
                 case ID -> List.of("ID", "ID carta", "Card ID");
+                case COST -> List.of("Costo", "Costo unitario", "Cost", "Unit cost");
+                case LOCATION -> List.of("Ubicacion", "Lugar", "Location", "Bin");
             };
 
             Set<String> expanded = new LinkedHashSet<>(aliases);
@@ -2418,6 +2451,7 @@ public class GoogleSheetsService {
                 expanded.add(alias.replace("Condicion", "Condición"));
                 expanded.add(alias.replace("Accion", "Acción"));
                 expanded.add(alias.replace("Edicion", "Edición"));
+                expanded.add(alias.replace("Ubicacion", "Ubicación"));
             }
 
             return List.copyOf(expanded);

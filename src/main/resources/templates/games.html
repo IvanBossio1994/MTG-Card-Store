@@ -140,6 +140,12 @@
                     </td>
                     <td>
                         <span th:text="${card.name}">Charizard</span>
+                        <span class="card-details">
+                            <span class="location-chip" th:if="${card.location != null and card.location != ''}" th:title="#{details.location}" th:text="${card.location}">Carpeta 3</span>
+                            <button type="button" class="details-button text-action"
+                                    th:attr="data-card-id=${card.id},data-name=${card.name},data-cost=${card.costInput()},data-location=${card.location}"
+                                    th:title="#{details.edit.title}" th:text="#{details.edit}">Costo y lugar</button>
+                        </span>
                         <button type="button" class="reserve-button" th:if="${card.quantity > 0}"
                                 th:attr="data-card-id=${card.id},data-name=${card.name},data-set=${game.label() + ' · ' + card.setName},data-stock=${card.quantity},data-price=${card.priceValue()},data-manual-price=${card.manualPrice}"
                                 th:title="#{dash.addToCart.title}" th:text="#{dash.addToCart}">+ Carrito</button>

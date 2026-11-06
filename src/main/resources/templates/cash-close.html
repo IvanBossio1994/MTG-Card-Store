@@ -46,6 +46,12 @@
                 <strong th:text="${'-' + currencySymbol + ' ' + day.purchases}">-$ 0</strong>
                 <span class="summary-note" th:text="#{close.purchases.note(${currencySymbol + ' ' + day.creditUsed})}">Compras pagadas</span>
             </div>
+            <div class="summary-tile" th:if="${day.profit.known or day.profit.withoutCost > 0}">
+                <span class="summary-label" th:text="#{profit.label}">Ganancia</span>
+                <strong th:text="${day.profit.known ? day.profit.formatted() : '-'}">+$ 0</strong>
+                <span class="summary-note" th:if="${day.profit.withoutCost > 0}" th:text="#{profit.missing(${day.profit.withoutCost})}">2 ventas sin costo</span>
+                <span class="summary-note" th:unless="${day.profit.withoutCost > 0}" th:text="#{profit.note}">Precio menos costo</span>
+            </div>
             <div class="summary-tile">
                 <span class="summary-label" th:text="#{close.expected}">Tendría que haber</span>
                 <strong id="close-expected" th:attr="data-expected=${day.expectedValue}" th:text="${day.expected.startsWith('-') ? '-' + currencySymbol + ' ' + day.expected.substring(1) : currencySymbol + ' ' + day.expected}">$ 0</strong>

@@ -33,6 +33,8 @@ public class CashRegisterEntry {
     private String saleId;
     private String voidsSaleId;
     private String cardId;
+    /** Costo por unidad de la carta al momento de la venta (columna "Costo unitario"). Vacío = no se sabía. */
+    private String unitCost;
     private boolean voided;
 
     public String getFormattedLocalPrice() {
@@ -120,6 +122,20 @@ public class CashRegisterEntry {
 
     public String getFormattedSignedTotal() {
         return com.tcg.bot.i18n.Money.number(signedTotal());
+    }
+
+    public Double unitCostValue() {
+        Double value = Amounts.parseOrNull(unitCost);
+        return value == null || value < 0 ? null : value;
+    }
+
+    /** Ganancia de una venta o anulación (con signo), o null si no se sabe el costo. */
+    public Double profit() {
+        Double cost = unitCostValue();
+        if (!affectsCash() || cost == null) {
+            return null;
+        }
+        return signedTotal() - cost * signedQuantity();
     }
 
     public boolean canBeVoided() {

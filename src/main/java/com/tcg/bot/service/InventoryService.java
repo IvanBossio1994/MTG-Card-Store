@@ -13,6 +13,12 @@ import java.util.Map;
 @Service
 public class InventoryService implements InventoryStore {
 
+    private final GoogleSheetsService googleSheetsService;
+
+    public InventoryService(GoogleSheetsService googleSheetsService) {
+        this.googleSheetsService = googleSheetsService;
+    }
+
     @Override
     public java.util.List<com.tcg.bot.model.PricePoint> getPriceHistory() throws Exception {
         return googleSheetsService.getPriceHistory();
@@ -21,13 +27,6 @@ public class InventoryService implements InventoryStore {
     @Override
     public void appendPriceHistory(java.util.List<com.tcg.bot.model.PricePoint> points) throws Exception {
         googleSheetsService.appendPriceHistory(points);
-    }
-
-
-    private final GoogleSheetsService googleSheetsService;
-
-    public InventoryService(GoogleSheetsService googleSheetsService) {
-        this.googleSheetsService = googleSheetsService;
     }
 
     public List<InventoryCard> getInventoryCards() throws Exception {
@@ -97,6 +96,11 @@ public class InventoryService implements InventoryStore {
     @Override
     public void appendCreditEntry(com.tcg.bot.model.CreditEntry entry) throws Exception {
         googleSheetsService.appendCreditEntry(entry);
+    }
+
+    @Override
+    public void updateCardDetails(int rowIndex, InventoryCard card) throws Exception {
+        googleSheetsService.updateCardDetails(rowIndex, card);
     }
 
     @Override

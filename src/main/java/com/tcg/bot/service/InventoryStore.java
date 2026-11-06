@@ -96,10 +96,7 @@ public interface InventoryStore {
             updateLocalPrice(card.getRowIndex(), com.tcg.bot.i18n.Money.plain(price));
             return;
         }
-        com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
-                .filter(candidate -> card.getId() != null && card.getId().equals(candidate.getId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(I18n.t("games.err.cardGone", card.getName(), card.getGame().sheetName())));
+        com.tcg.bot.model.GameCard row = gameRow(card);
         row.setLocalPrice(price);
         updateGameCard(card.getGame(), row);
     }
@@ -110,11 +107,33 @@ public interface InventoryStore {
             updateStockState(card.getRowIndex(), card);
             return;
         }
-        com.tcg.bot.model.GameCard row = getGameCards(card.getGame()).stream()
+        com.tcg.bot.model.GameCard row = gameRow(card);
+        row.setQuantity(Math.max(com.tcg.bot.util.Amounts.parseInt(card.getQuantity()), 0));
+        updateGameCard(card.getGame(), row);
+    }
+
+    /** Escribe costo y ubicación de una fila de Magic. */
+    default void updateCardDetails(int rowIndex, InventoryCard card) throws Exception {
+        throw new UnsupportedOperationException("No disponible");
+    }
+
+    /** Guarda costo y ubicación de una carta de cualquier juego. */
+    default void updateAnyDetails(InventoryCard card) throws Exception {
+        if (card.getGame() == null) {
+            updateCardDetails(card.getRowIndex(), card);
+            return;
+        }
+        com.tcg.bot.model.GameCard row = gameRow(card);
+        row.setCost(card.costValue());
+        row.setLocation(card.getLocation() == null ? "" : card.getLocation().trim());
+        updateGameCard(card.getGame(), row);
+    }
+
+    /** La fila de la pestaña de su juego que corresponde a la carta (por ID). */
+    private com.tcg.bot.model.GameCard gameRow(InventoryCard card) throws Exception {
+        return getGameCards(card.getGame()).stream()
                 .filter(candidate -> card.getId() != null && card.getId().equals(candidate.getId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(I18n.t("games.err.cardGone", card.getName(), card.getGame().sheetName())));
-        row.setQuantity(Math.max(com.tcg.bot.util.Amounts.parseInt(card.getQuantity()), 0));
-        updateGameCard(card.getGame(), row);
     }
 }
