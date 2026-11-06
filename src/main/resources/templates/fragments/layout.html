@@ -32,6 +32,15 @@
         window.APP_LANG = /*[[${lang}]]*/ "es";
         window.APP_CURRENCY = /*[[${currencySymbol}]]*/ "$";
     </script>
+    <template id="setup-banner-template" th:if="${setupPending == true}">
+        <section class="setup-banner" role="status">
+            <div>
+                <strong th:text="#{setup.banner.title}">Primero conectá tu Google Sheet</strong>
+                <p th:text="#{setup.banner.text}">Esta pantalla lee el Sheet de tu inventario.</p>
+            </div>
+            <a class="primary-button" th:href="@{/configuracion}" th:text="#{setup.banner.button}">Ir a Configuración</a>
+        </section>
+    </template>
 </header>
 
 <div th:fragment="menu(active)">

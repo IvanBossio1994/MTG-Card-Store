@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${status == 404} ? #{error.title.404} : #{error.title}">Algo salió mal</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="error-page">
+    <section class="error-card">
+        <img th:src="@{/images/tutorial-cat-detective.png}" alt="">
+        <h1 th:text="${status == 404} ? #{error.title.404} : #{error.title}">Algo salió mal</h1>
+        <p th:text="${status == 404} ? #{error.text.404} : #{error.text}">La app tuvo un error inesperado.</p>
+        <a class="primary-button" th:href="@{/}" th:text="#{error.home}">Volver al inicio</a>
+    </section>
+</main>
+</body>
+</html>
