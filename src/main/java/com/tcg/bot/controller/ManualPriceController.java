@@ -23,7 +23,7 @@ public class ManualPriceController {
         this.manualPriceService = manualPriceService;
     }
 
-    public record PriceResponse(boolean success, String message, String cardId, long price) {
+    public record PriceResponse(boolean success, String message, String cardId, double price) {
     }
 
     @PostMapping("/api/cartas/precio")
@@ -32,7 +32,7 @@ public class ManualPriceController {
                                                   @RequestParam String price) {
         try {
             var card = manualPriceService.setPrice(cardId, row, price);
-            long saved = Math.round(Amounts.parse(card.getLocalPrice()));
+            double saved = com.tcg.bot.i18n.Money.round(Amounts.parse(card.getLocalPrice()));
             return ResponseEntity.ok(new PriceResponse(true,
                     I18n.t("price.saved", card.getName()), card.getId(), saved));
         } catch (StockOperationException e) {

@@ -1,12 +1,29 @@
 TCG Store Helper
 
 1. Descomprimi esta carpeta donde quieras (por ejemplo, en Documentos).
-2. Doble clic en TCGStoreHelper.exe.
+2. Doble clic en TCGStoreHelper.exe. Se abre el navegador con la app.
    Si Windows muestra "Windows protegio su PC", toca "Mas informacion" y despues "Ejecutar de todas formas".
-   (Aparece porque la app todavia no tiene firma digital.)
-3. Se abre el navegador con la app. Entra con tu cuenta de Google y segui los pasos.
+   Aparece porque la app es nueva y todavia no tiene firma digital; pasa solo la primera vez.
+3. Entra con tu cuenta de Google y segui los pasos.
 4. Para cerrar la app, cerra la ventana negra.
+   Si cerraste el navegador, volve a abrir la app o entra a http://localhost:8080
 
 No hace falta instalar Java: ya viene incluido.
 Tus datos quedan en la carpeta TCGStoreHelper\data dentro de tu usuario.
 La version gratis permite hasta 300 cartas.
+
+-------------------------------------------------------------------------------
+
+TCG Store Helper (English)
+
+1. Unzip this folder anywhere (for example, in Documents).
+2. Double-click TCGStoreHelper.exe. Your browser opens with the app.
+   If Windows shows "Windows protected your PC", click "More info" and then "Run anyway".
+   It appears because the app is new and not digitally signed yet; it only happens the first time.
+3. Sign in with your Google account and follow the steps.
+4. To close the app, close the black window.
+   If you closed the browser, open the app again or go to http://localhost:8080
+
+You don't need to install Java: it is included.
+Your data is kept in the TCGStoreHelper\data folder inside your user folder.
+The free version allows up to 300 cards.

@@ -1048,7 +1048,7 @@ public class GoogleSheetsService {
                 safe(entry.time()),
                 safe(entry.customer()),
                 safe(entry.contact()),
-                Math.round(entry.amount()),
+                com.tcg.bot.i18n.Money.sheetValue(entry.amount()),
                 safe(entry.reason()),
                 safe(entry.reference())
         )));
@@ -2245,7 +2245,7 @@ public class GoogleSheetsService {
     }
 
     private String formatCashNumber(double value) {
-        return String.format(java.util.Locale.US, "%.0f", value);
+        return com.tcg.bot.i18n.Money.plain(value);
     }
 
     private int rowIndexFromUpdatedRange(String updatedRange) {

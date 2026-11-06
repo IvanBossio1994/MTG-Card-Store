@@ -121,7 +121,8 @@ public class SalesService {
             double creditUsed = 0;
             if (creditCustomer != null && !creditCustomer.isBlank()) {
                 creditUsed = Math.min(Math.max(creditService.balance(creditCustomer), 0), total);
-                if (creditUsed >= 1) {
+                if (!com.tcg.bot.i18n.Money.isZero(creditUsed)) {
+                    creditUsed = com.tcg.bot.i18n.Money.round(creditUsed);
                     String reference = "V" + StockOperationsService.newSaleId();
                     creditService.add(creditCustomer, "", -creditUsed, "Usado en una venta", reference);
                     CashRegisterEntry credit = new CashRegisterEntry();
@@ -130,7 +131,7 @@ public class SalesService {
                     credit.setType(CashRegisterEntry.TYPE_CREDIT);
                     credit.setName("Pagado con crédito de " + creditCustomer.trim());
                     credit.setQuantity("0");
-                    credit.setTotal(String.valueOf(Math.round(creditUsed)));
+                    credit.setTotal(com.tcg.bot.i18n.Money.plain(creditUsed));
                     credit.setSaleId(reference);
                     store.appendCashEntry(credit);
                 } else {

@@ -6,7 +6,8 @@ import java.util.Map;
 
 /**
  * Montos en la moneda de la tienda (Configuracion), con los separadores del idioma de la pantalla.
- * Los precios de la tienda son enteros: se redondean igual que siempre.
+ * Las monedas con centavos de uso diario (USD, EUR, BRL...) usan 2 decimales; las demas
+ * (ARS, CLP, JPY...) siguen en enteros como siempre.
  */
 public final class Money {
 
@@ -31,6 +32,9 @@ public final class Money {
         SYMBOLS.put("JPY", "¥");
     }
 
+    /** Monedas que se cobran con centavos. El resto se redondea a enteros. */
+    private static final java.util.Set<String> WITH_CENTS = java.util.Set.of("USD", "EUR", "BRL", "MXN", "PEN", "GBP", "CAD", "AUD");
+
     private static volatile String currency = DEFAULT_CURRENCY;
 
     private Money() {
@@ -53,9 +57,51 @@ public final class Money {
         return SYMBOLS.getOrDefault(currency, "$");
     }
 
-    /** "1.500" o "1,500" segun el idioma, sin simbolo. */
+    /** Decimales de la moneda de la tienda: 2 para USD, EUR..., 0 para ARS, CLP, JPY... */
+    public static int decimals() {
+        return decimals(currency);
+    }
+
+    public static int decimals(String code) {
+        return WITH_CENTS.contains(normalize(code)) ? 2 : 0;
+    }
+
+    /** Redondea un monto a los decimales de la moneda (4.499 -> 4.5 en USD, 1499.6 -> 1500 en ARS). */
+    public static double round(double amount) {
+        return java.math.BigDecimal.valueOf(amount)
+                .setScale(decimals(), java.math.RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    /** True si el monto redondeado a la moneda es cero. */
+    public static boolean isZero(double amount) {
+        return round(amount) == 0;
+    }
+
+    /** Monto para guardar en el Sheet como texto: "1500" o "4.50" (siempre con punto). */
+    public static String plain(double amount) {
+        return String.format(Locale.US, "%." + decimals() + "f", round(amount));
+    }
+
+    /** Numero para un campo de formulario, sin ceros de mas: 500.0 -> "500", 0.25 -> "0.25". */
+    public static String plainNumber(double value) {
+        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+    }
+
+    /** Monto para guardar en el Sheet como numero: entero o con decimales segun la moneda. */
+    public static Number sheetValue(double amount) {
+        double rounded = round(amount);
+        return decimals() == 0 ? (Number) Math.round(rounded) : (Number) rounded;
+    }
+
+    /** "1.500" o "1,500" segun el idioma, sin simbolo; "4,50" o "4.50" si la moneda usa centavos. */
     public static String number(double amount) {
-        return NumberFormat.getIntegerInstance(I18n.locale()).format(Math.round(amount));
+        int digits = decimals();
+        NumberFormat format = NumberFormat.getNumberInstance(I18n.locale());
+        format.setMinimumFractionDigits(digits);
+        format.setMaximumFractionDigits(digits);
+        format.setRoundingMode(java.math.RoundingMode.HALF_UP);
+        return format.format(round(amount));
     }
 
     /** "2,49" o "2.49" segun el idioma. */
