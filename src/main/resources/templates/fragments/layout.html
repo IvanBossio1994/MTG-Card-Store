@@ -1,14 +1,29 @@
 <!DOCTYPE html>
 <html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
 <body>
-<header th:fragment="topbar(subtitle)" class="topbar">
+<th:block th:fragment="topbar(subtitle)">
+<div id="store-backdrop" class="store-backdrop" aria-hidden="true"
+     th:classappend="${'store-backdrop--' + storeBackdrop}"
+     th:style="${'--backdrop-opacity:' + storeBackdropOpacity}">
+    <span class="store-backdrop-art"
+          th:style="${hasStoreLogo} ? 'background-image:url(' + @{/configuracion/logo(v=${storeLogoVersion})} + ')' : ''"></span>
+</div>
+<style th:if="${storeAccent != null and storeAccent != ''}" th:inline="css" data-store-accent>
+    :root {
+        --blue: [(${storeAccent})];
+        --violet: [(${storeAccent2})];
+        --blue-soft: color-mix(in srgb, [(${storeAccent})] 10%, #ffffff);
+        --brand-gradient: linear-gradient(135deg, [(${storeAccent})] 0%, [(${storeAccent2})] 100%);
+    }
+</style>
+<header class="topbar">
     <div class="topbar-start">
         <button id="menu-button" class="menu-button" type="button" th:aria-label="#{layout.openMenu}"
                 aria-controls="app-menu" aria-expanded="false">
             <span></span><span></span><span></span>
         </button>
         <a class="brand" th:href="@{/}" th:aria-label="#{layout.backHome}">
-            <img class="brand-logo" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo}" alt="">
+            <img class="brand-logo" th:if="${hasStoreLogo}" th:src="@{/configuracion/logo(v=${storeLogoVersion})}" alt="">
             <span class="brand-mark" th:unless="${hasStoreLogo}">TCG</span>
             <div>
                 <strong th:text="${storeName}">Mi tienda</strong>
@@ -54,6 +69,7 @@
         </section>
     </template>
 </header>
+</th:block>
 
 <div th:fragment="menu(active)">
     <div id="menu-backdrop" class="menu-backdrop" hidden></div>

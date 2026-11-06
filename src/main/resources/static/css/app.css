@@ -88,11 +88,16 @@ body {
     text-decoration: none;
 }
 
+/* Logo de la tienda: entero (sin recortar) y sobre fondo claro para que se vea en la barra oscura. */
 .brand-logo {
-    width: 46px;
+    width: auto;
+    min-width: 46px;
+    max-width: 130px;
     height: 46px;
+    padding: 3px;
     border-radius: 12px;
-    object-fit: cover;
+    background: #fff;
+    object-fit: contain;
 }
 
 .brand:hover .brand-mark {
@@ -310,36 +315,11 @@ body.menu-open {
 }
 
 .store-logo-preview {
-    width: 78px;
+    width: auto;
+    max-width: min(260px, 100%);
     height: 78px;
     border-radius: 13px;
-    object-fit: cover;
-}
-
-.logo-upload-wrapper {
-    position: relative;
-}
-
-.remove-logo-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
-    width: 30px;
-    height: 30px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.75);
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.remove-logo-button:hover {
-    background: rgba(0, 0, 0, 0.9);
+    object-fit: contain;
 }
 
 .upload-button {
@@ -4436,6 +4416,12 @@ td {
         font-size: 12px;
     }
 
+    .topbar .brand-logo {
+        width: auto;
+        min-width: 38px;
+        max-width: 52px;
+    }
+
     .topbar .brand > div {
         display: none;
     }
@@ -4931,4 +4917,190 @@ a.wanted-alert:hover {
     border-left: 3px solid var(--blue);
     background: var(--blue-soft);
     border-radius: 6px;
+}
+
+
+/* =====================================================================
+   Decoración con el logo de la tienda: el logo muy suave detrás del contenido.
+   Va detrás de todo (z-index -1) y no recibe clics; las tarjetas siguen opacas,
+   así que el texto se lee igual. "multiply" hace que el fondo blanco de un JPG no se note.
+   ===================================================================== */
+.store-backdrop {
+    position: fixed;
+    inset: 72px 0 0 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: var(--backdrop-opacity, 0.08);
+}
+
+.store-backdrop--none,
+.store-backdrop--null {
+    display: none;
+}
+
+.store-backdrop-art {
+    position: absolute;
+    inset: 8% 12%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    mix-blend-mode: multiply;
+}
+
+.store-backdrop--pattern .store-backdrop-art {
+    inset: -50%;
+    background-repeat: repeat;
+    background-position: 0 0;
+    background-size: 150px auto;
+    transform: rotate(-12deg);
+}
+
+@media print {
+    .store-backdrop {
+        display: none;
+    }
+}
+
+.remove-logo-link {
+    margin-top: 8px;
+}
+
+.logo-decoration {
+    margin: 21px 0 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.logo-decoration legend {
+    margin-bottom: 4px;
+    padding: 0;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.logo-decoration .field-help {
+    margin: 0 0 12px;
+}
+
+.logo-decoration .logo-decoration-empty {
+    display: none;
+}
+
+.logo-decoration:disabled .logo-decoration-empty {
+    display: block;
+}
+
+.logo-decoration:disabled .decor-options,
+.logo-decoration:disabled .decor-range,
+.logo-decoration:disabled .decor-check {
+    opacity: 0.45;
+}
+
+.decor-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.store-field label.decor-option {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 12px 8px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}
+
+.store-field .decor-option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.decor-option:has(input:checked) {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px var(--blue);
+}
+
+.decor-option:has(input:focus-visible) {
+    outline: 3px solid rgba(124, 58, 237, 0.45);
+    outline-offset: 2px;
+}
+
+.decor-swatch {
+    width: 64px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background-color: var(--bg);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.decor-swatch--watermark {
+    background-image: radial-gradient(circle at center, rgba(15, 23, 42, 0.22) 0 12px, transparent 13px);
+}
+
+.decor-swatch--pattern {
+    background-image: radial-gradient(circle, rgba(15, 23, 42, 0.2) 0 4px, transparent 5px);
+    background-repeat: repeat;
+    background-size: 16px 16px;
+}
+
+.store-field label.decor-range,
+.store-field label.decor-check {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 14px 0 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.store-field .decor-range input[type="range"] {
+    flex: 1;
+    width: auto;
+    max-width: 260px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    accent-color: var(--blue);
+}
+
+.store-field .decor-check input[type="checkbox"] {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    accent-color: var(--blue);
+}
+
+#logo-colors-note {
+    margin: 8px 0 0;
+}
+
+@media (max-width: 560px) {
+    .decor-options {
+        grid-template-columns: 1fr;
+    }
+
+    .store-field label.decor-option {
+        flex-direction: row;
+        justify-content: flex-start;
+        text-align: left;
+    }
 }

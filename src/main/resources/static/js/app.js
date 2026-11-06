@@ -11,7 +11,178 @@ function t(key, ...args) {
     return text;
 }
 
+/** Logo de fondo: estilo ("none", "watermark", "pattern"), opacidad y, si se pasa, la imagen. */
+function setStoreBackdrop(style, opacity, imageUrl) {
+    const backdrop = document.getElementById("store-backdrop");
+    if (!backdrop) {
+        return;
+    }
+    const art = backdrop.querySelector(".store-backdrop-art");
+    backdrop.className = "store-backdrop store-backdrop--" + style;
+    backdrop.style.setProperty("--backdrop-opacity", opacity);
+    if (art && imageUrl !== undefined) {
+        art.dataset.logo = imageUrl;
+        art.style.backgroundImage = imageUrl ? "url(\"" + imageUrl + "\")" : "";
+    }
+    if (style === "pattern") {
+        applyPatternTile(art);
+    }
+}
+
+/**
+ * En mosaico, los logos pegados uno al lado del otro quedan apretados: se arma una baldosa con aire
+ * alrededor del logo. Sin JavaScript se ve igual, solo que más junto.
+ */
+function applyPatternTile(art) {
+    if (!art) {
+        return;
+    }
+    const match = /url\(["']?(.*?)["']?\)/.exec(art.style.backgroundImage || "");
+    const source = art.dataset.logo || (match ? match[1] : "");
+    if (!source) {
+        return;
+    }
+    art.dataset.logo = source;
+    const image = new Image();
+    image.onload = () => {
+        const size = 150;
+        const scale = Math.min(size / image.naturalWidth, size / image.naturalHeight) * 0.62;
+        const width = Math.round(image.naturalWidth * scale);
+        const height = Math.round(image.naturalHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+        try {
+            art.style.backgroundImage = "url(\"" + canvas.toDataURL("image/png") + "\")";
+        } catch (e) {
+            // Si el navegador no deja leer la imagen, queda el mosaico simple.
+        }
+    };
+    image.src = source;
+}
+
+/** Color más llamativo del logo ("#rrggbb"), o "" si es blanco y negro. Ignora transparente, blanco, negro y grises. */
+function dominantLogoColor(image) {
+    try {
+        const size = 48;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.drawImage(image, 0, 0, size, size);
+        const pixels = context.getImageData(0, 0, size, size).data;
+        const buckets = new Map();
+        for (let i = 0; i < pixels.length; i += 4) {
+            const [r, g, b, a] = [pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]];
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            if (a < 128 || max < 40 || min > 225 || max - min < 40) {
+                continue;
+            }
+            const key = (r >> 5) + "," + (g >> 5) + "," + (b >> 5);
+            const bucket = buckets.get(key) || { count: 0, r: 0, g: 0, b: 0, weight: 0 };
+            const saturation = (max - min) / max;
+            bucket.count += 1;
+            bucket.weight += 1 + saturation;
+            bucket.r += r;
+            bucket.g += g;
+            bucket.b += b;
+            buckets.set(key, bucket);
+        }
+        let best = null;
+        buckets.forEach(bucket => {
+            if (!best || bucket.weight > best.weight) {
+                best = bucket;
+            }
+        });
+        if (!best || best.count < size * size * 0.01) {
+            return "";
+        }
+        const hex = value => Math.round(value / best.count).toString(16).padStart(2, "0");
+        return "#" + hex(best.r) + hex(best.g) + hex(best.b);
+    } catch (e) {
+        return "";
+    }
+}
+
+/** Vista previa de los colores del logo (el servidor hace lo mismo al guardar, ver StoreTheme). */
+function setStoreAccent(accent) {
+    const root = document.documentElement.style;
+    const names = ["--blue", "--violet", "--blue-soft", "--brand-gradient"];
+    const serverStyle = document.querySelector("style[data-store-accent]");
+    if (!/^#[0-9a-f]{6}$/i.test(accent || "")) {
+        names.forEach(name => root.removeProperty(name));
+        if (serverStyle) {
+            serverStyle.disabled = true;
+        }
+        return;
+    }
+    const first = readableAccent(accent, 0);
+    const second = readableAccent(accent, 28);
+    root.setProperty("--blue", first);
+    root.setProperty("--violet", second);
+    root.setProperty("--blue-soft", "color-mix(in srgb, " + first + " 10%, #ffffff)");
+    root.setProperty("--brand-gradient", "linear-gradient(135deg, " + first + " 0%, " + second + " 100%)");
+}
+
+function readableAccent(hex, hueShift) {
+    let [h, s, l] = hexToHsl(hex);
+    h = (h + hueShift) % 360;
+    let result = hslToHex(h, s, l);
+    while (contrastWithWhite(result) < 4.5 && l > 0) {
+        l = Math.max(0, l - 0.02);
+        result = hslToHex(h, s, l);
+    }
+    return result;
+}
+
+function contrastWithWhite(hex) {
+    const channel = index => {
+        const c = parseInt(hex.substr(1 + index * 2, 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    const luminance = 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
+    return 1.05 / (luminance + 0.05);
+}
+
+function hexToHsl(hex) {
+    const r = parseInt(hex.substr(1, 2), 16) / 255;
+    const g = parseInt(hex.substr(3, 2), 16) / 255;
+    const b = parseInt(hex.substr(5, 2), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) {
+        return [0, 0, l];
+    }
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) {
+        h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    } else if (max === g) {
+        h = ((b - r) / d + 2) * 60;
+    } else {
+        h = ((r - g) / d + 4) * 60;
+    }
+    return [h, s, l];
+}
+
+function hslToHex(h, s, l) {
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const hex = value => Math.round(value * 255).toString(16).padStart(2, "0");
+    return "#" + hex(f(0)) + hex(f(8)) + hex(f(4));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+    const pageBackdrop = document.getElementById("store-backdrop");
+    if (pageBackdrop && pageBackdrop.classList.contains("store-backdrop--pattern")) {
+        applyPatternTile(pageBackdrop.querySelector(".store-backdrop-art"));
+    }
+
     // Instalación nueva sin Sheet: un aviso amable arriba en vez de los errores en rojo de cada sección.
     // Inicio y Configuración ya explican qué hacer, así que ahí no se muestra.
     const setupTemplate = document.getElementById("setup-banner-template");
@@ -178,6 +349,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const result = await response.json();
                 hideLoadingOverlay(storeForm, t("saveSettings"));
                 showStoreMessage(Boolean(result.success), result.message || t("saveSettingsError"));
+                if (response.status !== 400) {
+                    // La configuración se guardó (aunque después falle la sincronización).
+                    refreshTopbarLogo();
+                }
             } catch (error) {
                 hideLoadingOverlay(storeForm, t("saveSettings"));
                 showStoreMessage(false, t("saveSettingsNetworkError"));
@@ -559,13 +734,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    const logoInput = document.getElementById("storeLogo");
-    const logoFileName = document.getElementById("logo-file-name");
-    const logoPreview = document.getElementById("store-logo-preview");
-    const removeLogoButton = document.getElementById("remove-logo-button");
-
-    const defaultLogo = "/images/tcg-default-logo.png";
-
     const credentialsInput = document.getElementById("googleCredentials");
     const credentialsFileName = document.getElementById("credentials-file-name");
 
@@ -578,44 +746,140 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Logo de la tienda y decoración: vista previa en vivo de lo que se elige en Configuración.
+    const logoInput = document.getElementById("storeLogo");
+    const logoFileName = document.getElementById("logo-file-name");
+    const logoPreview = document.getElementById("store-logo-preview");
+    const removeLogoButton = document.getElementById("remove-logo-button");
+    const removeLogoInput = document.getElementById("removeLogo");
+    const decoration = document.getElementById("logo-decoration");
+    const logoAccentInput = document.getElementById("logoAccent");
+    const useLogoColors = document.getElementById("useLogoColors");
+    const logoColorsNote = document.getElementById("logo-colors-note");
+    const backdropIntensity = document.getElementById("backdropIntensity");
+    let logoObjectUrl = null;
+
+    function selectedBackdropStyle() {
+        const checked = decoration ? decoration.querySelector("input[name='backdropStyle']:checked") : null;
+        return checked ? checked.value : "watermark";
+    }
+
+    function previewDecoration() {
+        if (!decoration) {
+            return;
+        }
+        const hasLogo = !decoration.disabled && logoPreview && !logoPreview.hidden && logoPreview.src;
+        const style = hasLogo ? selectedBackdropStyle() : "none";
+        const opacity = (Number(backdropIntensity ? backdropIntensity.value : 4) * 0.02).toFixed(2);
+        setStoreBackdrop(style, opacity, hasLogo ? logoPreview.src : "");
+
+        const accent = logoAccentInput ? logoAccentInput.value : "";
+        const wantsColors = hasLogo && useLogoColors && useLogoColors.checked;
+        if (logoColorsNote) {
+            logoColorsNote.hidden = !(wantsColors && !accent);
+        }
+        setStoreAccent(wantsColors ? accent : "");
+    }
+
+    function readAccentFromPreview() {
+        if (!logoPreview || logoPreview.hidden || !logoAccentInput) {
+            return;
+        }
+        const update = () => {
+            logoAccentInput.value = dominantLogoColor(logoPreview);
+            previewDecoration();
+        };
+        if (logoPreview.complete && logoPreview.naturalWidth) {
+            update();
+        } else {
+            logoPreview.addEventListener("load", update, { once: true });
+        }
+    }
+
     if (logoInput && logoFileName && logoPreview) {
         logoInput.addEventListener("change", () => {
-            const removeLogoInput = document.getElementById("removeLogo");
-
+            const file = logoInput.files[0];
+            logoFileName.textContent = file ? file.name : t("logoHelp");
+            if (!file) {
+                return;
+            }
             if (removeLogoInput) {
                 removeLogoInput.value = "false";
             }
-
-            const file = logoInput.files[0];
-
-            logoFileName.textContent = file
-                ? file.name
-                : t("logoHelp");
-
-            if (!file) {
-                logoPreview.src = defaultLogo;
-                return;
+            if (logoObjectUrl) {
+                URL.revokeObjectURL(logoObjectUrl);
             }
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                logoPreview.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+            logoObjectUrl = URL.createObjectURL(file);
+            logoPreview.src = logoObjectUrl;
+            logoPreview.hidden = false;
+            if (removeLogoButton) {
+                removeLogoButton.hidden = false;
+            }
+            if (decoration) {
+                decoration.disabled = false;
+            }
+            readAccentFromPreview();
         });
     }
 
     if (removeLogoButton && logoInput && logoPreview) {
-        const removeLogoInput = document.getElementById("removeLogo");
         removeLogoButton.addEventListener("click", () => {
             logoInput.value = "";
-            logoPreview.src = defaultLogo;
-            logoFileName.textContent = t("logoHelp");
-
+            logoPreview.hidden = true;
+            logoPreview.removeAttribute("src");
+            removeLogoButton.hidden = true;
+            if (logoFileName) {
+                logoFileName.textContent = t("logoHelp");
+            }
             if (removeLogoInput) {
                 removeLogoInput.value = "true";
             }
+            if (logoAccentInput) {
+                logoAccentInput.value = "";
+            }
+            if (decoration) {
+                decoration.disabled = true;
+            }
+            previewDecoration();
         });
+    }
+
+    if (decoration) {
+        decoration.addEventListener("input", previewDecoration);
+        decoration.addEventListener("change", previewDecoration);
+        // El color se recalcula siempre desde el logo que se ve, así queda al día aunque el logo sea viejo.
+        if (decoration.dataset.hasLogo === "true") {
+            readAccentFromPreview();
+        }
+    }
+
+    /** Después de guardar: la barra de arriba muestra el logo nuevo (o la marca TCG si se quitó). */
+    function refreshTopbarLogo() {
+        const brand = document.querySelector(".topbar .brand");
+        if (!brand || !logoPreview) {
+            return;
+        }
+        const current = brand.querySelector(".brand-logo, .brand-mark");
+        const hasLogo = !logoPreview.hidden && logoPreview.src;
+        let replacement;
+        if (hasLogo) {
+            replacement = document.createElement("img");
+            replacement.className = "brand-logo";
+            replacement.alt = "";
+            replacement.src = logoPreview.src;
+        } else {
+            replacement = document.createElement("span");
+            replacement.className = "brand-mark";
+            replacement.textContent = "TCG";
+        }
+        if (current) {
+            current.replaceWith(replacement);
+        } else {
+            brand.prepend(replacement);
+        }
+        if (removeLogoInput) {
+            removeLogoInput.value = "false";
+        }
     }
 
     const spreadsheetInput = document.getElementById("spreadsheetId");
