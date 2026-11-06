@@ -119,12 +119,10 @@ public class CashCloseService {
             double counted = cash + transfers + cards;
             double difference = counted - day.expectedValue();
 
-            StringBuilder detail = new StringBuilder("Cierre de caja: contado $ ").append(ars(counted))
-                    .append(" (efectivo $ ").append(ars(cash))
-                    .append(", transferencias $ ").append(ars(transfers))
-                    .append(", tarjeta $ ").append(ars(cards)).append(")")
-                    .append(", esperado $ ").append(day.expected())
-                    .append(", diferencia ").append(signed(difference));
+            StringBuilder detail = new StringBuilder(com.tcg.bot.i18n.I18n.t("close.entry",
+                    com.tcg.bot.i18n.Money.format(counted), com.tcg.bot.i18n.Money.format(cash),
+                    com.tcg.bot.i18n.Money.format(transfers), com.tcg.bot.i18n.Money.format(cards),
+                    com.tcg.bot.i18n.Money.format(day.expectedValue()), signed(difference)));
             if (note != null && !note.isBlank()) {
                 detail.append(". ").append(note.trim());
             }

@@ -79,7 +79,7 @@ public class SalesService {
                         .filter(candidate -> entry.getKey().equals(candidate.getId()))
                         .findFirst()
                         .orElseThrow(() -> new StockOperationException(
-                                "Una de las cartas ya no está en el inventario. Volvé a armar el pedido."));
+                                I18n.t("err.orderCardGone")));
                 if (Amounts.parse(card.getLocalPrice()) <= 0) {
                     throw new StockOperationException(card.getName()
                             + " no tiene precio local. Sincronizá precios antes de cobrarla.");
@@ -124,12 +124,12 @@ public class SalesService {
                 if (!com.tcg.bot.i18n.Money.isZero(creditUsed)) {
                     creditUsed = com.tcg.bot.i18n.Money.round(creditUsed);
                     String reference = "V" + StockOperationsService.newSaleId();
-                    creditService.add(creditCustomer, "", -creditUsed, "Usado en una venta", reference);
+                    creditService.add(creditCustomer, "", -creditUsed, I18n.t("sale.credit.reason"), reference);
                     CashRegisterEntry credit = new CashRegisterEntry();
                     credit.setDate(now.toLocalDate().toString());
                     credit.setTime(now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
                     credit.setType(CashRegisterEntry.TYPE_CREDIT);
-                    credit.setName("Pagado con crédito de " + creditCustomer.trim());
+                    credit.setName(I18n.t("sale.credit.entry", creditCustomer.trim()));
                     credit.setQuantity("0");
                     credit.setTotal(com.tcg.bot.i18n.Money.plain(creditUsed));
                     credit.setSaleId(reference);

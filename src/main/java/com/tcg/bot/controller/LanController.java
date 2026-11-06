@@ -4,7 +4,6 @@ import com.tcg.bot.config.LanAccess;
 import com.tcg.bot.config.LanConnector;
 import com.tcg.bot.config.LocalOnlyFilter;
 import com.tcg.bot.i18n.I18n;
-import com.tcg.bot.service.StoreSettingsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -33,18 +32,14 @@ public class LanController {
 
     private final LanAccess lan;
     private final LanConnector connector;
-    private final StoreSettingsService storeSettingsService;
 
-    public LanController(LanAccess lan, LanConnector connector, StoreSettingsService storeSettingsService) {
+    public LanController(LanAccess lan, LanConnector connector) {
         this.lan = lan;
         this.connector = connector;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/segunda-caja")
     public String settings(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("lanEnabled", lan.isEnabled());
         model.addAttribute("lanOpen", connector.isOpen());
         model.addAttribute("lanPin", lan.getPin());
@@ -83,7 +78,6 @@ public class LanController {
 
     @GetMapping("/celular")
     public String phoneLogin(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
         model.addAttribute("locked", lan.isLocked());
         return "lan-login";
     }

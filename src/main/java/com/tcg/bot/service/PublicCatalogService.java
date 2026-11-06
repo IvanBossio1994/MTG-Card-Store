@@ -64,7 +64,7 @@ public class PublicCatalogService {
 
     public PublicCatalogService(InventoryStore store, GoogleSheetsService sheets, StoreSettingsService storeSettings,
                                 StockOperationsService stockOperations,
-                                @Value("${app.storage-dir:D:/TCG-inventory/data}") String storageDirectory) {
+                                @Value("${app.storage-dir:./data}") String storageDirectory) {
         this.store = store;
         this.sheets = sheets;
         this.storeSettings = storeSettings;

@@ -70,7 +70,7 @@ public class PricingSettingsService {
     public PricingSettingsService(
             @Value("${pricing.ck-dollar-rate:1650.0}") double defaultCkDollarRate,
             @Value("${pricing.round-multiple:500}") double defaultRoundMultiple,
-            @Value("${app.storage-dir:D:/TCG-inventory/data}") String storageDirectory
+            @Value("${app.storage-dir:./data}") String storageDirectory
     ) {
         this.defaultCkDollarRate = defaultCkDollarRate;
         this.defaultRoundMultiple = defaultRoundMultiple;

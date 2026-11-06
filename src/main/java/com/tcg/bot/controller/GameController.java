@@ -4,7 +4,6 @@ import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.model.Game;
 import com.tcg.bot.model.GamePrint;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
-import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.service.games.GameInventoryService;
 import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
@@ -27,11 +26,9 @@ public class GameController {
     private static final Logger log = LoggerFactory.getLogger(GameController.class);
 
     private final GameInventoryService gameInventoryService;
-    private final StoreSettingsService storeSettingsService;
 
-    public GameController(GameInventoryService gameInventoryService, StoreSettingsService storeSettingsService) {
+    public GameController(GameInventoryService gameInventoryService) {
         this.gameInventoryService = gameInventoryService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/juegos/{slug}")
@@ -40,8 +37,6 @@ public class GameController {
         if (game == null) {
             return "redirect:/";
         }
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         model.addAttribute("game", game);
         model.addAttribute("activeGame", game.slug());
         model.addAttribute("query", query == null ? "" : query);

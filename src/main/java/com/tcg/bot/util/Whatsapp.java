@@ -7,8 +7,9 @@ public final class Whatsapp {
     }
 
     /**
-     * Si el contacto parece un teléfono abre ese chat (se asume Argentina cuando no tiene código de país);
-     * si no, WhatsApp deja elegir a quién mandarlo.
+     * Si el contacto parece un teléfono abre ese chat; si no, WhatsApp deja elegir a quién mandarlo.
+     * Sin código de país se asume Argentina solo si la tienda cobra en pesos argentinos; en otro país hace falta
+     * escribirlo con + (si no, WhatsApp deja elegir el contacto en vez de abrir un número equivocado).
      */
     public static String link(String contact, String text) {
         String phone = number(contact);
@@ -24,7 +25,16 @@ public final class Whatsapp {
         if (digits.length() < 8 || digits.length() > 15) {
             return null;
         }
-        if (contact.trim().startsWith("+") || digits.startsWith("54")) {
+        if (contact.trim().startsWith("+")) {
+            return digits;
+        }
+        if (contact.trim().startsWith("00")) {
+            return digits.substring(2);
+        }
+        if (!"ARS".equals(com.tcg.bot.i18n.Money.currency())) {
+            return null;
+        }
+        if (digits.startsWith("54")) {
             return digits;
         }
         if (digits.startsWith("0")) {

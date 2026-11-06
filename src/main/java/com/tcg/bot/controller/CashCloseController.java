@@ -3,7 +3,6 @@ package com.tcg.bot.controller;
 import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.CashCloseService;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
-import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,17 +20,13 @@ public class CashCloseController {
     private static final Logger log = LoggerFactory.getLogger(CashCloseController.class);
 
     private final CashCloseService cashCloseService;
-    private final StoreSettingsService storeSettingsService;
 
-    public CashCloseController(CashCloseService cashCloseService, StoreSettingsService storeSettingsService) {
+    public CashCloseController(CashCloseService cashCloseService) {
         this.cashCloseService = cashCloseService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/caja/cierre")
     public String page(@RequestParam(name = "fecha", required = false) String date, Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         if (date != null && !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
             date = null;
         }

@@ -4,7 +4,6 @@ import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.i18n.Money;
 import com.tcg.bot.service.ConsignmentService;
 import com.tcg.bot.service.StockOperationsService;
-import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.util.Whatsapp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,17 +25,13 @@ public class ConsignmentController {
     private static final Logger log = LoggerFactory.getLogger(ConsignmentController.class);
 
     private final ConsignmentService consignmentService;
-    private final StoreSettingsService storeSettingsService;
 
-    public ConsignmentController(ConsignmentService consignmentService, StoreSettingsService storeSettingsService) {
+    public ConsignmentController(ConsignmentService consignmentService) {
         this.consignmentService = consignmentService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/consignacion")
     public String page(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
         List<ConsignmentService.Owner> owners = List.of();
         try {
             owners = consignmentService.owners();

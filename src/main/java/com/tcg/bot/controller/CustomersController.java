@@ -3,7 +3,6 @@ package com.tcg.bot.controller;
 import com.tcg.bot.i18n.I18n;
 import com.tcg.bot.service.CreditService;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
-import com.tcg.bot.service.StoreSettingsService;
 import com.tcg.bot.util.Amounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +24,9 @@ public class CustomersController {
     private static final Logger log = LoggerFactory.getLogger(CustomersController.class);
 
     private final CreditService creditService;
-    private final StoreSettingsService storeSettingsService;
 
-    public CustomersController(CreditService creditService, StoreSettingsService storeSettingsService) {
+    public CustomersController(CreditService creditService) {
         this.creditService = creditService;
-        this.storeSettingsService = storeSettingsService;
     }
 
     @GetMapping("/compras")
@@ -85,8 +82,6 @@ public class CustomersController {
     }
 
     private void addBase(Model model) {
-        model.addAttribute("storeName", storeSettingsService.getStoreName());
-        model.addAttribute("hasStoreLogo", storeSettingsService.hasLogo());
     }
 
     private void addAccounts(Model model) {

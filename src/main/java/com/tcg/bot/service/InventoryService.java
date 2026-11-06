@@ -173,10 +173,6 @@ public class InventoryService implements InventoryStore {
         googleSheetsService.updateStockState(rowIndex, card);
     }
 
-    public void updateQuantity(int rowIndex, int change) throws Exception {
-        googleSheetsService.updateQuantity(rowIndex, change);
-    }
-
     @Override
     public int appendInventoryCard(InventoryCard card) throws Exception {
         return googleSheetsService.appendInventoryCard(card);
