@@ -283,6 +283,11 @@ class StockOperationsServiceTest {
         }
 
         @Override
+        public List<InventoryMovement> getRecentMovements() {
+            return List.copyOf(movements);
+        }
+
+        @Override
         public List<CashRegisterEntry> getCashRegisterEntries() {
             return List.copyOf(cash);
         }

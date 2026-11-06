@@ -173,6 +173,7 @@ public class InventoryService implements InventoryStore {
         googleSheetsService.updateLocalPrice(rowIndex, localPrice);
     }
 
+    @Override
     public List<InventoryMovement> getRecentMovements() throws Exception {
         return googleSheetsService.getRecentMovements();
     }

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{nav.reports} + ' | TCG Inventory'">TCG Inventory</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(#{nav.reports})}"></header>
+<div th:replace="~{fragments/layout :: menu('reports')}"></div>
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow" th:text="#{mov.eyebrow}">Historial</p>
+            <h1 th:text="#{report.h1}">Reportes</h1>
+            <p class="supporting" th:text="#{report.supporting}">Qué se vende, qué no se mueve y cuánto vale lo que tenés.</p>
+        </div>
+        <nav class="period-tabs" th:aria-label="#{report.period}">
+            <a th:each="days : ${periods}" th:href="@{/reportes(dias=${days})}" th:classappend="${days == period} ? 'active'"
+               th:text="#{report.days(${days})}">30 días</a>
+        </nav>
+    </section>
+
+    <p class="alert error" th:if="${reportError}" th:text="${reportError}"></p>
+
+    <th:block th:if="${report != null}">
+        <section class="summary-strip">
+            <div class="summary-tile">
+                <span class="summary-label" th:text="#{mov.report.bar.sales}">Ventas</span>
+                <strong th:text="${currencySymbol + ' ' + money.number(report.sales())}">$ 0</strong>
+                <span class="summary-note" th:text="#{close.salesUnits(${report.salesCount()}, ${report.units()})}">0 ventas</span>
+            </div>
+            <div class="summary-tile">
+                <span class="summary-label" th:text="#{profit.label}">Ganancia</span>
+                <strong th:text="${report.profit().known() ? report.profit().formatted() : '-'}">+$ 0</strong>
+                <span class="summary-note" th:text="${report.profit().withoutCost() > 0} ? #{profit.missing(${report.profit().withoutCost()})} : #{profit.note}">Precio menos costo</span>
+            </div>
+            <div class="summary-tile">
+                <span class="summary-label" th:text="#{report.stockAtPrice}">Stock a tu precio</span>
+                <strong th:text="${currencySymbol + ' ' + money.number(report.stock().atPrice())}">$ 0</strong>
+                <span class="summary-note" th:text="#{report.units(${report.stock().units()})}">0 cartas</span>
+            </div>
+            <div class="summary-tile">
+                <span class="summary-label" th:text="#{report.stockAtCost}">Stock a costo</span>
+                <strong th:text="${currencySymbol + ' ' + money.number(report.stock().atCost())}">$ 0</strong>
+                <span class="summary-note" th:text="${report.stock().unitsWithoutCost() > 0} ? #{report.withoutCost(${report.stock().unitsWithoutCost()})} : #{report.potential(${currencySymbol + ' ' + money.number(report.stock().potentialProfit())})}">Ganancia posible</span>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="#{report.days(${period})}">30 días</p>
+                    <h2 th:text="#{report.top.title}">Las que más se venden</h2>
+                </div>
+            </div>
+            <div class="placeholder" th:if="${#lists.isEmpty(report.topCards())}">
+                <strong th:text="#{report.top.empty}">No hubo ventas en este período</strong>
+            </div>
+            <div class="table-wrap" th:unless="${#lists.isEmpty(report.topCards())}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th th:text="#{common.card}">Carta</th>
+                        <th th:text="#{common.set}">Edición</th>
+                        <th th:text="#{report.col.units}">Vendidas</th>
+                        <th th:text="#{mov.report.bar.sales}">Ventas</th>
+                        <th th:text="#{profit.label}">Ganancia</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="top : ${report.topCards()}">
+                        <td th:text="${top.name()}">Sol Ring</td>
+                        <td th:text="${top.set()}">Commander Masters</td>
+                        <td th:text="${top.units()}">3</td>
+                        <td class="nowrap" th:text="${currencySymbol + ' ' + money.number(top.revenue())}">$ 0</td>
+                        <td class="nowrap" th:text="${top.profit() != null ? currencySymbol + ' ' + money.number(top.profit()) : '-'}">$ 0</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="#{report.still.eyebrow(${stillDays})}">Sin movimiento en 90 días</p>
+                    <h2 th:text="#{report.still.title}">Cartas quietas</h2>
+                    <p class="section-note" th:if="${report.stillTotal() > report.still().size()}"
+                       th:text="#{report.still.more(${report.still().size()}, ${report.stillTotal()})}">Las 20 de más valor, de 45</p>
+                </div>
+            </div>
+            <div class="placeholder" th:if="${#lists.isEmpty(report.still())}">
+                <strong th:text="#{report.still.empty}">Todo se mueve</strong>
+            </div>
+            <div class="table-wrap" th:unless="${#lists.isEmpty(report.still())}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th th:text="#{common.card}">Carta</th>
+                        <th th:text="#{common.set}">Edición</th>
+                        <th th:text="#{common.stock}">Stock</th>
+                        <th th:text="#{report.col.value}">Valor</th>
+                        <th th:text="#{report.col.last}">Último movimiento</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="still : ${report.still()}">
+                        <td>
+                            <span th:text="${still.card().name}">Sol Ring</span>
+                            <span class="location-chip" th:if="${still.card().location != null and still.card().location != ''}" th:text="${still.card().location}">Carpeta 3</span>
+                        </td>
+                        <td th:text="${still.card().setName}">Commander Masters</td>
+                        <td th:text="${still.units()}">1</td>
+                        <td class="nowrap" th:text="${currencySymbol + ' ' + money.number(still.value())}">$ 0</td>
+                        <td class="nowrap" th:text="${still.lastActivity() != '' ? still.lastActivity() : #messages.msg('report.never')}">-</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow" th:text="#{report.days(${period})}">30 días</p>
+                    <h2 th:text="#{report.customers.title}">Clientes que más compran</h2>
+                    <p class="section-note" th:text="#{report.customers.note}">Según las reservas retiradas.</p>
+                </div>
+            </div>
+            <div class="placeholder" th:if="${#lists.isEmpty(report.customers())}">
+                <strong th:text="#{report.customers.empty}">Todavía no hay reservas retiradas en este período</strong>
+            </div>
+            <div class="table-wrap" th:unless="${#lists.isEmpty(report.customers())}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th th:text="#{common.customer}">Cliente</th>
+                        <th th:text="#{report.col.orders}">Pedidos</th>
+                        <th th:text="#{common.total}">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="customer : ${report.customers()}">
+                        <td th:text="${customer.name()}">Juan</td>
+                        <td th:text="${customer.orders()}">2</td>
+                        <td class="nowrap" th:text="${currencySymbol + ' ' + money.number(customer.total())}">$ 0</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </th:block>
+</main>
+</body>
+</html>
