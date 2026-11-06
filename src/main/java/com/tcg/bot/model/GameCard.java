@@ -23,6 +23,9 @@ public class GameCard {
     private Double usd;
     private String id;
     private String catalogId;
+    /** Costo por unidad; null si no se cargó. */
+    private Double cost;
+    private String location;
 
     public static GameCard fromRow(List<String> row, int rowIndex) {
         GameCard card = new GameCard();
@@ -38,6 +41,8 @@ public class GameCard {
         card.usd = Amounts.parseOrNull(row.get(8));
         card.id = row.get(9);
         card.catalogId = row.get(10);
+        card.cost = row.size() > 11 ? Amounts.parseOrNull(row.get(11)) : null;
+        card.location = row.size() > 12 ? row.get(12) : "";
         return card;
     }
 
@@ -54,6 +59,8 @@ public class GameCard {
         row.add(usd == null ? "" : usd);
         row.add(safe(id));
         row.add(safe(catalogId));
+        row.add(cost == null ? "" : com.tcg.bot.i18n.Money.sheetValue(cost));
+        row.add(safe(location));
         return row;
     }
 
@@ -68,6 +75,11 @@ public class GameCard {
 
     public double priceValue() {
         return com.tcg.bot.i18n.Money.round(localPrice);
+    }
+
+    /** Costo para el formulario ("1500" o "4.5"), vacío si no se sabe. */
+    public String costInput() {
+        return cost == null ? "" : com.tcg.bot.i18n.Money.plainNumber(cost);
     }
 
     public String formattedUsd() {
@@ -86,6 +98,8 @@ public class GameCard {
         card.setPrinting(finish);
         card.setQuantity(String.valueOf(quantity));
         card.setLocalPrice(localPrice > 0 ? com.tcg.bot.i18n.Money.plain(localPrice) : "");
+        card.setCost(cost == null ? "" : com.tcg.bot.i18n.Money.plain(cost));
+        card.setLocation(safe(location));
         card.setGame(game);
         return card;
     }

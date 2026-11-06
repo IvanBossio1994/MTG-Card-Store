@@ -44,6 +44,15 @@ public class BuyService {
         this.creditService = creditService;
     }
 
+    /** El costo es un dato de ayuda: si no se puede guardar, la compra igual queda registrada. */
+    private void updateCostQuietly(InventoryCard card) {
+        try {
+            store.updateAnyDetails(card);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(BuyService.class).warn("No se pudo guardar el costo de {}.", card.getName(), e);
+        }
+    }
+
     public Result buy(String customer, String contact, Payment payment, List<Line> lines) throws Exception {
         if (lines == null || lines.isEmpty()) {
             throw new StockOperationException(I18n.t("buy.err.empty"));
@@ -70,6 +79,9 @@ public class BuyService {
                 int next = previous + line.quantity();
                 StockOperationsService.setQuantity(card, next);
                 store.updateAnyStock(card);
+                double cost = CardDetailsService.averageCost(previous, card.costValue(), line.quantity(), line.unitPaid());
+                card.setCost(com.tcg.bot.i18n.Money.plain(cost));
+                updateCostQuietly(card);
                 stockOperations.appendMovementQuietly(stockOperations.movement(
                         now, line.quantity(), card, previous, next, SOURCE_BOUGHT + " (" + who + ")"));
                 units += line.quantity();

@@ -234,6 +234,8 @@ class StockOperationsServiceTest {
                 copy.setCollectorNumber(card.getCollectorNumber());
                 copy.setPrinting(card.getPrinting());
                 copy.setCkPriceUsd(card.getCkPriceUsd());
+                copy.setCost(card.getCost());
+                copy.setLocation(card.getLocation());
                 copies.add(copy);
             }
             return copies;
@@ -256,6 +258,16 @@ class StockOperationsServiceTest {
                     .orElseThrow();
             target.setQuantity(updated.getQuantity());
             target.setAction(updated.getAction());
+        }
+
+        @Override
+        public void updateCardDetails(int rowIndex, InventoryCard updated) {
+            InventoryCard target = cards.stream()
+                    .filter(card -> card.getRowIndex() == rowIndex)
+                    .findFirst()
+                    .orElseThrow();
+            target.setCost(updated.getCost());
+            target.setLocation(updated.getLocation());
         }
 
         @Override

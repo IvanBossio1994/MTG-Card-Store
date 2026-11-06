@@ -4185,6 +4185,61 @@ td {
     line-height: 1.3;
 }
 
+.card-cell-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+/* Ubicación y botón "Costo y lugar" debajo del nombre */
+.card-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+}
+
+.card-details .text-action {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.location-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--blue-soft);
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.location-chip::before {
+    content: "📍";
+    font-size: 0.7rem;
+}
+
+.details-editor {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.details-editor input {
+    width: 8.5rem;
+    min-width: 0;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font: inherit;
+    font-size: 0.85rem;
+}
+
 /* Etiquetas y avisos */
 .badge,
 .status {

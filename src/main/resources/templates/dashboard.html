@@ -183,7 +183,15 @@
                                 <img th:src="@{/imagen(u=${result.imageUrl()})}" th:attr="data-large=@{/imagen(u=${result.imageUrl().replace('version=small', 'version=normal')})}" alt="" loading="lazy"
                                      onerror="this.parentElement.classList.add('no-image'); this.remove();">
                             </span>
-                            <span class="card-cell-name" th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
+                            <span class="card-cell-text">
+                                <span class="card-cell-name" th:text="${result.name != null && result.name != '' ? result.name : '-'}">Sol Ring</span>
+                                <span class="card-details" th:if="${result.cardId != ''}">
+                                    <span class="location-chip" th:if="${result.location != ''}" th:title="#{details.location}" th:text="${result.location}">Carpeta 3</span>
+                                    <button type="button" class="details-button text-action"
+                                            th:attr="data-card-id=${result.cardId},data-name=${result.name},data-cost=${result.costInput()},data-location=${result.location}"
+                                            th:title="#{details.edit.title}" th:text="#{details.edit}">Costo y lugar</button>
+                                </span>
+                            </span>
                         </div>
                     </td>
                     <td th:text="${result.edition != null && result.edition != '' ? result.edition : '-'}">Commander Masters</td>

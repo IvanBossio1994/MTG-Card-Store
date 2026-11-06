@@ -180,6 +180,7 @@ public class StockOperationsService {
         voidEntry.setSaleId(newSaleId());
         voidEntry.setVoidsSaleId(saleId);
         voidEntry.setCardId(sale.getCardId());
+        voidEntry.setUnitCost(sale.getUnitCost());
 
         store.appendCashEntry(voidEntry);
 
@@ -272,6 +273,8 @@ public class StockOperationsService {
         entry.setQuantity(String.valueOf(units));
         entry.setTotal(com.tcg.bot.i18n.Money.plain(unitPrice * units));
         entry.setCardId(card.getId());
+        Double cost = card.costValue();
+        entry.setUnitCost(cost == null ? "" : com.tcg.bot.i18n.Money.plain(cost));
         return entry;
     }
 

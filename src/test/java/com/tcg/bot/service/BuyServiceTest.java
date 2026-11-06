@@ -54,6 +54,18 @@ class BuyServiceTest {
     }
 
     @Test
+    void purchasesKeepAnAverageCostPerUnit() throws Exception {
+        // La unidad que ya había no tenía costo: se toma lo pagado ahora.
+        service.buy("Ana", "", Payment.CASH, List.of(new Line(store.getInventoryCards().get(0), 1, 600)));
+        assertThat(store.card("sol").getCost()).isEqualTo("600");
+
+        // 2 unidades a 600 + 2 a 900 = 750 de promedio.
+        service.buy("Beto", "", Payment.CREDIT, List.of(new Line(store.getInventoryCards().get(0), 2, 900)));
+        assertThat(store.card("sol").getCost()).isEqualTo("750");
+        assertThat(store.card("sol").getQuantity()).isEqualTo("4");
+    }
+
+    @Test
     void creditNeedsACustomerAndCannotGoNegative() throws Exception {
         assertThatThrownBy(() -> service.buy("", "", Payment.CREDIT, List.of(new Line(store.getInventoryCards().get(0), 1, 900))))
                 .isInstanceOf(StockOperationException.class);

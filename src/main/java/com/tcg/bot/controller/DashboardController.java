@@ -666,7 +666,10 @@ public class DashboardController {
         String today = LocalDate.now(APP_ZONE).format(MOVEMENT_DATE_FORMAT);
 
         try {
-            var allEntries = inventoryService.getCashRegisterEntries();
+            // La lista de Caja muestra ventas y anulaciones; compras y cierres tienen su propia pantalla.
+            var allEntries = inventoryService.getCashRegisterEntries().stream()
+                    .filter(CashRegisterEntry::affectsCash)
+                    .toList();
             var entries = selectedDate == null || selectedDate.isBlank()
                     ? allEntries
                     : allEntries.stream()
@@ -839,6 +842,13 @@ public class DashboardController {
             }
         }
 
+        Map<String, List<CashRegisterEntry>> entriesByMonth = new HashMap<>();
+        if (cashEntries != null) {
+            for (CashRegisterEntry entry : cashEntries) {
+                entriesByMonth.computeIfAbsent(monthKey(entry.getDate()), key -> new ArrayList<>()).add(entry);
+            }
+        }
+
         Map<String, CashReportAccumulator> reports = new LinkedHashMap<>();
         for (var monthEntry : cardsByMonth.entrySet()) {
             CashReportAccumulator report = new CashReportAccumulator();
@@ -867,7 +877,8 @@ public class DashboardController {
                         entry.getKey(),
                         monthLabel(entry.getKey()),
                         maxSales,
-                        maxMovementQuantity
+                        maxMovementQuantity,
+                        com.tcg.bot.service.CashCloseService.Profit.of(entriesByMonth.getOrDefault(entry.getKey(), List.of()))
                 ))
                 .toList();
     }
@@ -1880,7 +1891,9 @@ public class DashboardController {
                 cardId,
                 comparePrices(product, foil, extraPrices),
                 target == null ? 0 : com.tcg.bot.util.Amounts.parse(target.getLocalPrice()),
-                target != null && target.isManualPrice()
+                target != null && target.isManualPrice(),
+                target == null ? null : target.costValue(),
+                target == null || target.getLocation() == null ? "" : target.getLocation()
         );
     }
 
@@ -1898,7 +1911,9 @@ public class DashboardController {
                 card.getId() == null ? "" : card.getId(),
                 new PriceComparison("", "", "", 0),
                 com.tcg.bot.util.Amounts.parse(card.getLocalPrice()),
-                card.isManualPrice()
+                card.isManualPrice(),
+                card.costValue(),
+                card.getLocation() == null ? "" : card.getLocation()
         );
     }
 
@@ -2187,8 +2202,15 @@ public class DashboardController {
             String cardId,
             PriceComparison prices,
             double localPrice,
-            boolean manualPrice
+            boolean manualPrice,
+            Double cost,
+            String location
     ) {
+        /** Costo para el formulario ("1500" o "4.5"), vacío si no se sabe. */
+        public String costInput() {
+            return cost == null ? "" : com.tcg.bot.i18n.Money.plainNumber(cost);
+        }
+
         /** Precio de venta de referencia para ofertar en una compra: el del Sheet, o el sugerido si no hay. */
         public double referencePrice() {
             return com.tcg.bot.i18n.Money.round(localPrice > 0 ? localPrice : prices == null ? 0 : prices.suggestedValue());
@@ -2280,7 +2302,8 @@ public class DashboardController {
             int balanceQuantity,
             String salesWidth,
             String soldWidth,
-            String enteredWidth
+            String enteredWidth,
+            com.tcg.bot.service.CashCloseService.Profit profit
     ) {
     }
 
@@ -2299,7 +2322,8 @@ public class DashboardController {
                 String key,
                 String label,
                 double maxSales,
-                int maxMovementQuantity
+                int maxMovementQuantity,
+                com.tcg.bot.service.CashCloseService.Profit profit
         ) {
             return new CashReportMonth(
                     key,
@@ -2310,7 +2334,8 @@ public class DashboardController {
                     enteredQuantity - soldQuantity,
                     percent(salesTotal, maxSales),
                     percent(soldQuantity, maxMovementQuantity),
-                    percent(enteredQuantity, maxMovementQuantity)
+                    percent(enteredQuantity, maxMovementQuantity),
+                    profit
             );
         }
     }

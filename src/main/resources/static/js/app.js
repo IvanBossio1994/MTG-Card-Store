@@ -1491,6 +1491,94 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // Botón "Costo y lugar": edita en el lugar el costo por unidad y dónde está guardada la carta.
+    document.addEventListener("click", event => {
+        const button = event.target.closest(".details-button");
+        if (!button) {
+            return;
+        }
+        const host = button.closest(".card-details") || button.parentElement;
+        const previous = Array.from(host.childNodes);
+        const editor = document.createElement("span");
+        editor.className = "details-editor";
+        const cost = document.createElement("input");
+        cost.type = "text";
+        cost.inputMode = MONEY_DECIMALS > 0 ? "decimal" : "numeric";
+        cost.placeholder = t("costPlaceholder");
+        cost.value = button.dataset.cost || "";
+        cost.setAttribute("aria-label", t("costOf", button.dataset.name || t("card")));
+        const place = document.createElement("input");
+        place.type = "text";
+        place.maxLength = 60;
+        place.placeholder = t("locationPlaceholder");
+        place.value = button.dataset.location || "";
+        place.setAttribute("aria-label", t("locationOf", button.dataset.name || t("card")));
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "price-editor-save";
+        save.textContent = t("save");
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "price-editor-cancel";
+        cancel.textContent = "×";
+        cancel.setAttribute("aria-label", t("cancel"));
+        editor.append(cost, place, save, cancel);
+        host.replaceChildren(editor);
+        cost.focus();
+
+        const close = () => host.replaceChildren(...previous);
+        const submit = async () => {
+            save.disabled = true;
+            const body = new URLSearchParams({
+                cardId: button.dataset.cardId || "",
+                cost: cost.value.trim(),
+                location: place.value.trim()
+            });
+            try {
+                const response = await fetch("/api/cartas/detalle", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+                    body
+                });
+                let result = {};
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    // Respuesta vacía: se usa el mensaje genérico.
+                }
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || t("detailsSaveError"));
+                }
+                button.dataset.cost = cost.value.trim();
+                button.dataset.location = result.location || "";
+                const chip = previous.find(node => node.classList && node.classList.contains("location-chip"));
+                const parts = previous.filter(node => node !== chip);
+                if (result.location) {
+                    const newChip = chip || document.createElement("span");
+                    newChip.className = "location-chip";
+                    newChip.title = t("location");
+                    newChip.textContent = result.location;
+                    parts.unshift(newChip, document.createTextNode(" "));
+                }
+                host.replaceChildren(...parts);
+                showToast(result.message, "success");
+            } catch (error) {
+                showToast(error.message, "error");
+                save.disabled = false;
+            }
+        };
+        save.addEventListener("click", submit);
+        cancel.addEventListener("click", close);
+        editor.addEventListener("keydown", keyEvent => {
+            if (keyEvent.key === "Enter") {
+                keyEvent.preventDefault();
+                submit();
+            } else if (keyEvent.key === "Escape") {
+                close();
+            }
+        });
+    });
+
     document.querySelectorAll(".reserve-button").forEach(button => {
         button.addEventListener("click", () => {
             const cardId = button.dataset.cardId;

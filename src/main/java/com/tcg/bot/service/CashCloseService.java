@@ -43,10 +43,41 @@ public class CashCloseService {
             String creditUsed,
             String expected,
             double expectedValue,
-            List<CashRegisterEntry> closes
+            List<CashRegisterEntry> closes,
+            Profit profit
     ) {
         public CashRegisterEntry lastClose() {
             return closes.isEmpty() ? null : closes.get(closes.size() - 1);
+        }
+    }
+
+    /**
+     * Ganancia de un grupo de ventas: precio menos costo, solo de las que tienen costo cargado.
+     * {@code withoutCost} cuenta las ventas que quedaron afuera porque no se sabía su costo.
+     */
+    public record Profit(double value, int withoutCost, boolean known) {
+        public String formatted() {
+            return signed(value);
+        }
+
+        public static Profit of(List<CashRegisterEntry> entries) {
+            double total = 0;
+            int missing = 0;
+            boolean any = false;
+            // Las ventas anuladas no cuentan, y por eso tampoco se miran las filas de anulación.
+            for (CashRegisterEntry entry : entries) {
+                if (!entry.isSale() || entry.isVoided()) {
+                    continue;
+                }
+                Double profit = entry.profit();
+                if (profit == null) {
+                    missing++;
+                } else {
+                    total += profit;
+                    any = true;
+                }
+            }
+            return new Profit(total, missing, any);
         }
     }
 
@@ -73,7 +104,8 @@ public class CashCloseService {
 
         return new Day(target, formatDate(target), moves, count, units, ars(gross), ars(Math.abs(voids)),
                 ars(Math.abs(purchases)), ars(Math.abs(credit)), signedAmount(expected), expected,
-                entries.stream().filter(CashRegisterEntry::isClose).toList());
+                entries.stream().filter(CashRegisterEntry::isClose).toList(),
+                Profit.of(moves));
     }
 
     /** Guarda el cierre. Los montos contados se separan por medio de pago porque en la tienda conviven. */

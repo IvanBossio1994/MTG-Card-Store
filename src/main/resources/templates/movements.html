@@ -273,6 +273,11 @@
                             <span th:text="#{mov.report.balance}">Diferencia stock</span>
                             <strong th:text="${report.balanceQuantity}">0</strong>
                         </div>
+                        <div class="report-kpi" th:if="${report.profit.known or report.profit.withoutCost > 0}"
+                             th:title="${report.profit.withoutCost > 0} ? #{profit.missing(${report.profit.withoutCost})} : #{profit.note}">
+                            <span th:text="#{profit.label}">Ganancia</span>
+                            <strong th:text="${report.profit.known ? report.profit.formatted() : '-'}">+$ 0</strong>
+                        </div>
                     </div>
 
                     <div class="report-bars">
