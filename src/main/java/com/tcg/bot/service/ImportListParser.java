@@ -22,6 +22,13 @@ public final class ImportListParser {
     public static final Pattern COLLECTOR_PATTERN =
             Pattern.compile("(?:#|\\s)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\\s*$");
 
+    /** "nonfoil", "non-foil", "non foil", también entre paréntesis, corchetes o asteriscos. */
+    static final Pattern NON_FOIL_PATTERN =
+            Pattern.compile("[\\[(*]?\\bnon[- ]?foil\\b[\\])*]?", Pattern.CASE_INSENSITIVE);
+    /** "foil", "(foil)", "[foil]", "*foil*" y la marca de Moxfield "*F*". */
+    static final Pattern FOIL_PATTERN =
+            Pattern.compile("[\\[(*]?\\bfoil\\b[\\])*]?|\\*F\\*", Pattern.CASE_INSENSITIVE);
+
     private ImportListParser() {
     }
 
@@ -125,6 +132,20 @@ public final class ImportListParser {
             quantity = Integer.parseInt(trailingQuantity.group(2));
         }
 
+        // Foil primero: si va al final ("... 410 foil", "... 410 *F*") taparía el número de coleccionista.
+        Boolean foil = null;
+        Matcher nonFoilMatcher = NON_FOIL_PATTERN.matcher(namePart);
+        if (nonFoilMatcher.find()) {
+            foil = false;
+            namePart = nonFoilMatcher.replaceAll(" ");
+        }
+        Matcher foilMatcher = FOIL_PATTERN.matcher(namePart);
+        if (foilMatcher.find()) {
+            foil = foil == null ? Boolean.TRUE : foil;
+            namePart = foilMatcher.replaceAll(" ");
+        }
+        namePart = namePart.replaceAll("\\s+", " ").trim();
+
         String setCode = "";
         Matcher setCodeMatcher = SET_CODE_PATTERN.matcher(namePart);
         if (setCodeMatcher.find()) {
@@ -138,19 +159,7 @@ public final class ImportListParser {
             collector = collectorMatcher.group(1);
             namePart = namePart.substring(0, collectorMatcher.start()).trim();
         }
-
-        String lowercaseNamePart = namePart.toLowerCase();
-        Boolean foil = null;
-        if (lowercaseNamePart.contains("nonfoil") || lowercaseNamePart.contains("non foil")) {
-            foil = false;
-        } else if (lowercaseNamePart.contains("foil")) {
-            foil = true;
-        }
-        namePart = namePart
-                .replaceAll("(?i)\\bnon[- ]?foil\\b", "")
-                .replaceAll("(?i)\\bfoil\\b", "")
-                .replaceAll("\\s+", " ")
-                .trim();
+        namePart = namePart.replaceAll("\\s+", " ").trim();
 
         if (namePart.isBlank() || quantity <= 0) {
             return null;

@@ -22,6 +22,28 @@ class ImportListParserTest {
     }
 
     @Test
+    void foilAtTheEndKeepsTheCollectorNumber() {
+        for (String text : new String[]{
+                "1 Sol Ring (CMM) 410 foil",
+                "1 Sol Ring (CMM) 410 FOIL",
+                "1 Sol Ring (CMM) 410 (foil)",
+                "1 Sol Ring [CMM] #410 [Foil]",
+                "1 Sol Ring (CMM) 410 *F*",
+                "1 Sol Ring foil (CMM) 410"}) {
+            var line = ImportListParser.parseImportLine(text);
+            assertThat(line.name()).as(text).isEqualTo("Sol Ring");
+            assertThat(line.setCode()).as(text).isEqualToIgnoringCase("CMM");
+            assertThat(line.collectorNumber()).as(text).isEqualTo("410");
+            assertThat(line.foil()).as(text).isTrue();
+        }
+
+        var nonFoil = ImportListParser.parseImportLine("2 Counterspell (CMM) 81 non-foil");
+        assertThat(nonFoil.name()).isEqualTo("Counterspell");
+        assertThat(nonFoil.collectorNumber()).isEqualTo("81");
+        assertThat(nonFoil.foil()).isFalse();
+    }
+
+    @Test
     void trailingQuantityAndCommentsAndBlankLines() {
         assertThat(ImportListParser.parseImportLine("Counterspell x3").quantity()).isEqualTo(3);
         assertThat(ImportListParser.parseImportLine("// sideboard")).isNull();

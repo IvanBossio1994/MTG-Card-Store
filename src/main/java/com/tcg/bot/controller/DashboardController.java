@@ -355,6 +355,14 @@ public class DashboardController {
     public String storeSettings(Model model) {
         addBaseModel(model, "");
         addStoreModel(model);
+        if (!licenseService.isPro() && storeSettingsService.hasSpreadsheetConfigured()
+                && inventoryService.hasCredentialsConfigured()) {
+            try {
+                model.addAttribute("usedCards", distinctCards(inventoryService.getInventoryCards()));
+            } catch (Exception e) {
+                // Sin Sheet accesible: no se muestra el uso.
+            }
+        }
         return "store";
     }
 
@@ -1958,10 +1966,19 @@ public class DashboardController {
         }
     }
 
-    private static int distinctCards(List<InventoryCard> cards) {
-        return (int) cards.stream()
+    /** Cartas distintas para el límite del plan gratis: Magic más las pestañas de Pokémon y Yu-Gi-Oh. */
+    private int distinctCards(List<InventoryCard> cards) {
+        int total = (int) cards.stream()
                 .filter(card -> card.getName() != null && !card.getName().isBlank())
                 .count();
+        for (com.tcg.bot.model.Game game : com.tcg.bot.model.Game.values()) {
+            try {
+                total += inventoryService.getGameCards(game).size();
+            } catch (Exception e) {
+                // Sin pestaña de ese juego todavía: no suma.
+            }
+        }
+        return total;
     }
 
     @PostMapping("/configuracion/licencia")

@@ -12,6 +12,23 @@ function t(key, ...args) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Instalación nueva sin Sheet: un aviso amable arriba en vez de los errores en rojo de cada sección.
+    // Inicio y Configuración ya explican qué hacer, así que ahí no se muestra.
+    const setupTemplate = document.getElementById("setup-banner-template");
+    const setupMain = document.querySelector("main.page");
+    const path = window.location.pathname;
+    const pathExplainsSetup = path === "/" || path.startsWith("/configuracion") || path.startsWith("/cuenta");
+    if (setupTemplate && setupMain && !pathExplainsSetup) {
+        document.body.classList.add("setup-pending");
+        const hero = setupMain.querySelector(":scope > .hero");
+        const banner = setupTemplate.content.cloneNode(true);
+        if (hero) {
+            hero.after(banner);
+        } else {
+            setupMain.prepend(banner);
+        }
+    }
+
     const menuButton = document.getElementById("menu-button");
     const appMenu = document.getElementById("app-menu");
     const menuBackdrop = document.getElementById("menu-backdrop");
