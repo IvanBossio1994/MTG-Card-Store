@@ -1874,3 +1874,102 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 })();
+
+// Actualizaciones: aviso de version nueva, "Actualizar ahora" y "Buscar actualizaciones".
+document.addEventListener("DOMContentLoaded", () => {
+    const toast = document.getElementById("update-toast");
+    const laterKey = "tcg-update-later";
+    if (toast) {
+        let dismissed = "";
+        try {
+            dismissed = sessionStorage.getItem(laterKey) || "";
+        } catch (e) {
+            dismissed = "";
+        }
+        toast.hidden = dismissed === toast.dataset.updateVersion;
+        const later = toast.querySelector("[data-update-later]");
+        if (later) {
+            later.addEventListener("click", () => {
+                try {
+                    sessionStorage.setItem(laterKey, toast.dataset.updateVersion || "");
+                } catch (e) {
+                    // Sin sessionStorage el aviso vuelve a aparecer en la proxima pantalla.
+                }
+                toast.hidden = true;
+            });
+        }
+    }
+
+    const showUpdateMessage = (text) => {
+        const box = toast || document.querySelector(".update-card");
+        if (!box) {
+            return;
+        }
+        box.hidden = false;
+        let message = box.querySelector(".update-toast-message, .update-progress");
+        if (!message) {
+            message = document.createElement("p");
+            message.className = "card-help update-progress";
+            box.appendChild(message);
+        }
+        message.textContent = text;
+    };
+
+    const waitForNewVersion = (version) => {
+        const startedAt = Date.now();
+        let warned = false;
+        const poll = () => {
+            fetch("/api/actualizacion", {cache: "no-store"})
+                .then((response) => (response.ok ? response.json() : null))
+                .then((status) => {
+                    if (status && status.currentVersion === version) {
+                        window.location.reload();
+                        return;
+                    }
+                    schedule();
+                })
+                .catch(schedule);
+        };
+        const schedule = () => {
+            if (!warned && Date.now() - startedAt > 3 * 60 * 1000) {
+                warned = true;
+                showUpdateMessage(t("updateSlow"));
+            }
+            window.setTimeout(poll, 2000);
+        };
+        window.setTimeout(poll, 4000);
+    };
+
+    document.querySelectorAll("[data-update-install]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const version = button.dataset.updateVersion || (toast && toast.dataset.updateVersion) || "";
+            document.querySelectorAll("[data-update-install], [data-update-later]").forEach((item) => {
+                item.disabled = true;
+            });
+            showUpdateMessage(t("updateInstalling"));
+            fetch("/api/actualizacion/instalar", {method: "POST"})
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("install");
+                    }
+                    waitForNewVersion(version);
+                })
+                .catch(() => {
+                    showUpdateMessage(t("updateFailed"));
+                    document.querySelectorAll("[data-update-install], [data-update-later]").forEach((item) => {
+                        item.disabled = false;
+                    });
+                });
+        });
+    });
+
+    document.querySelectorAll("[data-update-check]").forEach((button) => {
+        button.addEventListener("click", () => {
+            button.disabled = true;
+            showUpdateMessage(t("updateChecking"));
+            fetch("/api/actualizacion/buscar", {method: "POST"})
+                .catch(() => null)
+                .then(() => window.setTimeout(() => window.location.reload(), 3000));
+        });
+    });
+});

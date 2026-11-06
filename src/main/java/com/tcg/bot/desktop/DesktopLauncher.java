@@ -2,6 +2,7 @@ package com.tcg.bot.desktop;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
@@ -23,12 +24,21 @@ public class DesktopLauncher {
 
     private static final Logger log = LoggerFactory.getLogger(DesktopLauncher.class);
 
+    /** true cuando la app se reabrio sola despues de actualizarse: la pestana que ya estaba abierta se recarga sola. */
+    @Value("${app.updates.relaunched:false}")
+    private boolean relaunchedAfterUpdate;
+
+    @Value("${app.version:dev}")
+    private String version;
+
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
         System.out.println();
-        System.out.println("TCG Store Helper esta funcionando en " + URL);
+        System.out.println("TCG Store Helper " + version + " esta funcionando en " + URL);
         System.out.println("Para cerrar la app, cerra esta ventana.");
-        openBrowser();
+        if (!relaunchedAfterUpdate) {
+            openBrowser();
+        }
     }
 
     public static boolean isDesktop() {

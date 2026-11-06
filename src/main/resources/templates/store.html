@@ -206,6 +206,31 @@
             <button class="secondary-button" type="submit" th:text="#{settings.license.save}">Guardar licencia</button>
         </form>
     </section>
+
+    <section class="settings-card update-card" th:if="${appUpdate != null}">
+        <h2 th:text="#{update.title}">Actualizaciones</h2>
+        <p>
+            <strong th:text="#{update.current(${appUpdate.currentVersion})}">Versión 1.0.0</strong>
+            <span th:switch="${appUpdate.state.name()}">
+                <span th:case="'DISABLED'" th:text="' · ' + #{update.state.disabled}"></span>
+                <span th:case="'UP_TO_DATE'" th:text="' · ' + #{update.state.upToDate}"></span>
+                <span th:case="'DOWNLOADING'" th:text="' · ' + #{update.state.downloading(${appUpdate.latestVersion})}"></span>
+                <span th:case="'READY'" th:text="' · ' + #{update.state.ready(${appUpdate.latestVersion})}"></span>
+                <span th:case="'INSTALLING'" th:text="' · ' + #{update.state.installing}"></span>
+                <span th:case="'ERROR'" th:text="' · ' + #{update.state.error}"></span>
+                <span th:case="*" th:text="' · ' + #{update.state.checking}"></span>
+            </span>
+        </p>
+        <p class="card-help" th:text="#{update.help}">La app busca versiones nuevas sola al abrirse y las descarga en segundo plano. Tu configuración, tu Sheet y tu licencia no se tocan.</p>
+        <div class="update-actions" th:if="${appUpdate.enabled}">
+            <button th:if="${appUpdate.ready}" class="primary-button" type="button" data-update-install
+                    th:attr="data-update-version=${appUpdate.latestVersion}" th:text="#{update.installNow}">Actualizar ahora</button>
+            <button th:unless="${appUpdate.ready}" class="secondary-button" type="button" data-update-check
+                    th:text="#{update.checkNow}">Buscar actualizaciones</button>
+            <a th:if="${appUpdate.releaseUrl != ''}" th:href="${appUpdate.releaseUrl}" target="_blank" rel="noopener"
+               th:text="#{update.whatsNew}">Ver novedades</a>
+        </div>
+    </section>
 </main>
 
 <div th:replace="~{fragments/layout :: loading(#{loading.settings.title}, #{loading.settings.message})}"></div>
