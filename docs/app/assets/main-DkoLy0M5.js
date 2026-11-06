@@ -146,7 +146,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
       </label>
       <p class="register-total"><span>${m(`common.total`)}</span> <strong>${o(c)}</strong></p>
     </div>
-    ${s.length?t`<div class="table-wrap cash-table-wrap"><table class="cash-table">
+    ${s.length?t`<div class="table-wrap cash-table-wrap" tabindex="0"><table class="cash-table">
           <thead><tr>
             <th>${m(`mov.col.time`)}</th><th>${m(`common.card`)}</th><th>${m(`common.set`)}</th>
             <th>${m(`common.price`)}</th><th>${m(`mov.col.qty`)}</th><th>${m(`common.total`)}</th><th>${m(`mov.col.status`)}</th>
@@ -163,7 +163,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
         </table></div>`:t`<div class="empty-state"><strong>${m(`mov.cash.empty.title`)}</strong><p>${m(`mov.cash.empty.text`)}</p></div>`}
   `}function br(e,n,r){return $t(e)?t`<span class="cash-badge void">${m(`mov.badge.void`)}</span>`:e.voided?t`<span class="cash-badge voided">${m(`mov.badge.voided`)}</span>`:Qt(e)&&e.saleId?t`<button class="text-action cash-void" type="button" ?disabled=${n} title=${m(`mov.void.title`)}
       @click=${()=>r(e.saleId)}>${m(`mov.void`)}</button>`:t`<span>${m(`mov.badge.sale`)}</span>`}var xr=`https://ivanbossio1994.github.io/MTG-Card-Store/app/data/ck-prices.json`,Sr=[`name`,`edition`,`variation`,`sku`,`foil`,`nm`,`ex`,`vg`,`g`],Cr=36e5,wr=e=>typeof e==`number`&&Number.isFinite(e)?e:null,Tr=e=>e==null?``:String(e);function Er(e){let t=JSON.parse(e);if(JSON.stringify(t?.fields)!==JSON.stringify(Sr)||!Array.isArray(t.data))throw Error(`La lista de Card Kingdom tiene un formato desconocido.`);let n=t.data.filter(Array.isArray).map(e=>({name:Tr(e[0]),edition:Tr(e[1]),variation:Tr(e[2]),sku:Tr(e[3]),foil:e[4]===1||e[4]===!0,nm:wr(e[5]),ex:wr(e[6]),vg:wr(e[7]),g:wr(e[8])}));return{updated:Tr(t.updated),products:n}}var Dr=async e=>{let t=await fetch(e);if(!t.ok)throw Error(`No se pudo leer la lista de Card Kingdom (${t.status}).`);return t.text()},Or=class{fetcher;url;now;loaded=null;pending=null;constructor(e=Dr,t=xr,n=Date.now){this.fetcher=e,this.url=t,this.now=n}async priceList(e=!1){return!e&&this.loaded&&this.loaded.at+Cr>this.now()?this.loaded.list:(this.pending??=this.fetcher(this.url).then(e=>{let t=Er(e);return this.loaded={list:t,at:this.now()},t}).catch(e=>(console.warn(`No se pudo obtener la lista de Card Kingdom.`,e),this.loaded?.list??null)).finally(()=>{this.pending=null}),this.pending)}},kr=e=>e==null||e.trim()===``;function Ar(e,t){if(!e)return null;switch(yt(kr(t)?`NM`:t)){case`NM`:return e.nm;case`LP`:case`EX`:return e.ex;case`VG`:return e.vg;case`G`:return e.g;default:return null}}function jr(e,t){if(!e||kr(e.name)||kr(e.collectorNumber)||kr(e.printing))return null;let n=!kr(e.setCode),r=!kr(e.setName);if(!n&&!r||!t)return null;let i=`${n?e.setCode.trim():``}-`.toLowerCase(),a=e.name.toLowerCase(),o=e.printing.toLowerCase()===`foil`,s=null;for(let c of t.products)if(c.name.toLowerCase()===a&&(!n||c.sku.toLowerCase().startsWith(i))&&!(r&&c.edition.toLowerCase()!==e.setName.toLowerCase())&&Vr(c.sku,e.collectorNumber)&&c.foil===o){if(s)return console.warn(`Coincidencia ambigua para ${e.name}. No se actualiza automáticamente.`),null;s=c}return s}function Mr(e,t=new Set,n=new Set){let r={name:``};if(kr(e))return r;let i=e.split(`,`),a=i.length-1;for(let e=i.length-1;e>=0&&(i[e].trim()===``||Pr(i[e],r,t,n));e--)a=e-1;return r.name=i.slice(0,a+1).join(`,`).trim().replace(/,\s*$/,``),r}function Nr(e){return e.slice(e.indexOf(`:`)+1).trim()}function Pr(e,t,n,r){let i=e.trim(),a=i.toLowerCase();return a===`foil`?(t.foil=!0,!0):a===`nonfoil`?(t.foil=!1,!0):(a.startsWith(`set:`)||a.startsWith(`setcode:`))&&Nr(i)?(t.setCode=Nr(i),!0):(a.startsWith(`edicion:`)||a.startsWith(`edición:`)||a.startsWith(`edition:`))&&Nr(i)?(t.set=Nr(i),!0):(a.startsWith(`num:`)||a.startsWith(`numero:`)||a.startsWith(`número:`)||a.startsWith(`collector:`))&&Nr(i)?(t.collectorNumber=Nr(i),!0):/^\d+$/.test(a)?(t.collectorNumber=i,!0):t.setCode==null&&n.has(a)?(t.setCode=i,!0):t.set==null&&r.has(a)?(t.set=i,!0):!1}function Fr(e,t){if(!t)return[];let n=new Set,r=new Set;for(let e of t.products){let t=e.sku.indexOf(`-`);t>=0&&n.add(e.sku.slice(0,t).toLowerCase()),kr(e.edition)||r.add(e.edition.trim().toLowerCase())}let i=Mr(e,n,r);return t.products.filter(e=>{if(!Ir(e,i.name))return!1;if(!kr(i.setCode)){let t=e.sku.toLowerCase().startsWith(`${i.setCode.toLowerCase()}-`),n=Lr(e.edition).includes(Lr(i.setCode));if(!t&&!n)return!1}if(!kr(i.set)&&e.edition.toLowerCase()!==i.set.toLowerCase())return!1;if(!kr(i.collectorNumber)){let t=Vr(e.sku,i.collectorNumber),n=e.variation!==``&&Br(e.variation).includes(Br(i.collectorNumber));if(!t&&!n)return!1}return i.foil==null||e.foil===i.foil})}function Ir(e,t){let n=Lr(e.name),r=Lr(e.variation),i=Lr(t);return i===``||n.includes(i)||r.includes(i)?!0:t.includes(`/`)?t.split(`/`).map(Lr).filter(e=>e!==``).some(e=>n.includes(e)||r.includes(e)):!1}function Lr(e){return(e??``).toLowerCase().replace(/[^a-z0-9]+/g,` `).trim().replace(/\s+/g,` `)}function Rr(e){let t=e.indexOf(`-`);return t<0?e:e.slice(t+1)}function zr(e){return e.toLowerCase().replace(/[^a-z0-9]/g,``).replace(/^0+(?!$)/,``)}function Br(e){return(e??``).toLowerCase().replace(/[^0-9]/g,``).replace(/^0+(?!$)/,``)}function Vr(e,t){if(e==null||t==null)return!1;let n=Rr(e),r=zr(n);if(r!==``&&r===zr(t))return!0;let i=Br(n);return i!==``&&i===Br(t)}var Hr=`https://api.scryfall.com/cards/collection`;function Ur(e,t){return(t?e.usdFoil??e.usd:e.usd??e.usdFoil)??null}function Wr(e,t){return(t?e.eurFoil??e.eur:e.eur??e.eurFoil)??null}function Gr(e){return e==null?``:e.trim().toLowerCase().replace(/^0+(?=.)/,``)}function Kr(e,t){return`${(e??``).trim().toLowerCase()}|${Gr(t)}`}function qr(e){return JSON.stringify({identifiers:e.map(e=>({set:e.setCode.trim().toLowerCase(),collector_number:Gr(e.collectorNumber)}))})}function Jr(e){if(e==null||e===``)return null;let t=Number(e);return Number.isFinite(t)?t:null}function Yr(e){return e==null?``:String(e)}function Xr(e){let t=new Map,n=JSON.parse(e);if(!Array.isArray(n?.data))return t;for(let e of n.data){if(!e||typeof e!=`object`)continue;let n=e.prices&&typeof e.prices==`object`?e.prices:{};t.set(Kr(Yr(e.set),Yr(e.collector_number)),{usd:Jr(n.usd),usdFoil:Jr(n.usd_foil),eur:Jr(n.eur),eurFoil:Jr(n.eur_foil),ids:{scryfallId:Yr(e.id),tcgplayerId:Yr(e.tcgplayer_id),cardmarketId:Yr(e.cardmarket_id)}})}return t}var Zr=async e=>{let t=await fetch(Hr,{method:`POST`,headers:{Accept:`application/json`,"Content-Type":`application/json`},body:e});if(t.status>=400)throw Error(`Scryfall respondió ${t.status}`);return t.text()},Qr=e=>e==null||e.trim()===``,$r=class{fetcher;now;pauseMs;cache=new Map;constructor(e=Zr,t=Date.now,n=100){this.fetcher=e,this.now=t,this.pauseMs=n}async prices(e){let t=new Map,n=new Map,r=this.now();for(let i of e){if(!i||Qr(i.setCode)||Qr(i.collectorNumber))continue;let e=Kr(i.setCode,i.collectorNumber),a=this.cache.get(e);a&&a.at+432e5>r?a.prices&&t.set(e,a.prices):n.set(e,i)}let i=[...n.values()];for(let e=0;e<i.length;e+=75){let n=i.slice(e,e+75);try{let e=Xr(await this.fetcher(qr(n)));for(let i of n){let n=Kr(i.setCode,i.collectorNumber),a=e.get(n)??null;this.cache.set(n,{prices:a,at:r}),a&&t.set(n,a)}}catch(e){console.info(`Scryfall no respondió; se sigue solo con Card Kingdom.`,e);break}this.pauseMs>0&&e+75<i.length&&await new Promise(e=>setTimeout(e,this.pauseMs))}return t}},ei=`SIN MATCH CK`,ti=`SIN PRECIO CK`,ni=(e,t)=>_(e,t).toFixed(ze(t)),ri=(e,t)=>e.replace(`,`,`.`)===t.replace(`,`,`.`);function ii(e,t,n,r){let i={ck:e.ckPriceUsd,local:e.localPrice,action:e.action};if(x(e)<=0)return e.action=nt,i.action!==e.action;let a=jr(e,t),o=Ar(a,e.condition);if(o==null)e.ckPriceUsd=``,e.action=a?ti:ei;else{let t=e.printing.trim().toLowerCase()===`foil`,i=vt(o,n.get(Kr(e.setCode,e.collectorNumber))??null,t,r).localPrice??_t(o,r);e.ckPriceUsd=o.toFixed(2),e.localPrice=ni(i,r.currency),e.action=tt}return!ri(i.ck,e.ckPriceUsd)||!ri(i.local,e.localPrice)||i.action!==e.action}function ai(e,t){let n=e=>y(e)??``;return[[t.localPrice,n(e.localPrice)],[t.ckPriceUsd,n(e.ckPriceUsd)],[t.action,e.action]].flatMap(([t,n])=>t===void 0?[]:[{range:h(g,`${Ze(t)}${e.rowIndex}`),values:[[n]]}])}async function oi(e,t,n,r){let i=await r.ckList();if(!i)return null;try{await si(e,t)}catch(e){console.warn(`No se pudo ordenar la pestaña Inventario.`,e)}let{cards:a,columns:o}=await $e(e,t),s=n.tcgplayerEnabled||n.cardmarketEnabled?await r.scryfall(a.filter(e=>x(e)>0)):new Map,c=a.filter(e=>e.rowIndex>0&&ii(e,i,s,n));return c.length&&await e.write(t,c.flatMap(e=>ai(e,o))),{cards:a,updated:c.length,extra:s}}async function si(e,t){let n=(await e.sheetList(t)).find(e=>e.title===g);if(!n)return;let r=(await e.read(t,h(`Inventario`,`A1:Z1`)))[0]??[],i=qe(r),a=[`name`,`setName`,`setCode`,`collectorNumber`],o=Math.max(r.length,...Object.values(i).map(e=>(e??0)+1));await e.batchUpdate(t,[{sortRange:{range:{sheetId:n.sheetId,startRowIndex:1,startColumnIndex:0,endColumnIndex:o},sortSpecs:a.filter(e=>i[e]!==void 0).map(e=>({dimensionIndex:i[e],sortOrder:`ASCENDING`}))}}])}var ci=`Agregado al stock`,li=`Ajuste de stock`,ui=(e,t)=>{let n=(e??``).trim();return n!==``&&n.toLowerCase()===(t??``).trim().toLowerCase()};function di(e,t){return e.find(e=>e.catalogId===t.catalogId)??e.find(e=>ui(e.name,t.name)&&ui(e.number,t.number)&&ui(e.finish,t.finish)&&(ui(e.setName,t.setName)||ui(e.setCode,t.setCode)))??null}var fi=class{sheet;pricing;appendMovements;catalogs;now;pauseMs;constructor(e,t,n=async()=>{},r=new Kn,i=()=>new Date,a=250){this.sheet=e,this.pricing=t,this.appendMovements=n,this.catalogs=r,this.now=i,this.pauseMs=a}localPrice(e){return e==null||e<=0?0:_t(e,this.pricing())}async search(e,t){let[n,r]=await Promise.all([this.catalogs.search(e,t),this.sheet.cards(e)]);return n.map(e=>({print:e,stockCard:di(r,e),suggested:this.localPrice(e.usd)})).sort((e,t)=>Number((t.stockCard?.quantity??0)>0)-Number((e.stockCard?.quantity??0)>0))}async cards(e){return(await this.sheet.cards(e)).sort((e,t)=>e.name.localeCompare(t.name,void 0,{sensitivity:`base`}))}async add(e,t){let n=di(await this.sheet.cards(e),t);return n?this.change(e,n.id,1):this.createRow(e,t,1)}async ensureRow(e,t){return di(await this.sheet.cards(e),t)??this.createRow(e,t,0)}async createRow(e,t,n){let r={rowIndex:0,quantity:n,name:t.name,setName:t.setName,setCode:t.setCode,number:t.number,rarity:t.rarity,finish:t.finish,usd:t.usd,localPrice:this.localPrice(t.usd),id:Qn(),catalogId:t.catalogId,cost:null,location:``};return r.rowIndex=await this.sheet.append(e,r),n>0&&await this.movement(e,r,n,0,ci),r}async change(e,t,n){let r=(await this.sheet.cards(e)).find(e=>t&&e.id===t);if(!r)throw new T(`games.err.gone`,[C[e].sheetName]);let i=r.quantity,a=Math.max(i+n,0);if(a===i)throw new T(`err.noUnits`,[r.name]);return r.quantity=a,await this.sheet.update(e,[r]),await this.movement(e,r,a-i,i,n>0?ci:li),r}async refreshPrices(e){let t=[...new Set((await this.sheet.cards(e)).map(e=>e.name))].slice(0,150),n=[];for(let r of t){let t=!this.catalogs.isCached(e,r);try{n.push(...await this.catalogs.search(e,r))}catch{}t&&this.pauseMs>0&&await new Promise(e=>setTimeout(e,this.pauseMs))}let r=[];for(let t of await this.sheet.cards(e)){let e=n.find(e=>di([t],e)===t);if(!e)continue;let i=e.catalogId!==t.catalogId,a=this.localPrice(e.usd),o=a>0&&a!==t.localPrice;(i||e.usd!==t.usd||o)&&(t.catalogId=e.catalogId,t.usd=e.usd,a>0&&(t.localPrice=a),r.push(t))}return r.length&&await this.sheet.update(e,r),r.length}async movement(e,t,n,r,i){let a=$n(t,e),o=this.now();try{await this.appendMovements([{date:E(o),time:D(o),quantity:n,name:a.name,setName:a.setName,setCode:a.setCode,collectorNumber:a.collectorNumber,printing:a.printing,previous:r,next:r+n,source:i}])}catch{}}},pi=200,k={game:`pokemon`,query:``,results:null,cards:{},loading:!1},mi=null;function hi(e,t,n,r){if(mi?.spreadsheetId!==t){let i=new O(e,t,r);mi={spreadsheetId:t,service:new fi(new tr(e,t,r),()=>n()??ft,e=>i.appendMovements(e))},k.cards={},k.results=null}return mi.service}function gi(){return Object.keys(k.cards).flatMap(e=>(k.cards[e]??[]).map(t=>$n(t,e)))}async function _i(e){let t=Object.keys(C),n=await Promise.all(t.map(t=>e.cards(t)));if(t.forEach((e,t)=>{k.cards[e]=n[t]}),k.results)for(let e of k.results)e.stockCard=k.cards[k.game]?.find(t=>t.id===e.stockCard?.id)??e.stockCard}function vi(e,t){let n=C[e].label,r=t instanceof Error?t.message:String(t);return r.includes(`429`)?m(`games.err.rateLimit`,n):t instanceof DOMException&&(t.name===`TimeoutError`||t.name===`AbortError`)?m(`games.err.timeout`,n):t instanceof TypeError?m(`games.err.offline`,n):/respondió 5\d\d/.test(r)?m(`games.err.down`,n):m(`games.err.other`,n,r)}function yi(e){k.loading||(k.loading=!0,_i(e.service).catch(()=>e.notify(m(`games.err.read`,C[k.game].sheetName))).finally(()=>{k.loading=!1,e.draw()}))}function bi(e,t){k.game=t,k.results=null,k.query=``,e.draw()}function xi(e,t){t.preventDefault();let n=k.game,r=k.query.trim();r&&e.run(async()=>{try{k.results=await e.service.search(n,r)}catch(t){k.results=null,e.notify(vi(n,t))}})}function Si(e,t){let n=k.game;e.run(async()=>{let r=await e.service.add(n,t.print);t.stockCard=r,await _i(e.service),e.notify(m(`games.nowInStock`,r.name,r.quantity))})}function Ci(e,t,n){let r=k.game;e.run(async()=>{await e.service.change(r,t.id,n),await _i(e.service)})}function wi(e){let t=k.game;e.run(async()=>{try{let n=await e.service.refreshPrices(t);await _i(e.service),e.notify(n?m(`games.prices.updated`,n):m(`games.prices.same`))}catch(t){e.notify(m(`games.prices.error`,t instanceof Error?t.message:String(t)))}})}function Ti(e){let n=k.game,r=k.cards[n];!r&&!k.loading&&yi(e);let a=t=>t>0?v(t,e.currency,p()):`-`,o=e=>e==null?`-`:`US$ ${e.toFixed(2)}`,s=n===`pokemon`?`TCGdex / TCGplayer`:`YGOPRODeck`;return t`
-    <nav class="screen-tabs game-tabs">
+    <nav class="screen-tabs game-tabs" aria-label=${m(`layout.game`)}>
       ${Object.keys(C).map(r=>t`<button type="button" class=${r===n?`active`:``}
         aria-pressed=${r===n} @click=${()=>bi(e,r)}>${C[r].label}</button>`)}
     </nav>
@@ -416,7 +416,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
       </div>
     </form>
   </section>`}function so(e,n){return t`<h2>${m(`close.detail.title`)}</h2>
-    ${e.moves.length?t`<div class="table-wrap">
+    ${e.moves.length?t`<div class="table-wrap" tabindex="0">
       <table class="close-table">
         <thead><tr><th>${m(`mov.col.time`)}</th><th>${m(`common.card`)}</th><th>${m(`mov.col.qty`)}</th><th>${m(`common.total`)}</th></tr></thead>
         <tbody>${e.moves.map(e=>t`<tr class=${sn(e)<0?`cash-row-void`:``}>
@@ -456,7 +456,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
     </section>
 
     <h2>${m(`report.top.title`)}</h2>
-    ${e.topCards.length?t`<div class="table-wrap"><table class="report-top">
+    ${e.topCards.length?t`<div class="table-wrap" tabindex="0"><table class="report-top">
       <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.set`)}</th><th>${m(`report.col.units`)}</th>
         <th>${m(`mov.report.bar.sales`)}</th><th>${m(`profit.label`)}</th></tr></thead>
       <tbody>${e.topCards.map(e=>t`<tr><td>${e.name}</td><td>${e.set}</td><td>${e.units}</td>
@@ -465,7 +465,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
 
     <h2>${m(`report.still.title`)} <small class="supporting">${m(`report.still.eyebrow`,90)}</small></h2>
     ${e.stillTotal>e.still.length?t`<p class="section-note">${m(`report.still.more`,e.still.length,e.stillTotal)}</p>`:i}
-    ${e.still.length?t`<div class="table-wrap"><table class="report-still">
+    ${e.still.length?t`<div class="table-wrap" tabindex="0"><table class="report-still">
       <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.set`)}</th><th>${m(`common.stock`)}</th>
         <th>${m(`report.col.value`)}</th><th>${m(`report.col.last`)}</th></tr></thead>
       <tbody>${e.still.map(e=>t`<tr>
@@ -476,7 +476,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
 
     <h2>${m(`report.customers.title`)}</h2>
     <p class="section-note">${m(`report.customers.note`)}</p>
-    ${e.customers.length?t`<div class="table-wrap"><table class="report-customers">
+    ${e.customers.length?t`<div class="table-wrap" tabindex="0"><table class="report-customers">
       <thead><tr><th>${m(`common.customer`)}</th><th>${m(`report.col.orders`)}</th><th>${m(`common.total`)}</th></tr></thead>
       <tbody>${e.customers.map(e=>t`<tr><td>${e.name}</td><td>${e.orders}</td><td class="nowrap">${r(e.total)}</td></tr>`)}</tbody>
     </table></div>`:a(`report.customers.empty`)}`}function Oo(e){return F.sheet!==e.spreadsheetId&&Object.assign(F,{sheet:e.spreadsheetId,data:null,error:!1}),F.data||F.loading||F.error||Eo(e),t`
@@ -501,7 +501,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
       </svg>
       <div class="price-chart-dates"><span>${na(c.first)}</span><span>${na(c.last)}</span></div>
     </div>`:t`<p class="supporting">${m(`prices.onePoint`)}</p>`}
-    <div class="table-wrap"><table class="price-history-table">
+    <div class="table-wrap" tabindex="0"><table class="price-history-table">
       <thead><tr><th>${m(`common.date`)}</th><th>${m(`dash.col.yourPrice`)}</th><th>CK USD</th><th>TCGplayer</th><th>Cardmarket</th></tr></thead>
       <tbody>${i.length?[...i].reverse().map(e=>t`<tr><td>${na(e.date)}</td><td>${a(e.localPrice)}</td>
           <td>${o(e.ckUsd)}</td><td>${o(e.tcgplayerUsd)}</td><td>${s(e.cardmarketEur)}</td></tr>`):t`<tr><td class="empty" colspan="5">${m(`prices.noRows`)}</td></tr>`}</tbody>
@@ -515,9 +515,9 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
         .value=${L.filter} @input=${t=>{L.filter=t.target.value,e.draw()}} />
     </div>
     ${n.length?i:t`<p class="supporting">${m(`prices.noHistory`)}</p>`}
-    ${o.length?t`<div class="table-wrap"><table class="price-trend-table">
+    ${o.length?t`<div class="table-wrap" tabindex="0"><table class="price-trend-table">
       <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.set`)}</th><th>${m(`dash.col.yourPrice`)}</th><th>CK USD</th>
-        <th>${m(`prices.col.30days`)}</th><th></th></tr></thead>
+        <th>${m(`prices.col.30days`)}</th><th><span class="visually-hidden">${m(`dash.col.action`)}</span></th></tr></thead>
       <tbody>${o.map(n=>t`<tr class="price-trend-row">
         <td>${n.card.name}</td><td>${n.card.setName||`-`}</td><td class="nowrap">${r(n.currentLocal)}</td>
         <td class="nowrap">${n.currentCkUsd===null?`-`:v(n.currentCkUsd,`USD`,p())}</td>
@@ -545,7 +545,7 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
         <h2>${m(`deck.foundTitle`)}</h2>
         <button type="button" class="primary-button deck-add" ?disabled=${e.busy} @click=${()=>e.addToCart(a)}>${m(`deck.addToCart`)}</button>
       </div>
-      <div class="table-wrap"><table class="deck-table">
+      <div class="table-wrap" tabindex="0"><table class="deck-table">
         <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.set`)}</th><th>${m(`deck.col.take`)}</th><th>${m(`details.location`)}</th>
           <th>${m(`deck.col.price`)}</th><th>${m(`buy.col.subtotal`)}</th></tr></thead>
         <tbody>${n.lines.flatMap(e=>e.picks.map((n,a)=>t`<tr>
@@ -635,8 +635,8 @@ Sideboard
     </form>
 
     <h2>${m(`wanted.waiting.title`)}</h2>
-    ${!z.views&&!z.error?t`<p>…</p>`:a.length?t`<div class="table-wrap"><table class="wanted-table">
-        <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.customer`)}</th><th>${m(`res.contact`)}</th><th>${m(`wanted.col.since`)}</th><th></th></tr></thead>
+    ${!z.views&&!z.error?t`<p>…</p>`:a.length?t`<div class="table-wrap" tabindex="0"><table class="wanted-table">
+        <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.customer`)}</th><th>${m(`res.contact`)}</th><th>${m(`wanted.col.since`)}</th><th><span class="visually-hidden">${m(`dash.col.action`)}</span></th></tr></thead>
         <tbody>${a.map(n=>t`<tr><td>${Qs(n)}</td><td>${n.wanted.customer}</td><td>${n.wanted.contact}</td>
           <td class="nowrap">${na(n.wanted.date)}</td>
           <td><button class="text-button" type="button" ?disabled=${e.busy} title=${m(`wanted.remove.title`)}
@@ -662,7 +662,7 @@ Sideboard
           <h2>${m(`rev.restock.title`)}</h2>
         </div></div>
         <p class="supporting">${m(`rev.restock.text`,30)}</p>
-        <div class="table-wrap"><table class="review-table">
+        <div class="table-wrap" tabindex="0"><table class="review-table">
           <thead><tr><th>${m(`common.card`)}</th><th>${m(`rev.col.edition`)}</th><th>${m(`mov.report.bar.sold`)}</th><th>${m(`common.stock`)}</th></tr></thead>
           <tbody>${r.lowStock.map(e=>t`<tr>
             <td>${e.card.name}</td><td>${e.card.setName||`-`}</td><td>${e.soldLastMonth}</td>
@@ -679,7 +679,7 @@ Sideboard
           </div>
           <button class="secondary-button" type="button" @click=${()=>e.go(`prices`)}>${m(`rev.seeHistory`)}</button>
         </div>
-        <div class="table-wrap"><table class="review-table">
+        <div class="table-wrap" tabindex="0"><table class="review-table">
           <thead><tr><th>${m(`common.card`)}</th><th>${m(`rev.col.edition`)}</th><th>${m(`dash.col.yourPrice`)}</th><th>${m(`rev.col.change`)}</th></tr></thead>
           <tbody>${r.priceMoves.map(e=>t`<tr>
             <td>${e.card.name}</td><td>${e.card.setName||`-`}</td>
@@ -761,8 +761,8 @@ Sideboard
         <h2>${r&&!r.length?m(`ident.none`):m(`rev.noEdition.title`,r?.length??0)}</h2>
       </div></div>
       ${r?r.length?t`
-        <div class="table-wrap"><table class="identify-table">
-          <thead><tr><th>${m(`common.card`)}</th><th>${m(`rev.col.edition`)}</th><th>${m(`dash.search.number`)}</th><th>${m(`common.stock`)}</th><th></th></tr></thead>
+        <div class="table-wrap" tabindex="0"><table class="identify-table">
+          <thead><tr><th>${m(`common.card`)}</th><th>${m(`rev.col.edition`)}</th><th>${m(`dash.search.number`)}</th><th>${m(`common.stock`)}</th><th><span class="visually-hidden">${m(`dash.col.action`)}</span></th></tr></thead>
           <tbody>${r.map(r=>t`<tr class=${n?.rowIndex===r.rowIndex?`selected-row`:``}>
             <td>${r.name}</td>
             <td>${r.setName||r.setCode||m(`ident.missing`)}</td>
@@ -832,7 +832,7 @@ Sideboard
             </label>
             <button class="primary-button" type="submit" ?disabled=${e.busy}>${m(`imp.addToStock`)}</button>
           </div>`:i}
-          <div class="table-wrap"><table class="import-results-table">
+          <div class="table-wrap" tabindex="0"><table class="import-results-table">
             <thead><tr><th>${m(`imp.col.add`)}</th><th>${m(`common.quantity`)}</th><th>${m(`common.stock`)}</th><th>${m(`imp.col.name`)}</th>
               <th>${m(`common.set`)}</th><th>${m(`dash.col.codeNumber`)}</th><th>${m(`dash.col.variation`)}</th><th>Printing</th><th>NM USD</th></tr></thead>
             <tbody>${n.map((t,n)=>xl(e,t,n))}</tbody>
@@ -927,9 +927,9 @@ Sideboard
             <span><input name="percent" type="number" min="0" max="100" .value=${String(n.percent[n.payment])}
               @change=${e=>f({...n,percent:{...n.percent,[n.payment]:Number(e.target.value)||0}})} />
               ${m(n.payment===`consign`?`consign.percentOfSale`:`buy.percentOfPrice`)}</span></label>
-          <div class="table-wrap"><table class="buy-table">
+          <div class="table-wrap" tabindex="0"><table class="buy-table">
             <thead><tr><th>${m(`common.card`)}</th><th>${m(`common.price`)}</th><th>${m(`common.quantity`)}</th>
-              <th>${m(`buy.col.unit`)}</th><th>${m(`buy.col.subtotal`)}</th><th></th></tr></thead>
+              <th>${m(`buy.col.unit`)}</th><th>${m(`buy.col.subtotal`)}</th><th><span class="visually-hidden">${m(`dash.col.action`)}</span></th></tr></thead>
             <tbody>${n.items.map((e,r)=>{let i=Su(e,n,c),a=e=>f({...n,items:n.items.map((t,n)=>n===r?{...t,...e}:t)});return t`<tr>
                 <td><strong>${e.name}</strong><br /><small>${[e.set,e.printing].filter(Boolean).join(` · `)}</small></td>
                 <td>${e.price?d(e.price):`-`}</td>
@@ -987,7 +987,7 @@ Sideboard
     <p>${m(`google.connectedAs`,e.email)} ·
       <a href=${`https://docs.google.com/spreadsheets/d/${J}/edit`} target="_blank" rel="noopener">
         ${m(`settings.google.openSheet`)}</a></p>
-    <nav class="screen-tabs">
+    <nav class="screen-tabs" aria-label=${m(`layout.mainMenu`)}>
       ${Wd().map(e=>t`<button type="button" class=${e.id===Qu?`active`:``} aria-pressed=${e.id===Qu}
           @click=${()=>Id(e.id)}>${m(e.title)}</button>`)}
     </nav>
