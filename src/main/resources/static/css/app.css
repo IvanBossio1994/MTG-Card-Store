@@ -4914,3 +4914,21 @@ a.wanted-alert:hover {
     letter-spacing: 0.3em;
     text-align: center;
 }
+
+/* Aviso de error/éxito arriba del texto de la tarjeta de Google: que no se encimen. */
+.settings-card .alert + .card-help,
+.settings-card .alert + p + .card-help {
+    margin-top: 0;
+}
+
+.google-card .alert {
+    margin-bottom: 16px;
+}
+
+.google-card .consent-tip {
+    margin-top: 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--blue);
+    background: var(--blue-soft);
+    border-radius: 6px;
+}

@@ -28,8 +28,12 @@
             </p>
             <p class="card-help" th:text="#{settings.google.scope}">La app solo ve los Sheets que crea ella, nunca el resto de tu Drive.</p>
             <div class="google-actions">
+                <a th:if="${sheetConfigured and spreadsheetId != null and spreadsheetId != ''}" class="primary-button"
+                   th:href="@{'https://docs.google.com/spreadsheets/d/' + ${spreadsheetId} + '/edit'}"
+                   target="_blank" rel="noopener" th:text="#{settings.google.openSheet}">Abrir mi Sheet</a>
                 <form method="post" th:action="@{/cuenta/google/crear-sheet}">
-                    <button class="primary-button" type="submit" th:text="#{settings.google.createSheet}">Crear mi Sheet de inventario</button>
+                    <button th:class="${sheetConfigured} ? 'secondary-button' : 'primary-button'" type="submit"
+                            th:text="${sheetConfigured} ? #{settings.google.createAnotherSheet} : #{settings.google.createSheet}">Crear mi Sheet de inventario</button>
                 </form>
                 <form method="post" th:action="@{/cuenta/google/desconectar}">
                     <button class="secondary-button" type="submit" th:text="#{settings.google.disconnect}">Desconectar</button>
@@ -38,6 +42,7 @@
         </th:block>
         <th:block th:unless="${googleAccount.connected}">
             <p class="card-help" th:text="#{settings.google.intro}">Entrá con tu cuenta de Google.</p>
+            <p class="card-help consent-tip" th:if="${googleAccount.configured}" th:text="#{settings.google.consentTip}">Tildá la casilla de Google Drive.</p>
             <a th:if="${googleAccount.configured}" class="primary-button" th:href="@{/cuenta/google/conectar}" th:text="#{settings.google.connect}">Conectar con Google</a>
             <p class="card-help" th:unless="${googleAccount.configured}" th:utext="#{settings.google.notConfigured}">google-oauth.properties</p>
         </th:block>
