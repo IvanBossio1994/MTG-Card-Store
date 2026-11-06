@@ -165,10 +165,19 @@ public class DashboardController {
 
         try {
             var products = cardKingdomApiService.searchProducts(buildSearchQuery(trimmedQuery, trimmedSet, trimmedNumber));
-            var inventoryCards = inventoryService.getInventoryCards();
+            // Si el Sheet falla (o todavía no hay), igual se muestran los precios de Card Kingdom, sin stock.
+            List<InventoryCard> inventoryCards;
+            try {
+                inventoryCards = inventoryService.getInventoryCards();
+            } catch (Exception e) {
+                log.warn("Búsqueda sin stock: no se pudo leer el Sheet ({})", e.getMessage());
+                inventoryCards = List.of();
+                model.addAttribute("stockWarning", I18n.t("err.search.noStock"));
+            }
+            final List<InventoryCard> stockCards = inventoryCards;
 
             // Cartas del Sheet que Card Kingdom no tiene: se muestran igual para poder venderlas.
-            var sheetOnly = com.tcg.bot.service.SheetSearch.find(inventoryCards, trimmedQuery, trimmedSet, trimmedNumber,
+            var sheetOnly = com.tcg.bot.service.SheetSearch.find(stockCards, trimmedQuery, trimmedSet, trimmedNumber,
                     card -> products.stream().anyMatch(product -> matchesInventoryCard(card, product,
                             collectorNumber(product.getSku()), "true".equalsIgnoreCase(product.getFoil()))));
 
@@ -188,7 +197,7 @@ public class DashboardController {
                             .toList())
                     : Map.of();
             List<SearchResult> results = new ArrayList<>(products.stream()
-                    .map(product -> createSearchResult(product, inventoryCards, extraPrices))
+                    .map(product -> createSearchResult(product, stockCards, extraPrices))
                     .toList());
             sheetOnly.forEach(card -> results.add(sheetOnlyResult(card)));
             model.addAttribute("showTcgplayer", pricingSettingsService.isTcgplayerEnabled());
@@ -199,6 +208,7 @@ public class DashboardController {
                     .mapToInt(SearchResult::stockQuantity)
                     .sum());
         } catch (Exception e) {
+            log.warn("No se pudo buscar en Card Kingdom", e);
             model.addAttribute("error", I18n.t("err.search.failed"));
         }
 

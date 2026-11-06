@@ -98,6 +98,7 @@
         </form>
 
         <p class="alert error" th:if="${error}" th:text="${error}"></p>
+        <p class="alert warning" th:if="${stockWarning}" th:text="${stockWarning}"></p>
         <p class="alert success" th:if="${success}" th:text="${success}"></p>
 
         <div class="result-summary" th:if="${searchPerformed}">
