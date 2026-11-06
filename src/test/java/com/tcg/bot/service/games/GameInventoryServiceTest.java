@@ -2,11 +2,9 @@ package com.tcg.bot.service.games;
 
 import com.tcg.bot.model.Game;
 import com.tcg.bot.model.GamePrint;
-import com.tcg.bot.service.LicenseService;
 import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.StockOperationsBridge;
 import com.tcg.bot.service.StockOperationsService;
-import com.tcg.bot.service.StockOperationsService.StockOperationException;
 import com.tcg.bot.service.TestStores;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,9 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,15 +22,12 @@ class GameInventoryServiceTest {
             "Rare Holo", "Holo", "", 10.0, "");
 
     private TestStores.Fake store;
-    private LicenseService license;
     private GameInventoryService service;
     private double usdSeen;
 
     @BeforeEach
     void setUp() {
         store = TestStores.fake();
-        license = mock(LicenseService.class);
-        when(license.remainingNewCards(anyInt())).thenReturn(10);
         PriceComparisonService prices = mock(PriceComparisonService.class);
         when(prices.calculateLocalPrice(anyDouble())).thenAnswer(call -> (double) call.getArgument(0) * 1000);
         StockOperationsService stock = TestStores.stock(store);
@@ -44,7 +37,7 @@ class GameInventoryServiceTest {
                 return List.of(new GamePrint(CHARIZARD.catalogId(), "Charizard", "Base", "BS", "4", "Rare Holo", "Holo", "", usdSeen, ""));
             }
         };
-        service = new GameInventoryService(store, new StockOperationsBridge(store, stock), prices, license, List.of(catalog));
+        service = new GameInventoryService(store, new StockOperationsBridge(store, stock), prices, List.of(catalog));
     }
 
     @Test
@@ -77,10 +70,4 @@ class GameInventoryServiceTest {
         assertThat(store.getGameCards(Game.POKEMON).get(0).getLocalPrice()).isEqualTo(12500);
     }
 
-    @Test
-    void freePlanLimitAppliesToNewCards() {
-        when(license.remainingNewCards(anyInt())).thenReturn(0);
-        when(license.limitMessage()).thenReturn("Límite");
-        assertThatThrownBy(() -> service.add(Game.POKEMON, CHARIZARD)).isInstanceOf(StockOperationException.class);
-    }
 }

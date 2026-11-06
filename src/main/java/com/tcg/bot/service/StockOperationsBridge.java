@@ -23,6 +23,11 @@ public class StockOperationsBridge {
                 LocalDateTime.now(stockOperations.clock), change, card, previous, next, source));
     }
 
+    /** Plan gratis: frena la venta si ya se usaron las operaciones del mes. */
+    public void requireFreeOperation() throws Exception {
+        stockOperations.requireFreeOperation();
+    }
+
     public String sale(InventoryCard card, int units, double unitPrice) throws Exception {
         CashRegisterEntry sale = stockOperations.cashEntry(
                 LocalDateTime.now(stockOperations.clock), card, CashRegisterEntry.TYPE_SALE, units, unitPrice);

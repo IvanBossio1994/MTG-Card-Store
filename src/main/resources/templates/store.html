@@ -186,14 +186,14 @@
         <p>
             <strong th:text="#{settings.plan.name(${license.pro} ? #{settings.plan.store} : #{settings.plan.free})}">Plan Gratis</strong>
             <span th:if="${license.pro or license.maskedKey != ''}" th:text="${' · ' + license.message}"> · Plan gratis</span>
-            <span th:if="${!license.pro and usedCards != null}"
-                  th:text="${' · ' + #messages.msg('settings.plan.used', usedCards, freeCardLimit)}"> · 120 de 300 cartas usadas</span>
+            <span th:if="${!license.pro and usedOperations != null}"
+                  th:text="${' · ' + #messages.msg('settings.plan.used', usedOperations, freeOperationLimit)}"> · 120 de 300 operaciones este mes</span>
         </p>
-        <div class="plan-meter" th:if="${!license.pro and usedCards != null}" aria-hidden="true">
-            <span th:style="${'width:' + (usedCards >= freeCardLimit ? 100 : usedCards * 100 / freeCardLimit) + '%'}"></span>
+        <div class="plan-meter" th:if="${!license.pro and usedOperations != null}" aria-hidden="true">
+            <span th:style="${'width:' + (usedOperations >= freeOperationLimit ? 100 : usedOperations * 100 / freeOperationLimit) + '%'}"></span>
         </div>
         <p class="card-help" th:unless="${license.pro}">
-            <span th:text="#{settings.plan.freeHelp(${freeCardLimit})}">El plan gratis permite hasta 300 cartas distintas.</span>
+            <span th:text="#{settings.plan.freeHelp(${freeOperationLimit})}">El plan gratis permite hasta 300 operaciones por mes.</span>
             <a th:if="${licensePurchaseUrl != ''}" th:href="${licensePurchaseUrl}" target="_blank" rel="noopener" th:text="#{settings.plan.activate}">Activar plan Tienda</a>
         </p>
         <p class="card-help" th:if="${license.pro && license.email != ''}" th:text="#{settings.plan.licenseOf(${license.email})}"></p>

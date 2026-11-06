@@ -171,6 +171,11 @@ public class ReservationService {
                 }
             }
 
+            // Retirar es cobrar: cuenta como una operación del plan gratis (si no, reservar y retirar lo esquivaría).
+            if (lines.stream().anyMatch(line -> !alreadyCharged.contains(saleIdFor(line)))) {
+                stockOperations.requireFreeOperation();
+            }
+
             for (Reservation line : lines) {
                 String saleId = saleIdFor(line);
                 if (alreadyCharged.contains(saleId)) {

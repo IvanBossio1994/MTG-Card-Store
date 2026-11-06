@@ -89,6 +89,7 @@ public class SalesService {
                 }
                 targets.add(card);
             }
+            stockOperations.requireFreeOperation();
 
             LocalDateTime now = LocalDateTime.now(stockOperations.clock);
             int units = 0;

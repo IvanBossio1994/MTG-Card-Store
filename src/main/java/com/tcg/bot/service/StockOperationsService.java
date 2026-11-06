@@ -78,6 +78,38 @@ public class StockOperationsService {
         this.clock = clock;
     }
 
+    /** Sin licencia cargada (tests, o antes de que Spring la inyecte) no hay límite. */
+    private java.util.function.BooleanSupplier unlimitedOperations = () -> true;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setLicenseService(LicenseService licenseService) {
+        this.unlimitedOperations = licenseService::isPro;
+    }
+
+    /** Para tests: false simula el plan gratis. */
+    void setUnlimitedOperations(java.util.function.BooleanSupplier unlimited) {
+        this.unlimitedOperations = unlimited;
+    }
+
+    /** Ventas y compras de este mes calendario, como las cuenta el plan gratis. */
+    public int operationsThisMonth() throws Exception {
+        return LicenseService.countOperations(store.getCashRegisterEntries(), java.time.YearMonth.now(clock));
+    }
+
+    /**
+     * Plan gratis: frena una venta o compra nueva si ya se usaron las {@link LicenseService#FREE_OPERATION_LIMIT}
+     * del mes. Se llama dentro del lock de escritura, antes de tocar stock o caja, desde cada camino que cobra
+     * o compra (venta suelta, carrito, retiro de reserva, otros juegos, compras).
+     */
+    public void requireFreeOperation() throws Exception {
+        if (unlimitedOperations.getAsBoolean()) {
+            return;
+        }
+        if (operationsThisMonth() >= LicenseService.FREE_OPERATION_LIMIT) {
+            throw new StockOperationException(I18n.t("license.limit", LicenseService.FREE_OPERATION_LIMIT));
+        }
+    }
+
     /**
      * Suma o resta unidades de una carta. Con {@code change < 0} y motivo SALE, registra la venta en caja.
      * Sumar unidades nunca es una venta.
@@ -108,6 +140,9 @@ public class StockOperationsService {
             throw new StockOperationException(
                     I18n.t("err.noLocalPrice", card.getName())
             );
+        }
+        if (isSale) {
+            requireFreeOperation();
         }
 
         setQuantity(card, next);

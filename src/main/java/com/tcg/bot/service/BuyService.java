@@ -83,6 +83,7 @@ public class BuyService {
 
         String who = customer == null || customer.isBlank() ? I18n.t("buy.defaultCustomer") : customer.trim();
         synchronized (StockOperationsService.writeLock()) {
+            stockOperations.requireFreeOperation();
             LocalDateTime now = LocalDateTime.now(stockOperations.clock);
             String reference = "C" + StockOperationsService.newSaleId();
             int units = 0;

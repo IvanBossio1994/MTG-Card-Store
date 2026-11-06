@@ -371,7 +371,7 @@ public class DashboardController {
         if (!licenseService.isPro() && storeSettingsService.hasSpreadsheetConfigured()
                 && inventoryService.hasCredentialsConfigured()) {
             try {
-                model.addAttribute("usedCards", distinctCards(inventoryService.getInventoryCards()));
+                model.addAttribute("usedOperations", stockOperationsService.operationsThisMonth());
             } catch (Exception e) {
                 // Sin Sheet accesible: no se muestra el uso.
             }
@@ -1046,15 +1046,6 @@ public class DashboardController {
                     cardsToWrite.put(existingCard.getRowIndex(), existingCard);
                     movements.add(createMovement("ENTRADA", quantity, existingCard, updatedQuantity - quantity, updatedQuantity, "Importar lista"));
                     updated++;
-                }
-
-                int remaining = licenseService.remainingNewCards(distinctCards(inventoryCards));
-                if (cardsToAppend.size() > remaining) {
-                    return populateImportAnalysisModel(
-                            rawList,
-                            model,
-                            licenseService.limitMessage() + " " + I18n.t("imp.overLimit", cardsToAppend.size(), remaining)
-                    );
                 }
 
                 inventoryService.updateQuantities(quantitiesByRow);
@@ -1997,21 +1988,6 @@ public class DashboardController {
         }
     }
 
-    /** Cartas distintas para el límite del plan gratis: Magic más las pestañas de Pokémon y Yu-Gi-Oh. */
-    private int distinctCards(List<InventoryCard> cards) {
-        int total = (int) cards.stream()
-                .filter(card -> card.getName() != null && !card.getName().isBlank())
-                .count();
-        for (com.tcg.bot.model.Game game : com.tcg.bot.model.Game.values()) {
-            try {
-                total += inventoryService.getGameCards(game).size();
-            } catch (Exception e) {
-                // Sin pestaña de ese juego todavía: no suma.
-            }
-        }
-        return total;
-    }
-
     @PostMapping("/configuracion/licencia")
     public String updateLicense(@RequestParam(name = "licenseKey", required = false) String licenseKey,
                                 RedirectAttributes redirectAttributes) {
@@ -2074,7 +2050,7 @@ public class DashboardController {
         model.addAttribute("markupPercent", pricingSettingsService.getMarkupPercent());
         model.addAttribute("license", licenseService.status());
         model.addAttribute("licensePurchaseUrl", licenseService.getPurchaseUrl());
-        model.addAttribute("freeCardLimit", LicenseService.FREE_CARD_LIMIT);
+        model.addAttribute("freeOperationLimit", LicenseService.FREE_OPERATION_LIMIT);
         model.addAttribute("minimumPrice", pricingSettingsService.getMinimumPrice());
         model.addAttribute("tcgplayerEnabled", pricingSettingsService.isTcgplayerEnabled());
         model.addAttribute("cardmarketEnabled", pricingSettingsService.isCardmarketEnabled());
@@ -2571,9 +2547,6 @@ public class DashboardController {
                         }
                         card = findSamePrinting(current, product);
                         if (card == null) {
-                            if (licenseService.remainingNewCards(distinctCards(current)) <= 0) {
-                                throw new StockOperationsService.StockOperationException(licenseService.limitMessage());
-                            }
                             card = createInventoryCard(product);
                             card.setQuantity("0");
                             card.setAction(StockOperationsService.actionFor(0));
@@ -2639,11 +2612,6 @@ public class DashboardController {
                     var result = stockOperationsService.changeStock(existing.getId(), existing.getRowIndex(), 1,
                             StockOperationsService.Reason.ADJUST);
                     return ResponseEntity.ok(new StockCreateResponse(result.rowIndex(), result.cardId()));
-                }
-
-                if (licenseService.remainingNewCards(distinctCards(current)) <= 0) {
-                    return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
-                            .body(new ApiMessage(false, licenseService.limitMessage()));
                 }
 
                 card = createInventoryCard(product);

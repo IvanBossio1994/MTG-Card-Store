@@ -34,11 +34,10 @@ class LicenseServiceTest {
     }
 
     @Test
-    void freePlanLimitsNewCards() {
+    void withoutKeyItIsTheFreePlan() {
         LicenseService service = at(Instant.parse("2026-11-03T00:00:00Z"), "");
         assertThat(service.isPro()).isFalse();
-        assertThat(service.remainingNewCards(250)).isEqualTo(50);
-        assertThat(service.remainingNewCards(400)).isZero();
+        assertThat(service.status().plan()).isEqualTo("Gratis");
     }
 
     @Test
@@ -50,7 +49,7 @@ class LicenseServiceTest {
 
         assertThat(status.pro()).isTrue();
         assertThat(status.email()).isEqualTo("tienda@example.com");
-        assertThat(service.remainingNewCards(5000)).isEqualTo(Integer.MAX_VALUE);
+        assertThat(service.isPro()).isTrue();
     }
 
     @Test

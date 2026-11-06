@@ -7,7 +7,6 @@ import com.tcg.bot.model.GameCard;
 import com.tcg.bot.model.GamePrint;
 import com.tcg.bot.model.InventoryCard;
 import com.tcg.bot.service.InventoryStore;
-import com.tcg.bot.service.LicenseService;
 import com.tcg.bot.service.PriceComparisonService;
 import com.tcg.bot.service.StockOperationsService;
 import com.tcg.bot.service.StockOperationsService.StockOperationException;
@@ -46,16 +45,14 @@ public class GameInventoryService {
     private final InventoryStore store;
     private final StockOperationsBridge stock;
     private final PriceComparisonService priceComparisonService;
-    private final LicenseService licenseService;
     private final List<GameCatalog> catalogs;
 
     public GameInventoryService(InventoryStore store, StockOperationsBridge stock,
-                                PriceComparisonService priceComparisonService, LicenseService licenseService,
+                                PriceComparisonService priceComparisonService,
                                 List<GameCatalog> catalogs) {
         this.store = store;
         this.stock = stock;
         this.priceComparisonService = priceComparisonService;
-        this.licenseService = licenseService;
         this.catalogs = List.copyOf(catalogs);
     }
 
@@ -197,10 +194,6 @@ public class GameInventoryService {
 
     private GameCard createRow(Game game, GamePrint print, int quantity) throws Exception {
         {
-            if (licenseService.remainingNewCards(distinctCardsInStore()) <= 0) {
-                throw new StockOperationException(licenseService.limitMessage());
-            }
-
             GameCard card = new GameCard();
             card.setQuantity(quantity);
             card.setName(print.name());
@@ -236,6 +229,9 @@ public class GameInventoryService {
             boolean isSale = sale && delta < 0;
             if (isSale && card.getLocalPrice() <= 0) {
                 throw new StockOperationException(I18n.t("games.err.noPrice", card.getName()));
+            }
+            if (isSale) {
+                stock.requireFreeOperation();
             }
 
             card.setQuantity(next);
@@ -315,16 +311,6 @@ public class GameInventoryService {
 
     private double localPrice(Double usd) {
         return usd == null || usd <= 0 ? 0 : priceComparisonService.calculateLocalPrice(usd);
-    }
-
-    private int distinctCardsInStore() throws Exception {
-        int total = (int) store.getInventoryCards().stream()
-                .filter(card -> card.getName() != null && !card.getName().isBlank())
-                .count();
-        for (Game other : Game.values()) {
-            total += store.getGameCards(other).size();
-        }
-        return total;
     }
 
     private GameCatalog catalog(Game game) {
