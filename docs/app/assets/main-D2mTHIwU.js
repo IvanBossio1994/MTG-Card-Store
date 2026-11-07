@@ -7,31 +7,31 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
       <button class="primary-button" type="submit" ?disabled=${n.busy}>${h(`common.save`)}</button>
       <button class="text-action" type="button" @click=${()=>n.edit(null)}>${h(`common.cancel`)}</button>
     </form>
-  </td></tr>`}function Ct(e,n,r,i,a){if(!e)return t`<p>…</p>`;let o=gt(e,n),s=o.slice(0,xt),c=e.reduce((e,t)=>e+S(t),0),l=!!a?.adjusting,u=l||!!i;return t`
+  </td></tr>`}function Ct(e,n,r,i,a){if(!e)return t`<p>…</p>`;let o=e=>{let t=x(e.localPrice);return t>0&&a?.currency?y(t,a.currency,m()):e.localPrice||h(`deck.noPrice`)},s=gt(e,n),c=s.slice(0,xt),l=e.reduce((e,t)=>e+S(t),0),u=!!a?.adjusting,d=u||!!i;return t`
     <label class="visually-hidden" for="inventory-search">${h(`common.search`)}</label>
     <input id="inventory-search" type="search" placeholder=${h(`common.search`)} .value=${n}
       @input=${e=>r(e.target.value)} />
-    <p>${o.length} / ${e.length} · ${h(`common.stock`)}: ${c}
+    <p>${s.length} / ${e.length} · ${h(`common.stock`)}: ${l}
       ${a?t`<button class="text-action refresh-prices" type="button" ?disabled=${a.busy}
             @click=${a.refresh}>${h(`games.refresh`)}</button>
           ${a.reload?t`<button class="text-action reload-stock" type="button" ?disabled=${a.busy} title=${h(`web.inventory.reload.title`)}
                 @click=${a.reload}>${h(`web.inventory.reload`)}</button>`:``}`:``}</p>
     ${a?t`<label class="stock-mode-toggle" title=${h(`dash.adjust.title`)}>
-          <input class="adjust-mode" type="checkbox" .checked=${l}
+          <input class="adjust-mode" type="checkbox" .checked=${u}
             @change=${e=>a.toggleAdjust(e.target.checked)} />
           <span>${h(`dash.adjust.label`)}</span></label>`:``}
     <div class="inventory-scroll"><table class="inventory-table">
       <thead><tr>
-        <th>${h(`common.quantity`)}</th><th>${h(`common.card`)}</th><th>${h(`public.col.edition`)}</th><th>${h(`common.price`)}</th>${u?t`<th><span class="visually-hidden">${h(`cart.title`)}</span></th>`:``}
+        <th>${h(`common.quantity`)}</th><th>${h(`common.card`)}</th><th>${h(`public.col.edition`)}</th><th>${h(`common.price`)}</th>${d?t`<th><span class="visually-hidden">${h(`cart.title`)}</span></th>`:``}
       </tr></thead>
       <tbody>
-        ${s.map(e=>t`<tr class=${S(e)>0?``:`out-of-stock`}>
+        ${c.map(e=>t`<tr class=${S(e)>0?``:`out-of-stock`}>
             <td>${S(e)}</td>
             <td>${e.name}${a&&e.id?t` <button class="text-action details-edit" type="button" title=${h(`details.edit.title`)}
                   @click=${()=>a.edit(a.editing===e.id?null:e.id)}>${h(`details.edit`)}</button>`:``}${e.cost?t`<br /><small>${h(`js.costPlaceholder`)}: ${e.cost}${e.location?` · ${e.location}`:``}</small>`:``}</td>
             <td>${e.setName||e.setCode}${e.collectorNumber?t` #${e.collectorNumber}`:``}</td>
-            <td>${e.localPrice||h(`deck.noPrice`)}</td>
-            ${l&&a?t`<td class="adjust-buttons">
+            <td>${o(e)}</td>
+            ${u&&a?t`<td class="adjust-buttons">
                   <button class="adjust-down" type="button" ?disabled=${a.busy||!e.id||S(e)<=0}
                     aria-label=${h(`js.removeUnitOf`,e.name)} title=${h(`js.removeUnitOf`,e.name)}
                     @click=${()=>a.adjust(e,-1)}>−</button>
@@ -40,10 +40,10 @@ import{a as e,i as t,n,r,t as i}from"./lit-html-BftHCVJg.js";var a={"action.CON_
                     @click=${()=>a.adjust(e,1)}>+</button></td>`:i?t`<td><button class="add-to-cart" type="button" ?disabled=${!e.id||S(e)<=0}
                     aria-label=${h(`js.addUnitOf`,e.name)} title=${h(`js.addUnitOf`,e.name)}
                     @click=${()=>i(e)}>+</button></td>`:``}
-          </tr>${a&&a.editing===e.id?St(e,a,u?5:4):``}`)}
+          </tr>${a&&a.editing===e.id?St(e,a,d?5:4):``}`)}
       </tbody>
     </table></div>
-    ${o.length>xt?t`<p>+${o.length-xt}</p>`:``}
+    ${s.length>xt?t`<p>+${s.length-xt}</p>`:``}
   `}var wt={usdRate:1650,roundMultiple:500,markupPercent:0,minimumPrice:0,tcgplayerEnabled:!1,cardmarketEnabled:!1,eurRate:0,combineMode:`CARD_KINGDOM`,currency:`ARS`};function Tt(e){switch(e.trim().toUpperCase()){case`USD`:case`EUR`:case`GBP`:case`CAD`:case`AUD`:return .25;case`BRL`:case`PEN`:return .5;case`MXN`:case`UYU`:case`JPY`:return 10;case`COP`:return 1e3;default:return 500}}function Et(e){return e.markupPercent<=-100?`err.pricing.markup`:e.minimumPrice<0?`err.pricing.minimum`:e.usdRate<=0?`err.pricing.rate`:e.roundMultiple<=0?`err.pricing.multiple`:e.cardmarketEnabled&&e.eurRate<=0?`err.pricing.eur`:null}function Dt(e,t){return t<=0?e:Math.ceil(e/t-1e-9)*t}function Ot(e,t){let n=e*(1+t.markupPercent/100);return v(Math.max(Dt(n,t.roundMultiple),t.minimumPrice),t.currency)}function kt(e,t){return Ot(e*t.usdRate,t)}function At(e,t,n,r){let i=[];if(e!=null&&i.push({source:`Card Kingdom`,currency:`USD`,price:e,local:e*r.usdRate}),t&&r.tcgplayerEnabled){let e=(n?t.usdFoil??t.usd:t.usd??t.usdFoil)??null;e!=null&&i.push({source:`TCGplayer`,currency:`USD`,price:e,local:e*r.usdRate})}if(t&&r.cardmarketEnabled&&r.eurRate>0){let e=(n?t.eurFoil??t.eur:t.eur??t.eurFoil)??null;e!=null&&i.push({source:`Cardmarket`,currency:`EUR`,price:e,local:e*r.eurRate})}if(!i.length)return{sources:i,localPrice:null};let a=i.map(e=>e.local),o=r.combineMode===`CARD_KINGDOM`?e==null?null:e*r.usdRate:r.combineMode===`AVERAGE`?a.reduce((e,t)=>e+t,0)/a.length:r.combineMode===`MAX`?Math.max(...a):Math.min(...a);return{sources:i,localPrice:o==null?null:Ot(o,r)}}function jt(e){let t=(e??``).toUpperCase().replace(/[^A-Z0-9]+/g,``);return!t||[`NM`,`NEARMINT`,`MINT`,`NORMAL`].includes(t)?`NM`:[`LP`,`EX`,`EXCELLENT`,`LIGHTLYPLAYED`].includes(t)?`EX`:[`VG`,`VERYGOOD`,`MP`,`MODERATELYPLAYED`].includes(t)?`VG`:[`G`,`GOOD`,`HP`,`HEAVILYPLAYED`,`DAMAGED`,`DMG`].includes(t)?`G`:t}var Mt=`Configuracion`,Nt=`tcg.settings`,Pt=[`Clave`,`Valor`],Ft=[`CARD_KINGDOM`,`AVERAGE`,`MAX`,`MIN`],It={storeName:``,pricing:{...wt}};function Lt(e){if(typeof e==`number`)return Number.isFinite(e)?e:null;if(typeof e!=`string`)return null;let t=e.trim().replace(/\s/g,``);if(!t)return null;t.includes(`,`)&&(t=t.replace(/\./g,``).replace(`,`,`.`));let n=Number(t);return Number.isFinite(n)?n:null}function Rt(e){if(typeof e==`boolean`)return e;let t=String(e??``).trim().toLowerCase();return[`true`,`si`,`sí`,`yes`,`1`,`verdadero`].includes(t)?!0:![`false`,`no`,`0`,`falso`].includes(t)&&null}function zt(e){let t=new Map;for(let n of e){let e=String(n[0]??``).trim();e&&n.length>1&&t.set(e,n[1])}let n={...wt},r=e=>{let r=Lt(t.get(e));r!==null&&(n[e]=r)},i=e=>{let r=Rt(t.get(e));r!==null&&(n[e]=r)};r(`usdRate`),r(`roundMultiple`),r(`markupPercent`),r(`minimumPrice`),r(`eurRate`),i(`tcgplayerEnabled`),i(`cardmarketEnabled`);let a=String(t.get(`combineMode`)??``).trim().toUpperCase();return Ft.includes(a)&&(n.combineMode=a),t.has(`currency`)&&(n.currency=Xe(String(t.get(`currency`)))),{storeName:String(t.get(`storeName`)??``).trim(),pricing:n}}function Bt(e,t=[]){let n=e.pricing,r=[[`storeName`,e.storeName],[`currency`,n.currency],[`usdRate`,n.usdRate],[`roundMultiple`,n.roundMultiple],[`markupPercent`,n.markupPercent],[`minimumPrice`,n.minimumPrice],[`tcgplayerEnabled`,n.tcgplayerEnabled],[`cardmarketEnabled`,n.cardmarketEnabled],[`eurRate`,n.eurRate],[`combineMode`,n.combineMode]],i=new Set([String(Pt[0]),...r.map(e=>String(e[0]))]),a=t.filter(e=>{let t=String(e[0]??``).trim();return t&&!i.has(t)});return[Pt,...r,...a]}function Vt(e){try{localStorage.setItem(Nt,JSON.stringify(e))}catch{}}async function Ht(e,t){return(await e.tabs(t)).includes(`Configuracion`)?e.read(t,g(Mt,`A1:B`)):null}async function Ut(e,t){let n=await Ht(e,t),r=n?zt(n):structuredClone(It);return Vt(r),r}async function Wt(e,t,n){let r=await Ht(e,t)??[];r.length||await e.ensureTabs(t,[Mt]);let i=Bt(n,r);for(;i.length<r.length;)i.push([``,``]);await e.write(t,[{range:g(Mt,`A1:B${i.length}`),values:i}]),Vt(n)}async function Gt(e,t){let n=new Map;for(let r of await Ht(e,t)??[]){let e=String(r[0]??``).trim();e&&r.length>1&&n.set(e,r[1])}return n}async function Kt(e,t,n){let r=await Ht(e,t)??[];r.length||await e.ensureTabs(t,[Mt]);let i=r.length?r:[Pt],a=r.length?[]:[{range:g(Mt,`A1:B1`),values:[Pt]}],o=i.length+1;for(let[e,t]of Object.entries(n)){let n=i.findIndex(t=>String(t[0]??``).trim()===e),r=n>=0?n+1:o++;a.push({range:g(Mt,`A${r}:B${r}`),values:[[e,t]]})}await e.write(t,a)}var qt=[`CARD_KINGDOM`,`AVERAGE`,`MAX`,`MIN`];function Jt(e){let t=new FormData(e),n=e=>String(t.get(e)??``).trim(),r=e=>n(e)===``?0:Number(n(e).replace(`,`,`.`)),i={currency:n(`currency`),usdRate:r(`usdRate`),roundMultiple:r(`roundMultiple`),markupPercent:r(`markupPercent`),minimumPrice:r(`minimumPrice`),tcgplayerEnabled:t.get(`tcgplayerEnabled`)===`on`,cardmarketEnabled:t.get(`cardmarketEnabled`)===`on`,eurRate:r(`eurRate`),combineMode:n(`combineMode`)};if(Object.values(i).some(e=>typeof e==`number`&&!Number.isFinite(e)))return{error:`err.pricing.rate`};let a=Et(i);return a?{error:a}:{storeName:n(`storeName`),pricing:i}}function Yt(e){let t=e.target,n=t.form,r=e=>n.elements.namedItem(e);r(`roundMultiple`).value=String(Tt(t.value)),r(`minimumPrice`).value=`0`,t.value===`USD`&&(r(`usdRate`).value=`1`),n.querySelectorAll(`[data-currency]`).forEach(e=>{e.textContent=h(e.dataset.currency,t.value)}),n.querySelector(`#currency-changed`).hidden=!1}function Xt(e,n,r){if(!e)return t`<p>…</p>`;let i=e.pricing;return t`<form class="settings-form" @submit=${e=>{e.preventDefault(),r(Jt(e.target))}}>
     <p class="field-help">${h(`web.settings.where`)}</p>
     <div class="store-field">
@@ -1145,7 +1145,7 @@ Sideboard
       <button class="primary-button" type="button" ?disabled=${K} @click=${Pp}>${h(`settings.google.connect`)}</button>
     </section>`}function Bp(){return[{id:`inventory`,title:`layout.section.inventory`,enter:()=>{Lf&&Uf().then(e=>{Lf=e,$()},()=>void 0)},view:()=>t`<h1>${h(`layout.section.inventory`)}</h1>
         ${hp()}
-        ${Ct(Lf,Rf,e=>{Rf=e,$()},e=>sp(e,1),{busy:K,refresh:ap,reload:()=>Q(pp),adjusting:Dp,adjust:Ap,toggleAdjust:e=>{Dp=e,$()},editing:Op,edit:e=>{Op=e,$()},saveDetails:kp})}
+        ${Ct(Lf,Rf,e=>{Rf=e,$()},e=>sp(e,1),{busy:K,currency:X(),refresh:ap,reload:()=>Q(pp),adjusting:Dp,adjust:Ap,toggleAdjust:e=>{Dp=e,$()},editing:Op,edit:e=>{Op=e,$()},saveDetails:kp})}
         ${os({query:Rf,cards:Lf,settings:J?.pricing??wt,currency:X(),busy:K,draw:$,loadList:()=>np.priceList(),add:fp})}`},{id:`review`,title:`nav.review`,enter:ou,view:()=>t`<h1>${h(`nav.review`)}</h1>
         ${mu({spreadsheetId:q,read:()=>au(W,q,()=>new kr(W,q,X).cash(),new Date),prices:iu(W,q),currency:X(),busy:K,run:Q,draw:$,notify:e=>{G=e},go:jp,changed:()=>{pp().catch(()=>void 0)}})}`},{id:`identify`,title:`nav.identify`,enter:Mu,view:()=>t`<h1>${h(`nav.identify`)}</h1>
         ${Bu({spreadsheetId:q,store:ju(W,q),fetcher:_u,busy:K,run:Q,draw:$,notify:e=>{G=e},changed:()=>{pp().catch(()=>void 0)}})}`},{id:`import`,title:`nav.import`,view:()=>t`<h1>${h(`imp.title`)}</h1>
