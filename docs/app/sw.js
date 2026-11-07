@@ -20,7 +20,7 @@ self.addEventListener('fetch', (event) => {
   const scope = new URL(self.registration.scope);
   if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return;
   const path = url.pathname.slice(scope.pathname.length);
-  if (path.startsWith('data/') || path.startsWith('prueba')) return;
+  if (path.startsWith('data/')) return;
 
   // Los archivos de assets/ llevan un hash en el nombre: nunca cambian, se sirven de la caché.
   if (path.startsWith('assets/')) {
